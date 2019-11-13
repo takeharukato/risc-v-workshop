@@ -1,7 +1,7 @@
 top=../..
+
 include ${top}/Makefile.inc
 
-CFLAGS += -I${top}/include
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 objects = prepare.o
 ifeq ($(CONFIG_HAL),y)

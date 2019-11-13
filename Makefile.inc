@@ -15,9 +15,10 @@ CP=cp
 RM=rm -f
 LN=ln
 ARFLAGS=rvc
+INC_FLAGS = -I${top}/include
 OPT_FLAGS=-O0 -g -Wall
 PIC_OPT_FLAGS=-fno-pie -fno-pic -fno-PIC
-CFLAGS=${OPT_FLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS})
+CFLAGS=${OPT_FLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS}) ${INC_FLAGS}
 # Disable PIE when possible (for Ubuntu 16.10)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie

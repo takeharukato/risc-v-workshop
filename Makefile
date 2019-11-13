@@ -22,7 +22,7 @@ menuconfig: hal configs/Config.in ${mconf}
 	${RM} include/kern/autoconf.h
 	${mconf} configs/Config.in || :
 
-include/kern/autoconf.h: .config
+include/kern/autoconf.h: ${mconf} .config
 	${RM} -f $@
 	tools/kconfig/conf-header.sh .config > $@
 

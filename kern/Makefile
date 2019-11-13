@@ -1,6 +1,6 @@
 top=..
 include ${top}/Makefile.inc
-CFLAGS += -I${top}/include
+
 objects=main.o
 
 lib=libklib.a

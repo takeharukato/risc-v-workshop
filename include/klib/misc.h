@@ -9,10 +9,12 @@
 #if !defined(_KLIB_MISC_H)
 #define  _KLIB_MISC_H 
 
+#include <hal/hal-misc.h>
+
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
-#include <hal/hal-misc.h>
+
 /**
    2つの値のうち大きいほうの値を返却する
    @param[in] _x 1つ目の値
