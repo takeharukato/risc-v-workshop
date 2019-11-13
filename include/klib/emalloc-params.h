@@ -3,7 +3,7 @@
 
 #include <hal/hal-page.h>  /*  HAL_PAGE_SIZE  */
 
-#include <kern/early-kheap.h>  /*  ekheap_sbrk  */
+#include <klib/early-kheap.h>  /*  ekheap_sbrk  */
 
 #define MSPACES         (0) 
 #define ONLY_MSPACES    (0)

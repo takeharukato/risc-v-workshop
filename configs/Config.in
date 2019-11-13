@@ -1,0 +1,84 @@
+#
+# For a description of the syntax of this configuration file,
+# see extra/config/Kconfig-language.txt
+#
+
+mainmenu "Kernel Configuration"
+
+config CONFIG_HAL
+	bool "Hardware Abstraction Layer(HAL)"
+	default n
+	help
+	  If you wish to build the kernel for real hardware, then answer Y here.
+
+config CONFIG_HEAP_SIZE
+	int "heap memory size(UNIT:MB)"
+	default 64
+	range 1 768
+	help
+	  This sets the value of kernel heap memory size
+
+config CONFIG_TSTACK_PAGE_NR
+	int "Task stack pages(UNIT:pages)"
+	default 1
+	range 1 4
+	help
+	  This sets the value of default task stack size
+
+config CONFIG_ISTACK_PAGE_NR
+	int "Interrupt stack pages(UNIT:pages)"
+	default 1
+	range 1 4
+	help
+	  This sets the value of interrupt stack size
+
+choice
+    prompt "Timer Interval"
+    default CONFIG_TIMER_INTERVAL_MS_10MS
+    depends on CONFIG_HAL
+
+config CONFIG_TIMER_INTERVAL_MS_1MS
+    bool "1 milliseconds"
+    help
+      This sets timer tick as 1 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_10MS
+    bool "10 milliseconds"
+    help
+      This sets timer tick as 10 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_100MS
+    bool "100 milliseconds"
+    help
+      This sets timer tick as 100 milliseconds.
+
+endchoice
+
+config CONFIG_UPPERHALF_KERNEL
+    bool "Use Upper Half Kernel"
+    default n
+    help
+      Kernel virtual memory is placed onto upper half of virtual memory space.
+
+config CONFIG_TIMER_INTERVAL_MS
+       int 
+       default 1 if CONFIG_TIMER_INTERVAL_MS_1MS
+       depends on CONFIG_HAL
+
+config CONFIG_TIMER_INTERVAL_MS
+       int
+       default 10 if CONFIG_TIMER_INTERVAL_MS_10MS
+       depends on CONFIG_HAL
+
+config CONFIG_TIMER_INTERVAL_MS
+       int 
+       default 100 if CONFIG_TIMER_INTERVAL_MS_100MS
+       depends on CONFIG_HAL
+
+config CONFIG_TIMER_TIME_SLICE
+       int "Timer slice of threads (UNIT: ticks)"
+       default 10
+       help
+	  This sets the value of the timer slice for each thread in the round robin scheduling class by tick counts.
+
+source "configs/hal/Config.in"

@@ -12,7 +12,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
 
-#include <kern/early-kheap.h>
+#include <klib/early-kheap.h>
 #include <klib/emalloc-params.h> 
 
 int eposix_memalign(void**_ptrp, size_t _align, size_t _siz);

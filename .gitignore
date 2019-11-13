@@ -116,4 +116,6 @@ asm-offset.h
 asm-offset.s
 objs/
 lcov-outputs-*/
+hal/hal
+include/hal
 

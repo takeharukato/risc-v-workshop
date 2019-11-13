@@ -9,6 +9,7 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
+#include <kern/spinlock.h>
 
 /**
    参照カウンタを減算し, 減算後の参照カウンタの状態と値を返却する(内部関数)
