@@ -30,7 +30,7 @@ endif
 LDFLAGS=
 
 GIT=git
-ARCHIVE_NAME=sample-tsk-sw
+ARCHIVE_NAME=risc-v-workshop
 FSIMG_FILE=${top}/fsimg.img
 
 QEMU ?= qemu-system-x86_64

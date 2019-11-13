@@ -1,9 +1,9 @@
 /* -*- mode: C; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  x64 spinlock                                                      */
+/*  RISC-V 64 spinlock                                                */
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_SPINLOCK_H)

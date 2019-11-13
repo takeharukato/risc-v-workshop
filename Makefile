@@ -12,19 +12,9 @@ all:${targets}
 start_obj =
 ifeq ($(CONFIG_HAL),y)
 start_obj += hal/hal/boot.o
+subdirs += hal
 endif
 start_obj += kern/main.o
-
-${mconf}:
-	${MAKE} -C tools
-
-menuconfig: hal configs/Config.in ${mconf}
-	${RM} include/kern/autoconf.h
-	${mconf} configs/Config.in || :
-
-include/kern/autoconf.h: ${mconf} .config
-	${RM} -f $@
-	tools/kconfig/conf-header.sh .config > $@
 
 kernel.asm: kernel-dbg.elf
 	${RM} $@
@@ -47,10 +37,20 @@ ifeq ($(CONFIG_HAL),y)
 else
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} -Wl,--start-group ${kernlibs} -Wl,--end-group
 endif
-hal:
-	${MAKE} -C include hal
-	${MAKE} -C hal hal
-	${MAKE} -C configs hal
+
+include/kern/autoconf.h: .config
+	${RM} -f $@
+	tools/kconfig/conf-header.sh .config > $@
+
+.config: hal configs/Config.in ${mconf}
+	@echo "Type make menuconfig beforehand"
+
+menuconfig: hal configs/Config.in ${mconf}
+	${RM} include/kern/autoconf.h
+	${mconf} configs/Config.in || :
+
+${mconf}:
+	${MAKE} -C tools
 
 subsystem: hal
 	for dir in ${subdirs} ; do \
@@ -63,11 +63,10 @@ run: hal kernel.elf
 run-debug: hal kernel.elf
 	${MAKE} -C hal/hal $@ ;\
 
-docs:
-	${MAKE} -C docs ;\
-
-doxygen:
-	${MAKE} -C docs $@;\
+hal:
+	${MAKE} -C include hal
+	${MAKE} -C hal hal
+	${MAKE} -C configs hal
 
 clean:
 	for dir in ${cleandirs} ; do \

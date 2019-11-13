@@ -1,7 +1,7 @@
 /* -*- mode: c; coding:utf-8 -*- */
 /**********************************************************************/
 /*  OS kernel sample                                                  */
-/*  Copyright 2014 Takeharu KATO                                      */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
 /*  RISC-V boot routine                                               */
 /*                                                                    */

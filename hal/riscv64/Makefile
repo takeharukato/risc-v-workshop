@@ -5,7 +5,7 @@ include ${top}/Makefile.inc
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 objects = prepare.o
 ifeq ($(CONFIG_HAL),y)
-objects += boot.o
+objects += boot.o dbg-console.o
 endif
 
 HAL_QEMUOPTS = -machine virt -bios none -kernel ${QEMU_KERNEL}

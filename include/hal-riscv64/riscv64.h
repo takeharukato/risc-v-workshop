@@ -1,9 +1,9 @@
-/* -*- mode: C; coding:utf-8 -*- */
+/* -*- mode: c; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  x64 page operations                                               */
+/*  RISC-V 64 definitions                                             */
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_RISCV64_H)

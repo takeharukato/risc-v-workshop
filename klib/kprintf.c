@@ -36,7 +36,7 @@
  */
 /**********************************************************************/
 /*  OS kernel sample                                                  */
-/*  Copyright 2014 Takeharu KATO                                      */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
 /*  printf function in the OS kernel                                  */
 /*  These are drived from FreeBSD sys/kern/subr_prf.c                 */

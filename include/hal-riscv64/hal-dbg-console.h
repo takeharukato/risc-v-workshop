@@ -3,19 +3,15 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  RISC-V preparation routines                                       */
+/*  RISC-V debug console                                              */
 /*                                                                    */
 /**********************************************************************/
+#if !defined(_HAL_HAL_DBG_CONSOLE_H)
+#define  _HAL_HAL_DBG_CONSOLE_H
 
 #include <klib/freestanding.h>
-#include <kern/kern-common.h>
+#include <kern/kern-types.h>
 
-#include <hal/hal-dbg-console.h>
-
-void
-prepare(void){
-
-	hal_dbg_console_init();
-	kprintf("Boot on supervisor mode\n");
-	while(1);
-}
+void hal_dbg_console_init(void);
+void hal_kconsole_putchar(int _ch);
+#endif /*  _HAL_HAL_DBG_CONSOLE_H */

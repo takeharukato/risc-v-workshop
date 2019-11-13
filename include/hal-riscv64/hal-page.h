@@ -1,9 +1,9 @@
 /* -*- mode: C; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  x64 page operations                                               */
+/*  RISC-V 64 page operations                                         */
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_PAGE_H)
@@ -92,20 +92,6 @@
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
-
-int hal_paddr_to_pfn(void *_kvaddr, obj_cnt_type *_pfnp);
-int hal_pfn_to_paddr(obj_cnt_type _pfn, void **_kvaddrp);
-
-int hal_pfn_to_kvaddr(obj_cnt_type _pfn, void **_kvaddrp);
-int hal_kvaddr_to_pfn(void *_kvaddr, obj_cnt_type *_pfnp);
-
-int hal_kvaddr_to_phys(void *_kvaddr, void **_phys_addrp);
-int hal_phys_to_kvaddr(void *_phys_addr, void **_kvaddrp);
-
-bool hal_is_pfn_reserved(obj_cnt_type _pfn);
-
-int hal_kernlayout_init(void);
-void hal_kernlayout_finalize(void);
 
 #endif  /* !ASM_FILE */
 
