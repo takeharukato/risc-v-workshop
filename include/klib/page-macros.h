@@ -60,4 +60,37 @@
 #define PAGE_ROUNDUP_COMMON(_size,_pgsiz)		\
 	( roundup_align((_size), (_pgsiz) ) )
 
+/**
+   指定されたアドレスがノーマルページ境界上にあることを確認する
+   @param[in] _addr 確認するアドレス
+   @retval 真 指定されたアドレスがノーマルページ境界上にある
+   @retval 偽 指定されたアドレスがノーマルページ境界上にない
+ */
+#define PAGE_ALIGNED(_addr) \
+	PAGE_ALIGNED_COMMON((_addr), PAGE_SIZE)
+
+/**
+   指定されたアドレスを含むノーマルページの先頭アドレスを算出する
+   @param[in] _addr 確認するアドレス
+   @return 指定されたアドレスを含むノーマルページの先頭アドレス
+ */
+#define PAGE_TRUNCATE(_addr) \
+	PAGE_TRUNCATE_COMMON((_addr), PAGE_SIZE)
+
+/**
+   指定されたアドレスを含むノーマルページの次のノーマルページの先頭アドレスを算出する
+   @param[in] _addr 確認するアドレス
+   @return 指定されたアドレスを含むノーマルページの次のノーマルページの先頭アドレス
+ */
+#define PAGE_NEXT(_addr) \
+	PAGE_NEXT_COMMON((_addr), PAGE_SIZE)
+
+/**
+   指定されたサイズを格納可能なノーマルページサイズを算出する
+   @param[in] _size 格納したいサイズ(単位:バイト)
+   @return 指定されたサイズを格納可能なノーマルページサイズ
+ */
+#define PAGE_ROUNDUP(_size) \
+	PAGE_ROUNDUP_COMMON((_size), PAGE_SIZE)
+
 #endif  /*  _PAGE_MACROS_H   */

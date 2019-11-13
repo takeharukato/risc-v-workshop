@@ -2,9 +2,9 @@ top=.
 include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 
-subdirs=klib tools
+subdirs=kern klib tools
 cleandirs=include ${subdirs}
-kernlibs=klib/libklib.a
+kernlibs=klib/libklib.a kern/libklib.a hal/hal/libhal.a
 mconf=tools/kconfig/mconf
 
 all:${targets}
@@ -38,7 +38,7 @@ kernel.elf: kernel-dbg.elf
 	${CP}	$< $@
 	${STRIP} -g $@
 
-kernel-dbg.elf: include/kern/autoconf.h subsystem
+kernel-dbg.elf: include/kern/autoconf.h subsystem ${start_obj}
 ifeq ($(CONFIG_HAL),y)
 	${CC} -static ${PIC_OPT_FLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\

@@ -108,14 +108,9 @@ include/kern/autoconf.h
 kernel.elf
 kernel.asm
 kernel.sym
-gen-cpuid-db
-x86-cpuid-intel-table.h
-x64-idt-table.h
-x64-vectors.S
-asm-offset.h
-asm-offset.s
 objs/
 lcov-outputs-*/
 hal/hal
 include/hal
-
+kernel.lds
+kernel.map

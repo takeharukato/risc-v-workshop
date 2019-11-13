@@ -1,19 +1,20 @@
 top=../..
 include ${top}/Makefile.inc
-UNAME := $(shell uname)
 
 CFLAGS += -I${top}/include
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
-objects = 
+objects = prepare.o
 ifeq ($(CONFIG_HAL),y)
 objects += boot.o
 endif
+
+HAL_QEMUOPTS = -machine virt -bios none -kernel ${QEMU_KERNEL}
 
 lib=libhal.a
 
 all: kernel.lds ${lib}
 
-${lib}:${objects}
+${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 
@@ -25,6 +26,12 @@ kernel.lds: kernel.lds.in ${top}/.config
 	       -e 's|__ISTACK_PAGES__|${CONFIG_ISTACK_PAGE_NR}|g'	\
 	       -e 's|__KERN_VMA_BASE__|${CONFIG_HAL_KERN_VMA_BASE}|g'	\
 	$< > $@
+
+run: ${QEMU_KERNEL}
+	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT}
+
+run-debug: ${QEMU_KERNEL}
+	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
 
 clean:
 	${RM} *.o ${lib} vector.S asm-offset.s ${top}/include/hal/asm-offset.h
