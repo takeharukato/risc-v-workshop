@@ -40,6 +40,11 @@
 #define SSTATUS_SIE_BIT   (1)  /* Supervisor Interrupt Enable */
 #define SSTATUS_UIE_BIT   (0)  /* User Interrupt Enable */
 
+#define SSTATUS_SPP        (regops_set_bit(SSTATUS_SPP_BIT))
+#define SSTATUS_SPIE       (regops_set_bit(SSTATUS_SPIE_BIT))
+#define SSTATUS_UPIE       (regops_set_bit(SSTATUS_UPIE_BIT))
+#define SSTATUS_SIE        (regops_set_bit(SSTATUS_SIE_BIT))
+#define SSTATUS_UIE        (regops_set_bit(SSTATUS_UIE_BIT))
 
 /* Machine Interrupt Registers
  * Figure 3.11: Machine interrupt-pending register
@@ -235,5 +240,16 @@
 
 /* 割込み回送マスク */
 #define MIDELEG_MASK (MIE_MASK)
+#if !defined(ASM_FILE)
 
+#include <klib/freestanding.h>
+#include <kern/kern-types.h>
+
+uint64_t rv64_read_sstatus(void);
+uint64_t rv64_write_sstatus(uint64_t _new);
+uint64_t rv64_read_mie(void);
+uint64_t rv64_write_mie(uint64_t _new);
+uint64_t rv64_read_sie(void);
+uint64_t rv64_write_sie(uint64_t _new);
+#endif  /* !ASM_FILE */
 #endif  /*  _HAL_RISCV64_H  */

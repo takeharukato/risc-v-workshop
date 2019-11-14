@@ -1,7 +1,7 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=main.o
+objects=main.o spinlock.o cpuintr.o
 
 lib=libklib.a
 

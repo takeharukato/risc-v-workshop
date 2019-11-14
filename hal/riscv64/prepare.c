@@ -12,10 +12,13 @@
 
 #include <hal/hal-dbg-console.h>
 
+void kern_init(void);
+
 void
 prepare(void){
 
 	hal_dbg_console_init();
 	kprintf("Boot on supervisor mode\n");
+	kern_init();
 	while(1);
 }

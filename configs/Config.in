@@ -25,6 +25,13 @@ config CONFIG_TSTACK_PAGE_NR
 	help
 	  This sets the value of default task stack size
 
+config CONFIG_KSTACK_PAGE_NR
+	int "Kernel stack pages(UNIT:pages)"
+	default 1
+	range 1 4
+	help
+	  This sets the value of default kernel stack size
+
 config CONFIG_ISTACK_PAGE_NR
 	int "Interrupt stack pages(UNIT:pages)"
 	default 1

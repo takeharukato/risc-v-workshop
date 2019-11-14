@@ -10,12 +10,10 @@
 #define  _HAL_CPUINTR_H 
 
 #include <klib/freestanding.h>
-#include <kern/kern-common.h>
-
-#include <hal/riscv64.h>
+#include <kern/kern-types.h>
 
 void rv64_cpu_disable_interrupt(void);
 void rv64_cpu_enable_interrupt(void);
-void rv64_cpu_restore_flags(intrflags *_flags);
-void rv64_cpu_save_flags(intrflags *_flags);
+void rv64_cpu_restore_flags(intrflags *_iflags);
+void rv64_cpu_save_flags(intrflags *_iflags);
 #endif  /*  _HAL_CPUINTR_H   */
