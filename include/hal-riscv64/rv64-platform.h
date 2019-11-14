@@ -6,8 +6,8 @@
 /*  RISC-V 64 QEMU platform definitions                               */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_HAL_HAL_MEMLAYOUT_H)
-#define  _HAL_HAL_MEMLAYOUT_H 
+#if !defined(_HAL_RV64_PLATFORM_H)
+#define  _HAL_RV64_PLATFORM_H 
 #include <klib/misc.h>
 #include <klib/align.h>
 
@@ -58,4 +58,4 @@
 #endif  /* CONFIG_HAL */
 #endif  /* !ASM_FILE */
 
-#endif  /*  _HAL_HAL_MEMLAYOUT_H   */
+#endif  /*  _HAL_RV64_PLATFORM_H   */

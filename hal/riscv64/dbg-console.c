@@ -10,7 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <dev/uart.h>
-#include <hal/riscv64-platform.h>
+#include <hal/rv64-platform.h>
 
 /**
    UARTレジスタを参照する
