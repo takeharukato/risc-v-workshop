@@ -51,18 +51,23 @@ hal/hal/asm-offset.s: hal/hal/asm-offset.c tools/asmoffset/gen-asm-offset.py
 hal/hal/asm-offset.c: hal
 
 include/kern/autoconf.h: .config
-	${RM} -f $@
+	${RM} $@
 	tools/kconfig/conf-header.sh .config > $@
 
-.config: hal configs/Config.in ${mconf}
-	@echo "Type make menuconfig beforehand"
+.config: configs/Config.in
+	@echo "Type make menuconfig beforehand" 
+	@exit 1
 
-menuconfig: hal configs/Config.in ${mconf}
+menuconfig: configs/Config.in ${mconf}
 	${RM} include/kern/autoconf.h
-	${mconf} configs/Config.in || :
+	${mconf} $< || :
 
-${mconf}:
+${mconf}: 
 	${MAKE} -C tools
+
+configs/Config.in: configs/hal/Config.in
+
+configs/hal/Config.in: hal
 
 subsystem: hal
 	for dir in ${subdirs} ; do \
