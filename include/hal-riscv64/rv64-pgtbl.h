@@ -123,6 +123,52 @@
 #define rv64_pgtbl_vpn0_index(_vaddr)					\
 	(_rv64_pgtbl_calc_index((_vaddr), RV64_PGTBL_VPN0_INDEX_MASK,	\
 	    RV64_PGTBL_VPN0_INDEX_SHIFT))
+/*
+ * Page table entryの属性ビット
+ */
+#define RV64_PTE_V_BIT      (0)  /* Valid   */
+#define RV64_PTE_R_BIT      (1)  /* Read    */
+#define RV64_PTE_W_BIT      (2)  /* Write   */
+#define RV64_PTE_X_BIT      (3)  /* Execute */
+#define RV64_PTE_U_BIT      (4)  /* User    */
+#define RV64_PTE_G_BIT      (5)  /* Global  */
+#define RV64_PTE_A_BIT      (6)  /* Access  */
+#define RV64_PTE_D_BIT      (7)  /* Dirty   */
+
+#define RV64_PTE_V          (regops_set_bit(RV64_PTE_V_BIT))
+#define RV64_PTE_R          (regops_set_bit(RV64_PTE_R_BIT))
+#define RV64_PTE_W          (regops_set_bit(RV64_PTE_W_BIT))
+#define RV64_PTE_X          (regops_set_bit(RV64_PTE_X_BIT))
+#define RV64_PTE_U          (regops_set_bit(RV64_PTE_U_BIT))
+#define RV64_PTE_G          (regops_set_bit(RV64_PTE_G_BIT))
+#define RV64_PTE_A          (regops_set_bit(RV64_PTE_A_BIT))
+#define RV64_PTE_D          (regops_set_bit(RV64_PTE_D_BIT))
+
+/** PTE属性値のマスク
+ */
+#define PV64_PTE_FLAGS_MASK ( RV64_PTE_V | RV64_PTE_R | RV64_PTE_W | RV64_PTE_X | \
+			     RV64_PTE_U | RV64_PTE_G | RV64_PTE_A | RV64_PTE_D )
+#define RV64_PTE_PA_SHIFT   (10) /* PTE中のページ番号位置 */
+/**
+   物理アドレスをPTE中のページ番号に変換する
+   @param[in] _pa 物理アドレス
+   @retval ページ番号
+ */
+#define RV64_PTE_PADDR2PPN(_pa) ((_pa) >> HAL_PAGE_SHIFT) << RV64_PTE_PA_SHIFT)
+
+/**
+   PTE中のページ番号を物理アドレスに変換する
+   @param[in] _pte ページテーブルエントリ値
+   @retval 物理アドレス
+*/
+#define RV64_PTE2PADDR(_pte) ( ( (_pte) >> RV64_PTE_PA_SHIFT ) << PAGE_SHIFT )
+
+/**
+   PTE中の属性値を取得する
+   @param[in] _pte ページテーブルエントリ値
+   @retval ページテーブル属性値
+*/
+#define RV64_PTE_FLAGS(_pte) ( (_pte) & PV64_PTE_FLAGS_MASK )
 
 /**
    RISC-V 64のSTAPレジスタ値を算出する
