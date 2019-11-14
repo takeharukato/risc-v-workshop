@@ -32,6 +32,15 @@
 /**  マシンモード割込み許可 */
 #define MSTATUS_MIE      (regops_set_bit(MSTATUS_MIE_BIT))
 
+/*Supervisor Status Register, sstatus
+ */
+#define SSTATUS_SPP_BIT   (8)  /* Previous mode, 1=Supervisor, 0=User */
+#define SSTATUS_SPIE_BIT  (5)  /* Supervisor Previous Interrupt Enable */
+#define SSTATUS_UPIE_BIT  (4)  /* User Previous Interrupt Enable */
+#define SSTATUS_SIE_BIT   (1)  /* Supervisor Interrupt Enable */
+#define SSTATUS_UIE_BIT   (0)  /* User Interrupt Enable */
+
+
 /* Machine Interrupt Registers
  * Figure 3.11: Machine interrupt-pending register
  */
@@ -65,19 +74,66 @@
 
 /* Machine Interrupt Enableレジスタ
  */
-#define MIE_USIP (MIP_USIP)
-#define MIE_SSIP (MIP_SSIP)
-#define MIE_MSIP (MIP_MSIP)
-#define MIE_UTIP (MIP_UTIP)
-#define MIE_STIP (MIP_STIP)
-#define MIE_MTIP (MIP_MTIP)
-#define MIE_UEIP (MIP_UEIP)
-#define MIE_SEIP (MIP_SEIP)
-#define MIE_MEIP (MIP_MEIP)
+#define MIE_USIE (MIP_USIP)
+#define MIE_SSIE (MIP_SSIP)
+#define MIE_MSIE (MIP_MSIP)
+#define MIE_UTIE (MIP_UTIP)
+#define MIE_STIE (MIP_STIP)
+#define MIE_MTIE (MIP_MTIP)
+#define MIE_UEIE (MIP_UEIP)
+#define MIE_SEIE (MIP_SEIP)
+#define MIE_MEIE (MIP_MEIP)
 
 /* Machine Interrupt Enableマスク
  */
 #define MIE_MASK ( MIP_MASK )
+
+/* Supervisor Interrupt Registers
+ * TODO Figure 3.11: Machine interrupt-pending register
+ */
+#define SIREG_USIP_BIT     (0)  /* ユーザモードソフトウエア割込み */
+#define SIREG_SSIP_BIT     (1)  /* スーパーバイザモードソフトウエア割込み */
+#define SIREG_MSIP_BIT     (3)  /* マシンモードソフトウエア割込み */
+#define SIREG_UTIP_BIT     (4)  /* ユーザモードタイマ割込み */
+#define SIREG_STIP_BIT     (5)  /* スーパーバイザモードタイマ割込み */
+#define SIREG_MTIP_BIT     (7)  /* マシンモードタイマ割込み */
+#define SIREG_UEIP_BIT     (8)  /* ユーザモード外部割込み */
+#define SIREG_SEIP_BIT     (9)  /* スーパーバイザモード外部割込み */
+#define SIREG_MEIP_BIT     (11) /* マシンモード外部割込み */
+
+/* Supervisor Interrupt Pendingレジスタ
+ */
+#define SIP_USIP (regops_set_bit(SIREG_USIP_BIT))
+#define SIP_SSIP (regops_set_bit(SIREG_SSIP_BIT))
+#define SIP_MSIP (regops_set_bit(SIREG_MSIP_BIT))
+#define SIP_UTIP (regops_set_bit(SIREG_UTIP_BIT))
+#define SIP_STIP (regops_set_bit(SIREG_STIP_BIT))
+#define SIP_MTIP (regops_set_bit(SIREG_MTIP_BIT))
+#define SIP_UEIP (regops_set_bit(SIREG_UEIP_BIT))
+#define SIP_SEIP (regops_set_bit(SIREG_SEIP_BIT))
+#define SIP_MEIP (regops_set_bit(SIREG_MEIP_BIT))
+
+/* Supervisor Interrupt Pendingマスク
+ */
+#define SIP_MASK (SIP_USIP | SIP_SSIP | SIP_MSIP | \
+	          SIP_UTIP | SIP_STIP | SIP_MTIP | \
+	          SIP_UEIP | SIP_SEIP | SIP_MEIP )
+
+/* Supervisor Interrupt Enableレジスタ
+ */
+#define SIE_USIE (SIP_USIP)
+#define SIE_SSIE (SIP_SSIP)
+#define SIE_MSIE (SIP_MSIP)
+#define SIE_UTIE (SIP_UTIP)
+#define SIE_STIE (SIP_STIP)
+#define SIE_MTIE (SIP_MTIP)
+#define SIE_UEIE (SIP_UEIP)
+#define SIE_SEIE (SIP_SEIP)
+#define SIE_MEIE (SIP_MEIP)
+
+/* Supervisor Interrupt Enableマスク
+ */
+#define SIE_MASK ( SIP_MASK )
 
 /*
  * トラップ種別 (Machine cause register)
