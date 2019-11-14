@@ -3,26 +3,28 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  main routine                                                      */
+/*  test routine                                                      */
 /*                                                                    */
 /**********************************************************************/
 
 #include <kern/kern-common.h>
 #include <kern/ktest.h>
+#include <kern/spinlock.h>
 
-/** カーネルの初期化
- */
+spinlock lock;
+
 void
-kern_init(void) {
+tst_spinlock(void){
+	int            i;
+	intrflags iflags;
 
-	tst_spinlock();
+	spinlock_init(&lock);
+	spinlock_lock_disable_intr(&lock, &iflags);
+	spinlock_unlock_restore_intr(&lock, &iflags);
+	for(i = 0; SPINLOCK_BT_DEPTH > i; ++i ){
+
+		if ( lock.backtrace[i] == NULL )
+			break;
+		kprintf("trace[%d] %p\n", i, lock.backtrace[i]);
+	}
 }
-
-#if !defined(CONFIG_HAL)
-int 
-main(int argc, char *argv[]) {
-
-
-	return 0;
-}
-#endif  /*  !CONFIG_HAL  */

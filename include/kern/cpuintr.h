@@ -1,7 +1,7 @@
 /* -*- mode: C; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
 /*  cpu level interrupt control                                       */
 /*                                                                    */
