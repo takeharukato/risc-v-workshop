@@ -103,7 +103,7 @@ GTAGS
 _config
 include/kern/autoconf.h
 #
-#Yatos
+#kernel
 #
 kernel.elf
 kernel.asm
@@ -114,3 +114,5 @@ hal/hal
 include/hal
 kernel.lds
 kernel.map
+include/klib/asm-offset.h
+asm-offset.s

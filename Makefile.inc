@@ -1,3 +1,5 @@
+# -*- mode: makefile-gmake; coding:utf-8 -*-
+#
 CPU ?= `uname -m|sed -e "s/x86-64/x64/" -e "s/amd64/x64/" -e "s/x86_64/x64/" -e "s/i?86/ia32/"`
 HOST_CC ?= gcc
 CC=${CROSS_COMPILE}${HOST_CC}
@@ -26,6 +28,8 @@ endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
+# CFLAGS for asm-offset.c
+ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 
 LDFLAGS=
 

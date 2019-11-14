@@ -13,13 +13,13 @@ kconfig/mconf:
 
 clean:
 	for dir in ${subdirs} ; do 	\
-		${MAKE} -C $${dir} distclean;	\
+		${MAKE} -C $${dir} clean;	\
 	done
 	cd kconfig && $(MAKE) clean
 
 distclean:clean
 	for dir in ${subdirs} ; do 	\
-		${RM} $${dir}/*~;	\
+		${MAKE} -C $${dir} distclean;	\
 	done
 	cd kconfig && $(MAKE) distclean
 	${RM} \#* *~

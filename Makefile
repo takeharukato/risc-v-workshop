@@ -28,7 +28,7 @@ kernel.elf: kernel-dbg.elf
 	${CP}	$< $@
 	${STRIP} -g $@
 
-kernel-dbg.elf: include/kern/autoconf.h subsystem ${start_obj}
+kernel-dbg.elf: include/kern/autoconf.h include/klib/asm-offset.h subsystem ${start_obj}
 ifeq ($(CONFIG_HAL),y)
 	${CC} -static ${PIC_OPT_FLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\
@@ -37,6 +37,18 @@ ifeq ($(CONFIG_HAL),y)
 else
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} -Wl,--start-group ${kernlibs} -Wl,--end-group
 endif
+
+#
+# asm-offsetヘッダ生成ルール
+#
+include/klib/asm-offset.h: hal/hal/asm-offset.s
+	tools/asmoffset/gen-asm-offset.py \
+	-i $< -o $@
+
+hal/hal/asm-offset.s: hal/hal/asm-offset.c tools/asmoffset/gen-asm-offset.py
+	${CC} ${ASM_OFFSET_CFLAGS} -S -o $@ $<
+
+hal/hal/asm-offset.c: hal
 
 include/kern/autoconf.h: .config
 	${RM} -f $@
