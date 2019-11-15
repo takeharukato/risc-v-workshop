@@ -154,14 +154,30 @@
    @param[in] _pa 物理アドレス
    @retval ページ番号
  */
-#define RV64_PTE_PADDR2PPN(_pa) ((_pa) >> HAL_PAGE_SHIFT) << RV64_PTE_PA_SHIFT)
+#define RV64_PTE_PADDR_TO_PPN(_pa) (((_pa) >> HAL_PAGE_SHIFT) << RV64_PTE_PA_SHIFT)
 
 /**
    PTE中のページ番号を物理アドレスに変換する
    @param[in] _pte ページテーブルエントリ値
    @retval 物理アドレス
 */
-#define RV64_PTE2PADDR(_pte) ( ( (_pte) >> RV64_PTE_PA_SHIFT ) << PAGE_SHIFT )
+#define RV64_PTE_TO_PADDR(_pte) ( ( (_pte) >> RV64_PTE_PA_SHIFT ) << HAL_PAGE_SHIFT )
+
+#define RV64_PTE_2MPA_SHIFT       (19)  /* 2MiBのPTEのページ番号 */
+/**
+   2MiBページ物理アドレスをPTE中のページ番号に変換する
+   @param[in] _pa 物理アドレス
+   @retval ページ番号
+ */
+#define RV64_PTE_2MPADDR_TO_PPN(_pa) (((_pa) >> HAL_PAGE_SHIFT_2M) << RV64_PTE_2MPA_SHIFT)
+
+/**
+   PTE中の2MiBページのページ番号を物理アドレスに変換する
+   @param[in] _pte ページテーブルエントリ値
+   @retval 物理アドレス
+*/
+#define RV64_PTE_2M_TO_PADDR(_pte) ( ( (_pte) >> RV64_PTE_2MPA_SHIFT ) << HAL_PAGE_SHIFT_2M )
+
 
 /**
    PTE中の属性値を取得する

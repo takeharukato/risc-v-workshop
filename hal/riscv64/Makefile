@@ -4,7 +4,7 @@ include ${top}/Makefile.inc
 
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 objects = prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o rv64-sie.o \
-	rv64-cpuintr.o rv64-backtrace.o
+	rv64-cpuintr.o rv64-backtrace.o rv64-kmap.o
 ifeq ($(CONFIG_HAL),y)
 objects += boot.o dbg-console.o
 endif

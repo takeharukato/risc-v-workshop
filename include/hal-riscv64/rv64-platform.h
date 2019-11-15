@@ -11,29 +11,31 @@
 #include <klib/misc.h>
 #include <klib/align.h>
 
-/** カーネル仮想アドレス  */
-#define HAL_KERN_VMA_BASE     (ULONGLONG_C(CONFIG_HAL_KERN_VMA_BASE)) 
-/** 開始物理アドレス      */
+/** カーネル仮想アドレス   */
+#define HAL_KERN_VMA_BASE     (CONFIG_HAL_KERN_VMA_BASE) 
+/** 開始物理メモリアドレス */
 #define HAL_KERN_PHY_BASE     (ULONGLONG_C(0x80000000))
-#define RISCV64_BOOT_MAPSIZE  ( GIB_TO_BYTE(4) )  /**< 4GiBをマップする  */
+/** ストレートマップ長 */
+#define RV64_STRAIGHT_MAPSIZE ( GIB_TO_BYTE(4) )  /**< 4GiBをマップする  */
 
 /** QEMU UART レジスタ   */
-#define RISCV64_UART0     (ULONGLONG_C(0x10000000))
+#define RV64_UART0     (ULONGLONG_C(0x10000000))
+
 /** QEMU UART 割込み番号 */
-#define RISCV64_UART0_IRQ (10)
+#define RV64_UART0_IRQ (10)
 
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ   */
-#define RISCV64_PLIC     (ULONGLONG_C(0x0C000000))
+#define RV64_PLIC     (ULONGLONG_C(0x0C000000))
 
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ            */
-#define RISCV64_CLINT    (ULONGLONG_C(0x02000000))
+#define RV64_CLINT    (ULONGLONG_C(0x02000000))
 
 /**
-  必要なページディレクトリ数
+  必要なページディレクトリ数 (単位:個)
 */
-#define RISCV64_BOOT_PGTBL_PD_NR \
-	( ( roundup_align(X64_BOOT_MAPSIZE, HAL_PAGE_SIZE_2M) / HAL_PAGE_SIZE_2M ) \
-	/ X64_PGTBL_ENTRIES_NR )
+#define RV64_BOOT_PGTBL_VPN1_NR \
+	( ( roundup_align(RV64_STRAIGHT_MAPSIZE, HAL_PAGE_SIZE_2M) / HAL_PAGE_SIZE_2M ) \
+	/ RV64_PGTBL_ENTRIES_NR )
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>

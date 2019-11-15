@@ -16,7 +16,7 @@
    UARTレジスタを参照する
    @param[in] reg レジスタオフセットアドレス
  */
-#define dbg_uart_reg(reg) ((volatile uint8_t *)(RISCV64_UART0 + (reg)))
+#define dbg_uart_reg(reg) ((volatile uint8_t *)(RV64_UART0 + (reg)))
 
 /**
    UARTレジスタを読み込む
