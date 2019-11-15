@@ -42,6 +42,6 @@ config CONFIG_HAL_MEMORY_SIZE_MB
 config CONFIG_HAL_CPUS_NR
        prompt "Max cpus"
        int
-       default 4
+       default 1
        range 1 4
        depends on CONFIG_HAL && CONFIG_SMP

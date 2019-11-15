@@ -55,7 +55,7 @@ fill_spinlock_trace(spinlock *lock) {
 	hal_backtrace(_trace_spinlock, bp, (void *)lock);
 }
 
-
+#if defined(CONFIG_CHECK_SPINLOCKS)
 /**
    スピンロックを多重に獲得していることを確認する
    @param[in] lock 確認対象のスピンロック
@@ -68,7 +68,7 @@ check_recursive_locked(spinlock *lock) {
 	/*  自スレッドがロックを獲得していて, ロックネストが1以上であることを確認  */
 	return ( spinlock_locked_by_self(lock) && ( lock->depth > 0 ) );
 }
-#if defined(CONFIG_CHECK_SPINLOCKS)
+
 /**
    スピンロックを自スレッドが保持していることを確認する
     @param[in] lock 確認対象のスピンロック    
@@ -89,6 +89,19 @@ spinlock_locked_by_self(spinlock *lock) {
 #else
 
 /**
+   スピンロックを多重に獲得していることを確認する (CONFIG_CHECK_SPINLOCKS無効時)
+   @param[in] lock 確認対象のスピンロック
+   @retval true  ロックを自分自身で獲得している    
+   @retval false ロックを自分自身で獲得していない
+ */
+static bool
+check_recursive_locked(spinlock *lock) {
+
+	/*  自スレッドがロックを獲得していないとみなす  */
+	return false;
+}
+
+/**
    スピンロックを自スレッドが保持していることを確認する (CONFIG_CHECK_SPINLOCKS無効時)
     @param[in] lock 確認対象のスピンロック    
     @retval true  ロックを自分自身で獲得している    
@@ -97,7 +110,7 @@ spinlock_locked_by_self(spinlock *lock) {
 bool 
 spinlock_locked_by_self(spinlock __unused *lock) {
 
-	/* ロック獲得済みであることを確認 */
+	/* ロック獲得済みでないことを確認 */
 	return ( lock->locked != 0 ); 
 }
 #endif  /*  CONFIG_CHECK_SPINLOCKS  */

@@ -15,19 +15,21 @@ ASMMAC_TEXT_SECTION
 ASMMAC_DECLARE_NAME(entry)
 entry:
        /*
-	* skip application processors
+	* ブートスタックを設定する
 	*/
-        csrr a0, mhartid      /*  hartidを読み込む                       */
-	bnez a0, loop
-       /*
-	* load bsp stack
-	*/
-        la sp, _bsp_stack_end
+        csrr a0, mhartid      /* hartidを読み込む                        */
+        la sp, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
 	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
-	mv  a1, a0            /* hartidをa1に代入                        */
 	mul a2, a2, a0        /* スタック長を計算                        */
-	sub sp, sp, a2        /* スタック位置を設定                      */
+	sub sp, sp, a2        /* 自hartのスタックの底に設定              */
+	/*
+	 * MMU設定
+	 */
 	csrw satp, x0         /* MMUを無効化                             */
+
+	/*
+	 * 割込み/例外の回送
+	 */
 	/* 例外をスーパバイザモードに回送
 	 */
 	li a2, MEDELEG_MASK
@@ -47,10 +49,7 @@ entry:
 	csrw mstatus, a1      /* mstatusを更新                           */
 	la  a1, prepare       /* Cのエントリ関数のアドレスをロード       */
 	csrw mepc, a1         /* Machine Exception Program Counterを更新 */
-	csrr a0, mhartid      /* hartidを引数に渡してエントリする        */
 	mret
-        call prepare
+        call prepare          /* a0にhartidが入っている状態でCエントリ関数を呼び出す */
 junk:
         j junk
-loop: /* application processors loop here. */
-	j loop

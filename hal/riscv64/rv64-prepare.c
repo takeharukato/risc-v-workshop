@@ -26,7 +26,7 @@ prepare(uint64_t hartid){
 	if ( hartid == 0 )
 		hal_dbg_console_init();
 	spinlock_lock_disable_intr(&prepare_lock, &iflags);
-	kprintf("Boot on supervisor mode\n");
+	kprintf("Boot on supervisor mode on %d hart\n", hartid);
 	spinlock_unlock_restore_intr(&prepare_lock, &iflags);
 	if ( hartid != 0 )
 		goto loop;
