@@ -12,6 +12,7 @@
 #include <kern/kern-autoconf.h>
 
 #include <kern/kern-types.h>
+#include <kern/kern-consts.h>
 
 #include <klib/errno.h>
 #include <klib/klib-consts.h>

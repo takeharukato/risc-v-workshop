@@ -38,3 +38,10 @@ config CONFIG_HAL_MEMORY_SIZE_MB
        default 128
        range 16 1024
        depends on CONFIG_HAL
+
+config CONFIG_HAL_CPUS_NR
+       prompt "Max cpus"
+       int
+       default 4
+       range 1 4
+       depends on CONFIG_HAL && CONFIG_SMP

@@ -8,9 +8,6 @@
 /**********************************************************************/
 #if !defined(_KLIB_KLIB_CONSTS_H)
 #define  _KLIB_KLIB_CONSTS_H
-#if !defined(ASM_FILE)
-#include <klib/freestanding.h>
-#endif  /*  !ASM_FILE  */
 
 #define BITS_PER_BYTE     (8)   /*  バイト当たりのビット数 */
 

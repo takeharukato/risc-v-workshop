@@ -71,9 +71,9 @@ hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, vo
 		 * スタックポインタを含むカーネルスタックページサイズ境界のアドレスに
 		 * 含まれていなければスタックの最深部に達したとみなして復帰する。
 		 */
-		if ( (truncate_align(cur_sp, CONFIG_KSTACK_PAGE_NR * PAGE_SIZE) >
+		if ( (truncate_align(cur_sp, KC_KSTACK_SIZE) >
 			(uintptr_t)bpref ) ||
-		     (roundup_align(cur_sp, CONFIG_KSTACK_PAGE_NR * PAGE_SIZE) <
+		     (roundup_align(cur_sp, KC_KSTACK_SIZE) <
 			 (uintptr_t)bpref ) )
 			return;
 #else

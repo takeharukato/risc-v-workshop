@@ -10,9 +10,12 @@ objects += boot.o rv64-dbg-console.o
 endif
 
 depends = $(patsubst %.o,%.d,${objects})
-
-HAL_QEMUOPTS = -machine virt -bios none -kernel ${QEMU_KERNEL}
-
+ifeq ($(CONFIG_SMP),y)
+QEMU_CPU_OPTS = -smp ${CONFIG_HAL_CPUS_NR}
+else
+QEMU_CPU_OPTS = 
+endif
+HAL_QEMUOPTS = -machine virt -bios none ${QEMU_CPU_OPTS} -kernel ${QEMU_KERNEL}
 lib=libhal.a
 
 all: kernel.lds ${depends} ${lib}
@@ -28,6 +31,7 @@ kernel.lds: kernel.lds.in ${top}/.config
 	       -e 's|__TSTACK_PAGES__|${CONFIG_TSTACK_PAGE_NR}|g'	\
 	       -e 's|__ISTACK_PAGES__|${CONFIG_ISTACK_PAGE_NR}|g'	\
 	       -e 's|__KERN_VMA_BASE__|${CONFIG_HAL_KERN_VMA_BASE}|g'	\
+	       -e 's|__CPUS_NR__|${CONFIG_HAL_CPUS_NR}|g'         \
 	$< > $@
 
 run: ${QEMU_KERNEL}

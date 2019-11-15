@@ -5,6 +5,12 @@
 
 mainmenu "Kernel Configuration"
 
+config CONFIG_SMP
+	bool "SMP kernel"
+	default n
+	help
+	  If you wish to build the kernel for multi-processor system, then answer Y here.
+
 config CONFIG_HAL
 	bool "Hardware Abstraction Layer(HAL)"
 	default n

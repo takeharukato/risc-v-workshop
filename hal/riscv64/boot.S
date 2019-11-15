@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #define ASM_FILE
-
+#include <kern/kern-consts.h>
 #include <klib/asm-macros.h>
 #include <hal/riscv64.h>
 
@@ -17,12 +17,16 @@ entry:
        /*
 	* skip application processors
 	*/
-	csrr a1, mhartid
-	bnez a1, loop
+        csrr a0, mhartid      /*  hartidを読み込む                       */
+	bnez a0, loop
        /*
 	* load bsp stack
 	*/
         la sp, _bsp_stack_end
+	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
+	mv  a1, a0            /* hartidをa1に代入                        */
+	mul a2, a2, a0        /* スタック長を計算                        */
+	sub sp, sp, a2        /* スタック位置を設定                      */
 	csrw satp, x0         /* MMUを無効化                             */
 	/* 例外をスーパバイザモードに回送
 	 */
@@ -43,6 +47,7 @@ entry:
 	csrw mstatus, a1      /* mstatusを更新                           */
 	la  a1, prepare       /* Cのエントリ関数のアドレスをロード       */
 	csrw mepc, a1         /* Machine Exception Program Counterを更新 */
+	csrr a0, mhartid      /* hartidを引数に渡してエントリする        */
 	mret
         call prepare
 junk:

@@ -32,13 +32,13 @@ SECTIONS
 	. = ALIGN(__PAGE_SIZE__ * __TSTACK_PAGES__);
 	_bsp_stack_start = .; 
 	bsp_stack = .;
-	. += (__PAGE_SIZE__ * __TSTACK_PAGES__);
+	. += (__PAGE_SIZE__ * __TSTACK_PAGES__ * __CPUS_NR__);
 	_bsp_stack_end = .;
 
 	. = ALIGN(__PAGE_SIZE__ * __ISTACK_PAGES__);
 	_intr_stack_start = .; 
 	intr_stack = .;
-	. += (__PAGE_SIZE__ * __ISTACK_PAGES__);
+	. += (__PAGE_SIZE__ * __ISTACK_PAGES__ * __CPUS_NR__);
 	_intr_stack_end = .;
 
         *(.bss)
