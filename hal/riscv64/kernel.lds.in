@@ -1,7 +1,9 @@
 /* ld script 
- * Copyright Takeharu KATO 2000 
+ * Copyright Takeharu KATO 2019 
  */
-__KERN_VMA_BASE = __KERN_VMA_BASE__;
+/* TODO: 以下を有効にする            */
+/* __KERN_VMA_BASE = __KERN_VMA_BASE__; */
+__KERN_VMA_BASE = 0x0; 
 __KERN_BASE = 0x80000000;  /* qemu's -kernel jumps to 0x80000000 */
 OUTPUT_ARCH( "riscv" )
 ENTRY(_kernel_start)

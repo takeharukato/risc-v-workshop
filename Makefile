@@ -4,7 +4,7 @@ targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 
 subdirs=kern klib test tools
 cleandirs=include ${subdirs}
-kernlibs=klib/libklib.a kern/libklib.a test/libktest.a hal/hal/libhal.a
+kernlibs=klib/libklib.a kern/libkern.a test/libktest.a hal/hal/libhal.a
 mconf=tools/kconfig/mconf
 
 all:${targets}

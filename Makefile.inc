@@ -44,13 +44,19 @@ QEMU_DBG_OPT := -S -gdb tcp::1234
 
 .PHONY: clean distclean hal tools gtags dist
 
-.SUFFIXES: .o .c .S
+.SUFFIXES: .o .c .S .d
 
 .c.o:
 	${CC} ${CFLAGS} -c -o $@ $<
 
 .S.o:
 	${CC} ${CFLAGS} -c -o $@ $<
+
+.c.d: 
+	${CC} -E ${CFLAGS} -MM -MF"$@" $< 
+
+.S.d: 
+	${CC} -E ${CFLAGS} -MM -MF"$@" $< 
 
 -include ${top}/.config
 

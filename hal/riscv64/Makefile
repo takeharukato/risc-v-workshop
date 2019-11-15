@@ -3,17 +3,19 @@ top=../..
 include ${top}/Makefile.inc
 
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
-objects = prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o rv64-sie.o \
+objects = rv64-prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o rv64-sie.o \
 	rv64-cpuintr.o rv64-backtrace.o rv64-kmap.o
 ifeq ($(CONFIG_HAL),y)
-objects += boot.o dbg-console.o
+objects += boot.o rv64-dbg-console.o
 endif
+
+depends = $(patsubst %.o,%.d,${objects})
 
 HAL_QEMUOPTS = -machine virt -bios none -kernel ${QEMU_KERNEL}
 
 lib=libhal.a
 
-all: kernel.lds ${lib}
+all: kernel.lds ${depends} ${lib}
 
 ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
@@ -35,7 +37,11 @@ run-debug: ${QEMU_KERNEL}
 	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
 
 clean:
-	${RM} *.o ${lib} vector.S asm-offset.s ${top}/include/hal/asm-offset.h
+	${RM} *.o *.d ${lib} vector.S asm-offset.s ${top}/include/hal/asm-offset.h
 
 distclean:clean
 	${RM} \#* *~
+
+-include *.d
+
+

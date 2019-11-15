@@ -148,43 +148,95 @@
  */
 #define PV64_PTE_FLAGS_MASK ( RV64_PTE_V | RV64_PTE_R | RV64_PTE_W | RV64_PTE_X | \
 			     RV64_PTE_U | RV64_PTE_G | RV64_PTE_A | RV64_PTE_D )
+/*
+ * ノーマルページ関連定義
+ */
 #define RV64_PTE_PA_SHIFT   (10) /* PTE中のページ番号位置 */
+
 /**
    物理アドレスをPTE中のページ番号に変換する
    @param[in] _pa 物理アドレス
-   @retval ページ番号
+   @return ページ番号
  */
-#define RV64_PTE_PADDR_TO_PPN(_pa) (((_pa) >> HAL_PAGE_SHIFT) << RV64_PTE_PA_SHIFT)
+#define RV64_PTE_PADDR_TO_PPN(_pa) \
+	( ( (_pa) >> HAL_PAGE_SHIFT ) << RV64_PTE_PA_SHIFT)
 
 /**
    PTE中のページ番号を物理アドレスに変換する
    @param[in] _pte ページテーブルエントリ値
-   @retval 物理アドレス
+   @return 物理アドレス
 */
-#define RV64_PTE_TO_PADDR(_pte) ( ( (_pte) >> RV64_PTE_PA_SHIFT ) << HAL_PAGE_SHIFT )
+#define RV64_PTE_TO_PADDR(_pte) \
+	( ( (_pte) >> RV64_PTE_PA_SHIFT ) << HAL_PAGE_SHIFT )
 
-#define RV64_PTE_2MPA_SHIFT       (19)  /* 2MiBのPTEのページ番号 */
+/*
+ * 2MiBページ関連定義
+ */
+#define RV64_PTE_2MPA_SHIFT       (19)  /* 2MiBページのPTEページ番号 */
+
 /**
    2MiBページ物理アドレスをPTE中のページ番号に変換する
    @param[in] _pa 物理アドレス
-   @retval ページ番号
+   @return ページ番号
  */
-#define RV64_PTE_2MPADDR_TO_PPN(_pa) (((_pa) >> HAL_PAGE_SHIFT_2M) << RV64_PTE_2MPA_SHIFT)
+#define RV64_PTE_2MPADDR_TO_PPN(_pa) \
+	( ( (_pa) >> HAL_PAGE_SHIFT_2M ) << RV64_PTE_2MPA_SHIFT )
 
 /**
    PTE中の2MiBページのページ番号を物理アドレスに変換する
    @param[in] _pte ページテーブルエントリ値
-   @retval 物理アドレス
+   @return 物理アドレス
 */
-#define RV64_PTE_2M_TO_PADDR(_pte) ( ( (_pte) >> RV64_PTE_2MPA_SHIFT ) << HAL_PAGE_SHIFT_2M )
+#define RV64_PTE_2MPA_TO_PADDR(_pte) \
+	(  ( (_pte) >> RV64_PTE_2MPA_SHIFT ) << HAL_PAGE_SHIFT_2M )
 
+/*
+ * 1GiBページ関連定義
+ */
+#define RV64_PTE_1GPA_SHIFT       (28)  /* 1GiBページのPTEページ番号 */
+/**
+   1GiBページ物理アドレスをPTE中のページ番号に変換する
+   @param[in] _pa 物理アドレス
+   @return ページ番号
+ */
+#define RV64_PTE_1GPADDR_TO_PPN(_pa) \
+	( ( (_pa) >> HAL_PAGE_SHIFT_1G ) << RV64_PTE_1GPA_SHIFT )
+
+/**
+   PTE中の1GiBページのページ番号を物理アドレスに変換する
+   @param[in] _pte ページテーブルエントリ値
+   @return 物理アドレス
+*/
+#define RV64_PTE_1GPA_TO_PADDR(_pte) \
+	( ( (_pte) >> RV64_PTE_1GPA_SHIFT ) << HAL_PAGE_SHIFT_1G )
 
 /**
    PTE中の属性値を取得する
    @param[in] _pte ページテーブルエントリ値
-   @retval ページテーブル属性値
+   @return ページテーブル属性値
 */
 #define RV64_PTE_FLAGS(_pte) ( (_pte) & PV64_PTE_FLAGS_MASK )
+
+/**
+   ページテーブルエントリが有効であることを確認する
+   @param[in] _pte ページテーブルエントリ値
+   @retval 真 有効エントリである
+   @retval 偽 有効エントリでない
+*/
+#define RV64_PTE_IS_VALID(_pte)			\
+	( RV64_PTE_FLAGS((_pte)) & RV64_PTE_V )
+
+/**
+   ページを参照しているエントリであることを確認する
+   @param[in] _pte ページテーブルエントリ値
+   @retval 真 ページを参照しているエントリである
+   @retval 偽 ページを参照しているエントリでない
+*/
+#define RV64_PTE_IS_LEAF(_pte) \
+	( ( RV64_PTE_FLAGS((_pte)) & (RV64_PTE_R|RV64_PTE_X) ) == (RV64_PTE_R|RV64_PTE_X) )
+
+/** カーネルPTEフラグ */
+#define RV64_KERN_PTE_FLAGS (RV64_PTE_R|RV64_PTE_W|RV64_PTE_A|RV64_PTE_D)
 
 /**
    RISC-V 64のSTAPレジスタ値を算出する
@@ -195,5 +247,10 @@
 #define RV64_STAP_VAL(_mode, _asid, _ppn)  \
 	( (_mode) | ( (_asid) << RV64_STAP_ASID_SHIFT ) | ( (_ppn) << RV64_STAP_PPN_SHIFT ) )
 
+#if !defined(ASM_FILE)
 
+#include <klib/freestanding.h>
+typedef uint64_t hal_pte;  /* ページテーブルエントリ型 */
+
+#endif  /* !ASM_FILE */
 #endif  /*  _HAL_RV64_PGTBL_H  */
