@@ -10,6 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/vm.h>
+#include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
 #include <hal/hal-pgtbl.h>
 
@@ -233,7 +234,7 @@ rv64_map_kernel_space(void){
 		/* ページテーブルエントリ中の物理ページ番号値を得る */
 		pte_paddr = RV64_PTE_2MPADDR_TO_PPN(paddr);
 		kern_vpn1_tbl[vpn1idx] = 
-			RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS|pte_paddr;
+			RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_PTE_X|RV64_KERN_PTE_FLAGS|pte_paddr;
 	}
 
 	/*
@@ -269,7 +270,7 @@ rv64_map_kernel_space(void){
 		kern_vpn2_tbl[lower_vpn2idx] = RV64_PTE_V | RV64_KERN_PTE_FLAGS |
 			RV64_PTE_PADDR_TO_PPN( vpn1_paddr );
 	}
-#if 0
+#if 1
 	kprintf("low boot table %p\n", &pre_vpn2[0]);
 	for( vaddr = HAL_KERN_PHY_BASE; 
 	     ( HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
@@ -281,6 +282,8 @@ rv64_map_kernel_space(void){
 		    vaddr, paddr, prot, pgsize);
 		vaddr += pgsize;
 	}
+#endif
+#if 0
 	kprintf("high boot table %p\n", &pre_vpn2[0]);
 	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
 	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
@@ -301,8 +304,7 @@ rv64_map_kernel_space(void){
 	    &prot, &pgsize);
 	kprintf("UART high(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
 	    (RV64_UART0_PADDR + HAL_KERN_IO_BASE2), paddr, prot, pgsize);
-
+	kprintf("satp: %p pgtbl-base:%p\n", RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), (uintptr_t)&pre_vpn2[0] >> HAL_PAGE_SHIFT), &pre_vpn2[0]);
 	kprintf("Kernel base: %p I/O base:%p nr:%d\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
-
 	return 0;
 }

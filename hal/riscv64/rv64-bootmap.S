@@ -20,7 +20,38 @@ ASMMAC_TEXT_SECTION
 #endif  /* CONFIG_HAL */
 
 /**
-    アッパーハーフカーネル用ページテーブルをセットアップする
+    アッパーハーフカーネル用ページテーブルをロードする
+    void load_pre_pgtbl(void) 相当のサブルーチン
+ */
+ASMMAC_FUNCTION(load_pre_pgtbl)
+	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
+	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
+	
+	/* ページテーブルをロードする
+	 * レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
+	 *  a1 VPN2テーブルの物理アドレス
+	 *  a2 ページフレーム番号のマスク
+	 *  a3 stapレジスタのモード値, ASID設定値
+	 *  t0 一時レジスタ
+	 *  t1 一時レジスタ
+	 *  t2 一時レジスタ
+	 */
+	la  a1, pre_vpn2                   /* VPN2ページテーブル                  */
+	li  a2, RV64_PPN_MASK              /* ページフレーム番号マスク            */
+	li  a3, RV64_SATP_VAL(RV64_SATP_MODE_SV39, 0, 0) /* SATPレジスタモード値  */
+	srli t0, a1, HAL_PAGE_SHIFT        /* VPN1テーブルのページ番号算出        */
+	and  t0, t0, a2                    /* ページ番号をマスク                  */
+	slli t0, t0, RV64_SATP_PPN_SHIFT   /* STAPレジスタ内のページ番号値を算出  */
+	or   t0, t0, a3                    /* モードフラグを設定する              */
+	csrw satp, t0                      /* ページテーブルを読み込む            */
+	sfence.vma zero, zero              /* TLBをフラッシュする                 */
+
+	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
+	addi sp,sp,8   /*  スタック位置を復元する                          */
+	jr   ra
+
+/**
+    ブート時のカーネルページテーブルをセットアップする
     void setup_pre_pgtbl(void) 相当のサブルーチン
  */
 ASMMAC_FUNCTION(setup_pre_pgtbl)
@@ -28,6 +59,8 @@ ASMMAC_FUNCTION(setup_pre_pgtbl)
 	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
 	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
 
+	csrw satp, x0  /* アドレス変換を無効化                             */
+	
        /*2MiBのページサイズで物理ページをマップするためのVPN1テーブルを作成する
 	*
 	* レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
@@ -39,7 +72,7 @@ ASMMAC_FUNCTION(setup_pre_pgtbl)
 	*  a5 操作対象ページテーブルエントリのアドレス
 	*  a6 一時レジスタ
 	*/
-	li a1, RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS /* フラグ値 */
+	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_PTE_X|RV64_KERN_PTE_FLAGS /* フラグ値 */
 	la a5, pre_vpn1  /* a5に操作対象VPN1テーブルエントリアドレスを設定 */
 	mv a2, a5 /* a2にテーブルアドレスをセット */
 	/* 最終アドレスオフセット */
@@ -99,6 +132,7 @@ vpn2_setup_loop:
 	add  t4, t4, t3                          /* VPN2テーブルのPTEアドレス算出        */
 	sd   t2, (t4)                            /* PTEを更新                            */
 
+#if defined(CONFIG_UPPERHALF_KERNEL)
 	/* 上位アドレス側のテーブル設定
 	 */
 	add  t3, a7, a6                          /* 上位仮想アドレスを算出               */
@@ -108,7 +142,8 @@ vpn2_setup_loop:
 	la   t4, pre_vpn2                        /* VPN2テーブルのアドレスをロード       */
 	add  t4, t4, t3                          /* VPN2テーブルのPTEアドレス算出        */
 	sd   t2, (t4)                            /* PTEを更新                            */
-
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	
 	li   t2, HAL_PAGE_SIZE_1G                /* VPN2エントリのアドレスサイズ */
 	add  a7, a7, t2                          /* 仮想アドレスを更新           */
 	
@@ -127,7 +162,7 @@ vpn2_setup_loop:
 	*  a6 一時レジスタ
 	*  a7 一時レジスタ		
 	*/
-	li a1, RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS /* フラグ値      */
+	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_KERN_PTE_FLAGS /* フラグ値      */
 	li a2, HAL_PAGE_SIZE_2M  /* ページサイズ               */
 	li a3, RV64_UART0_PADDR  /* UART物理アドレス           */
 	li a4, HAL_KERN_IO_BASE  /* 上位マップオフセット       */
@@ -144,7 +179,6 @@ vpn2_setup_loop:
 	slli a6, a6, RV64_PTE_PA_SHIFT           /* PTE内ページフレーム番号算出 */
 	or   a6, a6, a1                          /* PTEフラグ値を設定           */
 	sd   a6, (a7)                            /* ページテーブルに格納        */
-
 
        /*2MiBのページサイズでUARTをマップするためにVPN2テーブルを設定する
 	* レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
@@ -180,6 +214,7 @@ vpn2_setup_loop:
 	add  t2, t2, t1                          /* VPN2テーブルのPTEアドレス算出        */
 	sd   t0, (t2)                            /* PTEを更新                            */
 
+#if defined(CONFIG_UPPERHALF_KERNEL)
 	/* 上位アドレス側のテーブル設定
 	 */
 	add  t1, a4, a3                          /* 上位仮想アドレスを算出               */
@@ -189,10 +224,12 @@ vpn2_setup_loop:
 	la   t2, pre_vpn2                        /* VPN2テーブルのアドレスをロード       */
 	add  t2, t2, t1                          /* VPN2テーブルのPTEアドレス算出        */
 	sd   t0, (t2)                            /* PTEを更新                            */
-	
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
 	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
 	addi sp,sp,8   /*  スタック位置を復元する                          */
 	jr   ra
+
 #if defined(CONFIG_HAL)
 //TODO: ASMMAC_BOOT_DATA_SECTION
 ASMMAC_DATA_SECTION

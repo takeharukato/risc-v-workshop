@@ -30,7 +30,6 @@ entry:
 	/*
 	 * MMU設定
 	 */
-	csrw satp, x0         /* MMUを無効化                             */
 	call setup_pre_pgtbl
 	/*
 	 * 割込み/例外の回送

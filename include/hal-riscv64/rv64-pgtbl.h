@@ -9,6 +9,7 @@
 #if !defined(_HAL_RV64_PGTBL_H)
 #define  _HAL_RV64_PGTBL_H
 
+#include <klib/misc.h>
 #include <klib/align.h>
 #include <klib/regbits.h>
 #include <hal/hal-page.h>  /*  HAL_PAGE_SIZE  */
@@ -41,25 +42,30 @@
 /*
  * RISC-V64 アドレス変換スキーム
  */
-#define RV64_STAP_MODE_BARE_VAL            (0)  /* Bare アドレス変換なし */
-#define RV64_STAP_MODE_SV39_VAL            (8)  /* Sv39 ページベース39ビット仮想アドレス */
-#define RV64_STAP_MODE_SV48_VAL            (9)  /* Sv48 ページベース48ビット仮想アドレス */
-#define RV64_STAP_MODE_SV57_VAL            (10) /* Sv57 ページベース57ビット仮想アドレス */
-#define RV64_STAP_MODE_SV64_VAL            (11) /* Sv64 ページベース64ビット仮想アドレス */
+/** Bare アドレス変換なし */
+#define RV64_SATP_MODE_BARE_VAL            ULONGLONG_C(0)  
+/** Sv39 ページベース39ビット仮想アドレス */
+#define RV64_SATP_MODE_SV39_VAL            ULONGLONG_C(8)  
+/** Sv48 ページベース48ビット仮想アドレス */
+#define RV64_SATP_MODE_SV48_VAL            ULONGLONG_C(9)  
+/** Sv57 ページベース57ビット仮想アドレス */
+#define RV64_SATP_MODE_SV57_VAL            ULONGLONG_C(10) 
+/** Sv64 ページベース64ビット仮想アドレス */
+#define RV64_SATP_MODE_SV64_VAL            ULONGLONG_C(11) 
 
-#define RV64_STAP_MODE_SHIFT               (60) /* STAPレジスタのmode値のシフト数 */
-#define RV64_STAP_ASID_SHIFT               (44) /* STAPレジスタのasid値のシフト数 */
-#define RV64_STAP_PPN_SHIFT                (0)  /* STAPレジスタのppn値のシフト数 */
-#define RV64_STAP_MODE_BARE                \
-	( ULONGLONG_C(RV64_STAP_MODE_BARE_VAL) << RV64_STAP_MODE_SHIFT )
-#define RV64_STAP_MODE_SV39                \
-	( ULONGLONG_C(RV64_STAP_MODE_SV39_VAL) << RV64_STAP_MODE_SHIFT )
-#define RV64_STAP_MODE_SV48                \
-	( ULONGLONG_C(RV64_STAP_MODE_SV48_VAL) << RV64_STAP_MODE_SHIFT )
-#define RV64_STAP_MODE_SV57                \
-	( ULONGLONG_C(RV64_STAP_MODE_SV57_VAL) << RV64_STAP_MODE_SHIFT )
-#define RV64_STAP_MODE_SV64                \
-	( ULONGLONG_C(RV64_STAP_MODE_SV64_VAL) << RV64_STAP_MODE_SHIFT )
+#define RV64_SATP_MODE_SHIFT               (60) /* SATPレジスタのmode値のシフト数 */
+#define RV64_SATP_ASID_SHIFT               (44) /* SATPレジスタのasid値のシフト数 */
+#define RV64_SATP_PPN_SHIFT                (0)  /* SATPレジスタのppn値のシフト数 */
+#define RV64_SATP_MODE_BARE                \
+	( RV64_SATP_MODE_BARE_VAL << RV64_SATP_MODE_SHIFT )
+#define RV64_SATP_MODE_SV39                \
+	( RV64_SATP_MODE_SV39_VAL << RV64_SATP_MODE_SHIFT )
+#define RV64_SATP_MODE_SV48                \
+	( RV64_SATP_MODE_SV48_VAL << RV64_SATP_MODE_SHIFT )
+#define RV64_SATP_MODE_SV57                \
+	( RV64_SATP_MODE_SV57_VAL << RV64_SATP_MODE_SHIFT )
+#define RV64_SATP_MODE_SV64                \
+	( RV64_SATP_MODE_SV64_VAL << RV64_SATP_MODE_SHIFT )
 
 /**
    物理アドレス長の最大ビット数 (38bit = 128 GiB)
@@ -158,7 +164,7 @@
 			     RV64_PTE_U | RV64_PTE_G | RV64_PTE_A | RV64_PTE_D )
 
 /** カーネルPTEフラグ(ページテーブル用) */
-#define RV64_KERN_PTE_FLAGS (RV64_PTE_R|RV64_PTE_W|RV64_PTE_A|RV64_PTE_D)
+#define RV64_KERN_PTE_FLAGS (RV64_PTE_A|RV64_PTE_D)
 
 /*
  * ノーマルページ関連定義
@@ -243,18 +249,19 @@
    @param[in] _pte ページテーブルエントリ値
    @retval 真 ページを参照しているエントリである
    @retval 偽 ページを参照しているエントリでない
+   @note   Table 4.4: Encoding of PTE R/W/X fields.参照
 */
 #define RV64_PTE_IS_LEAF(_pte) \
-	( ( RV64_PTE_FLAGS((_pte)) & (RV64_PTE_R|RV64_PTE_X) ) == (RV64_PTE_R|RV64_PTE_X) )
+	( ( RV64_PTE_FLAGS((_pte)) & (RV64_PTE_R|RV64_PTE_W|RV64_PTE_X) ) != 0 )
 
 /**
-   RISC-V 64のSTAPレジスタ値を算出する
+   RISC-V 64のSATPレジスタ値を算出する
    @param[in] _mode アドレス変換スキーム
    @param[in] _asid アドレス空間ID
    @param[in] _ppn  ページテーブルベースの物理アドレス
  */
-#define RV64_STAP_VAL(_mode, _asid, _ppn)  \
-	( (_mode) | ( (_asid) << RV64_STAP_ASID_SHIFT ) | ( (_ppn) << RV64_STAP_PPN_SHIFT ) )
+#define RV64_SATP_VAL(_mode, _asid, _ppn)  \
+	( (_mode) | ( (_asid) << RV64_SATP_ASID_SHIFT ) | ( (_ppn) << RV64_SATP_PPN_SHIFT ) )
 
 #if !defined(ASM_FILE)
 

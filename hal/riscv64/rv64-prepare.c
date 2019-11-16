@@ -32,6 +32,7 @@ prepare(uint64_t hartid){
 		goto loop;
 	rv64_map_kernel_space();
 	kern_init();
+	kprintf("end\n");
 loop:
 	while(1);
 }
