@@ -32,7 +32,7 @@
 #define RV64_PGTBL_ENTRIES_NR              (HAL_PAGE_SIZE/RV64_PGTBL_ENTRY_SIZE)
 
 /**
-  必要なページディレクトリ数 (単位:個)
+  ブートページテーブルに必要なページディレクトリ数 (単位:個)
 */
 #define RV64_BOOT_PGTBL_VPN1_NR \
 	( ( roundup_align(RV64_STRAIGHT_MAPSIZE, HAL_PAGE_SIZE_2M) / HAL_PAGE_SIZE_2M ) \
@@ -66,7 +66,8 @@
    @note U54コアの物理アドレス長
  */
 #define RV64_PGTBL_MAXPHYADDR            (38)
-
+/** 物理ページ番号のマスク  */
+#define RV64_PPN_MASK                    regops_calc_mask_for_val(12, 55)
 /**
    ページテーブルインデクスマスク生成マクロ
    @param[in] _ent1 インデクスの最上位ビット+1 (上位インデクスの最下位ビット)
@@ -155,6 +156,10 @@
  */
 #define PV64_PTE_FLAGS_MASK ( RV64_PTE_V | RV64_PTE_R | RV64_PTE_W | RV64_PTE_X | \
 			     RV64_PTE_U | RV64_PTE_G | RV64_PTE_A | RV64_PTE_D )
+
+/** カーネルPTEフラグ(ページテーブル用) */
+#define RV64_KERN_PTE_FLAGS (RV64_PTE_R|RV64_PTE_W|RV64_PTE_A|RV64_PTE_D)
+
 /*
  * ノーマルページ関連定義
  */
@@ -241,9 +246,6 @@
 */
 #define RV64_PTE_IS_LEAF(_pte) \
 	( ( RV64_PTE_FLAGS((_pte)) & (RV64_PTE_R|RV64_PTE_X) ) == (RV64_PTE_R|RV64_PTE_X) )
-
-/** カーネルPTEフラグ */
-#define RV64_KERN_PTE_FLAGS (RV64_PTE_R|RV64_PTE_W|RV64_PTE_A|RV64_PTE_D)
 
 /**
    RISC-V 64のSTAPレジスタ値を算出する

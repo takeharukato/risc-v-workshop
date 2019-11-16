@@ -10,6 +10,7 @@
 #include <kern/kern-consts.h>
 #include <klib/asm-macros.h>
 #include <hal/riscv64.h>
+#include <hal/hal-stack.h>
 
 ASMMAC_TEXT_SECTION
 ASMMAC_DECLARE_NAME(entry)
@@ -18,15 +19,19 @@ entry:
 	* ブートスタックを設定する
 	*/
         csrr a0, mhartid      /* hartidを読み込む                        */
+	bne  a0, x0, loop     /* TODO: ページテーブル設定を待ち合わせる  */
         la sp, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
-	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
-	mul a2, a2, a0        /* スタック長を計算                        */
-	sub sp, sp, a2        /* 自hartのスタックの底に設定              */
+	li a1, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
+	mul a1, a1, a0        /* スタック長を計算                        */
+	sub sp, sp, a1        /* 自hartのスタックの底に設定              */
+	li  a1, HAL_STACK_ALIGN_SIZE
+	sub sp, sp, a1        /* スタック境界に合わせる       */
+
 	/*
 	 * MMU設定
 	 */
 	csrw satp, x0         /* MMUを無効化                             */
-
+	call setup_pre_pgtbl
 	/*
 	 * 割込み/例外の回送
 	 */
@@ -53,3 +58,6 @@ entry:
         call prepare          /* a0にhartidが入っている状態でCエントリ関数を呼び出す */
 junk:
         j junk
+loop:
+	j loop
+

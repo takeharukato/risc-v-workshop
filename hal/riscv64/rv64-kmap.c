@@ -13,10 +13,9 @@
 #include <hal/rv64-platform.h>
 #include <hal/hal-pgtbl.h>
 
-hal_pte kern_upper_vpn1_tbl[RV64_PGTBL_ENTRIES_NR*RV64_BOOT_PGTBL_VPN1_NR] __attribute__ ((aligned (4096))) ;
-hal_pte kern_lower_vpn1_tbl[RV64_PGTBL_ENTRIES_NR*RV64_BOOT_PGTBL_VPN1_NR] __attribute__ ((aligned (4096))) ;
+extern hal_pte pre_vpn2[];
 hal_pte kern_vpn2_tbl[RV64_PGTBL_ENTRIES_NR] __attribute__ ((aligned (4096))) ;
-
+hal_pte kern_vpn1_tbl[RV64_PGTBL_ENTRIES_NR*RV64_BOOT_PGTBL_VPN1_NR] __attribute__ ((aligned (4096))) ;
 /**
    ページテーブルエントリの内容を表示する
    @param[in] lvl      テーブルのレベル
@@ -66,73 +65,6 @@ rv64_show_pte(int lvl, int idx, vm_paddr phy_ptep, hal_pte pte){
 		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_D ) ? ('D') : ('-') ));
 }
 
-/**
-   ページテーブルの内容を表示する
-   @param[in] kv_pgtbl_base ページテーブルベースのカーネル仮想アドレス
- */
-void
-rv64_show_page_table(void *kv_pgtbl_base){
-	hal_pte        *vpn0_tbl;
-	hal_pte        *vpn1_tbl;
-	hal_pte        *vpn2_tbl;
-	vm_paddr  vpn0_tbl_paddr;
-	vm_paddr  vpn1_tbl_paddr;
-	int                i,j,k;
-
-	/*
-	 * VPN2テーブル中の有効エントリをたどる
-	 */
-	vpn2_tbl = kv_pgtbl_base;
-	for(i = 0; RV64_PGTBL_ENTRIES_NR > i; ++i) {
-		
-		if ( RV64_PTE_IS_VALID(vpn2_tbl[i]) ) { /* 有効エントリの場合 */
-			
-			/* 有効エントリの場合テーブルの内容を表示する
-			 */
-			/* ページテーブルエントリの内容を表示 */
-			rv64_show_pte(2, i, HAL_KERN_STRAIGHT_TO_PHY(vpn2_tbl), vpn2_tbl[i]);
-
-			if ( RV64_PTE_IS_LEAF(vpn2_tbl[i]) )
-				continue; /* 次のエントリへ */
-			
-			/* VPN1テーブルの物理アドレスを取り出す	 */
-			vpn1_tbl_paddr = RV64_PTE_TO_PADDR(vpn2_tbl[i]);
-			/* VPN1テーブルの仮想アドレスを算出する	 */
-			vpn1_tbl = (hal_pte *)HAL_PHY_TO_KERN_STRAIGHT(vpn1_tbl_paddr);
-
-			/*
-			 * VPN1テーブル中の有効エントリをたどる
-			 */
-			for(j = 0; RV64_PGTBL_ENTRIES_NR > j; ++j) { 
-
-				if ( RV64_PTE_IS_VALID(vpn1_tbl[j]) ) {
-
-					/* 有効エントリの場合テーブルの内容を表示する
-					 */
-					rv64_show_pte(1, j,
-					    HAL_KERN_STRAIGHT_TO_PHY(vpn1_tbl), vpn1_tbl[j]);
-					if ( RV64_PTE_IS_LEAF(vpn1_tbl[j]) )
-						continue; /* 次のエントリへ */
-
-					/* VPN0テーブルの物理アドレスを取り出す	 */
-					vpn0_tbl_paddr = RV64_PTE_TO_PADDR(vpn1_tbl[j]);
-					/* VPN0テーブルの仮想アドレスを算出する	 */
-					vpn0_tbl = (hal_pte *)HAL_PHY_TO_KERN_STRAIGHT
-						(vpn0_tbl_paddr);
-
-					/*
-					 * VPN0テーブル中の有効エントリをたどる
-					 */
-					for(k = 0; RV64_PGTBL_ENTRIES_NR > k; ++k) 
-						if ( RV64_PTE_IS_VALID(vpn0_tbl[k]) )
-							rv64_show_pte(0, k, 
-							    HAL_KERN_STRAIGHT_TO_PHY(vpn0_tbl),
-							    vpn0_tbl[k]);
-				}
-			}
-		}
-	}
-}
 /**
    ページテーブルエントリから保護属性に変換する
    @param[in] pte ページテーブルエントリ
@@ -266,6 +198,7 @@ rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp,
 
 walk_end:
 	*paddrp = paddr;
+	*protp = prot;
 	return 0;
 
 error_out:
@@ -283,8 +216,7 @@ rv64_map_kernel_space(void){
 	int    lower_vpn2idx;
 	vm_vaddr upper_vaddr;
 	vm_vaddr lower_vaddr;
-	vm_paddr upper_paddr;
-	vm_paddr lower_paddr;
+	vm_paddr  vpn1_paddr;
 	vm_paddr       paddr;
 	vm_paddr   pte_paddr;
 	vm_vaddr       vaddr;
@@ -300,9 +232,8 @@ rv64_map_kernel_space(void){
 
 		/* ページテーブルエントリ中の物理ページ番号値を得る */
 		pte_paddr = RV64_PTE_2MPADDR_TO_PPN(paddr);
-		kern_upper_vpn1_tbl[vpn1idx] = 
+		kern_vpn1_tbl[vpn1idx] = 
 			RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS|pte_paddr;
-		kern_lower_vpn1_tbl[vpn1idx] = kern_upper_vpn1_tbl[vpn1idx];
 	}
 
 	/*
@@ -317,33 +248,28 @@ rv64_map_kernel_space(void){
 
 
 #if 1 		/* TODO: CONFIG_HAL_KERN_VMA_BASEを削除 */
-		upper_paddr = 
-			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_upper_vpn1_tbl[vpn1idx]+CONFIG_HAL_KERN_VMA_BASE);
-		lower_paddr = 
-			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_lower_vpn1_tbl[vpn1idx]+CONFIG_HAL_KERN_VMA_BASE);
+		vpn1_paddr = 
+			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_vpn1_tbl[vpn1idx]+CONFIG_HAL_KERN_VMA_BASE);
 #else
-		upper_paddr = 
-			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_upper_vpn1_tbl[vpn1idx]);
-		lower_paddr = 
-			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_lower_vpn1_tbl[vpn1idx]);
+		vpn1_paddr = 
+			HAL_KERN_STRAIGHT_TO_PHY((void *)&kern_vpn1_tbl[vpn1idx]);
 #endif
 		upper_vpn2idx = rv64_pgtbl_vpn2_index(upper_vaddr);
 		lower_vpn2idx = rv64_pgtbl_vpn2_index(lower_vaddr);
 
 		kprintf("Upper(vaddr, paddr, idx, tblpaddr, pteppn) = (%p, %p, %d, %p, %p)\n",
-		    upper_vaddr, paddr, upper_vpn2idx, upper_paddr, 
-		    RV64_PTE_PADDR_TO_PPN( upper_paddr ));
+		    upper_vaddr, paddr, upper_vpn2idx, vpn1_paddr, 
+		    RV64_PTE_PADDR_TO_PPN( vpn1_paddr ));
 		kprintf("lower(vaddr, paddr, idx, tblpaddr, pteppn) = (%p, %p, %d, %p, %p)\n",
-		    lower_vaddr, paddr, lower_vpn2idx, lower_paddr, 
-		    RV64_PTE_PADDR_TO_PPN( lower_paddr ));
+		    lower_vaddr, paddr, lower_vpn2idx, vpn1_paddr, 
+		    RV64_PTE_PADDR_TO_PPN( vpn1_paddr ));
 		
 		kern_vpn2_tbl[upper_vpn2idx] = RV64_PTE_V | RV64_KERN_PTE_FLAGS |
-			RV64_PTE_PADDR_TO_PPN( upper_paddr );
+			RV64_PTE_PADDR_TO_PPN( vpn1_paddr );
 		kern_vpn2_tbl[lower_vpn2idx] = RV64_PTE_V | RV64_KERN_PTE_FLAGS |
-			RV64_PTE_PADDR_TO_PPN( lower_paddr );
+			RV64_PTE_PADDR_TO_PPN( vpn1_paddr );
 	}
-	
-	//rv64_show_page_table(&kern_vpn2_tbl[0]);
+#if 0	
 	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
 	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
 
@@ -354,6 +280,42 @@ rv64_map_kernel_space(void){
 		    vaddr, paddr, prot, pgsize);
 		vaddr += pgsize;
 	}
+#endif
+	kprintf("low boot table %p\n", &pre_vpn2[0]);
+	for( vaddr = HAL_KERN_PHY_BASE; 
+	     ( HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
+
+		rc = rv64_pgtbl_extract(&pre_vpn2[0], vaddr, &paddr, 
+		    &prot, &pgsize);
+		kassert( rc == 0 );
+		kprintf("(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
+		    vaddr, paddr, prot, pgsize);
+		vaddr += pgsize;
+	}
+	kprintf("high boot table %p\n", &pre_vpn2[0]);
+	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
+	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
+
+		rc = rv64_pgtbl_extract(&pre_vpn2[0], vaddr, &paddr, 
+		    &prot, &pgsize);
+		kassert( rc == 0 );
+		kprintf("(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
+		    vaddr, paddr, prot, pgsize);
+		vaddr += pgsize;
+	}
+
+#if 0
+	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
+	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
+
+		rc = rv64_pgtbl_extract(&pre_vpn2, vaddr, &paddr, 
+		    &prot, &pgsize);
+		kassert( rc == 0 );
+		kprintf("(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
+		    vaddr, paddr, prot, pgsize);
+		vaddr += pgsize;
+	}
+#endif
 	kprintf("Kernel base: %p I/O base:%p nr:%d\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
 
 	return 0;
