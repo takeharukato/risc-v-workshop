@@ -56,7 +56,7 @@ vpn1_setup_loop:
 	add  a4, a4, a3                    /* 物理ページ位置を更新 */	
 	blt  a5, a2, vpn1_setup_loop       /* 最終アドレスでなければ次のエントリを設定 */
 
-       /* VPN2テーブルを作成する
+	/* VPN2テーブルを作成する
 	*
 	* レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
 	*  a1からa5まではループ中で不変
@@ -73,15 +73,15 @@ vpn1_setup_loop:
 	*  t3 一時レジスタ
 	*  t4 一時レジスタ
 	*/
-	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値 */
-	li a2, RV64_BOOT_PGTBL_VPN1_NR
-	li a3, HAL_PAGE_SIZE
-	li a4, RV64_PGTBL_ENTRY_SIZE
-	li a5, RV64_PPN_MASK
-	li a6, HAL_KERN_VMA_BASE
-	li a7, HAL_KERN_PHY_BASE
-	mv t0, x0
-	la t1, pre_vpn1
+	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値     */
+	li a2, RV64_BOOT_PGTBL_VPN1_NR        /* VPN1テーブル数               */
+	li a3, HAL_PAGE_SIZE                  /* ページサイズ                 */
+	li a4, RV64_PGTBL_ENTRY_SIZE          /* ページテーブルエントリサイズ */
+	li a5, RV64_PPN_MASK                  /* ページフレーム番号マスク     */
+	li a6, HAL_KERN_VMA_BASE              /* カーネル仮想アドレス         */
+	li a7, HAL_KERN_PHY_BASE              /* 物理ページ開始アドレス       */
+	mv t0, x0                             /* ループインデクス             */
+	la t1, pre_vpn1                       /* VPN1ページテーブル           */
 vpn2_setup_loop:
 	/* VPN1テーブルへのPTE値を算出
 	 */
@@ -116,6 +116,80 @@ vpn2_setup_loop:
 	add  t0, t0, 1  /* ループインデクスを加算            */
 	blt  t0, a2, vpn2_setup_loop       /* 最終アドレスでなければ次のエントリを設定 */
 
+       /*2MiBのページサイズでUARTをマップするためのVPN1テーブルを生成する
+	*
+	* レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
+	*  a1 ページテーブルエントリの属性設定値 (pteの属性値)
+	*  a2 ページマップサイズ
+	*  a3 マップ対象物理アドレス
+	*  a4 上位マップ側マップ対象物理アドレス
+	*  a5 ページテーブルエントリサイズ
+	*  a6 一時レジスタ
+	*  a7 一時レジスタ		
+	*/
+	li a1, RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS /* フラグ値      */
+	li a2, HAL_PAGE_SIZE_2M  /* ページサイズ               */
+	li a3, RV64_UART0_PADDR  /* UART物理アドレス           */
+	li a4, HAL_KERN_IO_BASE  /* 上位マップオフセット       */
+	add a4, a4, a3           /* 上位マップUART物理アドレス */
+	li a5, RV64_PGTBL_ENTRY_SIZE
+	
+	srli a6, a3, RV64_PGTBL_VPN1_INDEX_SHIFT /* 仮想アドレスからVPN1インデクスを算出 */
+	and  a6, a6, RV64_PGTBL_VPN1_INDEX_MASK  /* VPN1インデクスをマスク               */
+	mul  a6, a6, a5                          /* VPN1オフセットを設定                 */
+	la   a7, pre_vpn1_uartmap                /* VPN1テーブルのアドレスをロード       */
+	add  a7, a7, a6                          /* VPN1テーブルのPTEアドレス算出        */
+	
+	srli a6, a3, HAL_PAGE_SHIFT              /* ページフレーム番号算出      */
+	slli a6, a6, RV64_PTE_PA_SHIFT           /* PTE内ページフレーム番号算出 */
+	or   a6, a6, a1                          /* PTEフラグ値を設定           */
+	sd   a6, (a7)                            /* ページテーブルに格納        */
+
+
+       /*2MiBのページサイズでUARTをマップするためにVPN2テーブルを設定する
+	* レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
+	*  a1 ページテーブルエントリの属性設定値 (pteの属性値)
+	*  a2 ページフレーム番号のマスク
+	*  a3 上位アドレス側の仮想アドレスへのオフセット
+	*  a4 下位アドレス側の仮想アドレス
+	*  a5 VPN1ページテーブルエントリのアドレス
+	*  a6 VPN1ページテーブルエントリサイズ
+	*  t0 一時レジスタ
+	*  t1 一時レジスタ
+	*  t2 一時レジスタ
+	*/
+	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値           */
+	li a2, RV64_PPN_MASK                  /* ページフレーム番号マスク           */
+	li a3, HAL_KERN_IO_BASE2              /* カーネル仮想アドレス(TODO:2を消す) */
+	li a4, RV64_UART0_PADDR               /* UART物理アドレス                   */
+	la a5, pre_vpn1_uartmap               /* VPN1ページテーブル                 */
+	li a6, RV64_PGTBL_ENTRY_SIZE          /* ページテーブルエントリサイズ       */
+	/* VPN1テーブルへのPTE値を算出
+	 */
+	srli t0, a5, HAL_PAGE_SHIFT        /* VPN1テーブルのページフレーム番号算出 */
+	and  t0, t0, a2                    /* ページ番号をマスク                   */
+	slli t0, t0, RV64_PTE_PA_SHIFT     /* PTE内ページフレーム番号算出          */
+	or   t0, t0, a1                    /* PTEフラグ値を設定                    */
+	
+	/* 下位アドレス側のテーブル設定
+	 */
+	srli t1, a4, RV64_PGTBL_VPN2_INDEX_SHIFT /* 仮想アドレスからVPN2インデクスを算出 */
+	and  t1, t1, RV64_PGTBL_VPN2_INDEX_MASK  /* VPN2インデクスをマスク               */
+	mul  t1, t1, a6                          /* VPN2オフセットを設定                 */
+	la   t2, pre_vpn2                        /* VPN2テーブルのアドレスをロード       */
+	add  t2, t2, t1                          /* VPN2テーブルのPTEアドレス算出        */
+	sd   t0, (t2)                            /* PTEを更新                            */
+
+	/* 上位アドレス側のテーブル設定
+	 */
+	add  t1, a4, a3                          /* 上位仮想アドレスを算出               */
+	srli t1, t1, RV64_PGTBL_VPN2_INDEX_SHIFT /* 仮想アドレスからVPN2インデクスを算出 */
+	and  t1, t1, RV64_PGTBL_VPN2_INDEX_MASK  /* VPN2インデクスをマスク               */
+	mul  t1, t1, a6                          /* VPN2オフセットを設定                 */
+	la   t2, pre_vpn2                        /* VPN2テーブルのアドレスをロード       */
+	add  t2, t2, t1                          /* VPN2テーブルのPTEアドレス算出        */
+	sd   t0, (t2)                            /* PTEを更新                            */
+	
 	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
 	addi sp,sp,8   /*  スタック位置を復元する                          */
 	jr   ra
@@ -160,3 +234,7 @@ ASMMAC_BALIGN(HAL_PAGE_SIZE)
 pre_vpn1_page3:
 	ASMMAC_FILL(HAL_PAGE_SIZE/RV64_PGTBL_ENTRY_SIZE, RV64_PGTBL_ENTRY_SIZE, 0)
 
+ASMMAC_BALIGN(HAL_PAGE_SIZE)
+pre_vpn1_uartmap:
+	ASMMAC_FILL(HAL_PAGE_SIZE/RV64_PGTBL_ENTRY_SIZE, RV64_PGTBL_ENTRY_SIZE, 0)
+	

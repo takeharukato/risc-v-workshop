@@ -35,7 +35,7 @@
 /** カーネルメモリマップI/Oレジスタベースアドレス */
 #if defined(CONFIG_UPPERHALF_KERNEL)
 // TODO: 以下を有効にする
-//#define HAL_KERN_IO_BASE      (0xFFFFFFB000000000)
+#define HAL_KERN_IO_BASE2      (0xFFFFFFB000000000)
 #define HAL_KERN_IO_BASE      (0x0000000000000000)
 #else
 #define HAL_KERN_IO_BASE      (0x0000000000000000)

@@ -269,18 +269,7 @@ rv64_map_kernel_space(void){
 		kern_vpn2_tbl[lower_vpn2idx] = RV64_PTE_V | RV64_KERN_PTE_FLAGS |
 			RV64_PTE_PADDR_TO_PPN( vpn1_paddr );
 	}
-#if 0	
-	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
-	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
-
-		rc = rv64_pgtbl_extract(&kern_vpn2_tbl[0], vaddr, &paddr, 
-		    &prot, &pgsize);
-		kassert( rc == 0 );
-		kprintf("(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
-		    vaddr, paddr, prot, pgsize);
-		vaddr += pgsize;
-	}
-#endif
+#if 0
 	kprintf("low boot table %p\n", &pre_vpn2[0]);
 	for( vaddr = HAL_KERN_PHY_BASE; 
 	     ( HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
@@ -303,19 +292,16 @@ rv64_map_kernel_space(void){
 		    vaddr, paddr, prot, pgsize);
 		vaddr += pgsize;
 	}
-
-#if 0
-	for( vaddr = HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE; 
-	     ( HAL_KERN_VMA_BASE + HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > vaddr;  ) {
-
-		rc = rv64_pgtbl_extract(&pre_vpn2, vaddr, &paddr, 
-		    &prot, &pgsize);
-		kassert( rc == 0 );
-		kprintf("(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
-		    vaddr, paddr, prot, pgsize);
-		vaddr += pgsize;
-	}
 #endif
+	rc = rv64_pgtbl_extract(&pre_vpn2[0], RV64_UART0_PADDR, &paddr, 
+	    &prot, &pgsize);
+	kprintf("UART low(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
+	    RV64_UART0_PADDR, paddr, prot, pgsize);
+	rc = rv64_pgtbl_extract(&pre_vpn2[0], (RV64_UART0_PADDR + HAL_KERN_IO_BASE2), &paddr, 
+	    &prot, &pgsize);
+	kprintf("UART high(vaddr, paddr, prot, size) = (%p, %p, %x, %ld)\n",
+	    (RV64_UART0_PADDR + HAL_KERN_IO_BASE2), paddr, prot, pgsize);
+
 	kprintf("Kernel base: %p I/O base:%p nr:%d\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
 
 	return 0;
