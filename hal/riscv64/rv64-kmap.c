@@ -271,6 +271,7 @@ walk_end:
 error_out:
 	return rc;
 }
+
 /**
    カーネル空間をマップする
  */
@@ -297,6 +298,7 @@ rv64_map_kernel_space(void){
 	     ( HAL_KERN_PHY_BASE + RV64_STRAIGHT_MAPSIZE ) > paddr;
 	     paddr += HAL_PAGE_SIZE_2M, ++vpn1idx) {
 
+		/* ページテーブルエントリ中の物理ページ番号値を得る */
 		pte_paddr = RV64_PTE_2MPADDR_TO_PPN(paddr);
 		kern_upper_vpn1_tbl[vpn1idx] = 
 			RV64_PTE_V|RV64_PTE_X|RV64_KERN_PTE_FLAGS|pte_paddr;
@@ -352,7 +354,7 @@ rv64_map_kernel_space(void){
 		    vaddr, paddr, prot, pgsize);
 		vaddr += pgsize;
 	}
-	kprintf("Kernel base: %p I/O base:%p\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE);
+	kprintf("Kernel base: %p I/O base:%p nr:%d\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
 
 	return 0;
 }

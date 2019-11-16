@@ -62,13 +62,6 @@
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ仮想アドレス            */
 #define RV64_CLINT          (RV64_CLINT_PADDR + HAL_KERN_IO_BASE)
 
-/**
-  必要なページディレクトリ数 (単位:個)
-*/
-#define RV64_BOOT_PGTBL_VPN1_NR \
-	( ( roundup_align(RV64_STRAIGHT_MAPSIZE, HAL_PAGE_SIZE_2M) / HAL_PAGE_SIZE_2M ) \
-	/ RV64_PGTBL_ENTRIES_NR )
-
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

@@ -31,6 +31,13 @@
  */
 #define RV64_PGTBL_ENTRIES_NR              (HAL_PAGE_SIZE/RV64_PGTBL_ENTRY_SIZE)
 
+/**
+  必要なページディレクトリ数 (単位:個)
+*/
+#define RV64_BOOT_PGTBL_VPN1_NR \
+	( ( roundup_align(RV64_STRAIGHT_MAPSIZE, HAL_PAGE_SIZE_2M) / HAL_PAGE_SIZE_2M ) \
+	/ RV64_PGTBL_ENTRIES_NR )
+
 /*
  * RISC-V64 アドレス変換スキーム
  */
