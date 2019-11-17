@@ -47,7 +47,7 @@
 #define SSTATUS_UIE        (regops_set_bit(SSTATUS_UIE_BIT))
 
 /* Machine Interrupt Registers
- * Figure 3.11: Machine interrupt-pending register
+ * RISC-V Privileged Architectures V1.10 Figure 3.11: Machine interrupt-pending register
  */
 #define MIREG_USIP_BIT     (0)  /* ユーザモードソフトウエア割込み */
 #define MIREG_SSIP_BIT     (1)  /* スーパーバイザモードソフトウエア割込み */
@@ -94,7 +94,7 @@
 #define MIE_MASK ( MIP_MASK )
 
 /* Supervisor Interrupt Registers
- * TODO Figure 3.11: Machine interrupt-pending register
+ * RISC-V Privileged Architectures V1.10  Figure 3.11: Machine interrupt-pending register
  */
 #define SIREG_USIP_BIT     (0)  /* ユーザモードソフトウエア割込み */
 #define SIREG_SSIP_BIT     (1)  /* スーパーバイザモードソフトウエア割込み */

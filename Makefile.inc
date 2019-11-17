@@ -53,10 +53,10 @@ QEMU_DBG_OPT := -S -gdb tcp::1234
 	${CC} ${CFLAGS} -c -o $@ $<
 
 .c.d: 
-	${CC} -E ${CFLAGS} -MM -MF"$@" $< 
+	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
 .S.d: 
-	${CC} -E ${CFLAGS} -MM -MF"$@" $< 
+	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.S,%.d, $<)" $< 
 
 -include ${top}/.config
 

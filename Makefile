@@ -30,7 +30,7 @@ kernel.elf: kernel-dbg.elf
 
 kernel-dbg.elf: include/kern/autoconf.h include/klib/asm-offset.h subsystem ${start_obj}
 ifeq ($(CONFIG_HAL),y)
-	${CC} -static ${PIC_OPT_FLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
+	${CC} -static ${PIC_OPT_FLAGS} ${CFLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\
 		-o $@ ${start_obj} 				\
 		-Wl,--start-group ${kernlibs} ${hallibs} -Wl,--end-group

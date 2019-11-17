@@ -22,21 +22,19 @@
  * 4.4.1 Addressing and Memory Protection参照
  *
  * 上記から,  アッパーハーフカーネルのカーネル空間として利用可能な仮想アドレスは, 
- * 0xFFFFFFB0_00000000 から 0xFFFFFFFF_FFFFFFFF までとなる。
+ * 0xFFFFFFC0_00000000 から 0xFFFFFFFF_FFFFFFFF までとなる。
  *
  * I/Oデバイスをマップするための仮想アドレス領域が不足するが, シングルアドレス空間構成を
  * 採用することによって得られる利点を優先し, 搭載メモリ量に制限がかからないように
  * 最下位アドレスにI/Oマップ領域を用意しそれ以降に物理メモリをマップする構成とした
  * 
- * I/O マップ領域        0xFFFFFFB0_00000000 から 0xFFFFFFBF_FFFFFFFF まで (64GiB)
- * ストレートマップ領域  0xFFFFFFC0_00000000 から 0xFFFFFFFF_FFFFFFFF まで 
+ * I/O マップ領域        0xFFFFFFC0_00000000 から 0xFFFFFFCF_FFFFFFFF まで (127GiB)
+ * ストレートマップ領域  0xFFFFFFE0_00000000 から 0xFFFFFFFF_FFFFFFFF まで (127GiB)
  */
 #define HAL_KERN_VMA_BASE     (CONFIG_HAL_KERN_VMA_BASE) 
 /** カーネルメモリマップI/Oレジスタベースアドレス */
 #if defined(CONFIG_UPPERHALF_KERNEL)
-// TODO: 以下を有効にする
-#define HAL_KERN_IO_BASE2      (0xFFFFFFB000000000)
-#define HAL_KERN_IO_BASE      (0x0000000000000000)
+#define HAL_KERN_IO_BASE      (0xFFFFFFC000000000)
 #else
 #define HAL_KERN_IO_BASE      (0x0000000000000000)
 #endif  /*  CONFIG_UPPERHALF_KERNEL */

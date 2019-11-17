@@ -13,8 +13,7 @@
 #include <hal/rv64-pgtbl.h>
 
 #if defined(CONFIG_HAL)
-//TODO: ASMMAC_BOOT_TEXT_SECTION
-ASMMAC_TEXT_SECTION	
+ASMMAC_BOOT_TEXT_SECTION
 #else
 ASMMAC_TEXT_SECTION
 #endif  /* CONFIG_HAL */
@@ -23,7 +22,11 @@ ASMMAC_TEXT_SECTION
     アッパーハーフカーネル用ページテーブルをロードする
     void load_pre_pgtbl(void) 相当のサブルーチン
  */
+#if defined(CONFIG_HAL)
+ASMMAC_BOOT_FUNCTION(load_pre_pgtbl)
+#else
 ASMMAC_FUNCTION(load_pre_pgtbl)
+#endif  /*  CONFIG_HAL  */
 	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
 	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
 	
@@ -54,8 +57,11 @@ ASMMAC_FUNCTION(load_pre_pgtbl)
     ブート時のカーネルページテーブルをセットアップする
     void setup_pre_pgtbl(void) 相当のサブルーチン
  */
+#if defined(CONFIG_HAL)
+ASMMAC_BOOT_FUNCTION(setup_pre_pgtbl)
+#else	
 ASMMAC_FUNCTION(setup_pre_pgtbl)
-
+#endif  /*  CONFIG_HAL  */
 	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
 	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
 
@@ -194,7 +200,7 @@ vpn2_setup_loop:
 	*/
 	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値           */
 	li a2, RV64_PPN_MASK                  /* ページフレーム番号マスク           */
-	li a3, HAL_KERN_IO_BASE2              /* カーネル仮想アドレス(TODO:2を消す) */
+	li a3, HAL_KERN_IO_BASE               /* カーネル仮想アドレス               */
 	li a4, RV64_UART0_PADDR               /* UART物理アドレス                   */
 	la a5, pre_vpn1_uartmap               /* VPN1ページテーブル                 */
 	li a6, RV64_PGTBL_ENTRY_SIZE          /* ページテーブルエントリサイズ       */
@@ -231,15 +237,7 @@ vpn2_setup_loop:
 	jr   ra
 
 #if defined(CONFIG_HAL)
-//TODO: ASMMAC_BOOT_DATA_SECTION
-ASMMAC_DATA_SECTION
-#else
-ASMMAC_DATA_SECTION
-#endif  /* CONFIG_HAL */	
-
-#if defined(CONFIG_HAL)
-//ASMMAC_BOOT_DATA_SECTION
-ASMMAC_DATA_SECTION
+ASMMAC_BOOT_DATA_SECTION
 #else
 ASMMAC_DATA_SECTION
 #endif  /* CONFIG_HAL */	

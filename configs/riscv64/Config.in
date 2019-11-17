@@ -29,7 +29,7 @@ config CONFIG_HAL_STRAIGHT_PAGE_SIZE
 
 config CONFIG_HAL_KERN_VMA_BASE
        int     
-       default 0xFFFFFFC000000000 if CONFIG_UPPERHALF_KERNEL
+       default 0xFFFFFFE000000000 if CONFIG_UPPERHALF_KERNEL
        default 0x0000000000000000 if !CONFIG_UPPERHALF_KERNEL
 
 config CONFIG_HAL_MEMORY_SIZE_MB
@@ -42,6 +42,7 @@ config CONFIG_HAL_MEMORY_SIZE_MB
 config CONFIG_HAL_CPUS_NR
        prompt "Max cpus"
        int
-       default 1
+       default 1 if !CONFIG_SMP
+       default 4 if CONFIG_SMP
        range 1 4
-       depends on CONFIG_HAL && CONFIG_SMP
+       depends on CONFIG_HAL

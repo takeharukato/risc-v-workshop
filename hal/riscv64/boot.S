@@ -10,11 +10,22 @@
 #include <kern/kern-consts.h>
 #include <klib/asm-macros.h>
 #include <hal/riscv64.h>
+#include <hal/rv64-platform.h>
 #include <hal/hal-stack.h>
 
+#if defined(CONFIG_HAL)
+ASMMAC_BOOT_TEXT_SECTION
+#else
 ASMMAC_TEXT_SECTION
-ASMMAC_DECLARE_NAME(entry)
-entry:
+#endif  /* CONFIG_HAL */
+
+ASMMAC_EXTERN_SYMBOL(prepare)
+
+#if defined(CONFIG_HAL)	
+ASMMAC_BOOT_FUNCTION(entry)
+#else
+ASMMAC_FUNCTION(entry)
+#endif  /* CONFIG_HAL */	
        /*
 	* ブートスタックを設定する
 	*/
@@ -31,6 +42,13 @@ entry:
 	 * MMU設定
 	 */
 	call setup_pre_pgtbl
+	call load_pre_pgtbl
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	/* スタックをアッパーハーフマッピングに合わせて再設定
+	 */
+	li a1, HAL_KERN_VMA_BASE              /* カーネル仮想アドレス         */
+	add sp, sp, a1
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
 	/*
 	 * 割込み/例外の回送
 	 */
@@ -42,21 +60,52 @@ entry:
 	 */
 	li a2, MIDELEG_MASK
 	csrw mideleg, a2
-	/*
-	 * スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
+	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
 	 */
 	csrr a1, mstatus          /* mstatusを読み込む */
 	li a2, ~MSTATUS_MPP_MASK  /* Machine Previous Privilege Modeビットをクリアする */
 	and a1, a1, a2
 	li a2, MSTATUS_MPP_S  /* Machine Previous Privilege Modeを supervisor modeに設定 */
 	or a1, a1, a2         
-	csrw mstatus, a1      /* mstatusを更新                           */
-	la  a1, prepare       /* Cのエントリ関数のアドレスをロード       */
-	csrw mepc, a1         /* Machine Exception Program Counterを更新 */
-	mret
-        call prepare          /* a0にhartidが入っている状態でCエントリ関数を呼び出す */
+	csrw mstatus, a1        /* mstatusを更新                                     */
+
+	la   t0, c_entry_addr   /* Cのエントリ関数アドレス格納変数のアドレスをロード */
+	ld   a1, (t0)           /* Cのエントリ関数のアドレスをロード                 */
+	csrw mepc, a1           /* Machine Exception Program Counterを更新           */
+	mret                    /* マシンモードからの復帰によりスーパバイザモードに遷移 */
 junk:
         j junk
 loop:
 	j loop
+
+#if defined(CONFIG_HAL)
+ASMMAC_BOOT_DATA_SECTION
+#else
+ASMMAC_DATA_SECTION
+#endif  /* CONFIG_HAL */	
+/* カーネルのCエントリ関数のアドレスを格納する領域
+ * RISC-V64の場合, la疑似命令で読み込むアドレスは, 符号付き32bit値でなければならない
+ * RISC-V Assembly Programmer's Manual
+ * https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md
+ * 参照。
+ *
+ * メモリモデルがmedanyの場合, プログラムカウンタ(pc)からの相対アドレス指定となり,
+ * la a0, symbol
+ * は, 
+ * 1:    auipc a0,     %pcrel_hi(symbol) # load symbol(hi)
+ *       addi  a0, a0, %pcrel_lo(1b)     # load symbol(lo)
+ * として扱われ, medlowの場合, 絶対アドレス指定となり,
+ *       lui  a0,      %hi(symbol)       # load symbol(hi)
+ *       addi a0, a0,  %lo(symbol)       # load symbol(lo)
+ * として扱われる。
+ * いずれの場合も, symbolのアドレスは, 符号付き32bit値でなければならない.
+ * しかしながら, アッパーハーフマッピングの場合のカーネルアドレスは, 
+ * 符号付き32bit値の範囲内にないのでリンク時にpc相対で32bit範囲内に配置される
+ * 大域変数にアドレスを格納しておき大域変数のアドレスをロードし, その内容を
+ * ld 命令で読み込むことで絶対アドレスを取得するようにしている。
+ */
+ASMMAC_DECLARE_NAME(c_entry_addr)
+ASMMAC_BALIGN(8)
+c_entry_addr:
+	.dword prepare  /* prepare関数のアドレスを格納 */
 
