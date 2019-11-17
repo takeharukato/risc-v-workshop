@@ -9,6 +9,8 @@
 #define ASM_FILE
 #include <kern/kern-consts.h>
 #include <klib/asm-macros.h>
+#include <klib/asm-offset.h>
+#include <kern/thr-preempt.h>
 #include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
 #include <hal/hal-stack.h>
@@ -27,17 +29,37 @@ ASMMAC_BOOT_FUNCTION(entry)
 ASMMAC_FUNCTION(entry)
 #endif  /* CONFIG_HAL */	
        /*
-	* ブートスタックを設定する
+	* ブートスタック情報を算出する
+	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
 	*/
         csrr a0, mhartid      /* hartidを読み込む                        */
 	bne  a0, x0, loop     /* TODO: ページテーブル設定を待ち合わせる  */
-        la sp, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
-	li a1, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
-	mul a1, a1, a0        /* スタック長を計算                        */
-	sub sp, sp, a1        /* 自hartのスタックの底に設定              */
-	li  a1, HAL_STACK_ALIGN_SIZE
-	sub sp, sp, a1        /* スタック境界に合わせる       */
+        la a1, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
+	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
+	mul a6, a2, a0        /* BSPスタックの底から自CPUのスタックの底へのオフセットを計算 */
+	sub a3, a1, a6        /* 自hartのスタックの底を算出              */
+	sub a5, a3, a2        /* 自hartのスタックのトップを算出          */
+	li  a7, TI_THREAD_INFO_SIZE /* スレッド情報をスタックの底に設定  */
+	sub a4, a3, a7        /* a4がスレッド情報を指すように設定        */
 
+	/* スレッド情報
+         * 上記の処理でa3, a4, a5に以下の値が設定されている
+	 * a3 自hartのスタックの底
+	 * a4 スレッド情報領域のアドレス
+	 * a5 自hartのスタックのトップ
+	 */
+	li  a2, TI_MAGIC              /* マジック番号読み込み            */
+	sw  a2, TI_MAGIC_OFFSET(a4)   /* マジック番号書き込み            */
+	sw  x0, TI_INTRCNT_OFFSET(a4) /* 割り込みカウント初期化          */
+	sw  x0, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化  */
+	sw  x0, TI_FLAGS_OFFSET(a4)   /* フラグ初期化                    */
+	sw  x0, TI_MDFLAGS_OFFSET(a4) /* アーキ依存フラグ初期化          */
+	sw  x0, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化               */
+	sw  a5, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化  */
+	sw  x0, TI_THR_OFFSET(a4)     /* 論理CPU番号初期化               */
+
+	mv  sp, a4        /* スレッド情報位置にスタックポインタ設定      */
+	
 	/*
 	 * MMU設定
 	 */
