@@ -11,13 +11,6 @@
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
-/*
-	uint64_t kernel_satp;   // kernel page table
-	uint64_t kernel_sp;     // top of process's kernel stack
-	uint64_t kernel_trap;   // usertrap()
-	uint64_t epc;           // saved user program counter
-	uint64_t kernel_hartid; // saved kernel tp
- */
 /**
    トラップコンテキスト
    @note xレジスタの順に格納 (x0は不変なので退避不要)
