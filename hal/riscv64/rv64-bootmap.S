@@ -27,8 +27,10 @@ ASMMAC_BOOT_FUNCTION(load_pre_pgtbl)
 #else
 ASMMAC_FUNCTION(load_pre_pgtbl)
 #endif  /*  CONFIG_HAL  */
-	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
-	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
+	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
+	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
+	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
+	add  s0, sp, 16  /*  fpを更新する                                    */
 	
 	/* ページテーブルをロードする
 	 * レジスタ使用用途 (boot.Sでa0はhartid用に使用しているので使わない)
@@ -49,9 +51,10 @@ ASMMAC_FUNCTION(load_pre_pgtbl)
 	csrw satp, t0                      /* ページテーブルを読み込む            */
 	sfence.vma zero, zero              /* TLBをフラッシュする                 */
 
-	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
-	addi sp,sp,8   /*  スタック位置を復元する                          */
-	jr   ra
+	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
+	ld ra, 8(sp)     /*  raレジスタを復元する                            */
+	addi sp,sp,16    /*  スタック位置を復元する                          */
+	jr ra            /*  呼び出し元に戻る                                */
 
 /**
     ブート時のカーネルページテーブルをセットアップする
@@ -62,8 +65,10 @@ ASMMAC_BOOT_FUNCTION(setup_pre_pgtbl)
 #else	
 ASMMAC_FUNCTION(setup_pre_pgtbl)
 #endif  /*  CONFIG_HAL  */
-	addi sp,sp,-8  /*  fp分のアドレスを確保する                        */
-	sd s0, 0(sp)   /*  s0レジスタを待避する                            */
+	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
+	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
+	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
+	add  s0, sp, 16  /*  fpを更新する                                    */
 
 	csrw satp, x0  /* アドレス変換を無効化                             */
 	
@@ -232,9 +237,10 @@ vpn2_setup_loop:
 	sd   t0, (t2)                            /* PTEを更新                            */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
 
-	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
-	addi sp,sp,8   /*  スタック位置を復元する                          */
-	jr   ra
+	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
+	ld ra, 8(sp)     /*  raレジスタを復元する                            */
+	addi sp,sp,16    /*  スタック位置を復元する                          */
+	jr ra            /*  呼び出し元に戻る                                */
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_DATA_SECTION

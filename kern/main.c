@@ -16,6 +16,8 @@ void
 kern_init(void) {
 
 	tst_spinlock();
+	tst_atomic();
+	tst_atomic64();
 }
 
 #if !defined(CONFIG_HAL)
