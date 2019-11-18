@@ -166,7 +166,8 @@ typedef struct _ktest_stats{
 	    __tst->name, __st->passed, __st->failed, __st->xfailed, __st->tested); \
 	}while(0)
 
-
+int tflib_kernlayout_init(void);
+void tflib_kernlayout_finalize(void);
 void tst_spinlock(void);
 void tst_atomic(void);
 void tst_atomic64(void);
