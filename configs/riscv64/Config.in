@@ -35,7 +35,7 @@ config CONFIG_HAL_KERN_VMA_BASE
 config CONFIG_HAL_MEMORY_SIZE_MB
        prompt "Max memory size(UNIT:MB)"
        int
-       default 128
+       default 32
        range 16 1024
        depends on CONFIG_HAL
 
