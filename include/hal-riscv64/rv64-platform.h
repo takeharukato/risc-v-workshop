@@ -54,21 +54,28 @@
 	( RV64_L1_DCACHE_SIZE / (RV64_L1_DCACHE_WAY * RV64_L1_DCACHE_LINESIZE) )
 
 /** QEMU UART レジスタ物理アドレス   */
-#define RV64_UART0_PADDR    (ULONGLONG_C(0x10000000))
+#define RV64_UART0_PADDR         (ULONGLONG_C(0x10000000))
 /** QEMU UART レジスタ仮想アドレス   */
-#define RV64_UART0          (RV64_UART0_PADDR + HAL_KERN_IO_BASE)
+#define RV64_UART0               (RV64_UART0_PADDR + HAL_KERN_IO_BASE)
 /** QEMU UART 割込み番号 */
-#define RV64_UART0_IRQ (10)
+#define RV64_UART0_IRQ           (10)
 
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ物理アドレス   */
-#define RV64_PLIC_PADDR     (ULONGLONG_C(0x0C000000))
+#define RV64_PLIC_PADDR          (ULONGLONG_C(0x0C000000))
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ仮想アドレス   */
-#define RV64_PLIC           (RV64_PLIC_PADDR + HAL_KERN_IO_BASE)
+#define RV64_PLIC                (RV64_PLIC_PADDR + HAL_KERN_IO_BASE)
 
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ物理アドレス            */
-#define RV64_CLINT_PADDR    (ULONGLONG_C(0x02000000))
+#define RV64_CLINT_PADDR         (ULONGLONG_C(0x02000000))
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ仮想アドレス            */
-#define RV64_CLINT          (RV64_CLINT_PADDR + HAL_KERN_IO_BASE)
+#define RV64_CLINT               (RV64_CLINT_PADDR + HAL_KERN_IO_BASE)
+
+/** QEMU virtI/O MMIO Interface 物理アドレス */
+#define RV64_QEMU_VIRTIO0_PADDR  (ULONGLONG_C(0x10001000))
+/** QEMU virtI/O MMIO Interface 仮想アドレス */
+#define RV64_QEMU_VIRTIO0        (RV64_QEMU_VIRTIO0_PADDR + HAL_KERN_IO_BASE)
+/** QEMU virtI/O MMIO Interface 割込み番号   */
+#define RV64_QEMU_VIRTIO0_IRQ    (1)
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
