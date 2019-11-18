@@ -10,7 +10,7 @@
 #define  _KERN_THR_PREEMPT_H 
 
 #include <kern/kern-consts.h>
-#include <klib/page-macros.h>
+#include <kern/page-macros.h>
 
 /** ディスパッチ許可状態
  */

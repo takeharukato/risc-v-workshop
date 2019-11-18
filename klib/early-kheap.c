@@ -10,7 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <klib/early-kheap.h>
-#include <klib/page-macros.h>
+#include <kern/page-macros.h>
 
 static early_kernel_heap ekheap = {
 	.pstart = 0,

@@ -10,7 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <klib/backtrace.h>
-#include <klib/page-macros.h>
+#include <kern/page-macros.h>
 
 #include <hal/hal-stack.h>
 #include <hal/hal-backtrace.h>
