@@ -1,7 +1,7 @@
 /* -*- mode: C; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
 /*  kernel cache and page allocation interface definitions            */
 /*                                                                    */
@@ -15,7 +15,12 @@
 #include <kern/page-macros.h>
 
 #include <kern/page-pframe.h>
+
+#if !defined(ASM_FILE)
 #include <kern/page-pfdb.h>
+#endif  /* !ASM_FILE  */
+
+#include <kern/page-slab.h>
 
 /** ページ利用用途
  */
@@ -27,43 +32,6 @@
 #define PAGE_USAGE_PCACHE (PAGE_STATE_UCASE_PCACHE)  /**< ページキャッシュ   */
 
 #define PAGE_MASK PAGE_MASK_COMMON(PAGE_SIZE)  /**< ノーマルページのページマスク  */
-
-/**    kmem-cache属性情報
- */
-#if !defined(KM_SFLAGS_ARG_SHIFT)
-#define KM_SFLAGS_ARG_SHIFT          (0)  /*< 引数指定属性値のシフト数  */
-#endif  /*  KM_SFLAGS_ARG_SHIFT  */
-
-#if !defined(KM_SFLAGS_DEFAULT)
-#define KM_SFLAGS_DEFAULT            \
-	( ULONG_C(0) << KM_SFLAGS_ARG_SHIFT)  /*< キャッシュ獲得のデフォルト  */
-#endif  /*  KM_SFLAGS_DEFAULT  */
-
-#if !defined(KM_SFLAGS_CLR_NONE)
-#define KM_SFLAGS_CLR_NONE	     \
-	( ULONG_C(1) << KM_SFLAGS_ARG_SHIFT)  /*< メモリをゼロクリアしない */
-#endif  /*  KM_SFLAGS_CLR_NONE  */
-
-#if !defined(KM_SFLAGS_ATOMIC)
-#define KM_SFLAGS_ATOMIC	     \
-	( ULONG_C(2) << KM_SFLAGS_ARG_SHIFT)  /*< メモリ獲得を待ち合わせない */
-#endif  /*  KM_SFLAGS_ATOMIC  */
-
-#if !defined(KM_SFLAGS_ALIGN_HW)
-#define KM_SFLAGS_ALIGN_HW           \
-	( ULONG_C(4) << KM_SFLAGS_ARG_SHIFT)  /*< ハードウエアアラインメントに合わせる */
-#endif  /*  KM_SFLAGS_ALIGN_HW  */
-
-#if !defined(KM_SFLAGS_COLORING)
-#define KM_SFLAGS_COLORING           \
-	( ULONG_C(8) << KM_SFLAGS_ARG_SHIFT)  /*< カラーリングを行う                   */
-#endif  /*  KM_SFLAGS_COLORING  */
-
-#if !defined(KM_SFLAGS_ARGS)
-/** 引数で指定可能なフラグ  */
-#define KM_SFLAGS_ARGS		     \
-	( KM_SFLAGS_CLR_NONE | KM_SFLAGS_ATOMIC | KM_SFLAGS_ALIGN_HW | KM_SFLAGS_COLORING ) 
-#endif  /* KM_SFLAGS_ARGS  */
 
 /** メモリ獲得フラグ
  */

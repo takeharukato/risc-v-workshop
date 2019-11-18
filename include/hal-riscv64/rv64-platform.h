@@ -43,6 +43,16 @@
 /** ストレートマップ長 */                  
 #define RV64_STRAIGHT_MAPSIZE ( GIB_TO_BYTE(4) )  /**< 4GiBをマップする  */
 
+/*
+ * U54 RISC-V コアのキャッシュ情報
+ */
+#define RV64_L1_DCACHE_LINESIZE  (64)               /* 64バイト */
+#define RV64_L1_DCACHE_WAY       (8)                /* 8way */
+#define RV64_L1_DCACHE_SIZE      (KIB_TO_BYTE(32))  /* 32KiB */
+/** カラーリング数: 64個 */
+#define RV64_L1_DCACHE_COLOR_NUM \
+	( RV64_L1_DCACHE_SIZE / (RV64_L1_DCACHE_WAY * RV64_L1_DCACHE_LINESIZE) )
+
 /** QEMU UART レジスタ物理アドレス   */
 #define RV64_UART0_PADDR    (ULONGLONG_C(0x10000000))
 /** QEMU UART レジスタ仮想アドレス   */

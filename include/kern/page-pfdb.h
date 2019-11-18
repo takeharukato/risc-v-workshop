@@ -1,7 +1,7 @@
 /* -*- mode: C; coding:utf-8 -*- */
 /**********************************************************************/
-/*  Yet Another Teachable Operating System                            */
-/*  Copyright 2016 Takeharu KATO                                      */
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
 /*  Page Frame Data Base relevant definitions                         */
 /*                                                                    */
@@ -142,4 +142,5 @@ bool pfdb_dec_page_use_count(struct _page_frame  *_pf);
 
 bool kcom_is_pfn_valid(obj_cnt_type _pfn);
 void kcom_obtain_pfdb_stat(pfdb_stat *_statp);
+
 #endif  /*  _PAGE_PFDB_H  */

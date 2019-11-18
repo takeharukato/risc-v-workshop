@@ -47,6 +47,7 @@ SECTIONS
 
         *(.bss)
 	*(COMMON)
+	. = ALIGN(__PAGE_SIZE__);
         __bss_end = .;
     }
     . = ALIGN(__PAGE_SIZE__);
@@ -58,10 +59,10 @@ SECTIONS
     . = ALIGN(__PAGE_SIZE__);
     _end = .  - __KERN_VMA_BASE;
     _kernel_end = . - __KERN_VMA_BASE;
-    _kheap_start = .;
+    _kheap_vaddr_start = .;
     . += (__KHEAP_SIZE__);
-    _kheap_end = .;
-
+    _kheap_vaddr_end = .;
+    _kheap_end = . - __KERN_VMA_BASE;
     /DISCARD/ :
     {
 	         *(.gcc_except_table)

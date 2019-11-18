@@ -9,12 +9,6 @@
 #if !defined(_PAGE_PFRAME_H)
 #define  _PAGE_PFRAME_H 
 
-#include <klib/freestanding.h>
-#include <kern/kern-types.h>
-#include <klib/list.h>
-#include <klib/queue.h>
-#include <kern/spinlock.h>
-
 /** ページの状態(共通部)
  */
 #define PAGE_STATE_STATE_SHIFT   (0)  /**<  使用状態シフト  */
@@ -46,6 +40,13 @@
 	(   PAGE_STATE_UCASE_KERN | PAGE_STATE_UCASE_KSTACK |	\
 	    PAGE_STATE_UCASE_PGTBL | PAGE_STATE_UCASE_SLAB  |	\
 	    PAGE_STATE_UCASE_ANON | PAGE_STATE_UCASE_PCACHE )  /**<  使用用途マスク  */
+
+#if !defined(ASM_FILE)
+#include <klib/freestanding.h>
+#include <kern/kern-types.h>
+#include <klib/list.h>
+#include <klib/queue.h>
+#include <kern/spinlock.h>
 
 /**
    ページが空いていないことを確認する
@@ -274,6 +275,5 @@ typedef struct _page_frame{
 	struct _page_frame    *headp;  /**< クラスタ化ページの先頭ページ   */
 	struct _slab          *slabp;  /**< スラブキャッシュ               */
 }page_frame;
-
-
+#endif  /* !ASM_FILE  */
 #endif  /*  _PAGE_PFRAME_H  */
