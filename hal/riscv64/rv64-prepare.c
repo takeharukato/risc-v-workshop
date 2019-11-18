@@ -12,6 +12,9 @@
 #include <kern/spinlock.h>
 
 #include <hal/hal-dbg-console.h>
+#include <hal/rv64-mscratch.h>
+
+mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報  */
 
 void kern_init(void);
 

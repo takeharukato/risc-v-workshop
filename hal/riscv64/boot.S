@@ -61,14 +61,25 @@ ASMMAC_FUNCTION(entry)
 	mv  sp, a4        /* スレッド情報位置にスタックポインタ設定      */
 	
 	/*
-	 * MMU設定
+	 * MMU設定/マシンモード情報テーブル設定 (BSPのみ実施)
 	 */
 	call setup_pre_pgtbl
 	call load_pre_pgtbl
+
+
+	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	la a2, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
+	ld a3, (a2)               /* mscratchテーブルのアドレスをロード */
+	
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	sub a3, a3, a1            /* mscratchテーブルの物理アドレスを算出   */
+	sd  a3, (a2)              /* mscratchテーブルの物理アドレスをストア */
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	/* スタックをアッパーハーフマッピングに合わせて再設定
 	 */
-	li a1, HAL_KERN_VMA_BASE              /* カーネル仮想アドレス         */
+	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
 	add sp, sp, a1
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
 	/*
@@ -129,5 +140,8 @@ ASMMAC_DATA_SECTION
 ASMMAC_DECLARE_NAME(c_entry_addr)
 ASMMAC_BALIGN(8)
 c_entry_addr:
-	.dword prepare  /* prepare関数のアドレスを格納 */
+	.dword prepare       /* prepare関数のアドレスを格納 */
 
+ASMMAC_BALIGN(16)
+mscratch_tbl_addr:
+	.dword mscratch_tbl  /* mscratch_tblのアドレスを格納 */
