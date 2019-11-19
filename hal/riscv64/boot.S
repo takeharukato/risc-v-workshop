@@ -109,6 +109,7 @@ ASMMAC_FUNCTION(entry)
 junk:
         j junk
 loop:
+	wfi                     /* CPUを休眠する */
 	j loop
 
 #if defined(CONFIG_HAL)
