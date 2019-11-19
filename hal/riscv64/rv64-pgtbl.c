@@ -151,6 +151,7 @@ rv64_flush_tlb(void){
 int
 rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp, 
     vm_prot *protp, vm_flags *flagsp, vm_size *pgsizep){
+	int                  rc;
 	int            vpn2_idx;
 	int            vpn1_idx;
 	int            vpn0_idx;
@@ -165,7 +166,6 @@ rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp,
 	vm_paddr          paddr;
 	vm_prot            prot;
 	vm_flags          flags;
-	int                  rc;
 
 	prot = VM_PROT_NONE;   /* アクセス不能に初期化 */
 	flags = VM_FLAGS_NONE; /* 無属性に初期化  */
@@ -244,9 +244,9 @@ rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp,
 	*pgsizep = HAL_PAGE_SIZE;               /* ページサイズを返却 */
 
 walk_end:
-	*paddrp = paddr;
-	*protp = prot;
-	*flagsp = flags;
+	*paddrp = paddr;  /* 物理アドレスを返却する */
+	*protp = prot;    /* 保護属性を返却する     */
+	*flagsp = flags;  /* マップ属性を返却する   */
 
 	return 0;
 
@@ -255,7 +255,7 @@ error_out:
 }
 
 /**
-   仮想アドレスに物理アドレスをマップする
+   仮想アドレスに物理ページをマップする
    @param[in] kv_pgtbl_base ページテーブルベース
    @param[in] vaddr         仮想アドレス
    @param[in] paddr         物理アドレス
@@ -443,17 +443,173 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 	res = pfdb_inc_page_use_count(cur_tbl_pf); /* 参照数を加算 */
 	kassert( res );  /* 加算できたことを確認 */
 	
-map_end:
+map_end: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
 	rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return 0;
 
-error_out:
+error_out: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
 	if ( ( cur_vpn2_pte != vpn2_pte ) || ( cur_vpn1_pte != vpn1_pte ) )
 		rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return rc;
 }
+
+/**
+   仮想アドレスから物理ページをアンマップする
+   @param[in] kv_pgtbl_base ページテーブルベース
+   @param[in] vaddr         仮想アドレス
+   @param[in] pgsize        ページサイズ
+   @retval    0             正常終了
+   @retval   -EINVAL        ページサイズ境界と仮想アドレスまたは
+                            物理アドレスの境界があっていない
+   @retval   -ENOENT        メモリが割り当てられていない
+   @note     TODO: 下位のテーブルのリンクを削除した際に参照先テーブルの参照数を減らす
+             最終参照者だった場合は抜ける
+ */
+int
+rv64_pgtbl_remove(void *kv_pgtbl_base, vm_vaddr vaddr, vm_size pgsize){
+	int                    rc;
+	int              vpn2_idx;
+	int              vpn1_idx;
+	int              vpn0_idx;
+	hal_pte      cur_vpn2_pte;
+	hal_pte      cur_vpn1_pte;
+	hal_pte          vpn2_pte;
+	hal_pte          vpn1_pte;
+	hal_pte          vpn0_pte;
+	hal_pte         *vpn2_tbl;
+	hal_pte         *vpn1_tbl;
+	hal_pte         *vpn0_tbl;
+	vm_paddr   vpn1_tbl_paddr;
+	vm_paddr   vpn0_tbl_paddr;
+	page_frame    *cur_tbl_pf;
+	bool                  res;
+
+	/* 引数チェック
+	 */
+	if ( ( pgsize == HAL_PAGE_SIZE_1G ) && ( !PAGE_1GB_ALIGNED(vaddr) ) )
+		return -EINVAL;  /* 1GiB境界でない仮想アドレスまたは物理アドレスを指定 */
+
+	if ( ( pgsize == HAL_PAGE_SIZE_2M ) && ( !PAGE_2MB_ALIGNED(vaddr) ) )
+		return -EINVAL;  /* 2GiB境界でない仮想アドレスまたは物理アドレスを指定 */
+
+	if ( ( pgsize == HAL_PAGE_SIZE ) && ( !PAGE_ALIGNED(vaddr) ) )
+		return -EINVAL;  /* 4KiB境界でない仮想アドレスまたは物理アドレスを指定 */
+
+	vpn2_tbl = kv_pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
+
+
+	/*
+	 * VPN2テーブル
+	 */
+	vpn2_idx = rv64_pgtbl_vpn2_index(vaddr); /* VPN2テーブルインデクスを得る */
+	cur_vpn2_pte = vpn2_pte = vpn2_tbl[vpn2_idx];  /* ページテーブルエントリを得る */
+	/* VPN2テーブルのページフレーム情報を得る */
+	rc = pfdb_kvaddr_to_page_frame((void *)vpn2_tbl, &cur_tbl_pf); 
+	kassert( rc == 0);
+
+	if ( !RV64_PTE_IS_VALID(vpn2_pte) ) {
+		
+		rc = -ENOENT;   /* ページテーブルがない  */
+		goto error_out;
+	}
+
+	if ( pgsize == HAL_PAGE_SIZE_1G ) {
+
+		if ( !RV64_PTE_IS_LEAF(vpn2_pte) ) { 
+
+			rc = -ENOENT;   /* 1GiBページが割り振られていない  */
+			goto error_out;
+		}
+
+		/* 1GiBページマップエントリをクリアする */
+		vpn2_pte = RV64_PTE_1GPADDR_TO_PPN(0);
+		vpn2_tbl[vpn2_idx] = vpn2_pte;  /* PTEを更新 */
+		res = pfdb_dec_page_use_count(cur_tbl_pf); /* 参照数を減算 */
+		kassert( res );  /* 減算できたことを確認 */
+		goto walk_end;
+	}
+	
+	/* VPN1テーブルの物理アドレスを得る */
+	vpn1_tbl_paddr = RV64_PTE_TO_PADDR(vpn2_pte); 
+	/* VPN1テーブルのカーネル仮想アドレスを得る */
+	vpn1_tbl = (hal_pte *)HAL_PHY_TO_KERN_STRAIGHT(vpn1_tbl_paddr); 
+
+
+	/*
+	 * VPN1テーブル
+	 */
+	vpn1_idx = rv64_pgtbl_vpn1_index(vaddr); /* VPN1テーブルインデクスを得る */
+	cur_vpn1_pte = vpn1_pte = vpn1_tbl[vpn1_idx];  /* ページテーブルエントリを得る */
+	/* VPN1テーブルのページフレーム情報を得る */
+	rc = pfdb_kvaddr_to_page_frame((void *)vpn1_tbl, &cur_tbl_pf); 
+	kassert( rc == 0);
+
+	if ( !RV64_PTE_IS_VALID(vpn1_pte) ) {
+		
+		rc = -ENOENT;   /* ページテーブルがない  */
+		goto error_out;
+	}
+
+	if ( pgsize == HAL_PAGE_SIZE_2M ) {
+
+		if ( !RV64_PTE_IS_LEAF(vpn1_pte) ) { 
+
+			rc = -ENOENT;   /* 2MiBページが割り振られていない  */
+			goto error_out;
+		}
+
+		/* 2MiBページマップエントリをクリアする */
+		vpn1_pte = RV64_PTE_2MPADDR_TO_PPN(0);
+		vpn1_tbl[vpn1_idx] = vpn1_pte;  /* PTEを更新 */
+		res = pfdb_dec_page_use_count(cur_tbl_pf); /* 参照数を減算 */
+		kassert( res );  /* 減算できたことを確認 */
+		goto walk_end;
+	}
+	
+	/* VPN0テーブルの物理アドレスを得る */
+	vpn0_tbl_paddr = RV64_PTE_TO_PADDR(vpn1_pte); 
+	/* VPN0テーブルのカーネル仮想アドレスを得る */
+	vpn0_tbl = (hal_pte *)HAL_PHY_TO_KERN_STRAIGHT(vpn0_tbl_paddr); 
+
+
+	/*
+	 * VPN0テーブル
+	 */
+	vpn0_idx = rv64_pgtbl_vpn0_index(vaddr); /* VPN0テーブルインデクスを得る */
+	vpn0_pte = vpn1_tbl[vpn0_idx];  /* ページテーブルエントリを得る */
+	/* VPN0テーブルのページフレーム情報を得る */
+	rc = pfdb_kvaddr_to_page_frame((void *)vpn0_tbl, &cur_tbl_pf); 
+	kassert( rc == 0);
+
+	if ( ( !RV64_PTE_IS_VALID(vpn0_pte) ) || ( !RV64_PTE_IS_LEAF(vpn0_pte) ) ) {
+
+		/*  有効なページテーブルエントリでないか
+		 *  ページマップエントリでない場合はエラー復帰する
+		 */
+		rc = -ENOENT;   /* ページが割り振られていない  */
+		goto error_out;
+	}
+
+	/* ページマップエントリをクリアする */
+	vpn0_pte = RV64_PTE_PADDR_TO_PPN(0);
+	vpn0_tbl[vpn0_idx] = vpn0_pte;  /* PTEを更新 */
+	res = pfdb_dec_page_use_count(cur_tbl_pf); /* 参照数を減算 */
+	kassert( res );  /* 減算できたことを確認 */
+
+walk_end: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
+	rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+
+	return 0;
+
+error_out: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
+	if ( ( cur_vpn2_pte != vpn2_pte ) || ( cur_vpn1_pte != vpn1_pte ) )
+		rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+
+	return rc;
+}
+
 /**
    カーネル空間をマップする
  */
