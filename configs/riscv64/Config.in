@@ -1,12 +1,12 @@
 config CONFIG_HAL_CFLAGS
        prompt "CFLAGS for Hardware Abstraction Layer"
        string
-       default "-ffreestanding -fno-common -nostdlib -mno-relax -mcmodel=medany -fno-omit-frame-pointer -fno-stack-protector" 
+       default "-ffreestanding -fno-common -mno-relax -mcmodel=medany -fno-omit-frame-pointer -fno-stack-protector" 
        depends on CONFIG_HAL
 
 config CONFIG_HAL_LDFLAGS
        string
-       default "-Wl,-z,max-page-size=0x1000 -Wl,--build-id=none"
+       default "-nostdlib -Wl,-z,max-page-size=0x1000 -Wl,--build-id=none"
        depends on CONFIG_HAL
 
 config CONFIG_HAL_OPT_FLAGS
@@ -35,8 +35,8 @@ config CONFIG_HAL_KERN_VMA_BASE
 config CONFIG_HAL_MEMORY_SIZE_MB
        prompt "Max memory size(UNIT:MB)"
        int
-       default 32
-       range 16 1024
+       default 128
+       range 128 1024
        depends on CONFIG_HAL
 
 config CONFIG_HAL_CPUS_NR
