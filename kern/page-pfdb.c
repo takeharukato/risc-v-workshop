@@ -10,9 +10,6 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <klib/queue.h>
-#include <klib/rbtree.h>
-
 #include <kern/page-if.h>
 #include <kern/spinlock.h>
 

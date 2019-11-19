@@ -1,7 +1,7 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=main.o spinlock.o cpuintr.o page-pfdb.o page-alloc.o page-slab.o
+objects=main.o spinlock.o cpuintr.o page-pfdb.o page-alloc.o page-slab.o vm-pgtbl.o
 ifneq ($(CONFIG_HAL),y)
 objects += ulandpmem.o
 endif

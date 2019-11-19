@@ -10,5 +10,6 @@
 #define  _HAL_PGTBL_H 
 #include <hal/rv64-pgtbl.h>
 
+void rv64_flush_tlb(void);
 #endif  /*  _HAL_PGTBL_H  */
 
