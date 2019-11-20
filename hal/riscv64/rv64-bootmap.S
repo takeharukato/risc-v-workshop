@@ -83,7 +83,7 @@ ASMMAC_FUNCTION(setup_pre_pgtbl)
 	*  a5 操作対象ページテーブルエントリのアドレス
 	*  a6 一時レジスタ
 	*/
-	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_PTE_X|RV64_KERN_PTE_FLAGS /* フラグ値 */
+	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_PTE_X|RV64_PTE_PGTBL_FLAGS /* フラグ値 */
 	la a5, pre_vpn1  /* a5に操作対象VPN1テーブルエントリアドレスを設定 */
 	mv a2, a5 /* a2にテーブルアドレスをセット */
 	/* 最終アドレスオフセット */
@@ -117,7 +117,7 @@ vpn1_setup_loop:
 	*  t3 一時レジスタ
 	*  t4 一時レジスタ
 	*/
-	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値     */
+	li a1, RV64_PTE_V|RV64_PTE_PGTBL_FLAGS /* ページテーブル用フラグ値     */
 	li a2, RV64_BOOT_PGTBL_VPN1_NR        /* VPN1テーブル数               */
 	li a3, HAL_PAGE_SIZE                  /* ページサイズ                 */
 	li a4, RV64_PGTBL_ENTRY_SIZE          /* ページテーブルエントリサイズ */
@@ -173,7 +173,7 @@ vpn2_setup_loop:
 	*  a6 一時レジスタ
 	*  a7 一時レジスタ		
 	*/
-	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_KERN_PTE_FLAGS /* フラグ値      */
+	li a1, RV64_PTE_V|RV64_PTE_R|RV64_PTE_W|RV64_PTE_PGTBL_FLAGS /* フラグ値      */
 	li a2, HAL_PAGE_SIZE_2M  /* ページサイズ               */
 	li a3, RV64_UART0_PADDR  /* UART物理アドレス           */
 	li a4, HAL_KERN_IO_BASE  /* 上位マップオフセット       */
@@ -203,7 +203,7 @@ vpn2_setup_loop:
 	*  t1 一時レジスタ
 	*  t2 一時レジスタ
 	*/
-	li a1, RV64_PTE_V|RV64_KERN_PTE_FLAGS /* ページテーブル用フラグ値           */
+	li a1, RV64_PTE_V|RV64_PTE_PGTBL_FLAGS /* ページテーブル用フラグ値           */
 	li a2, RV64_PPN_MASK                  /* ページフレーム番号マスク           */
 	li a3, HAL_KERN_IO_BASE               /* カーネル仮想アドレス               */
 	li a4, RV64_UART0_PADDR               /* UART物理アドレス                   */

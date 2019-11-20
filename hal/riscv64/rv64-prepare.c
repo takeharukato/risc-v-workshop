@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
 #include <kern/page-if.h>
+#include <kern/vm.h>
 
 #include <hal/rv64-platform.h>
 #include <hal/hal-dbg-console.h>
@@ -23,13 +24,13 @@ extern uint64_t _kernel_start, _kheap_end;
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
 static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終了物理アドレス */
 
+static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
+
 mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報  */
 
 void kern_init(void);
 
 static spinlock prepare_lock=__SPINLOCK_INITIALIZER;
-
-int rv64_map_kernel_space(void);
 
 /**
    物理メモリページプールの状態を表示
@@ -88,7 +89,7 @@ prepare(uint64_t hartid){
 
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 
-		rv64_map_kernel_space();
+		hal_map_kernel_space(&kpgtbl); /* カーネルページテーブルを初期化する */
 		kern_init();
 	} else {
 

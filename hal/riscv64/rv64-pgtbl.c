@@ -17,55 +17,6 @@
 #include <hal/hal-pgtbl.h>
 
 /**
-   ページテーブルエントリの内容を表示する
-   @param[in] lvl      テーブルのレベル
-   @param[in] idx      テーブル中のインデックス
-   @param[in] phy_ptep ページテーブルエントリの物理アドレス
-   @param[in] pte      ページテーブルエントリ値
- */
-void
-rv64_pte_show(int lvl, int idx, vm_paddr phy_ptep, hal_pte pte){
-	vm_paddr paddr;
-
-	/*
-	 * ページ参照エントリから物理ページアドレスを算出する
-	 */
-	if ( RV64_PTE_IS_LEAF(pte) ) {
-
-		switch(lvl) {
-
-		case 0: /* Level 0: ノーマルページサイズ */
-			paddr = RV64_PTE_TO_PADDR(pte);
-			break;
-
-		case 1: /* Level 1: 2MiBページサイズ */
-			paddr = RV64_PTE_2MPA_TO_PADDR(pte);
-			break;
-
-		case 2: /* Level 2: 1GiBページサイズ */
-			paddr = RV64_PTE_1GPA_TO_PADDR(pte);
-			break;
-
-		default:
-			kassert_no_reach();
-			break;
-		}
-	} else 
-		paddr = RV64_PTE_TO_PADDR(pte);  /* ページテーブルはノーマルページサイズ */
-
-	kprintf("vpn%d[%d]=%p paddr=%p flags=[%c|%c|%c|%c|%c|%c|%c|%c]\n",
-		lvl, idx, phy_ptep, paddr,
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_V ) ? ('V') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_R ) ? ('R') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_W ) ? ('W') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_X ) ? ('X') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_U ) ? ('U') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_G ) ? ('G') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_A ) ? ('A') : ('-') ),
-		( ( RV64_PTE_FLAGS(pte) & RV64_PTE_D ) ? ('D') : ('-') ));
-}
-
-/**
    ページテーブルエントリから保護属性/マップ属性に変換する
    @param[in] pte ページテーブルエントリ
    @param[out] protp  保護属性返却域
@@ -128,17 +79,94 @@ vmprot_and_vmflags_to_pte(vm_prot prot, vm_flags flags, hal_pte *ptep){
 }
 
 /**
+   カーネルメモリをマップする
+   @param[in] pgt ページテーブル
+ */
+static void
+map_kernel_memory(vm_pgtbl pgt){
+	int               rc;
+	vm_vaddr       vaddr;
+	vm_vaddr   vaddr_sta;
+	vm_vaddr   vaddr_end;
+	vm_paddr       paddr;
+	vm_prot         prot;
+	vm_flags       flags;
+	vm_size       pgsize;
+
+	/* マップ範囲の仮想アドレスと開始物理アドレスを算出
+	 */
+	vaddr_sta = HAL_PHY_TO_KERN_STRAIGHT(HAL_KERN_PHY_BASE);  /* 開始仮想アドレス */
+	vaddr_end = ( HAL_PHY_TO_KERN_STRAIGHT(HAL_KERN_PHY_BASE)
+	    + MIB_TO_BYTE(KC_PHYSMEM_MB) );  /* 終了仮想アドレス */
+	paddr = HAL_KERN_PHY_BASE; /* 開始物理アドレス */
+
+	/* ページサイズの決定
+	 */
+	pgsize = HAL_PAGE_SIZE;  /* ノーマルページを仮定 */
+
+	if ( ( !PAGE_ALIGNED(vaddr_sta) )
+	    || ( !PAGE_ALIGNED(paddr) ) 
+	    || ( !PAGE_ALIGNED(vaddr_sta + MIB_TO_BYTE(KC_PHYSMEM_MB) ) )
+	    || ( !PAGE_ALIGNED(paddr + MIB_TO_BYTE(KC_PHYSMEM_MB) ) ) ) {
+	
+		kprintf("Invalid page alignment(vstart, vend, pstart, pend)\n", 
+		    vaddr_sta, (vaddr_sta + MIB_TO_BYTE(KC_PHYSMEM_MB) ),
+		    paddr, (paddr + MIB_TO_BYTE(KC_PHYSMEM_MB) ) );
+		kassert_no_reach();
+	}
+
+	if ( PAGE_2MB_ALIGNED(vaddr_sta) &&
+	    PAGE_2MB_ALIGNED(paddr)  &&
+	    PAGE_2MB_ALIGNED(vaddr_sta + MIB_TO_BYTE(KC_PHYSMEM_MB) ) &&
+	    PAGE_2MB_ALIGNED(paddr + MIB_TO_BYTE(KC_PHYSMEM_MB) ) )
+		pgsize = HAL_PAGE_SIZE_2M; /* 2MiBを指定 */
+
+	if ( PAGE_1GB_ALIGNED(vaddr_sta) &&
+	    PAGE_1GB_ALIGNED(paddr)  &&
+	    PAGE_1GB_ALIGNED(vaddr_sta + MIB_TO_BYTE(KC_PHYSMEM_MB) ) &&
+	    PAGE_1GB_ALIGNED(paddr + MIB_TO_BYTE(KC_PHYSMEM_MB) ) )
+		pgsize = HAL_PAGE_SIZE_1G; /* 1GiBを指定 */
+
+	/* ページをマップする
+	 */
+	for( vaddr = vaddr_sta;	vaddr_end > vaddr; vaddr += pgsize, paddr += pgsize) {
+
+		rc = hal_pgtbl_enter(pgt, vaddr, paddr, 
+		    VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE, 
+		    VM_FLAGS_WIRED | VM_FLAGS_UNMANAGED | VM_FLAGS_SUPERVISOR, 
+		    pgsize);
+		kassert( rc == 0 );
+	}
+
+	/* マップを確認
+	 */
+	for( vaddr = vaddr_sta;	vaddr_end > vaddr; vaddr += pgsize, paddr += pgsize) {
+
+		rc = hal_pgtbl_extract(pgt, vaddr,&paddr, 
+		    &prot, &flags, &pgsize);
+		kassert( rc == 0 );
+		kprintf("vaddr=%p paddr=%p pgsize=%ld prot=[%c|%c|%c] flags=[%c]\n",
+		    vaddr, paddr, pgsize,
+		    ( (prot & VM_PROT_READ)         ? ('R') : ('-') ),
+		    ( (prot & VM_PROT_WRITE)        ? ('W') : ('-') ),
+		    ( (prot & VM_PROT_EXECUTE)      ? ('E') : ('-') ),
+		    ( (flags & VM_FLAGS_SUPERVISOR) ? ('S') : ('U') ));
+	}
+}
+
+/**
    TLBをフラッシュする
+   @param[in]  pgt  ページテーブル
  */
 void
-rv64_flush_tlb(void){
+hal_flush_tlb(vm_pgtbl __unused pgt){
 
 	rv64_flush_tlb_local();  /* 自hartのTLBをフラッシュする */
 }
 
 /**
    仮想アドレスにマップされている物理アドレスを得る
-   @param[in]  kv_pgtbl_base ページテーブルベース
+   @param[in]  pgt           ページテーブル
    @param[in]  vaddr         仮想アドレス
    @param[out] paddrp        物理アドレス返却域
    @param[out] protp         保護属性返却域
@@ -149,7 +177,7 @@ rv64_flush_tlb(void){
    @retval    -ESRCH         ページがマップされていない
  */
 int
-rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp, 
+hal_pgtbl_extract(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr *paddrp, 
     vm_prot *protp, vm_flags *flagsp, vm_size *pgsizep){
 	int                  rc;
 	int            vpn2_idx;
@@ -173,7 +201,7 @@ rv64_pgtbl_extract(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr *paddrp,
 	/*
 	 * VPN2テーブル
 	 */
-	vpn2_tbl = kv_pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
+	vpn2_tbl = pgt->pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
 	vpn2_idx = rv64_pgtbl_vpn2_index(vaddr); /* VPN2テーブルインデクスを得る */
 	vpn2_pte = vpn2_tbl[vpn2_idx];  /* ページテーブルエントリを得る */
 
@@ -256,7 +284,7 @@ error_out:
 
 /**
    仮想アドレスに物理ページをマップする
-   @param[in] kv_pgtbl_base ページテーブルベース
+   @param[in] pgt           ページテーブル
    @param[in] vaddr         仮想アドレス
    @param[in] paddr         物理アドレス
    @param[in] prot          保護属性
@@ -269,7 +297,7 @@ error_out:
    @retval   -EBUSY         すでにメモリが割り当てられている
  */
 int
-rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr, 
+hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, 
     vm_prot prot, vm_flags flags, vm_size pgsize){
 	int                    rc;
 	hal_pte      cur_vpn2_pte;
@@ -309,7 +337,7 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 	/* PTE属性値を算出 */
 	vmprot_and_vmflags_to_pte(prot, flags, &new_pte);
 
-	vpn2_tbl = kv_pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
+	vpn2_tbl = pgt->pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
 
 	/*
 	 * VPN2テーブル
@@ -349,16 +377,10 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 		
 		/* 属性値に物理ページ番号値を付加しVPN1テーブルへのPTEを生成 */
 		vpn2_pte = 
-			( RV64_PTE_V | new_pte | RV64_PTE_PADDR_TO_PPN(tbl_paddr) );
+			( RV64_PTE_V|RV64_PTE_PGTBL_FLAGS|RV64_PTE_PADDR_TO_PPN(tbl_paddr) );
 		vpn2_tbl[vpn2_idx] = vpn2_pte; /* PTEを更新 */
 		res = pfdb_inc_page_use_count(cur_tbl_pf); /* 参照数を加算 */
 		kassert( res );  /* 加算できたことを確認 */
-	}
-
-	if ( RV64_PTE_IS_LEAF(vpn2_pte) ) {  /* 有効なページマップエントリの場合 */
-
-		rc = -EBUSY;                 /* すでにページがマップされている  */
-		goto error_out;
 	}
 
 	/* VPN1テーブルの物理アドレスを得る */
@@ -404,16 +426,10 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 		
 		/* 属性値に物理ページ番号値を付加しVPN0テーブルへのPTEを生成 */
 		vpn1_pte = 
-			( RV64_PTE_V | new_pte | RV64_PTE_PADDR_TO_PPN(tbl_paddr) );
+			( RV64_PTE_V|RV64_PTE_PGTBL_FLAGS|RV64_PTE_PADDR_TO_PPN(tbl_paddr) );
 		vpn1_tbl[vpn1_idx] = vpn1_pte; /* PTEを更新 */
 		res = pfdb_inc_page_use_count(cur_tbl_pf); /* 参照数を加算 */
 		kassert( res );  /* 加算できたことを確認 */
-	}
-
-	if ( RV64_PTE_IS_LEAF(vpn1_pte) ) {  /* 有効なページマップエントリの場合 */
-
-		rc = -EBUSY;                 /* すでにページがマップされている  */
-		goto error_out;
 	}
 
 	/* VPN0テーブルの物理アドレスを得る */
@@ -430,13 +446,6 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 	rc = pfdb_kvaddr_to_page_frame((void *)vpn1_tbl, &cur_tbl_pf); 
 	kassert( rc == 0);
 
-	  /* 有効なページマップエントリの場合 */
-	if ( RV64_PTE_IS_VALID(vpn0_pte) ) {
-
-		rc = -EBUSY;                 /* すでにページがマップされている  */
-		goto error_out;
-	}
-
 	/* 属性値に物理ページ番号値を付加しページへのPTEを生成 */
 	vpn0_pte = ( RV64_PTE_V | new_pte | RV64_PTE_PADDR_TO_PPN(paddr) );
 	vpn0_tbl[vpn0_idx] = vpn0_pte; /* PTEを更新 */
@@ -444,20 +453,20 @@ rv64_pgtbl_enter(void *kv_pgtbl_base, vm_vaddr vaddr, vm_paddr paddr,
 	kassert( res );  /* 加算できたことを確認 */
 	
 map_end: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
-	rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+	hal_flush_tlb(pgt);  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return 0;
 
 error_out: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
 	if ( ( cur_vpn2_pte != vpn2_pte ) || ( cur_vpn1_pte != vpn1_pte ) )
-		rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+		hal_flush_tlb(pgt);  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return rc;
 }
 
 /**
    仮想アドレスから物理ページをアンマップする
-   @param[in] kv_pgtbl_base ページテーブルベース
+   @param[in] pgt           ページテーブル
    @param[in] vaddr         仮想アドレス
    @param[in] pgsize        ページサイズ
    @retval    0             正常終了
@@ -467,7 +476,7 @@ error_out: /* TODO: カレントページテーブルが操作対象ページテ
    @note     ページテーブルベースの解放(VPN2->VPN1参照数を減算)は, 呼び出し元が行う
  */
 int
-rv64_pgtbl_remove(void *kv_pgtbl_base, vm_vaddr vaddr, vm_size pgsize){
+hal_pgtbl_remove(vm_pgtbl pgt, vm_vaddr vaddr, vm_size pgsize){
 	int                    rc;
 	int              vpn2_idx;
 	int              vpn1_idx;
@@ -498,7 +507,7 @@ rv64_pgtbl_remove(void *kv_pgtbl_base, vm_vaddr vaddr, vm_size pgsize){
 	if ( ( pgsize == HAL_PAGE_SIZE ) && ( !PAGE_ALIGNED(vaddr) ) )
 		return -EINVAL;  /* 4KiB境界でない仮想アドレスまたは物理アドレスを指定 */
 
-	vpn2_tbl = kv_pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
+	vpn2_tbl = pgt->pgtbl_base;  /* VPN2テーブルのカーネル仮想アドレスを得る */
 
 
 	/*
@@ -627,30 +636,50 @@ rv64_pgtbl_remove(void *kv_pgtbl_base, vm_vaddr vaddr, vm_size pgsize){
 	kassert( res );  /* 減算できたことを確認 */
 
 walk_end: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
-	rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+	hal_flush_tlb(pgt);  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return 0;
 
 error_out: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
 	if ( ( cur_vpn2_pte != vpn2_pte ) || ( cur_vpn1_pte != vpn1_pte ) )
-		rv64_flush_tlb();  /* テーブル更新に伴うTLBのフラッシュ */
+		hal_flush_tlb(pgt);  /* テーブル更新に伴うTLBのフラッシュ */
 
 	return rc;
 }
 
 /**
    カーネル空間をマップする
+   @param[out] pgtp ページテーブル
  */
-int
-rv64_map_kernel_space(void){
-#if 0
+void
+hal_map_kernel_space(vm_pgtbl *pgtp){
 	int               rc;
-	vm_vaddr       vaddr;
-	vm_paddr       paddr;
-	vm_prot         prot;
-	vm_size       pgsize;
-#endif
-	kprintf("Kernel base: %p I/O base:%p nr:%d\n", HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
+	vm_pgtbl       pgtbl;
+	vm_paddr   tbl_paddr;
 
-	return 0;
+	/* カーネルのページテーブルを割り当てる
+	 */
+	pgtbl = kmalloc(sizeof(vm_pgtbl_type), KMALLOC_NORMAL);	
+	if ( pgtbl == NULL ) {
+	
+		kprintf("Can not allocate kernel page table\n");
+		kassert_no_reach();
+	}
+
+	/* カーネルのページテーブルベースページを割り当てる
+	 */
+	rc = pgtbl_alloc_pgtbl_page(&pgtbl->pgtbl_base, &tbl_paddr);
+	if ( rc != 0 ) {
+	
+		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
+		kassert_no_reach();
+	}
+
+	kprintf("Kernel base: %p I/O base:%p nr:%d\n", 
+	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
+	map_kernel_memory(pgtbl);
+
+	*pgtp = pgtbl; /* カーネルページテーブルを返却  */
+
+	return;
 }

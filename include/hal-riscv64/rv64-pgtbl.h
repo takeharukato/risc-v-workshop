@@ -163,8 +163,8 @@
 #define PV64_PTE_FLAGS_MASK ( RV64_PTE_V | RV64_PTE_R | RV64_PTE_W | RV64_PTE_X | \
 			     RV64_PTE_U | RV64_PTE_G | RV64_PTE_A | RV64_PTE_D )
 
-/** カーネルPTEフラグ(ページテーブル用) */
-#define RV64_KERN_PTE_FLAGS (RV64_PTE_A|RV64_PTE_D)
+/** ページテーブル用フラグ */
+#define RV64_PTE_PGTBL_FLAGS (RV64_PTE_A|RV64_PTE_D)
 
 /*
  * ノーマルページ関連定義
