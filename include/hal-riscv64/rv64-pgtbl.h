@@ -177,7 +177,7 @@
    @return ページ番号
  */
 #define RV64_PTE_PADDR_TO_PPN(_pa) \
-	( ( (_pa) >> HAL_PAGE_SHIFT ) << RV64_PTE_PA_SHIFT)
+	( ( RV64_PPN_MASK & ( (_pa) >> HAL_PAGE_SHIFT ) ) << RV64_PTE_PA_SHIFT)
 
 /**
    PTE中のページ番号を物理アドレスに変換する
@@ -186,47 +186,6 @@
 */
 #define RV64_PTE_TO_PADDR(_pte) \
 	( ( (_pte) >> RV64_PTE_PA_SHIFT ) << HAL_PAGE_SHIFT )
-
-/*
- * 2MiBページ関連定義
- */
-#define RV64_PTE_2MPA_SHIFT       (19)  /* 2MiBページのPTEページ番号 */
-
-/**
-   2MiBページ物理アドレスをPTE中のページ番号に変換する
-   @param[in] _pa 物理アドレス
-   @return ページ番号
- */
-#define RV64_PTE_2MPADDR_TO_PPN(_pa) \
-	( ( (_pa) >> HAL_PAGE_SHIFT_2M ) << RV64_PTE_2MPA_SHIFT )
-
-/**
-   PTE中の2MiBページのページ番号を物理アドレスに変換する
-   @param[in] _pte ページテーブルエントリ値
-   @return 物理アドレス
-*/
-#define RV64_PTE_2MPA_TO_PADDR(_pte) \
-	(  ( (_pte) >> RV64_PTE_2MPA_SHIFT ) << HAL_PAGE_SHIFT_2M )
-
-/*
- * 1GiBページ関連定義
- */
-#define RV64_PTE_1GPA_SHIFT       (28)  /* 1GiBページのPTEページ番号 */
-/**
-   1GiBページ物理アドレスをPTE中のページ番号に変換する
-   @param[in] _pa 物理アドレス
-   @return ページ番号
- */
-#define RV64_PTE_1GPADDR_TO_PPN(_pa) \
-	( ( (_pa) >> HAL_PAGE_SHIFT_1G ) << RV64_PTE_1GPA_SHIFT )
-
-/**
-   PTE中の1GiBページのページ番号を物理アドレスに変換する
-   @param[in] _pte ページテーブルエントリ値
-   @return 物理アドレス
-*/
-#define RV64_PTE_1GPA_TO_PADDR(_pte) \
-	( ( (_pte) >> RV64_PTE_1GPA_SHIFT ) << HAL_PAGE_SHIFT_1G )
 
 /**
    PTE中の属性値を取得する
@@ -258,7 +217,7 @@
    RISC-V 64のSATPレジスタ値を算出する
    @param[in] _mode アドレス変換スキーム
    @param[in] _asid アドレス空間ID
-   @param[in] _ppn  ページテーブルベースの物理アドレス
+   @param[in] _ppn  ページテーブルベースの物理ページ番号
  */
 #define RV64_SATP_VAL(_mode, _asid, _ppn)  \
 	( (_mode) | ( (_asid) << RV64_SATP_ASID_SHIFT ) | ( (_ppn) << RV64_SATP_PPN_SHIFT ) )

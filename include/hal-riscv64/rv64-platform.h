@@ -73,14 +73,14 @@
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ仮想アドレス   */
 #define RV64_PLIC                (RV64_PLIC_PADDR + HAL_KERN_IO_BASE)
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ長 (単位: バイト) */
-#define RV64_PLIC_SIZE           (0x4000000)
+#define RV64_PLIC_SIZE           (ULONGLONG_C(0x4000000))
 
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ物理アドレス            */
 #define RV64_CLINT_PADDR         (ULONGLONG_C(0x02000000))
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ仮想アドレス            */
 #define RV64_CLINT               (RV64_CLINT_PADDR + HAL_KERN_IO_BASE)
 /** QEMU UART Core Local Interruptor(CLINT)レジスタサイズ                  */
-#define RV64_CLINT_SIZE          (0x10000)
+#define RV64_CLINT_SIZE          (ULONGLONG_C(0x10000))
 
 /** QEMU virtI/O MMIO Interface 物理アドレス */
 #define RV64_QEMU_VIRTIO0_PADDR  (ULONGLONG_C(0x10001000))
