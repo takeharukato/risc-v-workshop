@@ -57,12 +57,14 @@
 #define RV64_UART0_PADDR         (ULONGLONG_C(0x10000000))
 /** QEMU UART0 レジスタ仮想アドレス   */
 #define RV64_UART0               (RV64_UART0_PADDR + HAL_KERN_IO_BASE)
+/** QEMU UART0 レジスタ領域サイズ (単位:バイト)   */
+#define RV64_UART0_SIZE           (PAGE_SIZE)
 /** QEMU UART1 レジスタ物理アドレス   */
 #define RV64_UART1_PADDR         (ULONGLONG_C(0x10001000))
 /** QEMU UART1 レジスタ仮想アドレス   */
 #define RV64_UART1               (RV64_UART1_PADDR + HAL_KERN_IO_BASE)
-/** QEMU UART レジスタ領域サイズ     */
-#define RV64_UART_AREA_SIZE      (PAGE_SIZE*2)
+/** QEMU UART1 レジスタ領域サイズ (単位:バイト)   */
+#define RV64_UART1_SIZE           (PAGE_SIZE)
 /** QEMU UART 割込み番号 */
 #define RV64_UART0_IRQ           (10)
 
@@ -70,16 +72,22 @@
 #define RV64_PLIC_PADDR          (ULONGLONG_C(0x0C000000))
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ仮想アドレス   */
 #define RV64_PLIC                (RV64_PLIC_PADDR + HAL_KERN_IO_BASE)
+/** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ長 (単位: バイト) */
+#define RV64_PLIC_SIZE           (0x4000000)
 
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ物理アドレス            */
 #define RV64_CLINT_PADDR         (ULONGLONG_C(0x02000000))
 /** QEMU UART Core Local Interruptor(CLINT)レジスタ仮想アドレス            */
 #define RV64_CLINT               (RV64_CLINT_PADDR + HAL_KERN_IO_BASE)
+/** QEMU UART Core Local Interruptor(CLINT)レジスタサイズ                  */
+#define RV64_CLINT_SIZE          (0x10000)
 
 /** QEMU virtI/O MMIO Interface 物理アドレス */
 #define RV64_QEMU_VIRTIO0_PADDR  (ULONGLONG_C(0x10001000))
 /** QEMU virtI/O MMIO Interface 仮想アドレス */
 #define RV64_QEMU_VIRTIO0        (RV64_QEMU_VIRTIO0_PADDR + HAL_KERN_IO_BASE)
+/** QEMU virtI/O MMIO Interface レジスタサイズ */
+#define RV64_QEMU_VIRTIO0_SIZE   (PAGE_SIZE)
 /** QEMU virtI/O MMIO Interface 割込み番号   */
 #define RV64_QEMU_VIRTIO0_IRQ    (1)
 

@@ -16,14 +16,17 @@
 #include <hal/rv64-platform.h>
 #include <hal/hal-pgtbl.h>
 
+#define ENABLE_SHOW_PAGE_MAP
+
 /**
    ページマップ情報を表示する
    @param[in]  pgt    ページテーブル
    @param[in]  vaddr  仮想アドレス
    @param[in]  size   領域サイズ
  */
-static void __unused
-show_page_map(vm_pgtbl pgt, vm_vaddr vaddr, vm_size size){
+static void 
+show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused size){
+#if defined(ENABLE_SHOW_PAGE_MAP)
 	int               rc;
 	vm_vaddr   vaddr_sta;
 	vm_vaddr   vaddr_end;
@@ -49,6 +52,7 @@ show_page_map(vm_pgtbl pgt, vm_vaddr vaddr, vm_size size){
 		    ( (prot & VM_PROT_EXECUTE)      ? ('E') : ('-') ),
 		    ( (flags & VM_FLAGS_SUPERVISOR) ? ('S') : ('U') ));
 	}
+#endif  /*  ENABLE_SHOW_PAGE_MAP  */
 }
 
 /**
@@ -728,19 +732,39 @@ hal_map_kernel_space(vm_pgtbl *pgtp){
 		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
 		kassert_no_reach();
 	}
+	pgtbl->satp = tbl_paddr;
 
-	kprintf("Kernel base: %p I/O base:%p nr:%d\n", 
-	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, RV64_BOOT_PGTBL_VPN1_NR);
+	kprintf("Kernel base: %p I/O base:%p kpgtbl-vaddr: %p kpgtbl-paddr: %p\n", 
+	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, pgtbl->pgtbl_base, pgtbl->satp);
 
 	map_kernel_memory(pgtbl);
 	show_page_map(pgtbl, HAL_PHY_TO_KERN_STRAIGHT(HAL_KERN_PHY_BASE), 
 	    MIB_TO_BYTE(KC_PHYSMEM_MB) );
-#if 1
+
 	rc = hal_pgtbl_enter(pgtbl, RV64_UART0, RV64_UART0_PADDR,
 	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
-	    RV64_UART_AREA_SIZE);
-	show_page_map(pgtbl, RV64_UART0, RV64_UART_AREA_SIZE);
-#endif
+	    RV64_UART0_SIZE);
+	show_page_map(pgtbl, RV64_UART0, RV64_UART0_SIZE);
+
+	rc = hal_pgtbl_enter(pgtbl, RV64_UART1, RV64_UART1_PADDR,
+	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
+	    RV64_UART1_SIZE);
+	show_page_map(pgtbl, RV64_UART1, RV64_UART1_SIZE);
+
+	rc = hal_pgtbl_enter(pgtbl, RV64_PLIC, RV64_PLIC_PADDR,
+	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
+	    RV64_PLIC_SIZE);
+	show_page_map(pgtbl, RV64_PLIC, RV64_PLIC_SIZE);
+
+	rc = hal_pgtbl_enter(pgtbl, RV64_CLINT, RV64_CLINT_PADDR,
+	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
+	    RV64_CLINT_SIZE);
+	show_page_map(pgtbl, RV64_CLINT, RV64_CLINT_SIZE);
+
+	rc = hal_pgtbl_enter(pgtbl, RV64_QEMU_VIRTIO0, RV64_QEMU_VIRTIO0_PADDR,
+	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
+	    RV64_QEMU_VIRTIO0_SIZE);
+	show_page_map(pgtbl, RV64_QEMU_VIRTIO0, RV64_QEMU_VIRTIO0_SIZE);
 
 	*pgtp = pgtbl; /* カーネルページテーブルを返却  */
 
