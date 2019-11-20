@@ -53,10 +53,16 @@
 #define RV64_L1_DCACHE_COLOR_NUM \
 	( RV64_L1_DCACHE_SIZE / (RV64_L1_DCACHE_WAY * RV64_L1_DCACHE_LINESIZE) )
 
-/** QEMU UART レジスタ物理アドレス   */
+/** QEMU UART0 レジスタ物理アドレス   */
 #define RV64_UART0_PADDR         (ULONGLONG_C(0x10000000))
-/** QEMU UART レジスタ仮想アドレス   */
+/** QEMU UART0 レジスタ仮想アドレス   */
 #define RV64_UART0               (RV64_UART0_PADDR + HAL_KERN_IO_BASE)
+/** QEMU UART1 レジスタ物理アドレス   */
+#define RV64_UART1_PADDR         (ULONGLONG_C(0x10001000))
+/** QEMU UART1 レジスタ仮想アドレス   */
+#define RV64_UART1               (RV64_UART1_PADDR + HAL_KERN_IO_BASE)
+/** QEMU UART レジスタ領域サイズ     */
+#define RV64_UART_AREA_SIZE      (PAGE_SIZE*2)
 /** QEMU UART 割込み番号 */
 #define RV64_UART0_IRQ           (10)
 
