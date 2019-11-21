@@ -2,7 +2,7 @@ top=.
 include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 
-subdirs=kern klib test tools
+subdirs=kern klib hal test tools
 cleandirs=include ${subdirs}
 kernlibs=klib/libklib.a kern/libkern.a test/libktest.a hal/hal/libhal.a
 mconf=tools/kconfig/mconf
@@ -12,7 +12,6 @@ all:${targets}
 start_obj =
 ifeq ($(CONFIG_HAL),y)
 start_obj += hal/hal/boot.o
-subdirs += hal
 endif
 start_obj += kern/main.o
 
@@ -33,7 +32,7 @@ ifeq ($(CONFIG_HAL),y)
 	${CC} -static ${PIC_OPT_FLAGS} ${CFLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\
 		-o $@ ${start_obj} 				\
-		-Wl,--start-group ${kernlibs} ${hallibs} -Wl,--end-group
+		-Wl,--start-group ${kernlibs} -Wl,--end-group
 else
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} -Wl,--start-group ${kernlibs} -Wl,--end-group
 endif

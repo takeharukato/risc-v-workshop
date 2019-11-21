@@ -3,14 +3,12 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  RISC-V64 cpu cache routines                                       */
+/*  Pseudo cpu cache routines                                       */
 /*                                                                    */
 /**********************************************************************/
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
-
-#include <hal/rv64-platform.h>
 
 /**
    L1 データキャッシュラインサイズを返却する
@@ -19,7 +17,7 @@
 size_t
 hal_get_cpu_l1_dcache_linesize(void){
 
-	return RV64_L1_DCACHE_LINESIZE;
+	return 64; /* 64 byte */
 }
 /**
    L1 データキャッシュカラーリング数を返却する
@@ -28,8 +26,9 @@ hal_get_cpu_l1_dcache_linesize(void){
 obj_cnt_type
 hal_get_cpu_l1_dcache_color_num(void){
 
-	return RV64_L1_DCACHE_COLOR_NUM;
+	return KIB_TO_BYTE(32) / ( (8) * (64) ); /* 32KiB 8way 64 byte linesize */
 }
+
 /**
    L1 データキャッシュサイズを返却する
    @return データキャッシュサイズ (単位:バイト)
@@ -37,5 +36,5 @@ hal_get_cpu_l1_dcache_color_num(void){
 size_t
 hal_get_cpu_dcache_size(void){
 
-	return RV64_L1_DCACHE_SIZE;
+	return KIB_TO_BYTE(32);
 }
