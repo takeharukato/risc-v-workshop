@@ -33,11 +33,11 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 	/* メモリを0でフィル */
 	for(i = 0, cp8 = (uint8_t*)&buf[0];
 	    sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
-		*cp8 = 0;
+		*cp8++ = 0;
 	/* メモリをチェック */
 	for(i = 0, cp8 = (uint8_t*)&buf[0];
 	    sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
-		if ( *cp8 == 0 )
+		if ( *(cp8 + i) == 0 )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
@@ -45,7 +45,7 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 	/* 8バイト境界から1バイトづつずらしてmemsetを行い,
 	 * フィルされた内容を確認する
 	 */
-	len = sizeof(uint64_t) * TST_MEMSET1_BUF_NR;
+	len = sizeof(uint64_t) * TST_MEMSET1_BUF_NR - sizeof(uint64_t);
 	for( j = 0; TST_NR > j; ++j ) {
 
 		cp8 = (uint8_t*)&buf[0] + j;     /* 開始位置をセット */
@@ -57,11 +57,14 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 				ktest_pass( sp );
 			else
 				ktest_fail( sp );
-
+		if ( (uint8_t)buf[len - TST_NR] == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
 		/* メモリを0でフィル */
 		for(i = 0, cp8 = (uint8_t*)&buf[0];
 		    sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
-			*cp8 = 0;
+			*cp8++ = 0;
 	}
 }
 
