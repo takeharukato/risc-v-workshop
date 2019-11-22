@@ -48,12 +48,12 @@ memset(void *s, int c, size_t n){
 		 * 領域を埋める
 		 */
 retry64:
-		for( cp64 = (uint64_t *)cp8; len >= sizeof(uint64_t); len -= sizeof(uint64_t)) 
+		for( cp64 = (uint64_t *)cp8; len >= sizeof(uint64_t); 
+		     len -= sizeof(uint64_t)) 
 			*cp64++ = c64;
 
 		cp8 = (uint8_t *)cp64;  /* 残りバイトの先頭を指す */
 	}
-
 
 	if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 ) 
 	     && ( len >= sizeof(uint32_t) ) ) {
@@ -62,13 +62,17 @@ retry64:
 		 * 領域を埋める
 		 */
 retry32:
-		for( cp32 = (uint32_t *)cp8; len >= sizeof(uint32_t); len -= sizeof(uint32_t)) {
+		for( cp32 = (uint32_t *)cp8; len >= sizeof(uint32_t); 
+		     len -= sizeof(uint32_t)) {
 
-			*cp32++ = c32;		
-			cp8 = (uint8_t *)cp32; /* 残りバイトの先頭を指す */
+			*cp32++ = c32;
+
 			if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
-			     && ( len >= sizeof(uint64_t) ) )
-				goto retry64; /* 8バイト境界に到達したら8バイト単位フィルする */
+			    && ( len >= sizeof(uint64_t) ) ) {
+
+				cp8 = (uint8_t *)cp32; /* 残りバイトの先頭を指す */
+				goto retry64; /* 8バイト境界の場合8バイト単位フィルする */
+			}
 		}
 	}
 
@@ -78,11 +82,11 @@ retry32:
 		*cp8++ = (uint8_t)(c & 0xff);
 	
 		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
-		     && ( len >= sizeof(uint64_t) ) )
-			goto retry64;  /* 8バイト境界に到達したら, 8バイト単位でフィルをする */
+		    && ( len >= sizeof(uint64_t) ) ) 
+			goto retry64;  /* 8バイト境界の場合8バイト単位でフィルをする */
 
 		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 ) 
-		     && ( len >= sizeof(uint32_t) ) )
+		    && ( len >= sizeof(uint32_t) ) ) 
 			goto retry32;  /* 4バイト境界に到達したら, 4バイト単位でフィルする */
 	}
 	return s;
