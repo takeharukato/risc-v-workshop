@@ -171,4 +171,5 @@ void tflib_kernlayout_finalize(void);
 void tst_spinlock(void);
 void tst_atomic(void);
 void tst_atomic64(void);
+void tst_memset(void);
 #endif  /*  _KERN_KTEST_H  */

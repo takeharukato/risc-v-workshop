@@ -117,3 +117,4 @@ kernel.lds
 kernel.map
 include/klib/asm-offset.h
 asm-offset.s
+configs/hal
