@@ -48,5 +48,6 @@
 					    */
 #if !defined(ASM_FILE)
 int pgtbl_alloc_pgtbl_page(hal_pte **_tblp, vm_paddr *_paddrp);
+void pgtbl_copy_kmap_page(void *_dest, void *_src);
 #endif  /*  ASM_FILE  */
 #endif  /*  _KERN_PGTBL_H   */
