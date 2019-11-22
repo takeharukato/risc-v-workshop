@@ -90,6 +90,7 @@ prepare(uint64_t hartid){
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 
 		hal_map_kernel_space(&kpgtbl); /* カーネルページテーブルを初期化する */
+
 		kern_init();
 	} else {
 

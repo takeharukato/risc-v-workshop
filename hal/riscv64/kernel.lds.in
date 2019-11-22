@@ -15,11 +15,16 @@ SECTIONS
         *(.boot.text)
         *(.boot.data)
 
-	. = ALIGN(__PAGE_SIZE__ * __TSTACK_PAGES__);
+	. = ALIGN(__PAGE_SIZE__ * __KSTACK_PAGES__);
 	_bsp_stack_start = .; 
 	bsp_stack = .;
-	. += (__PAGE_SIZE__ * __TSTACK_PAGES__ * __CPUS_NR__);
+	. += (__PAGE_SIZE__ * __KSTACK_PAGES__ * __CPUS_NR__);
 	_bsp_stack_end = .;
+	. = ALIGN(__PAGE_SIZE__ * __ISTACK_PAGES__);
+	_mint_stack_start = .; 
+	mint_stack = .;
+	. += (__PAGE_SIZE__ * __ISTACK_PAGES__ * __CPUS_NR__);
+	_mint_stack_end = .;
     }
     . += __KERN_VMA_BASE;
     .text : AT(ADDR(.text) - __KERN_VMA_BASE) {

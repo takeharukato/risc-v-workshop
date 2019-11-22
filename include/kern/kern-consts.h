@@ -12,6 +12,8 @@
 #include <kern/kern-autoconf.h>
 
 #define KC_KSTACK_SIZE (CONFIG_HAL_PAGE_SIZE * CONFIG_KSTACK_PAGE_NR)
+#define KC_ISTACK_SIZE (CONFIG_HAL_PAGE_SIZE * CONFIG_ISTACK_PAGE_NR)
+
 #if defined(CONFIG_SMP)
 #define KC_CPUS_NR (CONFIG_HAL_CPUS_NR)
 #else

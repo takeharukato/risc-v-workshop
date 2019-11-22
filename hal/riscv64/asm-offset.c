@@ -36,6 +36,7 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(MSCRATCH_SAVED_SP, _mscratch_info, saved_sp);
 	OFFSET(MSCRATCH_HARTID, _mscratch_info, hartid);
 	OFFSET(MSCRATCH_MTIMECMP_PADDR, _mscratch_info, mtimecmp_paddr);
+	OFFSET(MSCRATCH_MTIME_PADDR, _mscratch_info, mtime_paddr);
 	OFFSET(MSCRATCH_TIMER_INTERVAL_CYC, _mscratch_info, timer_interval_cyc);
 
 	/*

@@ -23,6 +23,7 @@ typedef struct _mscratch_info{
 	uintptr_t          saved_sp;  /* マシンモードエントリ時のスタックポインタ保存領域   */
 	uint64_t             hartid;  /* hartid                                             */
 	uintptr_t    mtimecmp_paddr;  /* CLINT MTIMECMPレジスタの物理アドレス               */
+	uintptr_t       mtime_paddr;  /* CLINT MTIMEレジスタの物理アドレス                  */
 	uint64_t timer_interval_cyc;  /* タイマ周期 (単位: cycle)                           */
 }mscratch_info;
 #endif  /* !ASM_FILE */

@@ -33,10 +33,10 @@ ASMMAC_FUNCTION(entry)
 	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
 	*/
         csrr a0, mhartid      /* hartidを読み込む                        */
-	bne  a0, x0, loop     /* TODO: ページテーブル設定を待ち合わせる  */
+
         la a1, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
 	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
-	mul a6, a2, a0        /* BSPスタックの底から自CPUのスタックの底へのオフセットを計算 */
+	mul a6, a2, a0        /* BSPスタックの底から自hartスタックの底へのオフセットを計算 */
 	sub a3, a1, a6        /* 自hartのスタックの底を算出              */
 	sub a5, a3, a2        /* 自hartのスタックのトップを算出          */
 	li  a7, TI_THREAD_INFO_SIZE /* スレッド情報をスタックの底に設定  */
@@ -58,23 +58,25 @@ ASMMAC_FUNCTION(entry)
 	sw  a5, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化  */
 	sw  x0, TI_THR_OFFSET(a4)     /* 論理CPU番号初期化               */
 
-	mv  sp, a4        /* スレッド情報位置にスタックポインタ設定      */
+	mv  sp, a4                    /*  スレッド情報位置にスタックポインタ設定     */
+
+	bne  a0, x0, wait_bsp         /*  ページテーブル設定を待ち合わせる */
 	
 	/*
 	 * MMU設定/マシンモード情報テーブル設定 (BSPのみ実施)
 	 */
 	call setup_pre_pgtbl
 	call load_pre_pgtbl
-
-
 	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
 	la a2, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
 	ld a3, (a2)               /* mscratchテーブルのアドレスをロード */
-	
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	sub a3, a3, a1            /* mscratchテーブルの物理アドレスを算出   */
-	sd  a3, (a2)              /* mscratchテーブルの物理アドレスをストア */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	sd  a3, (a2)              /* mscratchテーブルの物理アドレスをストア */
+
+ap_boot: /* APの処理再開位置 */
+	call setup_machine_mode
 
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	/* スタックをアッパーハーフマッピングに合わせて再設定
@@ -108,9 +110,9 @@ ASMMAC_FUNCTION(entry)
 	mret                    /* マシンモードからの復帰によりスーパバイザモードに遷移 */
 junk:
         j junk
-loop:
+wait_bsp:
 	wfi                     /* CPUを休眠する */
-	j loop
+	j wait_bsp
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_DATA_SECTION
@@ -146,3 +148,4 @@ c_entry_addr:
 ASMMAC_BALIGN(16)
 mscratch_tbl_addr:
 	.dword mscratch_tbl  /* mscratch_tblのアドレスを格納 */
+
