@@ -8,6 +8,8 @@ objects = x64-cpucache.o x64-cpuintr.o x64-spinlock.o x64-atomic.o x64-atomic64.
 
 ifeq ($(CONFIG_HAL),y)
 objects += 
+else
+objects += x64-pframe.o
 endif
 
 depends = $(patsubst %.o,%.d,${objects})

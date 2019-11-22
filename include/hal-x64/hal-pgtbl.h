@@ -22,6 +22,8 @@ typedef struct _vm_pgtbl_type{
 }vm_pgtbl_type;
 
 typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
-
+void hal_flush_tlb(vm_pgtbl _pgt);
+int hal_pgtbl_extract(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr *paddrp, 
+    vm_prot *protp, vm_flags *flagsp, vm_size *pgsizep);
 #endif  /*  _HAL_PGTBL_H  */
 

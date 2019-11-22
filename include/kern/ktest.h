@@ -168,8 +168,14 @@ typedef struct _ktest_stats{
 
 int tflib_kernlayout_init(void);
 void tflib_kernlayout_finalize(void);
+int tflib_kvaddr_to_pfn(void *_kvaddr, obj_cnt_type *_pfnp);
+int tflib_pfn_to_kvaddr(obj_cnt_type _pfn, void **_kvaddrp);
+vm_paddr tflib_kern_straight_to_phy(void *_kvaddr);
+void *tflib_phy_to_kern_straight(vm_paddr _paddr);
 void tst_spinlock(void);
 void tst_atomic(void);
 void tst_atomic64(void);
 void tst_memset(void);
+
+void tst_rv64pgtbl(void);
 #endif  /*  _KERN_KTEST_H  */
