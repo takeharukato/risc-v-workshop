@@ -19,7 +19,7 @@ config CONFIG_HAL
 
 config CONFIG_HEAP_SIZE
 	int "heap memory size(UNIT:MB)"
-	default 64
+	default 4
 	range 1 768
 	help
 	  This sets the value of kernel heap memory size
