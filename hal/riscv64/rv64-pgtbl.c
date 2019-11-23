@@ -274,6 +274,7 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
 
 /**
    ページテーブルを伸張する
+   @param[in]  pgt          操作対象アドレス空間のページテーブル情報
    @param[in]  kvtbl        操作対象テーブルのカーネル仮想アドレス
    @param[in]  lvl          ページテーブルの段数(単位:段)
    @param[in]  vaddr        マップ先仮想アドレス
@@ -288,8 +289,8 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
    @retval    -ENOMEM       メモリ不足
  */
 static int
-grow_pgtbl(hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot, 
-    vm_flags flags, vm_size pgsize, bool *tbl_changedp, hal_pte **next_tbl){
+grow_pgtbl(vm_pgtbl pgt, hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr,
+    vm_prot prot, vm_flags flags, vm_size pgsize, bool *tbl_changedp, hal_pte **next_tbl){
 	int               rc;
 	int              idx;
 	bool             res;
@@ -341,7 +342,7 @@ grow_pgtbl(hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot
 	
 	/* ページテーブル割り当て
 	 */
-	rc = pgtbl_alloc_pgtbl_page(&new_tbl, &new_paddr);
+	rc = pgtbl_alloc_pgtbl_page(pgt, &new_tbl, &new_paddr);
 	if ( rc != 0 ) {
 		
 		rc = -ENOMEM;   /* メモリ不足  */
@@ -416,7 +417,7 @@ map_vaddr_to_paddr(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr,
 	 */
 	for(lvl = RV64_PGTBL_LVL_NR; lvl > 0; --lvl) {
 
-		rc = grow_pgtbl(cur_tbl, lvl - 1, vaddr, paddr, prot, flags, pgsize,
+		rc = grow_pgtbl(pgt, cur_tbl, lvl - 1, vaddr, paddr, prot, flags, pgsize,
 		    &tbl_changed, &next_tbl);  /* ページテーブルの伸張  */
 		if ( rc != 0 ) 			
 			goto error_out;
@@ -634,12 +635,64 @@ hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot,
 }
 
 /**
-   カーネルのページテーブルを返却する
+   カーネルのページテーブル情報を返却する
+   @return  カーネルのページテーブル情報
+   @note    TODO: プロセス管理実装後にrefer_kernel_proc()に置き換える
  */
 vm_pgtbl
 hal_refer_kernel_pagetable(void){
 	
 	return kpgtbl;
+}
+
+/**
+   ページテーブル情報のアーキ依存部を初期化する
+   @param[in] pgtbl  ページテーブル情報
+   @retval    0      正常終了
+ */
+int
+hal_pgtbl_init(vm_pgtbl pgtbl){
+
+	pgtbl->pgtbl_base = NULL;  /* ページテーブルベースを初期化 */
+	pgtbl->satp = 0;           /* SATPレジスタ値を初期化       */
+	pgtbl->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
+
+	return 0;
+}
+
+/**
+   カーネルのページテーブルをユーザ用ページテーブルにコピーする
+   @param[in] upgtbl ユーザ用ページテーブル情報
+   @retval    0      正常終了
+   @retval   -ENODEV ミューテックスが破棄された
+   @retval   -EINTR  非同期イベントを受信した
+   @note LO: ユーザページテーブル, カーネルページテーブルの順にロックする
+ */
+int
+hal_copy_kernel_pgtbl(vm_pgtbl upgtbl){
+	int rc;
+	
+	rc = mutex_lock(&upgtbl->mtx);  /* ユーザ空間側のロックを獲得する  */
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = mutex_lock(&kpgtbl->mtx);  /* カーネル空間側のロックを獲得する  */
+	if ( rc != 0 )
+		goto unlock_out;
+
+	/* カーネルのVPN2テーブル (ユーザ空間側が空になっているテーブル)を
+	 * コピーする
+	 */
+	vm_copy_kmap_page(upgtbl->pgtbl_base, kpgtbl->pgtbl_base);
+
+	mutex_unlock(&kpgtbl->mtx);    /* カーネル空間側のロックを解放する  */
+
+	mutex_unlock(&upgtbl->mtx);    /* ユーザ空間側のロックを解放する  */
+
+unlock_out:
+	mutex_unlock(&upgtbl->mtx);
+error_out:
+	return rc;
 }
 
 /**
@@ -655,8 +708,8 @@ hal_map_kernel_space(void){
 
 	/* カーネルのページテーブルを割り当てる
 	 */
-	pgtbl = kmalloc(sizeof(vm_pgtbl_type), KMALLOC_NORMAL);	
-	if ( pgtbl == NULL ) {
+	rc = pgtbl_alloc_pgtbl(&pgtbl);
+	if ( rc != 0 ) {
 	
 		kprintf("Can not allocate kernel page table\n");
 		kassert_no_reach();
@@ -664,7 +717,7 @@ hal_map_kernel_space(void){
 
 	/* カーネルのページテーブルベースページを割り当てる
 	 */
-	rc = pgtbl_alloc_pgtbl_page(&pgtbl->pgtbl_base, &tbl_paddr);
+	rc = pgtbl_alloc_pgtbl_page(pgtbl, &pgtbl->pgtbl_base, &tbl_paddr);
 	if ( rc != 0 ) {
 	
 		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);

@@ -10,6 +10,7 @@
 #include <kern/kern-common.h>
 #include <kern/ktest.h>
 #include <kern/page-if.h>
+#include <kern/vm.h>
 
 /** 
     カーネルのアーキ共通テスト

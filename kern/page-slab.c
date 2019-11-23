@@ -951,7 +951,7 @@ kfree(void *m){
  */
 void
 slab_prepare_preallocate_cahches(void){
-	int  __unused rc;
+	int           rc;
 	unsigned int   i;
 
 	for(i = 0; SLAB_PREALLOC_CACHE_NR > i; ++i) {

@@ -82,6 +82,7 @@ prepare(uint64_t hartid){
 		pfdb_mark_phys_range_reserved(kernel_start_phy, kheap_end_phy);
 
 		slab_prepare_preallocate_cahches(); /* SLABを初期化する */
+		vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
 
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 

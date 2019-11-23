@@ -116,6 +116,7 @@ vmprot_and_vmflags_to_pte(vm_prot prot, vm_flags flags, hal_pte *ptep){
 
 /**
    ページテーブルを伸張する
+   @param[in]  pgt          操作対象のページテーブル情報
    @param[in]  kvtbl        操作対象テーブルのカーネル仮想アドレス
    @param[in]  lvl          ページテーブルの段数(単位:段)
    @param[in]  vaddr        マップ先仮想アドレス
@@ -130,8 +131,8 @@ vmprot_and_vmflags_to_pte(vm_prot prot, vm_flags flags, hal_pte *ptep){
    @retval    -ENOMEM       メモリ不足
  */
 static int
-grow_pgtbl(hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot, 
-    vm_flags flags, vm_size pgsize, bool *tbl_changedp, hal_pte **next_tbl){
+grow_pgtbl(vm_pgtbl pgt, hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr,
+    vm_prot prot, vm_flags flags, vm_size pgsize, bool *tbl_changedp, hal_pte **next_tbl){
 	int               rc;
 	int              idx;
 	bool             res;
@@ -183,7 +184,7 @@ grow_pgtbl(hal_pte *kvtbl, int lvl, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot
 	
 	/* ページテーブル割り当て
 	 */
-	rc = pgtbl_alloc_pgtbl_page(&new_tbl, &new_paddr);
+	rc = pgtbl_alloc_pgtbl_page(pgt, &new_tbl, &new_paddr);
 	if ( rc != 0 ) {
 		
 		rc = -ENOMEM;   /* メモリ不足  */
@@ -350,6 +351,7 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
 		if ( pfdb_ref_page_use_count(tbl_pf) > 1 )
 			break;  /* 最終参照でない */
 
+		atomic_sub_fetch(&pgt->nr_pages, 1);  /* ページテーブルのページ数を減算 */
 		/* 下位のページの参照を落とす
 		 */
 		if ( lvl > min_lvl ) {
@@ -363,6 +365,9 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
 			kassert( rc == 0 );
 
 			kassert( pfdb_dec_page_use_count(low_pf) ); /* 最終参照のはず */
+
+			/* ページテーブルのページ数を減算 */
+			atomic_sub_fetch(&pgt->nr_pages, 1);  
 		}
 	}
 }
@@ -412,7 +417,7 @@ map_vaddr_to_paddr(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr,
 	 */
 	for(lvl = RV64_PGTBL_LVL_NR; lvl > 0; --lvl) {
 
-		rc = grow_pgtbl(cur_tbl, lvl - 1, vaddr, paddr, prot, flags, pgsize,
+		rc = grow_pgtbl(pgt, cur_tbl, lvl - 1, vaddr, paddr, prot, flags, pgsize,
 		    &tbl_changed, &next_tbl);  /* ページテーブルの伸張  */
 		if ( rc != 0 ) 			
 			goto error_out;
@@ -648,7 +653,7 @@ prepare_map(vm_pgtbl *pgtp){
 
 	/* カーネルのページテーブルベースページを割り当てる
 	 */
-	rc = pgtbl_alloc_pgtbl_page(&pgtbl->pgtbl_base, &tbl_paddr);
+	rc = pgtbl_alloc_pgtbl_page(pgtbl, &pgtbl->pgtbl_base, &tbl_paddr);
 	if ( rc != 0 ) {
 	
 		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
