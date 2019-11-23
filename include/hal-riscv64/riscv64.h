@@ -206,6 +206,7 @@
 /*
  * macuseレジスタ例外要因
  */
+#define MCAUSE_INTR          (regops_set_bit(MCAUSE_INTR_BIT))
 #define MCAUSE_IMISALIGN     (regops_set_bit(MCAUSE_IMISALIGN_BIT))
 #define MCAUSE_IACSFAULT     (regops_set_bit(MCAUSE_IACSFAULT_BIT))
 #define MCAUSE_ILLINST       (regops_set_bit(MCAUSE_ILLINST_BIT))
@@ -220,6 +221,25 @@
 #define MCAUSE_I_PGFAULT     (regops_set_bit(MCAUSE_I_PGFAULT_BIT))
 #define MCAUSE_LD_PGFAULT    (regops_set_bit(MCAUSE_LD_PGFAULT_BIT))
 #define MCAUSE_ST_PGFAULT    (regops_set_bit(MCAUSE_ST_PGFAULT_BIT))
+
+/*
+ * sacuseレジスタ例外要因
+ */
+#define SCAUSE_INTR          (regops_set_bit(MCAUSE_INTR_BIT))
+#define SCAUSE_IMISALIGN     (regops_set_bit(MCAUSE_IMISALIGN_BIT))
+#define SCAUSE_IACSFAULT     (regops_set_bit(MCAUSE_IACSFAULT_BIT))
+#define SCAUSE_ILLINST       (regops_set_bit(MCAUSE_ILLINST_BIT))
+#define SCAUSE_BRKPOINT      (regops_set_bit(MCAUSE_BRKPOINT_BIT))
+#define SCAUSE_LDMISALIGN    (regops_set_bit(MCAUSE_LDMISALIGN_BIT))
+#define SCAUSE_LDACSFAULT    (regops_set_bit(MCAUSE_LDACSFAULT_BIT))
+#define SCAUSE_STMISALIGN    (regops_set_bit(MCAUSE_STMISALIGN_BIT))
+#define SCAUSE_STACSFAULT    (regops_set_bit(MCAUSE_STACSFAULT_BIT))
+#define SCAUSE_ENVCALL_UMODE (regops_set_bit(MCAUSE_ENVCALL_UMODE_BIT))
+#define SCAUSE_ENVCALL_SMODE (regops_set_bit(MCAUSE_ENVCALL_SMODE_BIT))
+#define SCAUSE_ENVCALL_MMODE (regops_set_bit(MCAUSE_ENVCALL_MMODE_BIT))
+#define SCAUSE_I_PGFAULT     (regops_set_bit(MCAUSE_I_PGFAULT_BIT))
+#define SCAUSE_LD_PGFAULT    (regops_set_bit(MCAUSE_LD_PGFAULT_BIT))
+#define SCAUSE_ST_PGFAULT    (regops_set_bit(MCAUSE_ST_PGFAULT_BIT))
 
 /* 例外回送マスク */
 #define MEDELEG_MASK					\

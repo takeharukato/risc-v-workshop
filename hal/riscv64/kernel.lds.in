@@ -21,6 +21,11 @@ SECTIONS
 	. += (__PAGE_SIZE__ * __KSTACK_PAGES__ * __CPUS_NR__);
 	_bsp_stack_end = .;
 	. = ALIGN(__PAGE_SIZE__ * __ISTACK_PAGES__);
+	_intr_stack_start = .; 
+	intr_stack = .;
+	. += (__PAGE_SIZE__ * __ISTACK_PAGES__ * __CPUS_NR__);
+	_intr_stack_end = .;
+	. = ALIGN(__PAGE_SIZE__ * __ISTACK_PAGES__);
 	_mint_stack_start = .; 
 	mint_stack = .;
 	. += (__PAGE_SIZE__ * __ISTACK_PAGES__ * __CPUS_NR__);
@@ -43,13 +48,6 @@ SECTIONS
     . = ALIGN(__PAGE_SIZE__);
     .bss :  AT(ADDR(.bss) - __KERN_VMA_BASE) {
         __bss_start = .;
-
-	. = ALIGN(__PAGE_SIZE__ * __ISTACK_PAGES__);
-	_intr_stack_start = .; 
-	intr_stack = .;
-	. += (__PAGE_SIZE__ * __ISTACK_PAGES__ * __CPUS_NR__);
-	_intr_stack_end = .;
-
         *(.bss)
 	*(COMMON)
 	. = ALIGN(__PAGE_SIZE__);

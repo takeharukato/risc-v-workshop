@@ -5,7 +5,8 @@ include ${top}/Makefile.inc
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 objects = rv64-prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o rv64-sie.o \
 	rv64-cpuintr.o rv64-backtrace.o rv64-pgtbl.o rv64-bootmap.o rv64-mmu.o \
-	rv64-atomic.o rv64-atomic64.o rv64-pframe.o rv64-cpucache.o rv64-mmode.o
+	rv64-atomic.o rv64-atomic64.o rv64-pframe.o rv64-cpucache.o rv64-mmode.o \
+	rv64-vector.o rv64-traps.o
 ifeq ($(CONFIG_HAL),y)
 objects += boot.o rv64-dbg-console.o 
 endif
@@ -43,7 +44,7 @@ run-debug: ${QEMU_KERNEL}
 	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
 
 clean:
-	${RM} *.o *.d ${lib} vector.S asm-offset.s ${top}/include/hal/asm-offset.h
+	${RM} *.o *.d ${lib} kernel.lds asm-offset.s ${top}/include/hal/asm-offset.h
 
 distclean:clean
 	${RM} \#* *~

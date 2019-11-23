@@ -16,6 +16,7 @@
 #include <hal/rv64-platform.h>
 #include <hal/hal-dbg-console.h>
 #include <hal/rv64-mscratch.h>
+#include <hal/rv64-sscratch.h>
 
 /* BSS領域, カーネル領域算出用シンボル */
 extern uint64_t __bss_start, __bss_end;
@@ -25,8 +26,8 @@ static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開�
 static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終了物理アドレス */
 
 static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
-
-mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報  */
+mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報        */
+sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御情報  */
 
 void kern_init(void);
 

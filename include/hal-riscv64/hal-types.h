@@ -9,4 +9,6 @@
 #if !defined(_HAL_HAL_TYPES_H)
 #define  _HAL_HAL_TYPES_H 
 typedef uint64_t reg_type;
+typedef uint64_t scause_type;
+typedef uint64_t stval_type;
 #endif  /*  _HAL_HAL_TYPES_H  */

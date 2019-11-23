@@ -67,23 +67,27 @@ ASMMAC_FUNCTION(entry)
 	 */
 	call setup_pre_pgtbl
 	call load_pre_pgtbl
-	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
-	la a2, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
-	ld a3, (a2)               /* mscratchテーブルのアドレスをロード */
+
+	li a2, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	la a3, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
+	ld a1, (a3)               /* mscratchテーブルのアドレスをロード */
 #if defined(CONFIG_UPPERHALF_KERNEL)
-	sub a3, a3, a1            /* mscratchテーブルの物理アドレスを算出   */
+	sub a1, a1, a2            /* mscratchテーブルの物理アドレスを算出   */
+	sd  a1, (a1)              /* mscratchテーブルの物理アドレスをストア */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
-	sd  a3, (a2)              /* mscratchテーブルの物理アドレスをストア */
 
 ap_boot: /* APの処理再開位置 */
-	call setup_machine_mode
+	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 
+	call setup_machine_mode  /* マシンモードの設定を実施 */
 
-#if defined(CONFIG_UPPERHALF_KERNEL)
-	/* スタックをアッパーハーフマッピングに合わせて再設定
+	/*
+	 * 割込みベクタのセットアップ
 	 */
-	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
-	add sp, sp, a1
-#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	la a1, sscratch_tbl_addr  /* sscratchテーブルの仮想アドレスをロード */
+	ld a1, (a1)
+	/* 第1引数にhart, 第2引数にsscratchテーブルの物理アドレスを指定 */ 
+	call setup_vector  /* 割込みベクタの設定 */
+
 	/*
 	 * 割込み/例外の回送
 	 */
@@ -102,12 +106,19 @@ ap_boot: /* APの処理再開位置 */
 	and a1, a1, a2
 	li a2, MSTATUS_MPP_S  /* Machine Previous Privilege Modeを supervisor modeに設定 */
 	or a1, a1, a2         
-	csrw mstatus, a1        /* mstatusを更新                                     */
+	csrw mstatus, a1      /* mstatusを更新                                     */
 
-	la   t0, c_entry_addr   /* Cのエントリ関数アドレス格納変数のアドレスをロード */
-	ld   a1, (t0)           /* Cのエントリ関数のアドレスをロード                 */
-	csrw mepc, a1           /* Machine Exception Program Counterを更新           */
-	mret                    /* マシンモードからの復帰によりスーパバイザモードに遷移 */
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	/* スタックをアッパーハーフマッピングに合わせて再設定
+	 */
+	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	add sp, sp, a1
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
+	la   t0, c_entry_addr /* Cのエントリ関数アドレス格納変数のアドレスをロード */
+	ld   a1, (t0)         /* Cのエントリ関数のアドレスをロード                 */
+	csrw mepc, a1         /* Machine Exception Program Counterを更新           */
+	mret                  /* マシンモードからの復帰によりスーパバイザモードに遷移 */
 junk:
         j junk
 wait_bsp:
@@ -148,4 +159,8 @@ c_entry_addr:
 ASMMAC_BALIGN(16)
 mscratch_tbl_addr:
 	.dword mscratch_tbl  /* mscratch_tblのアドレスを格納 */
+
+ASMMAC_BALIGN(16)
+sscratch_tbl_addr:
+	.dword sscratch_tbl  /* sscratch_tblのアドレスを格納 */
 

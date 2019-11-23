@@ -22,6 +22,6 @@
 #if defined(CONFIG_HAL_MEMORY_SIZE_MB)
 #define KC_PHYSMEM_MB (CONFIG_HAL_MEMORY_SIZE_MB)
 #else
-#error "CONFIG_HAL_MEMORY_SIZE_MB is not set."
+#define KC_PHYSMEM_MB (64)
 #endif  /*  CONFIG_HAL_MEMORY_SIZE_MB  */
 #endif  /* KERN_KERN_CONSTS_H */

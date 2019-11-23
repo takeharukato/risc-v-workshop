@@ -12,8 +12,6 @@
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
-#include <hal/rv64-traps.h>
-#include <hal/rv64-pgtbl.h>
 
 /**
    マシンモードエントリ処理情報情報 (mscratchレジスタから参照)
