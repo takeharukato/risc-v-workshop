@@ -20,15 +20,19 @@ ARFLAGS=rvc
 INC_FLAGS = -I${top}/include
 WARN_FLAGS=-Wall -Werror
 OPT_FLAGS=-O0 -ggdb3
-PIC_OPT_FLAGS=-fno-pie -fno-pic -fno-PIC
-CFLAGS=${OPT_FLAGS} ${WARN_FLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS}) ${INC_FLAGS}
+ifeq ($(CONFIG_PROFILE),y)
+PROF_OPT_FLAGS=-fprofile-arcs -ftest-coverage -coverage 
+else
+PROF_OPT_FLAGS=
+endif
 # Disable PIE when possible (for Ubuntu 16.10)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
-CFLAGS += -fno-pie -no-pie
+PIC_OPT_FLAGS=-fno-pie -no-pie -fno-PIC
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
-CFLAGS += -fno-pie -nopie
+PIC_OPT_FLAGS=-fno-pie -nopie -fno-PIC
 endif
+CFLAGS=${OPT_FLAGS} ${WARN_FLAGS} ${PIC_OPT_FLAGS} ${PROF_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS}) ${INC_FLAGS}
 # CFLAGS for asm-offset.c
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 

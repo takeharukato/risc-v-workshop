@@ -22,8 +22,10 @@ kern_common_tests(void){
 	tst_spinlock();
 	tst_atomic();
 	tst_atomic64();
+#if defined(CONFIG_HAL)
 	tst_vmcopy();
 	tst_vmstrlen();
+#endif 
 #if !defined(CONFIG_HAL)
 	tst_rv64pgtbl();
 #endif 

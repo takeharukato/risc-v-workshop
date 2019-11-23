@@ -95,4 +95,11 @@ config CONFIG_TIMER_TIME_SLICE
        help
 	  This sets the value of the timer slice for each thread in the round robin scheduling class by tick counts.
 
+config CONFIG_PROFILE
+    bool "Collect function call coverage"
+    default n
+    help
+     collect profiling information
+    depends on !CONFIG_HAL
+
 source "configs/hal/Config.in"
