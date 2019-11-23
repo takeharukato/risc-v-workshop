@@ -18,6 +18,8 @@
 
 #define ENABLE_SHOW_PAGE_MAP
 
+static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
+
 /**
    ページマップ情報を表示する
    @param[in]  pgt    ページテーブル
@@ -631,13 +633,20 @@ hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot,
 	return 0;
 }
 
+/**
+   カーネルのページテーブルを返却する
+ */
+vm_pgtbl
+hal_refer_kernel_pagetable(void){
+	
+	return kpgtbl;
+}
 
 /**
    カーネル空間をマップする
-   @param[out] pgtp ページテーブル
  */
 void
-hal_map_kernel_space(vm_pgtbl *pgtp){
+hal_map_kernel_space(void){
 	int               rc;
 	vm_pgtbl       pgtbl;
 	vm_paddr   tbl_paddr;
@@ -712,7 +721,7 @@ hal_map_kernel_space(vm_pgtbl *pgtp){
 
 	rv64_write_satp(pgtbl->satp);  /* ページテーブル読み込み */
 
-	*pgtp = pgtbl; /* カーネルページテーブルを返却  */
+	kpgtbl = pgtbl; /* カーネルページテーブルを設定  */
 
 	return;
 }

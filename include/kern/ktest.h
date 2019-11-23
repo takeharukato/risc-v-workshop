@@ -176,6 +176,7 @@ void tst_spinlock(void);
 void tst_atomic(void);
 void tst_atomic64(void);
 void tst_memset(void);
-
+void tst_vmcopy(void);
 void tst_rv64pgtbl(void);
+void tst_vmstrlen(void);
 #endif  /*  _KERN_KTEST_H  */

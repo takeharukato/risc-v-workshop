@@ -9,6 +9,7 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
+#include <kern/kern-if.h>
 #include <kern/spinlock.h>
 #include <kern/page-if.h>
 #include <kern/vm.h>
@@ -18,20 +19,13 @@
 #include <hal/rv64-mscratch.h>
 #include <hal/rv64-sscratch.h>
 
-/* BSS領域, カーネル領域算出用シンボル */
-extern uint64_t __bss_start, __bss_end;
-extern uint64_t _kernel_start, _kheap_end;
-
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
 static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終了物理アドレス */
 
-static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
 mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報        */
 sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御情報  */
 
-void kern_init(void);
-
-static spinlock prepare_lock=__SPINLOCK_INITIALIZER;
+static spinlock prepare_lock=__SPINLOCK_INITIALIZER;  /* 初期化用排他ロック */
 
 /**
    物理メモリページプールの状態を表示
@@ -55,20 +49,20 @@ show_memory_stat(void) {
 	kprintf("\tpcache_pages: %qu\n", st.pcache_pages);
 }
 
+/**
+   Cエントリ関数
+ */
 void
 prepare(uint64_t hartid){
 	intrflags iflags;
 	pfdb_ent   *pfdb;
-	uint64_t *clrptr;
 
 	if ( hartid == 0 ) {
 
 		/*
 		 * BSSを初期化する
 		 */
-		for(clrptr = (uint64_t *)&__bss_start; (uint64_t *)&__bss_end > clrptr;
-		    ++clrptr) 
-			*clrptr = 0;
+		memset(&__bss_start, 0, (uintptr_t)&__bss_end - (uintptr_t)&__bss_start);
 
 		hal_dbg_console_init();  /* デバッグコンソールを初期化する  */
 
@@ -81,6 +75,7 @@ prepare(uint64_t hartid){
 		    HAL_KERN_PHY_BASE, HAL_KERN_PHY_BASE + MIB_TO_BYTE(KC_PHYSMEM_MB),
 			KC_PHYSMEM_MB);
 		pfdb_add(HAL_KERN_PHY_BASE, MIB_TO_BYTE(KC_PHYSMEM_MB), &pfdb);
+
 		/* カーネルメモリを予約する */
 		kprintf("Reserve kernel memory region [%p, %p)\n", 
 		    kernel_start_phy, kheap_end_phy);
@@ -90,7 +85,7 @@ prepare(uint64_t hartid){
 
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 
-		hal_map_kernel_space(&kpgtbl); /* カーネルページテーブルを初期化する */
+		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
 
 		kern_init();
 	} else {
