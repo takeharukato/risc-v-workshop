@@ -28,21 +28,23 @@ typedef atomic_val      refcnt_val;  /*< 参照カウンタ                  */
 typedef void *         private_inf;  /*< プライベート情報              */
 
 /*
- * スレッド管理
+ * スレッド情報
  */
-typedef obj_id                 tid;  /*< スレッドID                    */
 typedef uint32_t thread_info_magic;  /*< スタックマジック              */
 typedef uint32_t thread_info_flags;  /*< 例外出口関連フラグ            */
 typedef uint32_t     preempt_count;  /*< スレッドディスパッチ許可状態  */
+
+/*
+ * スレッド管理
+ */
+typedef obj_id                 tid;  /*< スレッドID                    */
 typedef uint32_t          thr_prio;  /*< スレッドの優先度              */
-typedef uint32_t thread_wait_flags;  /*< スレッド待ち合わせフラグ      */
+typedef uint32_t   proc_wait_flags;  /*< スレッド待ち合わせフラグ      */
 typedef uint64_t         exit_code;  /*< スレッド終了コード            */
-typedef uint64_t      thread_flags;  /*< スレッド属性フラグ            */
-typedef void *         kstack_type;  /*< カーネルスタック              */
 typedef uint32_t       mutex_flags;  /*< mutexの属性                   */
 
 /*
- * プロセス(タスク)管理
+ * プロセス管理
  */
 typedef obj_id                 pid;  /*< プロセスID                    */
 
@@ -85,31 +87,10 @@ typedef uint64_t         delay_cnt;  /*< ミリ秒以下のループ待ち指定
 typedef int64_t         epoch_time;  /*< エポックタイム  */
 
 /*
- * ローカルプロセス間通信
- */
-typedef int32_t          lpc_tmout;  /*< LPCのタイムアウト値           */
-typedef uint32_t    lpc_sync_flags;  /*< メッセージ送受信制御フラグ    */
-typedef uint64_t       lpc_msg_loc;  /*< メッセージ本文開始位置シンボル */
-typedef tid               endpoint;  /*< LPCの端点(pid/tid)             */
-
-/*
- * 非同期イベント
- */
-typedef uint64_t        events_map;  /*< 非同期イベントのビットマップ   */
-typedef obj_cnt_type      event_no;  /*< 非同期イベント番号             */
-typedef uint32_t       event_flags;  /*< カーネル内でのイベント処理フラグ */
-typedef int            event_errno;  /*< 非同期イベントエラー番号       */
-typedef int             event_code;  /*< 非同期イベントコード番号       */
-typedef int             event_trap;  /*< 非同期イベントトラップ番号     */
-typedef void *          event_data;  /*< 非同期イベント付帯情報         */
-typedef uint64_t   event_data_size;  /*< 非同期イベント付帯情報長
-					(単位:バイト)                   */
-/*
  * CPU管理/プラットフォーム管理
  */
 typedef uint64_t            cpu_id;  /*< CPU ID                        */
-typedef uint32_t    cross_call_num;  /*< クロスコール番号              */
-typedef uint32_t         pfm_flags;  /*< プラットフォームの状態        */
+
 /*
  * アーキテクチャ依存定義
  */

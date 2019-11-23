@@ -213,7 +213,6 @@ tflib_kernlayout_init(void){
 	uland_minfo.kheap = area[KHEAP_IDX].pmem; /* ヒープ領域のカーネル仮想アドレス設定 */
 	kassert( uland_minfo.kheap != NULL );
 
-	/* TODO: プラットフォーム情報から変換値を得ること  */
 	hal_kvaddr_to_phys(uland_minfo.kheap, &phys_start); /* 開始物理アドレス取得 */
 	/* ヒープ領域の初期化 */
 	ekheap_init((vm_paddr)phys_start, uland_minfo.kheap, uland_minfo.kheap_size);

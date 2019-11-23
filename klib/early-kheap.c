@@ -52,7 +52,6 @@ ekheap_stat(early_kernel_heap *st){
    初期カーネルヒープ内の仮想アドレスから物理アドレスを算出する
    @param[in] kvaddr  カーネル仮想アドレス
    @param[out] paddrp 物理アドレス返却領域
-   TODO: krn_platform_smaddr_to_paddrを使用して書き直す
  */
 void
 ekheap_kvaddr_to_paddr(void *kvaddr, void **paddrp){
@@ -72,7 +71,6 @@ ekheap_kvaddr_to_paddr(void *kvaddr, void **paddrp){
    初期カーネルヒープ内の物理アドレスから仮想アドレスを算出する
    @param[in]  paddr   物理アドレス
    @param[out] kvaddrp カーネル仮想アドレス返却領域
-   TODO: krn_platform_paddr_to_smaddrを使用して書き直す
  */
 void
 ekheap_paddr_to_kvaddr(void *paddr, void **kvaddrp){
