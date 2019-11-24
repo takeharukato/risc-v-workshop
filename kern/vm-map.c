@@ -152,6 +152,9 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 	vm_vaddr    sta_vaddr;
 	vm_vaddr    end_vaddr;
 	vm_vaddr    cur_vaddr;
+	vm_vaddr      sta_cpy;
+	vm_vaddr      end_cpy;
+	vm_vaddr      cur_cpy;
 	void      *src_kvaddr;
 	void     *dest_kvaddr;
 
@@ -208,6 +211,7 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 			kassert( rc == 0 );  /* マネージドページなので成功するはず */
 
 			dest_pgsize = PAGE_SIZE << order;  /*  コピー先のページサイズ */
+			kassert( src_pgsize == dest_pgsize );
 
 			/* メモリを獲得する */
 			rc = pgif_get_free_page_cluster(&dest_kvaddr, order, KMALLOC_NORMAL, 
@@ -215,8 +219,15 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 			if ( rc != 0 ) 
 				goto unmap_out;
 
-			/*  ページの内容をコピーする */
-			vm_copy_kmap_page(dest_kvaddr, src_kvaddr);
+			/*  ページの内容をコピーする
+			 *  @note vm_copy_kmap_pageはノーマルページサイズのコピー処理なので
+			 *  ラージページを考慮して, 獲得したコピー元のページサイズ分コピーを
+			 *  実施
+			 */
+			sta_cpy = (vm_vaddr)src_kvaddr;
+			end_cpy = (vm_vaddr)src_kvaddr + src_pgsize;
+			for( cur_cpy = sta_cpy; end_cpy > cur_cpy; cur_cpy += PAGE_SIZE)
+				vm_copy_kmap_page(dest_kvaddr, (void *)cur_cpy);
 			
 			/* コピー先ページの物理アドレスを得る */
 			rc = pfdb_kvaddr_to_paddr(dest_kvaddr, (void *)&dest_paddr);
@@ -224,7 +235,7 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 		}
 
 		/*  ページをマップする */
-		rc = hal_pgtbl_enter(dest, vaddr, dest_paddr, dest_prot, dest_flags, 
+		rc = hal_pgtbl_enter(dest, cur_vaddr, dest_paddr, dest_prot, dest_flags, 
 		    dest_pgsize);
 		if ( ( rc != 0 ) && ( ( dest_flags & VM_FLAGS_UNMANAGED ) == 0 ) ) {
 			

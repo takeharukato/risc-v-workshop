@@ -20,32 +20,53 @@ void show_page_map(vm_pgtbl pgt, vm_vaddr vaddr, vm_size size);
 static void
 vmmap1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
-	vm_pgtbl         pgt;
+	vm_pgtbl        pgt1;
+	vm_pgtbl        pgt2;
 
 #if !defined(CONFIG_HAL)
 	prepare_map();
 #endif  /*  CONFIG_HAL  */
 
-	rc = pgtbl_alloc_user_pgtbl(&pgt);
+	rc = pgtbl_alloc_user_pgtbl(&pgt1);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = vm_map_userpage(pgt, USER_VMA_ADDR, VM_PROT_READ|VM_PROT_EXECUTE, VM_FLAGS_USER, 
+	rc = pgtbl_alloc_user_pgtbl(&pgt2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vm_map_userpage(pgt1, USER_VMA_ADDR, VM_PROT_READ|VM_PROT_EXECUTE, VM_FLAGS_USER, 
 	    PAGE_SIZE, PAGE_SIZE*2);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	show_page_map(pgt, USER_VMA_ADDR, PAGE_SIZE*2);
+	show_page_map(pgt1, USER_VMA_ADDR, PAGE_SIZE*2);
 
-	rc = vm_unmap(pgt, USER_VMA_ADDR, VM_FLAGS_USER, PAGE_SIZE*2);
+	rc = vm_copy_range(pgt2, pgt1, USER_VMA_ADDR, VM_FLAGS_USER, PAGE_SIZE*2);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	show_page_map(pgt, USER_VMA_ADDR, PAGE_SIZE*2);
+	show_page_map(pgt2, USER_VMA_ADDR, PAGE_SIZE*2);
+
+	rc = vm_unmap(pgt2, USER_VMA_ADDR, VM_FLAGS_USER, PAGE_SIZE*2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	show_page_map(pgt2, USER_VMA_ADDR, PAGE_SIZE*2);
+
+	rc = vm_unmap(pgt1, USER_VMA_ADDR, VM_FLAGS_USER, PAGE_SIZE*2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	show_page_map(pgt1, USER_VMA_ADDR, PAGE_SIZE*2);
 }
 
 void
