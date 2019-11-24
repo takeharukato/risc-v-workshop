@@ -51,11 +51,12 @@ struct _proc;
 					    */
 #if !defined(ASM_FILE)
 typedef struct _vm_pgtbl_type{
-	struct _mutex       mtx;   /*< ページテーブル操作用mutex        */
-	hal_pte     *pgtbl_base;   /*< ページテーブルベース             */
-	struct _proc         *p;   /*< procへの逆リンク                 */
-	stat_cnt       nr_pages;   /*< ページテーブルを構成するページ数 */
-	struct _hal_pgtbl_md md;   /*< アーキテクチャ依存部             */
+	struct _mutex       mtx;   /*< ページテーブル操作用mutex                  */
+	hal_pte     *pgtbl_base;   /*< ページテーブルベース(カーネル仮想アドレス) */
+	vm_paddr  tblbase_paddr;   /*< ページテーブルベース(物理アドレス)         */
+	struct _proc         *p;   /*< procへの逆リンク                           */
+	stat_cnt       nr_pages;   /*< ページテーブルを構成するページ数           */
+	struct _hal_pgtbl_md md;   /*< アーキテクチャ依存部                       */
 }vm_pgtbl_type;
 
 void vm_pgtbl_cache_init(void);

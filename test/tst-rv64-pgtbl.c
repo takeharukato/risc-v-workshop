@@ -672,32 +672,19 @@ hal_refer_kernel_pagetable(void){
 
 /**
    ページテーブル情報のアーキ依存部を初期化する
-   @param[in] pgtbl  ページテーブル情報
+   @param[in] pgt  ページテーブル情報
  */
 void
-hal_pgtbl_init(vm_pgtbl pgtbl){
-	int               rc;
-	vm_paddr   tbl_paddr;
+hal_pgtbl_init(vm_pgtbl pgt){
 	hal_pgtbl_md     *md;
 
-	/* カーネルのページテーブルベースページを割り当てる
-	 */
-	rc = pgtbl_alloc_pgtbl_page(pgtbl, &pgtbl->pgtbl_base, &tbl_paddr);
-	if ( rc != 0 ) {
-	
-		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
-		kassert_no_reach();
-	}
-
-	md = &pgtbl->md;  /* ページテーブルアーキテクチャ依存部を参照 */
+	md = &pgt->md;  /* ページテーブルアーキテクチャ依存部を参照 */
 
 	/*
 	 * SATPレジスタ値を設定
 	 */
 	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
-	    tbl_paddr >> PAGE_SHIFT);
-
-	pgtbl->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
+	    pgt->tblbase_paddr >> PAGE_SHIFT);
 
 	return ;
 }

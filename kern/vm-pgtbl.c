@@ -67,11 +67,29 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 
 	/*  ページテーブル情報のキャッシュからメモリを割り当てる */
 	rc = slab_kmem_cache_alloc(&pgtbl_cache, KMALLOC_NORMAL, (void **)&pgt);
-	kassert( rc == 0 );
+	if ( rc != 0 ) {
+	
+		kprintf("Can not allocate kernel page table cache.\n");
+		kprintf("Machine Dependent (MD) part might have not initialized "
+		    "prealloc-caches (kmalloc).\n");
+		kassert_no_reach();
+	}
+
+
+	/* カーネルのページテーブルベースページを割り当てる
+	 */
+	rc = pgtbl_alloc_pgtbl_page(pgt, &pgt->pgtbl_base, &pgt->tblbase_paddr);
+	if ( rc != 0 ) {
+	
+		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
+		kassert_no_reach();
+	}
 
 	mutex_init(&pgt->mtx);          /* ミューテックスの初期化              */
 	statcnt_set(&pgt->nr_pages, 0);  /* ページテーブルのページ数を0に初期化 */
 	hal_pgtbl_init(pgt);            /* アーキ依存部の初期化                */
+
+	pgt->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
 
 	*pgtp = pgt;            /* ページテーブル情報を返却する */
 
@@ -113,8 +131,8 @@ pgtbl_free_user_pgtbl(vm_pgtbl pgt){
 	rc = mutex_lock(&pgt->mtx);              /* ミューテックスの獲得           */
 	kassert( rc == 0 );  /* オブジェクト破棄にはならないはず */
 
-	/* ページテーブル解放済みであることを確認する */
-	kassert(statcnt_read(&pgt->nr_pages) == 0);  
+	/* ベースページテーブル以外のテーブルが解放済みであることを確認する */
+	kassert(statcnt_read(&pgt->nr_pages) == 1);  
 
 	mutex_unlock(&pgt->mtx);            /* ミューテックスの解放           */
 
