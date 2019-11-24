@@ -40,9 +40,10 @@ enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 void
 wque_init_wait_queue(wque_waitqueue *wque){
 
-	spinlock_init(&wque->lock);         /* ロックの初期化   */
-	queue_init(&wque->que);             /* キューの初期化   */
-	wque->wqflag = WQUE_WAKEFLAG_ALL;   /* 起床方法の初期化 */
+	spinlock_init(&wque->lock);         /* ロックの初期化             */
+	queue_init(&wque->que);             /* キューの初期化             */
+	queue_init(&wque->prio_que);        /* 優先度継承キューの初期化   */
+	wque->wqflag = WQUE_WAKEFLAG_ALL;   /* 起床方法の初期化           */
 }
 
 /**

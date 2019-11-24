@@ -38,9 +38,10 @@ typedef enum _wque_reason{
 /** ウエイトキュー
  */
 typedef struct _wque_waitqueue{
-	struct _spinlock lock; /*< スピンロック   */
-	struct _queue     que; /*< ウエイトキュー */
-	wque_wakeflag  wqflag; /*< 起床方法       */
+	struct _spinlock      lock; /*< スピンロック         */
+	struct _queue          que; /*< ウエイトキュー       */
+	struct _queue     prio_que; /*< 優先度継承管理キュー */
+	wque_wakeflag       wqflag; /*< 起床方法             */
 }wque_waitqueue;
 
 /** ウエイトキューエントリ
