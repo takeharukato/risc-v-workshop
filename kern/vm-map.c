@@ -90,7 +90,7 @@ error_out:
    @note      ページ単位でのアンマップを行う
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
-static int __unused
+static int
 vm_map_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, vm_size pgsize){
 	int               rc;
 	vm_paddr       paddr;
@@ -337,6 +337,7 @@ error_out:
    @param[in]  pgsize     マップ時に使用するページサイズ (単位: バイト)
    @param[in]  size       マップする領域長 (単位: バイト)
    @retval     0          正常終了
+   @retval    -EINVAL     不正な仮想アドレス/マップ属性を指定した
    @retval    -ENOENT     ページテーブルまたはラージページがマップされていない
    @retval    -ESRCH      ページがマップされていない
    @note      ページ単位でのアンマップを行う
@@ -349,11 +350,21 @@ vm_map_userpage(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags,
 	vm_vaddr    sta_vaddr;
 	vm_vaddr    end_vaddr;
 	vm_vaddr    map_vaddr;
+	vm_flags    map_flags;
+
+	/* 物理メモリで, かつ, ユーザアクセスページのみをアンマップすることを確認 */
+	kassert( ( flags & ( VM_FLAGS_UNMANAGED | VM_FLAGS_SUPERVISOR ) ) == 0 );
 
 	/* 転送元アドレスと転送先アドレスをページ境界にそろえる
 	 */
 	sta_vaddr = PAGE_TRUNCATE(vaddr);         /* 開始仮想アドレス */
 	end_vaddr = PAGE_ROUNDUP(vaddr + size);   /* 終了仮想アドレス */
+
+	/*
+	 * 引数チェック
+	 */
+	if ( end_vaddr < sta_vaddr )
+		return -EINVAL;
 
 	rc = mutex_lock(&pgt->mtx);	 /*  アドレス空間のページテーブルmutexを獲得する */
 	if ( rc != 0 )
@@ -364,7 +375,8 @@ vm_map_userpage(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags,
 	 */
 	for( map_vaddr = sta_vaddr; end_vaddr > map_vaddr; ) {
 
-		rc = vm_map_common(pgt, map_vaddr, prot, flags, pgsize);
+		map_flags = flags & ~( VM_FLAGS_UNMANAGED | VM_FLAGS_SUPERVISOR );
+		rc = vm_map_common(pgt, map_vaddr, prot, map_flags, pgsize);
 		if ( rc != 0 )
 			goto unmap_out;
 

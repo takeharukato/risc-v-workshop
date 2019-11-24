@@ -179,4 +179,5 @@ void tst_memset(void);
 void tst_vmcopy(void);
 void tst_rv64pgtbl(void);
 void tst_vmstrlen(void);
+void tst_vmmap(void);
 #endif  /*  _KERN_KTEST_H  */

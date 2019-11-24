@@ -31,7 +31,7 @@ typedef struct _vm_pgtbl_type{
 typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
 
 vm_pgtbl hal_refer_kernel_pagetable(void);
-int hal_pgtbl_init(vm_pgtbl pgtbl);
+void hal_pgtbl_init(vm_pgtbl pgtbl);
 int hal_pgtbl_enter(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_paddr _paddr, vm_prot _prot, 
     vm_flags _flags, vm_size _len);
 int hal_pgtbl_extract(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_paddr *_paddrp, 

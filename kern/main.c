@@ -22,6 +22,7 @@ kern_common_tests(void){
 	tst_spinlock();
 	tst_atomic();
 	tst_atomic64();
+	tst_vmmap();
 #if defined(CONFIG_HAL)
 	tst_vmcopy();
 	tst_vmstrlen();
@@ -45,6 +46,8 @@ main(int argc, char *argv[]) {
 	kprintf("Kernel\n");
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();
+	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
+
 	kern_common_tests();
 	tflib_kernlayout_finalize();
 	return 0;

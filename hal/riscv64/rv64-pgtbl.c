@@ -650,16 +650,23 @@ hal_refer_kernel_pagetable(void){
 /**
    ページテーブル情報のアーキ依存部を初期化する
    @param[in] pgtbl  ページテーブル情報
-   @retval    0      正常終了
  */
-int
+void
 hal_pgtbl_init(vm_pgtbl pgtbl){
+	int               rc;
 
-	pgtbl->pgtbl_base = NULL;  /* ページテーブルベースを初期化 */
-	pgtbl->satp = 0;           /* SATPレジスタ値を初期化       */
+	/* カーネルのページテーブルベースページを割り当てる
+	 */
+	rc = pgtbl_alloc_pgtbl_page(pgtbl, &pgtbl->pgtbl_base, &tbl_paddr);
+	if ( rc != 0 ) {
+	
+		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
+		kassert_no_reach();
+	}
+
 	pgtbl->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
 
-	return 0;
+	return ;
 }
 
 /**
@@ -712,7 +719,6 @@ void
 hal_map_kernel_space(void){
 	int               rc;
 	vm_pgtbl       pgtbl;
-	vm_paddr   tbl_paddr;
 	vm_vaddr   vaddr_sta;
 	vm_paddr       paddr;
 
@@ -724,17 +730,6 @@ hal_map_kernel_space(void){
 		kprintf("Can not allocate kernel page table\n");
 		kassert_no_reach();
 	}
-
-	/* カーネルのページテーブルベースページを割り当てる
-	 */
-	rc = pgtbl_alloc_pgtbl_page(pgtbl, &pgtbl->pgtbl_base, &tbl_paddr);
-	if ( rc != 0 ) {
-	
-		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
-		kassert_no_reach();
-	}
-	pgtbl->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
-	    tbl_paddr >> PAGE_SHIFT);
 
 	kprintf("Kernel base: %p I/O base:%p kpgtbl-vaddr: %p kpgtbl-paddr: %p\n", 
 	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, pgtbl->pgtbl_base, pgtbl->satp);

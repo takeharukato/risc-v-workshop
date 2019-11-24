@@ -70,7 +70,6 @@ endchoice
 config CONFIG_UPPERHALF_KERNEL
     bool "Use Upper Half Kernel"
     default n
-    depends on CONFIG_HAL
     help
       Kernel virtual memory is placed onto upper half of virtual memory space.
 
