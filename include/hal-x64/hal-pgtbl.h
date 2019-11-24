@@ -10,24 +10,17 @@
 #define  _HAL_PGTBL_H 
 
 #include <klib/freestanding.h>
-#include <klib/atomic.h>
 #include <kern/mutex.h>
-
-struct _proc;
-
-typedef uint64_t     hal_pte;        /*< ページテーブルエントリ */
+#include <hal/hal-types.h>
 
 /**
-   ページテーブル
+   RISC-V64 ページテーブル アーキテクチャ依存部
  */
-typedef struct _vm_pgtbl_type{
-	struct _mutex   mtx;       /*< ページテーブル操作用mutex        */
-	uint64_t *pgtbl_base;      /*< ページテーブルベース             */
-	uint64_t        satp;
-	struct _proc      *p;      /*< procへの逆リンク                 */
-	atomic     nr_pages;       /*< ページテーブルを構成するページ数 */
-}vm_pgtbl_type;
+typedef struct _hal_pgtbl_md{
+	reg_type       satp;        /*< SATPレジスタ値                   */
+}hal_pgtbl_md;
 
+typedef uint64_t                hal_pte;  /*< ページテーブルエントリ */
 typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
 
 vm_pgtbl hal_refer_kernel_pagetable(void);

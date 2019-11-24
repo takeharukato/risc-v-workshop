@@ -13,6 +13,8 @@
 #include <kern/kern-types.h>
 #include <hal/hal-pgtbl.h>
 
+struct _proc;
+
 #define VM_PROT_ACS_SHIFT    (0)        /*< アクセス属性へのシフト値  */
 #define VM_PROT_ACS_MASK						\
 	( (0xff) << VM_PROT_ACS_SHIFT ) /*< アクセス属性のマスク値  */
@@ -47,6 +49,13 @@
 					       - ユーザマップ
 					    */
 #if !defined(ASM_FILE)
+typedef struct _vm_pgtbl_type{
+	struct _mutex       mtx;   /*< ページテーブル操作用mutex        */
+	hal_pte     *pgtbl_base;   /*< ページテーブルベース             */
+	struct _proc         *p;   /*< procへの逆リンク                 */
+	atomic         nr_pages;   /*< ページテーブルを構成するページ数 */
+	struct _hal_pgtbl_md md;   /*< アーキテクチャ依存部             */
+}vm_pgtbl_type;
 
 void vm_pgtbl_cache_init(void);
 int pgtbl_alloc_pgtbl(vm_pgtbl *_pgtp);

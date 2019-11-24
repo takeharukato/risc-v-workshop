@@ -675,6 +675,7 @@ void
 hal_pgtbl_init(vm_pgtbl pgtbl){
 	int               rc;
 	vm_paddr   tbl_paddr;
+	hal_pgtbl_md     *md;
 
 	/* カーネルのページテーブルベースページを割り当てる
 	 */
@@ -685,10 +686,12 @@ hal_pgtbl_init(vm_pgtbl pgtbl){
 		kassert_no_reach();
 	}
 
+	md = &pgtbl->md;  /* ページテーブルアーキテクチャ依存部を参照 */
+
 	/*
 	 * SATPレジスタ値を設定
 	 */
-	pgtbl->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
+	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
 	    tbl_paddr >> PAGE_SHIFT);
 
 	pgtbl->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
@@ -745,6 +748,7 @@ prepare_map(void){
 	vm_pgtbl       pgtbl;
 	vm_vaddr   vaddr_sta;
 	vm_paddr       paddr;
+	hal_pgtbl_md     *md;
 
 	/* カーネルのページテーブルを割り当てる
 	 */
@@ -755,8 +759,10 @@ prepare_map(void){
 		kassert_no_reach();
 	}
 
+	md = &pgtbl->md;  /* ページテーブルアーキテクチャ依存部を参照 */
+
 	kprintf("Kernel base: %p I/O base:%p kpgtbl-vaddr: %p kpgtbl-paddr: %p\n", 
-	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, pgtbl->pgtbl_base, pgtbl->satp);
+	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, pgtbl->pgtbl_base, md->satp);
 
 	/* マップ範囲の仮想アドレスと開始物理アドレスを算出
 	 */
@@ -801,7 +807,7 @@ prepare_map(void){
 	    RV64_QEMU_VIRTIO0_SIZE);
 	show_page_map(pgtbl, RV64_QEMU_VIRTIO0, RV64_QEMU_VIRTIO0_SIZE);
 #endif
-	//rv64_write_satp(pgtbl->satp);  /* ページテーブル読み込み */
+	//rv64_write_satp(md->satp);  /* ページテーブル読み込み */
 
 	kpgtbl = pgtbl; /* カーネルページテーブルを設定  */
 
