@@ -37,7 +37,6 @@ vm_unmap_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size size, bool
 	vm_vaddr   sta_vaddr;
 	vm_vaddr   end_vaddr;
 	vm_vaddr   cur_vaddr;
-	void         *kvaddr;
 
 	/* 転送元アドレスと転送先アドレスをページ境界にそろえる
 	 */
@@ -54,20 +53,11 @@ vm_unmap_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size size, bool
 
 		unmap_flags = flags | map_flags; /* アンマップに使用するフラグ値を算出 */
 		
-		/* ページをアンマップする */
-		hal_pgtbl_remove(pgt, cur_vaddr, unmap_flags, map_pgsize);
-
-		/* ページプール内で管理されているページを割り当てている場合は,
+		/* ページをアンマップする
+		 * ページプール内で管理されているページを割り当てている場合は,
 		 * ページを解放する
 		 */
-		if ( ( unmap_flags & VM_FLAGS_UNMANAGED ) == 0 ) {
-
-			/* コピー元のページのカーネル仮想アドレスを算出する */
-			rc = pfdb_paddr_to_kvaddr((void *)map_paddr, &kvaddr);
-			kassert( rc == 0 );  /* マネージドページなので成功するはず */
-
-			pgif_free_page(kvaddr);  /* ページを解放する */
-		}
+		hal_pgtbl_remove(pgt, cur_vaddr, unmap_flags, map_pgsize);
 
 		cur_vaddr += map_pgsize;  /* 次のページを処理する */
 	}
@@ -96,6 +86,7 @@ vm_map_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, vm_siz
 	vm_paddr       paddr;
 	void         *kvaddr;
 	page_order     order;
+	page_frame       *pf;
 
 	/* 転送元アドレスと転送先アドレスをページ境界にそろえる
 	 */
@@ -120,7 +111,12 @@ vm_map_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, vm_siz
 	rc = hal_pgtbl_enter(pgt, vaddr, paddr, prot, flags, pgsize);
 	if ( rc != 0 ) 
 		goto error_out;
-	
+
+	rc = pfdb_kvaddr_to_page_frame(kvaddr, &pf);
+	kassert( rc == 0 );
+
+	kassert(pfdb_ref_page_use_count(pf) > 0);
+
 	return 0;
 
 error_out:

@@ -9,12 +9,14 @@
 
 #include <kern/ktest.h>
 
+#define USER_VMA_ADDR (0x10000)
+
 #if !defined(CONFIG_HAL)
 void prepare_map(void);
 #endif  /*  CONFIG_HAL  */
 
 static ktest_stats tstat_vmmap=KTEST_INITIALIZER;
-
+void show_page_map(vm_pgtbl pgt, vm_vaddr vaddr, vm_size size);
 static void
 vmmap1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
@@ -29,6 +31,21 @@ vmmap1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	rc = vm_map_userpage(pgt, USER_VMA_ADDR, VM_PROT_READ|VM_PROT_EXECUTE, VM_FLAGS_USER, 
+	    PAGE_SIZE, PAGE_SIZE*2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	show_page_map(pgt, USER_VMA_ADDR, PAGE_SIZE*2);
+
+	rc = vm_unmap(pgt, USER_VMA_ADDR, VM_FLAGS_USER, PAGE_SIZE*2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	show_page_map(pgt, USER_VMA_ADDR, PAGE_SIZE*2);
 }
 
 void

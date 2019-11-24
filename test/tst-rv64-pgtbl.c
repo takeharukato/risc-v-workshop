@@ -41,7 +41,7 @@ static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
    @param[in]  vaddr  仮想アドレス
    @param[in]  size   領域サイズ
  */
-static void 
+void 
 show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused size){
 #if defined(ENABLE_SHOW_PAGE_MAP)
 	int               rc;
@@ -61,7 +61,12 @@ show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused s
 
 		rc = hal_pgtbl_extract(pgt, cur_vaddr, &cur_paddr, 
 		    &prot, &flags, &pgsize);
-		kassert( rc == 0 );
+		if ( rc != 0 ) {
+
+			kprintf("vaddr=%p has no map.\n", cur_vaddr);
+			continue;
+		}
+
 		kprintf("vaddr=%p paddr=%p pgsize=%ld prot=[%c|%c|%c] flags=[%c]\n",
 		    cur_vaddr, cur_paddr, pgsize,
 		    ( (prot & VM_PROT_READ)         ? ('R') : ('-') ),

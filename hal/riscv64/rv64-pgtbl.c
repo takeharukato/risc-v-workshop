@@ -26,7 +26,7 @@ static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
    @param[in]  vaddr  仮想アドレス
    @param[in]  size   領域サイズ
  */
-static void 
+void 
 show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused size){
 #if defined(ENABLE_SHOW_PAGE_MAP)
 	int               rc;
@@ -46,7 +46,11 @@ show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused s
 
 		rc = hal_pgtbl_extract(pgt, cur_vaddr, &cur_paddr, 
 		    &prot, &flags, &pgsize);
-		kassert( rc == 0 );
+		if ( rc != 0 ) {
+
+			kprintf("vaddr=%p has no map.\n", cur_vaddr);
+			continue;
+		}
 		kprintf("vaddr=%p paddr=%p pgsize=%ld prot=[%c|%c|%c] flags=[%c]\n",
 		    cur_vaddr, cur_paddr, pgsize,
 		    ( (prot & VM_PROT_READ)         ? ('R') : ('-') ),
@@ -654,6 +658,7 @@ hal_refer_kernel_pagetable(void){
 void
 hal_pgtbl_init(vm_pgtbl pgtbl){
 	int               rc;
+	vm_paddr   tbl_paddr;
 
 	/* カーネルのページテーブルベースページを割り当てる
 	 */
@@ -663,6 +668,12 @@ hal_pgtbl_init(vm_pgtbl pgtbl){
 		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
 		kassert_no_reach();
 	}
+
+	/*
+	 * SATPレジスタ値を設定
+	 */
+	pgtbl->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
+	    tbl_paddr >> PAGE_SHIFT);
 
 	pgtbl->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
 

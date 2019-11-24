@@ -14,9 +14,9 @@
 
 #include <sys/mman.h>
 
-#define AREA_NUM         (5)
+#define MEM_AREA_SIZE    (MIB_TO_BYTE(4))
+#define AREA_NUM         (MIB_TO_BYTE(KC_PHYSMEM_MB)/MEM_AREA_SIZE)
 #define NORMAL_AREA_NUM  (AREA_NUM - 1)
-#define MEM_AREA_SIZE    (ULONG_C(4*1024*1024))
 #define KHEAP_IDX        (AREA_NUM - 1)
 
 static struct _uland_minfo{

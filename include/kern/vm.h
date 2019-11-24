@@ -59,5 +59,7 @@ size_t vm_memmove(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src
     size_t _len);
 int vm_copy_range(vm_pgtbl _dest, vm_pgtbl _src, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
 int vm_unmap(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
+int vm_map_userpage(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_prot _prot, vm_flags _flags,
+    vm_size _pgsize, vm_size _size);
 #endif  /*  ASM_FILE  */
 #endif  /*  _KERN_PGTBL_H   */
