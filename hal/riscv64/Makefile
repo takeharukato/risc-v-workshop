@@ -34,7 +34,7 @@ kernel.lds: kernel.lds.in ${top}/.config
 	       -e 's|__KSTACK_PAGES__|${CONFIG_KSTACK_PAGE_NR}|g'	\
 	       -e 's|__ISTACK_PAGES__|${CONFIG_ISTACK_PAGE_NR}|g'	\
 	       -e 's|__KERN_VMA_BASE__|${CONFIG_HAL_KERN_VMA_BASE}|g'	\
-	       -e 's|__CPUS_NR__|${CONFIG_HAL_CPUS_NR}|g'         \
+	       -e 's|__CPUS_NR__|${CONFIG_CPUS_NR}|g'         \
 	$< > $@
 
 run: ${QEMU_KERNEL}

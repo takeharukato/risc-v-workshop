@@ -11,11 +11,20 @@ config CONFIG_SMP
 	help
 	  If you wish to build the kernel for multi-processor system, then answer Y here.
 
-config CONFIG_HAL
-	bool "Hardware Abstraction Layer(HAL)"
-	default n
-	help
-	  If you wish to build the kernel for real hardware, then answer Y here.
+source "configs/hal/Config.in"
+
+config CONFIG_CPUS_NR
+       prompt "Max cpus"
+       int
+       default 1 if !CONFIG_SMP
+       default 4 if CONFIG_SMP
+       range 1 4
+
+config CONFIG_UPPERHALF_KERNEL
+    bool "Use Upper Half Kernel"
+    default n
+    help
+      Kernel virtual memory is placed onto upper half of virtual memory space.
 
 config CONFIG_HEAP_SIZE
 	int "heap memory size(UNIT:MB)"
@@ -45,49 +54,6 @@ config CONFIG_ISTACK_PAGE_NR
 	help
 	  This sets the value of interrupt stack size
 
-choice
-    prompt "Timer Interval"
-    default CONFIG_TIMER_INTERVAL_MS_10MS
-    depends on CONFIG_HAL
-
-config CONFIG_TIMER_INTERVAL_MS_1MS
-    bool "1 milliseconds"
-    help
-      This sets timer tick as 1 milliseconds.
-
-config CONFIG_TIMER_INTERVAL_MS_10MS
-    bool "10 milliseconds"
-    help
-      This sets timer tick as 10 milliseconds.
-
-config CONFIG_TIMER_INTERVAL_MS_100MS
-    bool "100 milliseconds"
-    help
-      This sets timer tick as 100 milliseconds.
-
-endchoice
-
-config CONFIG_UPPERHALF_KERNEL
-    bool "Use Upper Half Kernel"
-    default n
-    help
-      Kernel virtual memory is placed onto upper half of virtual memory space.
-
-config CONFIG_TIMER_INTERVAL_MS
-       int 
-       default 1 if CONFIG_TIMER_INTERVAL_MS_1MS
-       depends on CONFIG_HAL
-
-config CONFIG_TIMER_INTERVAL_MS
-       int
-       default 10 if CONFIG_TIMER_INTERVAL_MS_10MS
-       depends on CONFIG_HAL
-
-config CONFIG_TIMER_INTERVAL_MS
-       int 
-       default 100 if CONFIG_TIMER_INTERVAL_MS_100MS
-       depends on CONFIG_HAL
-
 config CONFIG_TIMER_TIME_SLICE
        int "Timer slice of threads (UNIT: ticks)"
        default 10
@@ -100,5 +66,3 @@ config CONFIG_PROFILE
     help
      collect profiling information
     depends on !CONFIG_HAL
-
-source "configs/hal/Config.in"

@@ -1,19 +1,8 @@
-config CONFIG_HAL_CFLAGS
-       prompt "CFLAGS for Hardware Abstraction Layer"
-       string
-       default "-ffreestanding -fno-common -mno-relax -mcmodel=medany -fno-omit-frame-pointer -fno-stack-protector" 
-       depends on CONFIG_HAL
-
-config CONFIG_HAL_LDFLAGS
-       string
-       default "-nostdlib -Wl,-z,max-page-size=0x1000 -Wl,--build-id=none"
-       depends on CONFIG_HAL
-
-config CONFIG_HAL_OPT_FLAGS
-       prompt "Additional optimize flags for HAL"
-       string 
-       default ""
-       depends on CONFIG_HAL
+config CONFIG_HAL
+	bool "Hardware Abstraction Layer(HAL)"
+	default n
+	help
+	  If you wish to build the kernel for real hardware, then answer Y here.
 
 config CONFIG_HAL_PAGE_SIZE
        int
@@ -38,10 +27,41 @@ config CONFIG_HAL_MEMORY_SIZE_MB
        default 128
        range 16 1024
 
-config CONFIG_HAL_CPUS_NR
-       prompt "Max cpus"
-       int
-       default 1 if !CONFIG_SMP
-       default 4 if CONFIG_SMP
-       range 1 4
+choice
+    prompt "Timer Interval"
+    default CONFIG_TIMER_INTERVAL_MS_10MS
+    depends on CONFIG_HAL
+
+config CONFIG_TIMER_INTERVAL_MS_1MS
+    bool "1 milliseconds"
+    help
+      This sets timer tick as 1 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_10MS
+    bool "10 milliseconds"
+    help
+      This sets timer tick as 10 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_100MS
+    bool "100 milliseconds"
+    help
+      This sets timer tick as 100 milliseconds.
+
+endchoice
+
+config CONFIG_HAL_CFLAGS
+       prompt "CFLAGS for Hardware Abstraction Layer"
+       string
+       default "-ffreestanding -fno-common -mno-relax -mcmodel=medany -fno-omit-frame-pointer -fno-stack-protector" 
+       depends on CONFIG_HAL
+
+config CONFIG_HAL_LDFLAGS
+       string
+       default "-nostdlib -Wl,-z,max-page-size=0x1000 -Wl,--build-id=none"
+       depends on CONFIG_HAL
+
+config CONFIG_HAL_OPT_FLAGS
+       prompt "Additional optimize flags for HAL"
+       string 
+       default ""
        depends on CONFIG_HAL

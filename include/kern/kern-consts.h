@@ -15,7 +15,7 @@
 #define KC_ISTACK_SIZE (CONFIG_HAL_PAGE_SIZE * CONFIG_ISTACK_PAGE_NR)
 
 #if defined(CONFIG_SMP)
-#define KC_CPUS_NR (CONFIG_HAL_CPUS_NR)
+#define KC_CPUS_NR (CONFIG_CPUS_NR)
 #else
 #define KC_CPUS_NR (1)
 #endif  /* CONFIG_SMP */
