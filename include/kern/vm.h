@@ -60,10 +60,10 @@ typedef struct _vm_pgtbl_type{
 }vm_pgtbl_type;
 
 void vm_pgtbl_cache_init(void);
+int pgtbl_alloc_pgtbl_page(vm_pgtbl _pgt, hal_pte **_tblp, vm_paddr *_paddrp);
 int pgtbl_alloc_pgtbl(vm_pgtbl *_pgtp);
 int pgtbl_alloc_user_pgtbl(vm_pgtbl *_pgtp);
 void pgtbl_free_user_pgtbl(vm_pgtbl _pgt);
-int pgtbl_alloc_pgtbl_page(vm_pgtbl _pgt, hal_pte **_tblp, vm_paddr *_paddrp);
 void vm_copy_kmap_page(void *_dest, void *_src);
 size_t vm_strlen(vm_pgtbl _pgt, char const *_s);
 size_t vm_memmove(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src, 

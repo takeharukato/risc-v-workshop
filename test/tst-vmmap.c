@@ -67,6 +67,9 @@ vmmap1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 	show_page_map(pgt1, USER_VMA_ADDR, PAGE_SIZE*2);
+
+	pgtbl_free_user_pgtbl(pgt2);
+	pgtbl_free_user_pgtbl(pgt1);
 }
 
 void

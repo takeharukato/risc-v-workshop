@@ -75,6 +75,11 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 		kassert_no_reach();
 	}
 
+	/* テーブル以外の要素を初期化
+	 * @note pgtbl_alloc_pgtbl_pageで統計情報を操作する前に初期化する必要がある
+	 */
+	mutex_init(&pgt->mtx);          /* ミューテックスの初期化              */
+	statcnt_set(&pgt->nr_pages, 0); /* ページテーブルのページ数を0に初期化 */
 
 	/* カーネルのページテーブルベースページを割り当てる
 	 */
@@ -85,8 +90,6 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 		kassert_no_reach();
 	}
 
-	mutex_init(&pgt->mtx);          /* ミューテックスの初期化              */
-	statcnt_set(&pgt->nr_pages, 0);  /* ページテーブルのページ数を0に初期化 */
 	hal_pgtbl_init(pgt);            /* アーキ依存部の初期化                */
 
 	pgt->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
@@ -134,9 +137,11 @@ pgtbl_free_user_pgtbl(vm_pgtbl pgt){
 	/* ベースページテーブル以外のテーブルが解放済みであることを確認する */
 	kassert(statcnt_read(&pgt->nr_pages) == 1);  
 
-	mutex_unlock(&pgt->mtx);            /* ミューテックスの解放           */
+	pgif_free_page(pgt->pgtbl_base);    /* ベースページテーブルを解放  */
 
-	slab_kmem_cache_free((void *)pgt);  /* ページテーブル情報を解放する */
+	mutex_unlock(&pgt->mtx);            /* ミューテックスの解放        */
+
+	slab_kmem_cache_free((void *)pgt);  /* ページテーブル情報を解放    */
 
 	return ;
 }
