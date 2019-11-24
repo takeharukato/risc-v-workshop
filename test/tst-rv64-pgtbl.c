@@ -622,7 +622,7 @@ hal_pgtbl_remove(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size len){
 		if ( ( rc == 0 ) && ( !( flags & VM_FLAGS_UNMANAGED ) ) ) {
 
 			/* 割当先ページのカーネル仮想アドレスを参照 */
-			pfdb_paddr_to_kvaddr((void *)paddr, &kvaddr);
+			rc = pfdb_paddr_to_kvaddr((void *)paddr, &kvaddr);
 			kassert( rc == 0 );
 
 			rc = pfdb_kvaddr_to_page_frame(kvaddr, &pf);

@@ -114,6 +114,8 @@ mutex_lock(mutex *mtx){
 	for( ; ; ) {
 
 		rc = lock_mutex_common(mtx); /* ミューテックスの獲得を試みる */
+		if ( rc == 0 )
+			break;  /* 獲得成功 */
 
 		/* ミューテックス解放を待ち合わせる */
 		reason = wque_wait_on_queue_with_spinlock(&mtx->wque, &mtx->lock);

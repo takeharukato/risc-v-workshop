@@ -56,7 +56,7 @@ error_out:
 }
 
 /**
-   ページテーブルを割り当てる
+   ページテーブルを割り当てる (カーネル/ユーザ共通処理)
    @param[out] pgtp 割り当てたページテーブル情報を指し示すポインタのアドレス
    @retval     0    正常終了
  */
@@ -90,7 +90,9 @@ pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){
 	if ( rc != 0 )
 		goto error_out;
 
-	hal_copy_kernel_pgtbl(pgt);    /* カーネル空間部分を初期化する   */
+	rc = hal_copy_kernel_pgtbl(pgt);    /* カーネル空間部分を初期化する   */
+	if ( rc != 0 )
+		goto error_out;
 
 	*pgtp = pgt;  /* ページテーブル情報を返却する */
 
@@ -106,8 +108,10 @@ error_out:
  */
 void
 pgtbl_free_user_pgtbl(vm_pgtbl pgt){
+	int rc;
 
-	mutex_lock(&pgt->mtx);              /* ミューテックスの獲得           */
+	rc = mutex_lock(&pgt->mtx);              /* ミューテックスの獲得           */
+	kassert( rc == 0 );  /* オブジェクト破棄にはならないはず */
 
 	/* ページテーブル解放済みであることを確認する */
 	kassert(atomic_read(&pgt->nr_pages) == 0);  

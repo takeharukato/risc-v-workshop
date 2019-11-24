@@ -2,7 +2,7 @@ top=..
 include ${top}/Makefile.inc
 
 objects=main.o spinlock.o cpuintr.o page-pfdb.o page-alloc.o page-slab.o vm-pgtbl.o \
-	vm-copy.o wqueue.o mutex.o
+	vm-copy.o vm-map.o wqueue.o mutex.o
 ifneq ($(CONFIG_HAL),y)
 objects += ulandpmem.o
 endif

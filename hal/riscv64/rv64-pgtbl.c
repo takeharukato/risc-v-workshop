@@ -551,7 +551,7 @@ hal_pgtbl_remove(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size len){
 		if ( ( rc == 0 ) && ( !( flags & VM_FLAGS_UNMANAGED ) ) ) {
 
 			/* 割当先ページのカーネル仮想アドレスを参照 */
-			pfdb_paddr_to_kvaddr((void *)paddr, &kvaddr);
+			rc = pfdb_paddr_to_kvaddr((void *)paddr, &kvaddr);
 			kassert( rc == 0 );
 
 			rc = pfdb_kvaddr_to_page_frame(kvaddr, &pf);
@@ -666,31 +666,39 @@ hal_pgtbl_init(vm_pgtbl pgtbl){
    @retval    0      正常終了
    @retval   -ENODEV ミューテックスが破棄された
    @retval   -EINTR  非同期イベントを受信した
-   @note LO: ユーザページテーブル, カーネルページテーブルの順にロックする
+   @note LO: 転送先(ユーザページテーブル), 転送元(カーネルページテーブル)の順にロックする
  */
 int
 hal_copy_kernel_pgtbl(vm_pgtbl upgtbl){
 	int rc;
-	
+
 	rc = mutex_lock(&upgtbl->mtx);  /* ユーザ空間側のロックを獲得する  */
 	if ( rc != 0 )
 		goto error_out;
 
-	rc = mutex_lock(&kpgtbl->mtx);  /* カーネル空間側のロックを獲得する  */
-	if ( rc != 0 )
-		goto unlock_out;
+	if ( kpgtbl != upgtbl ) {
+
+		rc = mutex_lock(&kpgtbl->mtx);  /* カーネル空間側のロックを獲得する  */
+		if ( rc != 0 )
+			goto unlock_out;
+	}
 
 	/* カーネルのVPN2テーブル (ユーザ空間側が空になっているテーブル)を
 	 * コピーする
 	 */
 	vm_copy_kmap_page(upgtbl->pgtbl_base, kpgtbl->pgtbl_base);
 
-	mutex_unlock(&kpgtbl->mtx);    /* カーネル空間側のロックを解放する  */
+	mutex_unlock(&kpgtbl->mtx);         /* カーネル空間側のロックを解放する  */
 
-	mutex_unlock(&upgtbl->mtx);    /* ユーザ空間側のロックを解放する  */
+	if ( kpgtbl != upgtbl )
+		mutex_unlock(&upgtbl->mtx); /* ユーザ空間側のロックを解放する  */
+
+	return 0;
 
 unlock_out:
-	mutex_unlock(&upgtbl->mtx);
+	if ( kpgtbl != upgtbl )
+		mutex_unlock(&upgtbl->mtx); /* ユーザ空間側のロックを解放する  */
+
 error_out:
 	return rc;
 }

@@ -41,7 +41,7 @@ vmcopy1(struct _ktest_stats *sp, void __unused *arg){
 	memset(dest, 0, TST_VMCOPY_BUFSIZ);
 	memset(src, TST_VMCOPY_CH, TST_VMCOPY_BUFSIZ);
 
-	rc = vm_copy(dest_pgt, dest, src_pgt, src + TST_VMCOPY_OFF, TST_VMCOPY_SIZ);
+	rc = vm_memmove(dest_pgt, dest, src_pgt, src + TST_VMCOPY_OFF, TST_VMCOPY_SIZ);
 
 	if ( rc == 0 )
 		ktest_pass( sp );

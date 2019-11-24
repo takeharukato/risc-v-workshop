@@ -31,6 +31,7 @@ vm_copy_kmap_page(void *dest, void *src){
 	for(i = 0; PAGE_SIZE/sizeof(uint64_t) > i; ++i) 
 		dp[i] = sp[i];
 }
+
 /**
    仮想空間中の文字列の長さを求める
    @param[in] pgt      参照先アドレス空間のページテーブル
@@ -56,7 +57,10 @@ vm_strlen(vm_pgtbl pgt, char const *s){
 
 	cur_len = 0; /* 文字列長を0で初期化する */
 
-	/* TODO:ページテーブルmutexをとる */
+	rc = mutex_lock(&pgt->mtx); /*  アドレス空間のページテーブルmutexを獲得する */
+	if ( rc != 0 )
+		goto error_out;
+
 	for( ; ; ++sp) {
 
 		/* 参照先ページの物理アドレスを求める */
@@ -65,7 +69,7 @@ vm_strlen(vm_pgtbl pgt, char const *s){
 			goto unlock_out;
 	
 		/* 参照先ページのカーネル仮想アドレスを求める */
-		pfdb_paddr_to_kvaddr((void *)paddr, &kpage);
+		rc = pfdb_paddr_to_kvaddr((void *)paddr, &kpage);
 		kassert( rc == 0 );
 
 		/* ページ内オフセットを求める */
@@ -87,11 +91,13 @@ vm_strlen(vm_pgtbl pgt, char const *s){
 	}
 
 success:
-	/* TODO:ページテーブルmutexを解放する */
+	mutex_unlock(&pgt->mtx); /*  アドレス空間のページテーブルmutexを獲得する */
 	return cur_len;
 
 unlock_out:
-	/* TODO:ページテーブルmutexを解放する */
+	mutex_unlock(&pgt->mtx); /*  アドレス空間のページテーブルmutexを獲得する */
+
+error_out:
 	return 0;
 }
 /**
@@ -102,9 +108,10 @@ unlock_out:
    @param[in] src      コピー元の仮想アドレス
    @param[in] len      コピー長
    @retval    未コピーサイズ (単位:バイト)
+   @note LO:  転送先, 転送元の順にロックする
  */
 size_t
-vm_copy(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
+vm_memmove(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
 	int               rc;
 	void     *dest_kpage;
 	void      *src_kpage;
@@ -125,12 +132,24 @@ vm_copy(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
 	vm_prot         prot;
 	vm_flags       flags;
 
-	total_remain = len;
+	total_remain = len;  /* コピーするバイト数 */
 
-	dp = dest;
-	sp =  src;
+	dp = dest;  /* 転送先仮想アドレス */
+	sp =  src;  /* 転送元仮想アドレス */
 
-	/* TODO:ページテーブルmutexをとる */
+	/* コピー先アドレス空間のページテーブルmutexを獲得する */
+	rc = mutex_lock(&dest_pgt->mtx);
+	if ( rc != 0 )
+		goto error_out;
+
+	/* コピー元アドレス空間のページテーブルmutexを獲得する */
+	if ( dest_pgt != src_pgt ) {
+
+		rc = mutex_lock(&src_pgt->mtx);
+		if ( rc != 0 )
+			goto unlock_dest_out;
+	}
+
 	while( total_remain > 0 ) {
 
 		/* コピー先ページの物理アドレスを求める */
@@ -140,7 +159,7 @@ vm_copy(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
 			goto unlock_out;
 
 		/* コピー先ページのカーネル仮想アドレスを求める */
-		pfdb_paddr_to_kvaddr((void *)paddr, &dest_kpage);
+		rc = pfdb_paddr_to_kvaddr((void *)paddr, &dest_kpage);
 		kassert( rc == 0 );
 
 		/* コピー元ページの物理アドレスを求める */
@@ -150,7 +169,7 @@ vm_copy(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
 			goto unlock_out;
 
 		/* コピー元ページのカーネル仮想アドレスを求める */
-		pfdb_paddr_to_kvaddr((void *)paddr, &src_kpage);
+		rc = pfdb_paddr_to_kvaddr((void *)paddr, &src_kpage);
 		kassert( rc == 0 );
 
 		/* ページ内でのコピー
@@ -190,11 +209,25 @@ vm_copy(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t len){
 		dp += cpy_len;
 		sp += cpy_len;
 	}
-	/* TODO:ページテーブルmutexを解放する */
+
+	/*  コピー元アドレス空間のページテーブルmutexを解放する */
+	mutex_unlock(&src_pgt->mtx);
+	/*  コピー先アドレス空間のページテーブルmutexを解放する */
+	if ( dest_pgt != src_pgt )
+		mutex_unlock(&dest_pgt->mtx);
 
 	return 0;
 
 unlock_out:
-	/* TODO:ページテーブルmutexを解放する */
+
+	/*  コピー元アドレス空間のページテーブルmutexを解放する */
+	mutex_unlock(&src_pgt->mtx);
+
+unlock_dest_out:
+	/*  コピー先アドレス空間のページテーブルmutexを解放する */
+	if ( dest_pgt != src_pgt )
+		mutex_unlock(&dest_pgt->mtx);
+
+error_out:
 	return total_remain;
 }

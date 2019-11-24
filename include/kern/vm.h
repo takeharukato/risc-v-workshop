@@ -55,6 +55,9 @@ void pgtbl_free_user_pgtbl(vm_pgtbl _pgt);
 int pgtbl_alloc_pgtbl_page(vm_pgtbl _pgt, hal_pte **_tblp, vm_paddr *_paddrp);
 void vm_copy_kmap_page(void *_dest, void *_src);
 size_t vm_strlen(vm_pgtbl _pgt, char const *_s);
-size_t vm_copy(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src, size_t _len);
+size_t vm_memmove(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src, 
+    size_t _len);
+int vm_copy_range(vm_pgtbl _dest, vm_pgtbl _src, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
+int vm_unmap(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
 #endif  /*  ASM_FILE  */
 #endif  /*  _KERN_PGTBL_H   */
