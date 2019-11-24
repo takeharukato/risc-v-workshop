@@ -42,7 +42,7 @@ pgtbl_alloc_pgtbl_page(vm_pgtbl pgt, hal_pte **tblp, vm_paddr *paddrp){
 	rc = hal_kvaddr_to_phys(tbl, &paddr);
 	kassert( rc == 0 );
 
-	atomic_add_fetch(&pgt->nr_pages, 1);  /* ページテーブルのページ数を加算 */
+	statcnt_inc(&pgt->nr_pages);  /* ページテーブルのページ数を加算 */
 
 	/* ページテーブル用ページを返却
 	 */
@@ -70,7 +70,7 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 	kassert( rc == 0 );
 
 	mutex_init(&pgt->mtx);          /* ミューテックスの初期化              */
-	atomic_set(&pgt->nr_pages, 0);  /* ページテーブルのページ数を0に初期化 */
+	statcnt_set(&pgt->nr_pages, 0);  /* ページテーブルのページ数を0に初期化 */
 	hal_pgtbl_init(pgt);            /* アーキ依存部の初期化                */
 
 	*pgtp = pgt;            /* ページテーブル情報を返却する */
@@ -114,7 +114,7 @@ pgtbl_free_user_pgtbl(vm_pgtbl pgt){
 	kassert( rc == 0 );  /* オブジェクト破棄にはならないはず */
 
 	/* ページテーブル解放済みであることを確認する */
-	kassert(atomic_read(&pgt->nr_pages) == 0);  
+	kassert(statcnt_read(&pgt->nr_pages) == 0);  
 
 	mutex_unlock(&pgt->mtx);            /* ミューテックスの解放           */
 

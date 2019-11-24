@@ -274,7 +274,7 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
 			kassert( pfdb_dec_page_use_count(low_pf) ); /* 最終参照のはず */
 
 			/* ページテーブルのページ数を減算 */
-			atomic_sub_fetch(&pgt->nr_pages, 1); 
+			statcnt_dec(&pgt->nr_pages); 
 		}
 	}
 }
