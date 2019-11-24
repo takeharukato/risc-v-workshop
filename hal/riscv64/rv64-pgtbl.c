@@ -518,6 +518,7 @@ error_out:
    @retval    0             正常終了
    @retval   -EINVAL        ページサイズ境界と仮想アドレスまたは物理アドレスの境界が
                             あっていない
+   @note      アドレス空間のmutexを獲得した状態で呼び出す
  */
 void
 hal_pgtbl_remove(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size len){
@@ -574,6 +575,7 @@ hal_pgtbl_remove(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size len){
    @retval    0             正常終了
    @retval   -ENOMEM        メモリ不足
    @retval   -EBUSY         すでにマップ済みの領域だった
+   @note      アドレス空間のmutexを獲得した状態で呼び出す
  */
 int
 hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot, 
