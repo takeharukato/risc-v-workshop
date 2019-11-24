@@ -18,7 +18,7 @@ ASMMAC_TEXT_SECTION
 
 /**
     スーパバイザモード->スーパバイザモード割込みベクタ
-    void supervisor_trap_vector相当のサブルーチン
+    void supervisor_trap_vector(void)相当のサブルーチン
  */
 ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)	
 ASMMAC_FUNCTION(supervisor_trap_vector)
@@ -38,14 +38,14 @@ ASMMAC_FUNCTION(supervisor_trap_vector)
 
 /**
     ユーザモード->スーパバイザモード割込みベクタ
-    void user_trap_vector相当のサブルーチン
+    void user_trap_vector(void)相当のサブルーチン
  */
 ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)	
 ASMMAC_FUNCTION(user_trap_vector)
-        csrrw t0, sscratch, t0
+        csrrw t0, sscratch, t0               /* sscratch(sscratch情報ポインタ)とt0を交換 */
 	/* これ以降t0以外のレジスタを使用する
 	 */
-	sd   sp, SSCRATCH_SAVED_SP(t0)       /* スタックを保存する             */
+	sd   sp, SSCRATCH_SAVED_SP(t0)       /* 割込み元スタックを保存する     */
 	ld   sp, SSCRATCH_SSTACK_SP(t0)      /* カーネルスタックをロードする   */
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
 
@@ -57,12 +57,16 @@ ASMMAC_FUNCTION(user_trap_vector)
 	ld   s1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
 	sd   s1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
 
-	mv   s1, t0                        /* mscratch情報                      */
+	mv   s1, t0                        /* sscratch情報                      */
 	
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
 call_trap_common:
+
+	la   s1, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
+	csrw stvec, s1                  /* スーパバイザモードベクタアドレスを設定   */
+
 	/*
 	 * 例外ハンドラ呼び出し
 	 */
@@ -71,7 +75,10 @@ call_trap_common:
 	csrr a2, stval                     /* Supervisor Trap Value             */
 
 	call trap_common                   /* 共通例外ハンドラ呼び出し          */
-
+/**
+    void rv64_return_from_trap(void)相当のサブルーチン
+ */
+ASMMAC_FUNCTION(rv64_return_from_trap)
 	/*
 	 * コンテキスト復元
 	 */
@@ -79,8 +86,24 @@ call_trap_common:
 	csrw sepc, s1                      /* 割込み元アドレスを設定 */	
 
 	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* sstatus        */
-	csrw sstatus, s1                       /* sstatusを復元  */
+
+	and  s2, s1, SSTATUS_SPP /* Supervisor Previous modeを参照                       */
+	bne  s2, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
 	
+	/* ユーザコンテキスト復帰時の処理
+	 * - ユーザモードからの割込みを有効化
+	 * - ユーザモード->スーパバイザモード割込みベクタに割り込みベクタを設定する
+	 */
+
+	or   s1, s1, SSTATUS_SPIE              /* ユーザモード割り込みを有効化 */
+
+	/* ユーザモード->スーパバイザモード割込みベクタをロード */
+	la   s2, user_trap_vector
+	csrw stvec, s2    /*  ベクタアドレスを設定 */
+	
+to_kernel:
+	csrw sstatus, s1                       /* sstatusを復元  */
+
 	/*
 	 * sp以外のレジスタを復元する
 	 */

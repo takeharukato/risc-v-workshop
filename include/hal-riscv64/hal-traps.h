@@ -15,7 +15,7 @@
 /**
    割込みコンテスト退避共通処理
    @param[in] _ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
-   @note epc, sp, t0以外のレジスタを保存する
+   @note sp, t0以外のレジスタを保存する (rv64-vector.S参照)
  */
 #define RV64_ASM_SAVE_CONTEXT_COMMON(_ctx)        \
         sd ra,  RV64_TRAP_CONTEXT_RA(_ctx);        \
@@ -54,7 +54,8 @@
 
 /**
    割込みコンテスト復元共通処理
-   @param[in] \_ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
+   @param[in] _ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
+   @note epc, sstatus, sp以外のレジスタを復元する (rv64-vector.S参照)
  */
 #define RV64_ASM_RESTORE_CONTEXT_COMMON(_ctx) \
         ld t6, RV64_TRAP_CONTEXT_T6(_ctx);     \
