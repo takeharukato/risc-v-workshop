@@ -131,12 +131,12 @@ int pfdb_pfn_to_page_frame(obj_cnt_type _pfn, struct _page_frame  **_pp);
 int pfdb_kvaddr_to_paddr(void *_kvaddr, void **_paddrp);
 int pfdb_paddr_to_kvaddr(void *_paddr, void **_kvaddrp);
 
-void pfdb_page_map_count_init(page_frame *_pf, refcnt_val _val);
-refcnt_val pfdb_ref_page_map_count(page_frame *_pf);
+void pfdb_page_map_count_init(page_frame *_pf, refcounter_val _val);
+refcounter_val pfdb_ref_page_map_count(page_frame *_pf);
 bool pfdb_inc_page_map_count(page_frame *_pf);
 bool pfdb_dec_page_map_count(page_frame *_pf);
 
-refcnt_val pfdb_ref_page_use_count(struct _page_frame *_pf);
+refcounter_val pfdb_ref_page_use_count(struct _page_frame *_pf);
 bool pfdb_inc_page_use_count(struct _page_frame  *_pf);
 bool pfdb_dec_page_use_count(struct _page_frame  *_pf);
 

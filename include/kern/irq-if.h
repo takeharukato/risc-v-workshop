@@ -62,7 +62,7 @@ typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, void *_priva
  */
 typedef struct _irq_handler_ent{
 	struct _list    link; /**< 割込みハンドラキューのリストエントリ */
-	refcnt          refs; /**< 参照カウンタ                         */
+	refcounter      refs; /**< 参照カウンタ                         */
 	irq_handler  handler; /**< 割込みハンドラ                       */
 	void        *private; /**< ハンドラ固有情報へのポインタ         */
 }irq_handler_ent;

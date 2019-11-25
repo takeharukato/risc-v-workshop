@@ -24,7 +24,7 @@ typedef int64_t   singned_cnt_type;  /*< 符号付きオブジェクト数      
 typedef obj_id        obj_cnt_type;  /*< 加算オブジェクト数            */
 typedef int32_t         atomic_val;  /*< アトミック変数用カウンタ      */
 typedef int64_t       atomic64_val;  /*< 64ビットアトミック変数用カウンタ */
-typedef atomic_val      refcnt_val;  /*< 参照カウンタ                  */
+typedef atomic_val  refcounter_val;  /*< 参照カウンタ                  */
 typedef void *         private_inf;  /*< プライベート情報              */
 
 /*

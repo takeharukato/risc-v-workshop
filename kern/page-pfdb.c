@@ -1166,7 +1166,7 @@ pfdb_pfn_to_page_frame(obj_cnt_type pfn, page_frame **pp){
    @param[in] val マップカウントの初期値
  */
 void
-pfdb_page_map_count_init(page_frame *pf, refcnt_val val){
+pfdb_page_map_count_init(page_frame *pf, refcounter_val val){
 
 	refcnt_set(&pf->mapcnt, val);
 }
@@ -1176,7 +1176,7 @@ pfdb_page_map_count_init(page_frame *pf, refcnt_val val){
    @param[in] pf ページフレーム
    @return マップカウント
  */
-refcnt_val 
+refcounter_val 
 pfdb_ref_page_map_count(page_frame *pf){
 
 	return refcnt_read(&pf->mapcnt);  /*  利用カウントを返す  */
@@ -1213,7 +1213,7 @@ pfdb_dec_page_map_count(page_frame *pf){
    @param[in] pf ページフレーム
    @return 利用カウント
  */
-refcnt_val 
+refcounter_val 
 pfdb_ref_page_use_count(page_frame *pf){
 
 	return refcnt_read(&pf->usecnt);  /*  利用カウントを返す  */

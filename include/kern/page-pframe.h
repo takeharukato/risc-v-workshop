@@ -267,8 +267,8 @@ typedef struct _page_frame{
 	page_state             state;  /**< ページの状態(アーキ共通)       */
 	page_state        arch_state;  /**< アーキ依存のページ状態         */
 	obj_cnt_type             pfn;  /**< ページフレーム番号             */
-	struct _refcnt        usecnt;  /**< 利用カウンタ                   */
-	struct _refcnt        mapcnt;  /**< マップカウンタ                 */
+	struct _refcounter    usecnt;  /**< 利用カウンタ                   */
+	struct _refcounter    mapcnt;  /**< マップカウンタ                 */
 	page_order             order;  /**< ページオーダ                   */
 	struct _page_buddy   *buddyp;  /**< バディキュー                   */
 	struct _queue        pv_head;  /**< 物理->仮想アドレス変換用キュー */

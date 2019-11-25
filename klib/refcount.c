@@ -20,9 +20,9 @@
    @retval     偽       参照カウンタが0以上
  */
 static bool
-sub_and_test_refcounter(refcnt *counterp, refcnt_val v, refcnt_val *newp){
-	refcnt_val new;
-	bool        rc;
+sub_and_test_refcounter(refcounter *counterp, refcounter_val v, refcounter_val *newp){
+	refcounter_val new;
+	bool            rc;
 
 	rc = atomic_sub_and_test(&counterp->counter, (atomic_val)v, (atomic_val *)&new);
 	kassert( new >= 0 );  /*  減算後に負にならないことを確認する  */
@@ -39,7 +39,7 @@ sub_and_test_refcounter(refcnt *counterp, refcnt_val v, refcnt_val *newp){
    @param[in] val       設定値
  */
 void
-refcnt_init_with_value(refcnt *counterp, refcnt_val val){
+refcnt_init_with_value(refcounter *counterp, refcounter_val val){
 	
 	/* 各メンバを初期化する
 	 */
@@ -50,7 +50,7 @@ refcnt_init_with_value(refcnt *counterp, refcnt_val val){
    @param[in] counterp  参照カウンタ
  */
 void
-refcnt_init(refcnt *counterp){
+refcnt_init(refcounter *counterp){
 	
 	refcnt_init_with_value(counterp, REFCNT_INITIAL_VAL);
 }
@@ -62,7 +62,7 @@ refcnt_init(refcnt *counterp){
    @note 参照カウンタは事前に初期化されていなければならない
  */
 void
-refcnt_set(refcnt *counterp, refcnt_val val){
+refcnt_set(refcounter *counterp, refcounter_val val){
 
 	atomic_set(&counterp->counter, (atomic_val)val);
 }
@@ -72,10 +72,10 @@ refcnt_set(refcnt *counterp, refcnt_val val){
    @param[in] counterp  参照カウンタ
    @return    参照カウンタの値
  */
-refcnt_val
-refcnt_read(refcnt *counterp){
+refcounter_val
+refcnt_read(refcounter *counterp){
 
-	return (refcnt_val)atomic_read(&counterp->counter);
+	return (refcounter_val)atomic_read(&counterp->counter);
 }
 
 /**
@@ -86,9 +86,9 @@ refcnt_read(refcnt *counterp){
    @note 参照カウンタは通常1に初期化されるため, 解放済みのカウンタを
    操作しないようにしつつ加算操作を行う
  */
-refcnt_val 
-refcnt_add_if_valid(refcnt *counterp, refcnt_val v){
-	refcnt_val ret;
+refcounter_val 
+refcnt_add_if_valid(refcounter *counterp, refcounter_val v){
+	refcounter_val ret;
 	
 	ret = atomic_add_fetch_unless(&counterp->counter, 0, v);
 	kassert( ret > 0 );
@@ -102,9 +102,9 @@ refcnt_add_if_valid(refcnt *counterp, refcnt_val v){
    @param[in] v        加算値 
    @return    更新前の参照カウンタ値
  */
-refcnt_val 
-refcnt_add(refcnt *counterp, refcnt_val v){
-	refcnt_val ret;
+refcounter_val 
+refcnt_add(refcounter *counterp, refcounter_val v){
+	refcounter_val ret;
 	
 	ret = atomic_add_fetch(&counterp->counter, v);
 
@@ -116,8 +116,8 @@ refcnt_add(refcnt *counterp, refcnt_val v){
    @param[in] counterp 参照カウンタ
    @return    更新前の参照カウンタ値
  */
-refcnt_val 
-refcnt_inc(refcnt *counterp){
+refcounter_val 
+refcnt_inc(refcounter *counterp){
 
 	return refcnt_add(counterp, 1);
 }
@@ -129,9 +129,9 @@ refcnt_inc(refcnt *counterp){
    @note 参照カウンタは通常1に初期化されるため, 解放済みのカウンタを
    操作しないようにしつつ加算操作を行う
  */
-refcnt_val 
-refcnt_inc_if_valid(refcnt *counterp){
-	refcnt_val ret;
+refcounter_val 
+refcnt_inc_if_valid(refcounter *counterp){
+	refcounter_val ret;
 	
 	ret = atomic_add_fetch_unless(&counterp->counter, 0, 1);
 
@@ -146,7 +146,7 @@ refcnt_inc_if_valid(refcnt *counterp){
    @retval    偽       参照カウンタが0以上
  */
 bool
-refcnt_sub_and_test(refcnt *counterp, refcnt_val v) {
+refcnt_sub_and_test(refcounter *counterp, refcounter_val v) {
 
 	return sub_and_test_refcounter(counterp, v, NULL);
 }
@@ -158,7 +158,7 @@ refcnt_sub_and_test(refcnt *counterp, refcnt_val v) {
    @retval    偽       参照カウンタが0以上
  */
 bool
-refcnt_dec_and_test(refcnt *counterp) {
+refcnt_dec_and_test(refcounter *counterp) {
 	
 	return sub_and_test_refcounter(counterp, 1, NULL);
 }
@@ -168,9 +168,9 @@ refcnt_dec_and_test(refcnt *counterp) {
    @param[in] counterp 参照カウンタ
    @return 操作後のカウンタ値
  */
-refcnt_val 
-refcnt_dec(refcnt *counterp){
-	refcnt_val new;
+refcounter_val 
+refcnt_dec(refcounter *counterp){
+	refcounter_val new;
 
 	sub_and_test_refcounter(counterp, 1, &new);
 
@@ -186,7 +186,7 @@ refcnt_dec(refcnt *counterp){
    @retval    偽       参照カウンタが0以上
  */
 bool
-refcnt_dec_and_lock(refcnt *counterp, spinlock *lock){
+refcnt_dec_and_lock(refcounter *counterp, spinlock *lock){
 
 	spinlock_lock(lock);
 
@@ -208,7 +208,7 @@ refcnt_dec_and_lock(refcnt *counterp, spinlock *lock){
    @retval    偽       参照カウンタが0以上
  */
 bool
-refcnt_dec_and_lock_disable_intr(refcnt *counterp, spinlock *lock, intrflags *iflags){
+refcnt_dec_and_lock_disable_intr(refcounter *counterp, spinlock *lock, intrflags *iflags){
 
 
 	spinlock_lock_disable_intr(lock, iflags);
