@@ -15,6 +15,7 @@
 #include <klib/list.h>
 #include <klib/queue.h>
 #include <klib/rbtree.h>
+#include <klib/refcount.h>
 
 #include <kern/spinlock.h>
 
@@ -28,6 +29,7 @@
 #define IRQ_ATTR_HANDLER_MASK  (0xf)   /*< 割込みハンドラ属性フラグのマスク   */
 #define IRQ_ATTR_LEVEL         (0x00)  /*< レベルトリガ割込み                 */
 #define IRQ_ATTR_EDGE          (0x10)  /*< エッジトリガ割込み                 */
+#define IRQ_ATTR_TRIGGER_MASK  (0xf0)  /*< トリガマスク                       */
 
 /* 割込み検出ハンドラの返値
  */
@@ -51,15 +53,18 @@ struct _irq_ctrlr;
 struct _trap_context;
 
 /**
+   割込みハンドラ定義
+ */
+typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, void *_private);
+
+/**
    割込みハンドラエントリ
  */
 typedef struct _irq_handler_ent{
-	/** 割込みハンドラキューのリストエントリ */
-	struct _list link;
-	/** 割込みハンドラ */
-	int (*handler)(irq_no _irq, struct _trap_context *_ctx, void *_private);
-	/** ハンドラ固有情報へのポインタ */
-	void *private;
+	struct _list    link; /**< 割込みハンドラキューのリストエントリ */
+	refcnt          refs; /**< 参照カウンタ                         */
+	irq_handler  handler; /**< 割込みハンドラ                       */
+	void        *private; /**< ハンドラ固有情報へのポインタ         */
 }irq_handler_ent;
 
 /* 
@@ -102,9 +107,8 @@ typedef struct _irq_ctrlr{
    割込み線情報
  */
 typedef struct _irq_line{
-	spinlock            lock;  /**< 割込み線情報のロック                       */
 	RB_ENTRY(_irq_line)  ent;  /**< 割り込み管理情報へのリンク                 */
-	irq_no                nr;  /**< 割込み番号                                 */
+	irq_no               irq;  /**< 割込み番号                                 */
 	irq_prio            prio;  /**< 割込み優先度                               */
 	irq_attr            attr;  /**< 割込み線の属性値                           */
 	struct _queue   handlers;  /**< 割込みハンドラキュー                       */
@@ -124,10 +128,10 @@ typedef struct _irq_info{
 
 int irq_handle_irq(struct _trap_context *_ctx);
 
-int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, void *_private, 
-    int (*_handler)(irq_no _irq, struct _trap_context *_ctx, void *_private));
-int irq_unregister_handler(irq_no irq, int (*handler)(irq_no _irq, struct _trap_context *_ctx,
-	void *_private));
+int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, irq_handler _handler,
+    void *_private);
+int irq_unregister_handler(irq_no _irq, irq_handler _handler, void *_private);
+
 int irq_register_ctrlr(irq_ctrlr *_ctrlr);
 void irq_unregister_ctrlr(irq_ctrlr *_ctrlr);
 

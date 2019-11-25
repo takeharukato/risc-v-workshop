@@ -70,8 +70,8 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 	if ( rc != 0 ) {
 	
 		kprintf(KERN_PNC "Can not allocate kernel page table cache.\n");
-		kprintf("Machine Dependent (MD) part might have not initialized "
-		    "prealloc-caches (kmalloc).\n");
+		kprintf("Machine Dependent (MD) part might have not called "
+		    "vm_pgtbl_cache_init().\n");
 		kassert_no_reach();
 	}
 
