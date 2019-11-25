@@ -4,6 +4,7 @@ targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 
 subdirs=kern klib hal test tools
 cleandirs=include ${subdirs}
+distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a test/libktest.a hal/hal/libhal.a
 mconf=tools/kconfig/mconf
 
@@ -91,7 +92,7 @@ clean:
 	${RM} ${CLEAN_FILES} ${targets} *.tmp *.elf *.asm *.map *.iso include/klib/asm-offset.h
 
 distclean:clean
-	for dir in ${cleandirs} ; do \
+	for dir in ${distcleandirs} ; do \
 	${MAKE} -C $${dir} distclean ;\
 	done
 	${RM} ${DIST_CLEAN_FILES} include/kern/autoconf.h

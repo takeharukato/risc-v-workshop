@@ -13,7 +13,7 @@ lib=libkern.a
 
 all: ${depends} ${lib}
 
-${lib}:${objects}
+${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 gcov:
