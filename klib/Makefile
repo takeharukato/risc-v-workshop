@@ -13,6 +13,11 @@ ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 
+gcov:
+ifeq ($(CONFIG_PROFILE),y)
+	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
+endif
+
 clean:
 	${RM} ${CLEAN_FILES} ${lib}
 

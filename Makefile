@@ -103,10 +103,12 @@ dist:
 gtags:
 	${GTAGS} -v
 
-gcov: 
 ifeq ($(CONFIG_PROFILE),y)
+gcov: run
 	for dir in ${subdirs} ; do \
 		${MAKE} -C $${dir} $@ ;\
 	done
+else
+gcov: 
 endif
 

@@ -11,12 +11,15 @@ all: kconfig/mconf
 kconfig/mconf:
 	cd kconfig && $(MAKE) mconf
 
+gcov:
+
 clean:
 	for dir in ${subdirs} ; do 	\
 		${MAKE} -C $${dir} clean;	\
 	done
 	cd kconfig && $(MAKE) clean
 	${RM} ${CLEAN_FILES}
+
 distclean:clean
 	for dir in ${subdirs} ; do 	\
 		${MAKE} -C $${dir} distclean;	\

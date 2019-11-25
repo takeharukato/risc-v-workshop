@@ -43,10 +43,15 @@ run: ${QEMU_KERNEL}
 run-debug: ${QEMU_KERNEL}
 	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
 
+gcov:
+ifeq ($(CONFIG_PROFILE),y)
+	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
+endif
+
 clean:
 	${RM} ${CLEAN_FILES} ${lib} kernel.lds asm-offset.s
 
-distclean:clean
+distclean: clean
 	${RM} ${DIST_CLEAN_FILES}
 
 -include *.d

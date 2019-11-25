@@ -24,6 +24,11 @@ ${lib}: ${objects}
 run: 
 	${top}/kernel-dbg.elf
 
+gcov:
+ifeq ($(CONFIG_PROFILE),y)
+	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
+endif
+
 clean:
 	${RM} ${CLEAN_FILES} ${lib} asm-offset.s
 
