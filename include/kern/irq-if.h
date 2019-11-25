@@ -10,10 +10,11 @@
 #define  _KERN_IRQ_IF_H 
 
 #include <klib/freestanding.h>
-
 #include <kern/kern-types.h>
+
 #include <klib/list.h>
 #include <klib/queue.h>
+
 #include <kern/spinlock.h>
 /*
  * 割込みハンドラ属性/割込み線の属性値

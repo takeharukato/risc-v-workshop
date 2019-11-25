@@ -764,11 +764,6 @@ hal_map_kernel_space(void){
 	    RV64_UART0_SIZE);
 	show_page_map(pgtbl, RV64_UART0, RV64_UART0_SIZE);
 
-	rc = hal_pgtbl_enter(pgtbl, RV64_UART1, RV64_UART1_PADDR,
-	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
-	    RV64_UART1_SIZE);
-	show_page_map(pgtbl, RV64_UART1, RV64_UART1_SIZE);
-
 	rc = hal_pgtbl_enter(pgtbl, RV64_PLIC, RV64_PLIC_PADDR,
 	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
 	    RV64_PLIC_SIZE);
@@ -779,10 +774,10 @@ hal_map_kernel_space(void){
 	    RV64_CLINT_SIZE);
 	show_page_map(pgtbl, RV64_CLINT, RV64_CLINT_SIZE);
 
-	rc = hal_pgtbl_enter(pgtbl, RV64_QEMU_VIRTIO0, RV64_QEMU_VIRTIO0_PADDR,
+	rc = hal_pgtbl_enter(pgtbl, RV64_VIRTIO0, RV64_VIRTIO0_PADDR,
 	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
-	    RV64_QEMU_VIRTIO0_SIZE);
-	show_page_map(pgtbl, RV64_QEMU_VIRTIO0, RV64_QEMU_VIRTIO0_SIZE);
+	    RV64_VIRTIO0_SIZE);
+	show_page_map(pgtbl, RV64_VIRTIO0, RV64_VIRTIO0_SIZE);
 
 	rv64_write_satp(md->satp);  /* ページテーブル読み込み */
 

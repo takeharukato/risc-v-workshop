@@ -4,6 +4,10 @@ config CONFIG_HAL
 	help
 	  If you wish to build the kernel for real hardware, then answer Y here.
 
+config CONFIG_NR_IRQS
+       int
+       default 64
+
 config CONFIG_HAL_PAGE_SIZE
        int
        default 4096

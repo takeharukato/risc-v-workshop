@@ -24,7 +24,7 @@ ifeq ($(CONFIG_PROFILE),y)
 endif
 
 clean: 
-	${RM} ${CLEAN_FILES}
+	${RM} ${CLEAN_FILES} ${lib}
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES}
