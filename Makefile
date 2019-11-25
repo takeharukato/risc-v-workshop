@@ -8,7 +8,11 @@ distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a test/libktest.a hal/hal/libhal.a
 mconf=tools/kconfig/mconf
 
-all:${targets}
+ifeq ($(CONFIG_FORCE_UPDATE_GTAGS),y)
+all: gtags ${targets}
+else
+all: ${targets}
+endif
 
 start_obj =
 ifeq ($(CONFIG_HAL),y)
@@ -102,6 +106,7 @@ dist:
 	${GIT} archive HEAD --format=tar.gz > ${ARCHIVE_NAME}.tar.gz
 
 gtags:
+	${RM} ${GTAGS_CLEAN_FILES}
 	${GTAGS} -v
 
 ifeq ($(CONFIG_PROFILE),y)

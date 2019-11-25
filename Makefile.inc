@@ -60,8 +60,8 @@ TEX_CLEAN_FILES=*.aux *.bbl *.blg *.dvi *.log *.toc \
 	*.ptb *.tod *.fls *.fdb-latexmk *.lof
 GCOV_CLEAN_FILES=*.gcda *.gcno *.gcov
 
-CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES}  ${TEX_CLEAN_FILES} ${GTAGS_CLEAN_FILES}
-DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz
+CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES}
+DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz ${GTAGS_CLEAN_FILES}
 
 .PHONY: clean distclean hal tools gtags dist
 

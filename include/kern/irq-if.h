@@ -14,8 +14,10 @@
 
 #include <klib/list.h>
 #include <klib/queue.h>
+#include <klib/rbtree.h>
 
 #include <kern/spinlock.h>
+
 /*
  * 割込みハンドラ属性/割込み線の属性値
  */
@@ -45,6 +47,7 @@
 #define NR_IRQS         (256)
 #endif  /*  CONFIG_IRQ_MAX_NR  */
 
+struct _irq_ctrlr;
 struct _trap_context;
 
 /**
@@ -59,62 +62,74 @@ typedef struct _irq_handler_ent{
 	void *private;
 }irq_handler_ent;
 
+/* 
+ * 割込みコントローラ操作IF定義
+ */
+typedef int (*irq_ctrl_config_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq, irq_attr _attr, 
+    irq_prio _prio);
+typedef	bool (*irq_ctrl_irq_is_pending)(irq_no _irq, struct _trap_context *_ctx, 
+    irq_prio *_priop);
+typedef void (*irq_ctrl_enable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
+typedef void (*irq_ctrl_disable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
+typedef void (*irq_ctrl_get_priority)(struct _irq_ctrlr *_ctrlr, irq_prio *_prio);
+typedef	void (*irq_ctrl_set_priority)(struct _irq_ctrlr *_ctrlr, irq_prio _prio);
+typedef	void (*irq_ctrl_eoi)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
+typedef	int (*irq_ctrl_initialize)(struct _irq_ctrlr *_ctrlr);
+typedef void (*irq_ctrl_finalize)(struct _irq_ctrlr *_ctrlr);
+
 /**
    割込みコントローラエントリ
  */
 typedef struct _irq_ctrlr{
-	/** 割込みコントローラキューへのリストエントリ */
-	struct _list  link;
-	/** 割込み線の初期化 */
-	int (*config_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq, irq_attr _attr, irq_prio _prio);
-	/** 割込み検出ハンドラ */
-	int (*find_pending)(struct _trap_context *_ctx, irq_no *_irqp, irq_prio *_priop);
-	/** 割込み線単位での割込みの有効化 */
-	void (*enable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
-	/** 割込み線単位での割込みのマスク */
-	void (*disable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
-	/** 割込みコントローラに設定されている割込み優先度の取得 */
-	void (*get_priority)(struct _irq_ctrlr *_ctrlr, irq_prio *_prio);
-	/** 割込みコントローラへの割込み優先度の設定 */
-	void (*set_priority)(struct _irq_ctrlr *_ctrlr, irq_prio _prio);
-	/** 割込み線単位での割込み処理完了通知  */
-	void (*eoi)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
-	/** 割込みコントローラの初期化 */
-	int (*initialize)(struct _irq_ctrlr *_ctrlr);
-	/** 割込みコントローラの終了処理 */
-	void (*finalize)(struct _irq_ctrlr *_ctrlr);
-	/** 割込みコントローラ固有情報へのポインタ */
-	void *private;
+	const char                        *name; /**< コントローラ名                     */
+	struct _list                       link; /**< 割込みコントローラキューのエントリ */
+	irq_no                          min_irq; /**< 割込み番号最小値                   */
+	irq_no                          max_irq; /**< 割込み番号最大値                   */
+	stat_cnt                    nr_handlers; /**< ハンドラ登録数 (単位:個)           */
+	irq_ctrl_config_irq          config_irq; /**< 割込み線の初期化                   */
+	irq_ctrl_irq_is_pending  irq_is_pending; /**< 割込み発生の確認                   */
+	irq_ctrl_enable_irq 	     enable_irq; /**< 割込み許可                         */
+	irq_ctrl_disable_irq        disable_irq; /**< 割込み禁止                         */
+	irq_ctrl_get_priority      get_priority; /**< 割込み優先度獲得                   */
+	irq_ctrl_set_priority      set_priority; /**< 割込み優先度設定                   */
+	irq_ctrl_eoi                        eoi; /**< 割込み処理完了通知                 */
+	irq_ctrl_initialize          initialize; /**< コントローラの初期化               */
+	irq_ctrl_finalize              finalize; /**< コントローラの終了                 */
+	void                           *private; /**< コントローラ固有情報へのポインタ   */
 }irq_ctrlr;
 
 /**
    割込み線情報
  */
 typedef struct _irq_line{
-	spinlock          lock;  /*< 割込み線情報のロック                       */
-	irq_no              nr;  /*< 割込み番号                                 */
-	irq_prio          prio;  /*< 割込み優先度                               */
-	irq_attr          attr;  /*< 割込み線の属性値                           */
-	struct _queue handlers;  /*< 割込みハンドラキュー                       */
-	irq_ctrlr      *ctrlrp;  /*< 割込み線につながっている割込みコントローラ */
+	spinlock            lock;  /**< 割込み線情報のロック                       */
+	RB_ENTRY(_irq_line)  ent;  /**< 割り込み管理情報へのリンク                 */
+	irq_no                nr;  /**< 割込み番号                                 */
+	irq_prio            prio;  /**< 割込み優先度                               */
+	irq_attr            attr;  /**< 割込み線の属性値                           */
+	struct _queue   handlers;  /**< 割込みハンドラキュー                       */
+	irq_ctrlr         *ctrlr;  /**< 割込みコントローラエントリへのリンク       */
 }irq_line;
 
 /**
    割込み管理情報
  */
-typedef struct _irq_manage{
-	spinlock                  lock;  /*< 割込み管理情報のロック               */
-	struct _queue        ctrlr_que;  /*< 割込みコントローラキュー             */
-	struct _irq_line irqs[NR_IRQS];  /*< 割込み線情報                         */
-}irq_manage;
+typedef struct _irq_info{
+	spinlock                               lock;  /**< 割込み管理情報のロック   */
+	RB_HEAD(_irq_line_tree, _irq_line) prio_que;  /**< 割り込み優先度キュー     */
+	struct _queue                     ctrlr_que;  /**< 割込みコントローラキュー */
+	struct _irq_line              irqs[NR_IRQS];  /**< 割込み線情報             */
+}irq_info;
 
-int irq_initialize_manager(void);
 
-int irq_register_ctrlr(irq_no _irq, irq_ctrlr *_ctrlrp);
-int irq_unregister_ctrlr(irq_no _irq);
-int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, void *_private, int (*_handler)(irq_no _irq, struct _trap_context *_ctx, void *_private));
-int irq_unregister_handler(irq_no irq, int (*handler)(irq_no _irq, struct _trap_context *_ctx, void *_private));
-void irq_register_pending_irq_finder(struct _irq_finder *_ent);
-void irq_unregister_pending_irq_finder(struct _irq_finder *_ent);
 int irq_handle_irq(struct _trap_context *_ctx);
+
+int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, void *_private, 
+    int (*_handler)(irq_no _irq, struct _trap_context *_ctx, void *_private));
+int irq_unregister_handler(irq_no irq, int (*handler)(irq_no _irq, struct _trap_context *_ctx,
+	void *_private));
+int irq_register_ctrlr(irq_ctrlr *_ctrlr);
+void irq_unregister_ctrlr(irq_ctrlr *_ctrlr);
+
+void irq_init(void);
 #endif  /*  _KERN_IRQ_IF_H   */
