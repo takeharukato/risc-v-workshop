@@ -53,9 +53,6 @@ hal_dbg_console_init(void){
 
 	/* FIFOを有効化する */
 	dbg_write_uart_reg(UART_FIFO, 0x07);
-
-	/* 受信割込みを有効化する */
-	dbg_write_uart_reg(UART_INTR, UART_INTR_RDA);
 }
 
 /**
