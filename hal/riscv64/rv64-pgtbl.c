@@ -225,7 +225,7 @@ remove_table_reference(vm_pgtbl pgt, vm_vaddr vaddr){
 		pte = cur_tbl[idx];  /* ページテーブルエントリを得る */
 		if ( !RV64_PTE_IS_VALID(pte) ) { /* 有効なページテーブルエントリでない */
 
-			kprintf("hal_pgtbl_remove: Invalid pte tbl=%p lvl=%d "
+			kprintf(KERN_PNC "hal_pgtbl_remove: Invalid pte tbl=%p lvl=%d "
 			    "vaddr=%p pte=%p\n", cur_tbl, lvl, vaddr, pte);
 			kassert_no_reach();
 		}
@@ -611,7 +611,7 @@ hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot,
 	    || ( !PAGE_ALIGNED(vaddr_end ) )
 	    || ( !PAGE_ALIGNED(paddr_end ) ) ) {
 	
-		kprintf("Invalid page alignment(vstart, vend, pstart, pend)\n", 
+		kprintf(KERN_PNC "Invalid page alignment(vstart, vend, pstart, pend)\n", 
 		    vaddr_sta, (vaddr_end ),
 		    cur_paddr, (paddr_end ) );
 		kassert_no_reach();
@@ -732,7 +732,7 @@ hal_map_kernel_space(void){
 	rc = pgtbl_alloc_pgtbl(&pgtbl);
 	if ( rc != 0 ) {
 	
-		kprintf("Can not allocate kernel page table\n");
+		kprintf(KERN_PNC "Can not allocate kernel page table\n");
 		kassert_no_reach();
 	}
 

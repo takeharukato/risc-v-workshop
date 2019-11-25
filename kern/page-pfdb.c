@@ -302,7 +302,7 @@ adjust_page_order(page_frame *pf, page_order request_order){
 
 	if ( pf->order != request_order ) { /*  ページオーダを更新できなかった  */
 		
-		kprintf(KERN_CRI "adjust page order was failed:%p "
+		kprintf(KERN_PNC "adjust page order was failed:%p "
 		    "pfn:%u flags=%x order:%d reqest-order:%d"
 		    "original-order:%d\n", pf, pf->pfn,
 		    pf->state, pf->order, request_order, orig_order);

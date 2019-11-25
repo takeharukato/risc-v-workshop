@@ -87,7 +87,7 @@ kvaddr + length  +----------------------+<-ページフレーム配列[max_pfn-m
     [min_pfn, max_pfn)の範囲のページを管理する
  */
 typedef struct _pfdb_ent{
-	RB_ENTRY(_pfdb_ent)      ent; /**< ページフレーム管理情報のリンク      */
+	RB_ENTRY(_pfdb_ent)      ent; /**< ページフレーム管理情報のリンク                */
 	void                 *kvaddr; /**< ストレートマップ領域での開始アドレス          */
 	size_t                length; /**< 領域サイズ(単位:バイト)                       */
 	obj_cnt_type         min_pfn; /**< 最小ページフレーム番号                        */

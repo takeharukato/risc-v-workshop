@@ -69,7 +69,7 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 	rc = slab_kmem_cache_alloc(&pgtbl_cache, KMALLOC_NORMAL, (void **)&pgt);
 	if ( rc != 0 ) {
 	
-		kprintf("Can not allocate kernel page table cache.\n");
+		kprintf(KERN_PNC "Can not allocate kernel page table cache.\n");
 		kprintf("Machine Dependent (MD) part might have not initialized "
 		    "prealloc-caches (kmalloc).\n");
 		kassert_no_reach();
@@ -86,7 +86,7 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 	rc = pgtbl_alloc_pgtbl_page(pgt, &pgt->pgtbl_base, &pgt->tblbase_paddr);
 	if ( rc != 0 ) {
 	
-		kprintf("Can not allocate kernel page table base:rc = %d\n", rc);
+		kprintf(KERN_PNC "Can not allocate kernel page table base:rc = %d\n", rc);
 		kassert_no_reach();
 	}
 

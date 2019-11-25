@@ -11,11 +11,12 @@
 
 #include <klib/freestanding.h>
 
-#define KERN_CRI   "[CRI]" /*< クリティカルメッセージ  */
-#define KERN_ERR   "[ERR]"  /*< エラーメッセージ        */
-#define KERN_WAR   "[WAR]"  /*< 警告メッセージ          */
-#define KERN_INF   "[INF]"  /*< 情報メッセージ          */
-#define KERN_DBG   "[DBG]"  /*< デバッグメッセージ      */
+#define KERN_CRI   "[CRI]"    /*< クリティカルメッセージ  */
+#define KERN_ERR   "[ERR]"    /*< エラーメッセージ        */
+#define KERN_WAR   "[WAR]"    /*< 警告メッセージ          */
+#define KERN_INF   "[INF]"    /*< 情報メッセージ          */
+#define KERN_DBG   "[DBG]"    /*< デバッグメッセージ      */
+#define KERN_PNC   "PANIC: "  /*< パニックメッセージ      */
 
 #define KLIB_PRFBUFLEN  (256)  /*< printf内部バッファ長  */
 
