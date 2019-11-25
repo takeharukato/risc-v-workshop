@@ -56,6 +56,14 @@ ASMMAC_FUNCTION(machine_mode_vector)
         csrrw t0, mscratch, t0             /* t0レジスタ             */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避       */
 
+	/*
+	 *  コンテキスト保存処理完了
+	 */
+	csrr  s2, mip      /* MIPレジスタを読み込む    */
+	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
+	and   s4, a2, a1   /* mip & MIP_MTIPを計算     */
+	beqz  s4, skip_mtimer /* ビットが立っていなければタイマ更新処理をスキップする */
+	
 	/* これ以降以下のようにレジスタを使用する
 	   s1  mscratch情報物理アドレス
 	   s2  自hart MTIME_CMPレジスタ
@@ -70,9 +78,10 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	add  s6, s5, s4  /* 次のタイマ設定値を算出 */
 	sd   s6, (s3)    /* 次のタイマ設定値を設定 */
 
-	li   s5, MIP_SSIP /* スーパーバイザモードソフトウエア割込み */
+	li   s5, MIP_SSIP /* スーパーバイザモードソフトウエア割込み発生 */
         csrw sip, s5
-	
+
+skip_mtimer:
 	/*
 	 * コンテキスト復元
 	 */
