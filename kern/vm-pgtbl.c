@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 static kmem_cache pgtbl_cache;  /* ページテーブル情報のキャッシュ */
 

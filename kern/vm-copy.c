@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 /**
    カーネル仮想アドレス中のページの内容をコピーする

@@ -8,7 +8,7 @@
 #include <hal-riscv64/rv64-platform.h>
 #include <hal-riscv64/rv64-pgtbl.h>
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 #include <kern/ktest.h>
 

@@ -6,8 +6,8 @@
 /*  Virtual memory                                                    */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_VM_H)
-#define  _KERN_VM_H 
+#if !defined(_KERN_VM_IF_H)
+#define  _KERN_VM_IF_H 
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
@@ -73,4 +73,4 @@ int vm_unmap(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
 int vm_map_userpage(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_prot _prot, vm_flags _flags,
     vm_size _pgsize, vm_size _size);
 #endif  /*  ASM_FILE  */
-#endif  /*  _KERN_PGTBL_H   */
+#endif  /*  _KERN_VM_IF_H   */

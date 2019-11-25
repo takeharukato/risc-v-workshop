@@ -1,11 +1,16 @@
-/*
- * vmmap
- */
+/* -*- mode: C; coding:utf-8 -*- */
+/**********************************************************************/
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
+/*                                                                    */
+/*  test routine                                                      */
+/*                                                                    */
+/**********************************************************************/
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 #include <kern/ktest.h>
 

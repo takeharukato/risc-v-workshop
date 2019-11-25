@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 /**
    仮想空間からページをアンマップする (内部関数)

@@ -12,7 +12,7 @@
 #include <kern/kern-if.h>
 #include <kern/spinlock.h>
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 #include <hal/rv64-platform.h>
 #include <hal/hal-dbg-console.h>

@@ -10,7 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/page-if.h>
-#include <kern/vm.h>
+#include <kern/vm-if.h>
 
 #include <kern/ktest.h>
 
