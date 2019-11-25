@@ -8,10 +8,15 @@ hal:
 	${RM} hal
 	${LN} -s ${CPU} hal
 
-clean:hal
-	${MAKE} -C hal clean
+clean: hal
+	for dir in ${HAL_DIRS} ; do \
+	${MAKE} -C $${dir} $@ ;\
+	done
+	${RM} ${CLEAN_FILES}
 
-distclean:hal clean
-	${MAKE} -C hal distclean
-	${RM} \#* *~
+distclean: hal clean
+	for dir in ${HAL_DIRS} ; do \
+	${MAKE} -C $${dir} $@ ;\
+	done
+	${RM} ${DIST_CLEAN_FILES}
 	${RM} hal

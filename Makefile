@@ -88,13 +88,13 @@ clean:
 	for dir in ${cleandirs} ; do \
 	${MAKE} -C $${dir} clean ;\
 	done
-	${RM} *.o ${targets} *.tmp *.elf *.asm *.map *.iso
+	${RM} ${CLEAN_FILES} ${targets} *.tmp *.elf *.asm *.map *.iso include/klib/asm-offset.h
 
 distclean:clean
 	for dir in ${cleandirs} ; do \
 	${MAKE} -C $${dir} distclean ;\
 	done
-	${RM} \#* *~ .config* _config GPATH GRTAGS GSYMS GTAGS *.log
+	${RM} ${DIST_CLEAN_FILES} include/kern/autoconf.h
 
 dist: 
 	${RM} ${ARCHIVE_NAME}.tar.gz
@@ -102,4 +102,11 @@ dist:
 
 gtags:
 	${GTAGS} -v
+
+gcov: 
+ifeq ($(CONFIG_PROFILE),y)
+	for dir in ${subdirs} ; do \
+		${MAKE} -C $${dir} $@ ;\
+	done
+endif
 

@@ -7,7 +7,7 @@ include ${top}/Makefile.inc
 all: distclean
 
 clean:
-	${RM} ${CLEAN_FILES} asm-offset.h
+	${RM} ${CLEAN_FILES}
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES}

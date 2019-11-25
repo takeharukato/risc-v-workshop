@@ -25,10 +25,10 @@ run:
 	${top}/kernel-dbg.elf
 
 clean:
-	${RM} *.o *.d ${lib} vector.S asm-offset.s ${top}/include/hal/asm-offset.h
+	${RM} ${CLEAN_FILES} ${lib} asm-offset.s
 
-distclean:clean
-	${RM} \#* *~
+distclean: clean
+	${RM} ${DIST_CLEAN_FILES}
 
 -include *.d
 

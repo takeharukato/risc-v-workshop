@@ -16,11 +16,12 @@ all: ${depends} ${lib}
 ${lib}:${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
-clean:
-	${RM} *.o *.d ${lib}
 
-distclean:clean
-	${RM} \#* *~
+clean:
+	${RM} ${CLEAN_FILES} ${lib}
+
+distclean: clean
+	${RM} ${DIST_CLEAN_FILES}
 
 -include *.d
 

@@ -1,22 +1,23 @@
 top=..
 include ${top}/Makefile.inc
 
-subdirs=klib hal
+subdirs=klib kern dev hal
 
-all:hal
+all: hal
 
 hal:
 	${RM} hal
 	${LN} -s hal-${CPU} hal
 
 clean: hal
-	for dir in ${subdirs} ; do \
+	for dir in ${subdirs} ${HAL_INC_DIRS} ; do \
 	${MAKE} -C $${dir} clean ;\
 	done
+	${RM} ${CLEAN_FILES}
 
 distclean:hal clean
-	for dir in ${subdirs} ; do \
+	for dir in ${subdirs} ${HAL_INC_DIRS} ; do \
 	${MAKE} -C $${dir} distclean ;\
 	done
 	${RM} hal
-	${RM} \#* *~ autoconf.h
+	${RM} ${DIST_CLEAN_FILES} *~ autoconf.h

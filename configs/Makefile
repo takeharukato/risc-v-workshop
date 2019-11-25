@@ -9,7 +9,8 @@ hal:
 	${LN} -s ${CPU} hal
 
 clean:
+	${RM} ${CLEAN_FILES}
 
 distclean:clean
-	${RM} \#* *~ hal
+	${RM} ${DIST_CLEAN_FILES} hal
 

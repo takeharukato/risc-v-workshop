@@ -44,10 +44,10 @@ run-debug: ${QEMU_KERNEL}
 	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
 
 clean:
-	${RM} *.o *.d ${lib} kernel.lds asm-offset.s ${top}/include/hal/asm-offset.h
+	${RM} ${CLEAN_FILES} ${lib} kernel.lds asm-offset.s
 
 distclean:clean
-	${RM} \#* *~
+	${RM} ${DIST_CLEAN_FILES}
 
 -include *.d
 

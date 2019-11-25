@@ -1,5 +1,10 @@
 # -*- mode: makefile-gmake; coding:utf-8 -*-
 #
+-include ${top}/.config
+TARGET_CPUS=riscv64 uland
+HAL_DIRS=${TARGET_CPUS}
+HAL_INC_DIRS=$(addprefix hal-,${TARGET_CPUS})
+
 CPU ?= `uname -m|sed -e "s/x86-64/x64/" -e "s/amd64/x64/" -e "s/x86_64/x64/" -e "s/i?86/ia32/"`
 HOST_CC ?= gcc
 CC=${CROSS_COMPILE}${HOST_CC}
@@ -47,6 +52,15 @@ QEMU_KERNEL ?= ${top}/kernel.elf
 QEMU_OPT ?= -m ${CONFIG_HAL_MEMORY_SIZE_MB} -nographic -serial mon:stdio
 QEMU_DBG_OPT := -S -gdb tcp::1234
 
+OBJ_CLEAN_FILES=*.o *.d
+GTAGS_CLEAN_FILES=GPATH GRTAGS GSYMS GTAGS
+TEX_CLEAN_FILES=*.aux *.bbl *.blg *.dvi *.log *.toc \
+	*.ptb *.tod *.fls *.fdb-latexmk *.lof
+GCOV_CLEAN_FILES=*.gcda *.gcno *.gcov
+
+CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES}  ${TEX_CLEAN_FILES} ${GTAGS_CLEAN_FILES}
+DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz
+
 .PHONY: clean distclean hal tools gtags dist
 
 .SUFFIXES: .o .c .S .d
@@ -63,5 +77,5 @@ QEMU_DBG_OPT := -S -gdb tcp::1234
 .S.d: 
 	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.S,%.d, $<)" $< 
 
--include ${top}/.config
+
 

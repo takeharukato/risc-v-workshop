@@ -9,6 +9,7 @@ include ${top}/Makefile.inc
 all: distclean
 
 clean: 
+	${RM} ${CLEAN_FILES}
 
-distclean:
-	${RM} \#* *~
+distclean: clean
+	${RM} ${DIST_CLEAN_FILES}
