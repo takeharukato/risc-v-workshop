@@ -13,7 +13,7 @@
 #include <kern/page-if.h>
 #include <kern/irq-if.h>
 
-static irq_info          g_irq_info;  /* 割込み管理情報 */
+static irq_info          g_irq_info;  /* 割込み管理情報                     */
 static kmem_cache irq_handler_cache;  /* 割込みハンドラエントリのキャッシュ */
 
 /** 割込み線情報を割込み優先度順に格納したツリー
@@ -104,6 +104,59 @@ irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
 }
 
 /**
+   割込み線の参照を返却する (内部関数)
+   @param[in] irqline 返却する割込み線
+   @retval    真      最終参照者だった
+   @retval    偽      最終参照者でなかった
+ */
+static bool
+irqline_put(irq_line *irqline){
+	irq_info         *inf;
+	irq_line         *res;
+	irq_ctrlr      *ctrlr;
+	irq_prio         prio;
+
+	kassert( queue_is_empty(&irqline->handlers) );
+
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
+
+	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
+	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
+
+
+	if ( !refcnt_dec_and_test(&irqline->refs) ) /* 最終参照者でない場合は抜ける */
+		return false;
+		
+	/* 
+	 * ハンドラキューが空になったら割込み線を優先度キューから外し, 
+	 * 割込みをマスクする
+	 */
+	res = RB_REMOVE(_irq_line_tree, &inf->prio_que, 
+			irqline); /* 優先度キューから削除 */
+	kassert( res != NULL );
+	
+	/* 割込みをマスクする
+	 * 優先度割込みマスク方式のコントローラを搭載している場合, 
+	 * 割込み線に設定された優先度以下の割込みが上がらないように割込み
+	 * 優先度マスクを設定する。
+	 * 割込み線単位で割込みを制御可能な場合は対象の割込み線をマスクする。
+	 */
+	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) ) {
+		
+		/* 割込み線に設定された優先度以下の割込みが上がらないようにする 
+		 */
+		ctrlr->get_priority(ctrlr, &prio); /* 現在のマスク値を取得 */
+		if ( irqline->prio > prio )  /* 割込み線の優先度 > 現在のマスク値の場合 */
+			ctrlr->set_priority(ctrlr, irqline->prio); /* 割込みマスク更新 */
+	}
+	
+	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )
+		ctrlr->disable_irq(ctrlr, irqline->irq); /* 割込み線単位で割込みをマスクする */
+
+	return true; /* 最終参照者であることを返却 */
+}
+
+/**
    割込みハンドラを登録する
    @param[in] irq     登録する割込み番号
    @param[in] attr    登録する割込みの属性
@@ -185,6 +238,8 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 		irqline->attr = attr;    /* 割込み線の属性          */
 		irqline->prio = prio;    /* 割込み優先度            */
 		irqline->ctrlr = ctrlr;  /* コントローラ情報を設定  */
+
+		refcnt_set(&irqline->refs, 1);  /* 割込み管理->割込み線への参照を設定して初期化 */
 	}
 
 	kassert( irqline->ctrlr == ctrlr ); /* コントローラ情報が設定されていることを確認 */
@@ -198,7 +253,6 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 	}
 
 	list_init(&hdlr->link);   /* リストエントリを初期化   */
-	refcnt_init(&hdlr->refs); /* 参照カウンタを初期化     */
 	hdlr->handler = handler;  /* 割込みハンドラを初期化   */
 	hdlr->private = private;  /* プライベート情報をセット */
 
@@ -229,13 +283,13 @@ unlock_out:
    @retval   -ENOENT  割込みハンドラが未登録
  */
 int
-irq_unregister_handler(irq_no __unused irq, irq_handler __unused handler, void __unused *private){
+irq_unregister_handler(irq_no irq, irq_handler handler, void *private){
 	int                rc;
 	irq_info         *inf;
-	irq_ctrlr      *ctrlr;
 	irq_handler_ent *hdlr;
 	irq_handler_ent   key;
 	irq_line     *irqline;
+	irq_ctrlr      *ctrlr;
 	intrflags      iflags;
 
 	if ( irq >= NR_IRQS )
@@ -248,7 +302,10 @@ irq_unregister_handler(irq_no __unused irq, irq_handler __unused handler, void _
 	spinlock_lock_disable_intr(&inf->lock, &iflags);
 
 	irqline = &inf->irqs[irq];  /* 割込み線情報を参照 */
-	
+	kassert( irqline->ctrlr != NULL );
+
+	/* 指定されたハンドラを検索
+	 */
 	queue_find_element(&irqline->handlers, irq_handler_ent, link, &key, 
 			   irq_handler_cmp, &hdlr);
 	if ( hdlr == NULL ) { /* 指定された割込みハンドラが見つからなかった */
@@ -258,7 +315,17 @@ irq_unregister_handler(irq_no __unused irq, irq_handler __unused handler, void _
 	}
 
 	queue_del(&irqline->handlers, &hdlr->link); /* キューから削除 */
-	/* TODO: 空になったら割込み線を優先度キューから外し, 割込みをマスクする */
+
+	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
+	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
+
+	statcnt_dec(&ctrlr->nr_handlers);  /* コントローラ内のハンドラ統計情報量を減算 */
+
+	if ( queue_is_empty(&irqline->handlers) ) 
+		irqline_put(irqline);  /* 参照を返却 */
+
+	slab_kmem_cache_free(hdlr);  /* 割込みハンドラエントリを解放 */
+
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 	
@@ -290,13 +357,7 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
 	irq_ctrlr  *found;
 	intrflags  iflags;
 
-	if ( ( ctrlr->config_irq == NULL ) ||
-	    ( ctrlr->irq_is_pending == NULL ) ||
-	    ( ( ( ctrlr->enable_irq == NULL ) || ( ctrlr->disable_irq == NULL ) ) 
-		&& ( ( ctrlr->get_priority == NULL ) || ( ctrlr->set_priority == NULL ) ) ) ||
-	    ( ctrlr->eoi == NULL ) ||
-	    ( ctrlr->initialize == NULL ) ||
-	    ( ctrlr->finalize == NULL ) ) {
+	if ( IRQ_CTRLR_OPS_IS_VALID(ctrlr) ){
 
 		rc = -EINVAL;   /* コントローラハンドラの設定誤り */
 		goto error_out;

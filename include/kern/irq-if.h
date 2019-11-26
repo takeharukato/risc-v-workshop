@@ -62,7 +62,6 @@ typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, void *_priva
  */
 typedef struct _irq_handler_ent{
 	struct _list    link; /**< 割込みハンドラキューのリストエントリ */
-	refcounter      refs; /**< 参照カウンタ                         */
 	irq_handler  handler; /**< 割込みハンドラ                       */
 	void        *private; /**< ハンドラ固有情報へのポインタ         */
 }irq_handler_ent;
@@ -108,6 +107,7 @@ typedef struct _irq_ctrlr{
  */
 typedef struct _irq_line{
 	RB_ENTRY(_irq_line)  ent;  /**< 割り込み管理情報へのリンク                 */
+	refcounter          refs;  /**< 参照カウンタ                               */
 	irq_no               irq;  /**< 割込み番号                                 */
 	irq_prio            prio;  /**< 割込み優先度                               */
 	irq_attr            attr;  /**< 割込み線の属性値                           */
@@ -125,6 +125,29 @@ typedef struct _irq_info{
 	struct _irq_line              irqs[NR_IRQS];  /**< 割込み線情報             */
 }irq_info;
 
+/**
+   割込みコントローラが割込み線単位での割込みマスク制御機構をサポートしている
+   @param[in] _ctrlr 割込みコントローラエントリへのポインタ
+ */
+#define IRQ_CTRLR_OPS_HAS_LINEMASK(_ctrlr) \
+	( ( (_ctrlr)->config_irq != NULL ) && ( (_ctrlr)->irq_is_pending != NULL ) )
+
+/**
+   割込みコントローラが割込み優先度によるマスク制御機構をサポートしている
+   @param[in] _ctrlr 割込みコントローラエントリへのポインタ
+ */
+#define IRQ_CTRLR_OPS_HAS_PRIMASK(_ctrlr) \
+	 ( ( (_ctrlr)->get_priority != NULL ) && ( (_ctrlr)->set_priority != NULL ) )
+
+/**
+   割込みコントローラのハンドラが正しく設定されていることを確認する
+   @param[in] _ctrlr 割込みコントローラエントリへのポインタ
+ */
+#define IRQ_CTRLR_OPS_IS_VALID(_ctrlr)					\
+	( ( (_ctrlr)->config_irq != NULL ) && ( (_ctrlr)->irq_is_pending != NULL ) \
+	  && ( IRQ_CTRLR_OPS_HAS_LINEMASK(_ctrlr) || IRQ_CTRLR_OPS_HAS_PRIMASK(_ctrlr) ) \
+	  && ( (_ctrlr)->eoi != NULL ) && ( (_ctrlr)->initialize != NULL ) \
+	  && ( (_ctrlr)->finalize != NULL ) )
 
 int irq_handle_irq(struct _trap_context *_ctx);
 
