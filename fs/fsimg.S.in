@@ -14,11 +14,11 @@
 
 ASMMAC_DATA_SECTION
 	
-ASMMAC_BALIGN(HAL_PAGE_SIZE)
+ASMMAC_BALIGN(__PAGE_SIZE__)
 ASMMAC_DECLARE_NAME(_fsimg_start)
 _fsimg_start:
-	.incbin "../fsimg.img"  /* TODO: マクロから置き換える */
-ASMMAC_BALIGN(HAL_PAGE_SIZE)
+	.incbin "__fsimg_file__"
+ASMMAC_BALIGN(__PAGE_SIZE__)
 ASMMAC_DECLARE_NAME(_fsimg_end)
 _fsimg_end:
 

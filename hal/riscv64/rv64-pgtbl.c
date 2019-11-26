@@ -685,10 +685,6 @@ int
 hal_copy_kernel_pgtbl(vm_pgtbl upgtbl){
 	int rc;
 
-	rc = mutex_lock(&upgtbl->mtx);  /* ユーザ空間側のロックを獲得する  */
-	if ( rc != 0 )
-		goto error_out;
-
 	if ( kpgtbl != upgtbl ) {
 
 		rc = mutex_lock(&kpgtbl->mtx);  /* カーネル空間側のロックを獲得する  */
@@ -701,18 +697,15 @@ hal_copy_kernel_pgtbl(vm_pgtbl upgtbl){
 	 */
 	vm_copy_kmap_page(upgtbl->pgtbl_base, kpgtbl->pgtbl_base);
 
-	mutex_unlock(&kpgtbl->mtx);         /* カーネル空間側のロックを解放する  */
-
 	if ( kpgtbl != upgtbl )
-		mutex_unlock(&upgtbl->mtx); /* ユーザ空間側のロックを解放する  */
-
+		mutex_unlock(&kpgtbl->mtx);         /* カーネル空間側のロックを解放する  */
+	
 	return 0;
 
 unlock_out:
 	if ( kpgtbl != upgtbl )
-		mutex_unlock(&upgtbl->mtx); /* ユーザ空間側のロックを解放する  */
+		mutex_unlock(&kpgtbl->mtx);         /* カーネル空間側のロックを解放する  */
 
-error_out:
 	return rc;
 }
 

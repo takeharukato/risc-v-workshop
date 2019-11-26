@@ -1,7 +1,8 @@
 top=.
 include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
-
+fsimg_obj=$(patsubst %.img,%.o, ${FSIMG_FILE})
+fsimg_objfile=${top}/fs/${fsimg_obj}
 subdirs=kern klib fs hal test tools
 cleandirs=include ${subdirs}
 distcleandirs=${cleandirs} configs
@@ -32,11 +33,12 @@ kernel.elf: kernel-dbg.elf
 	${CP}	$< $@
 	${STRIP} -g $@
 
-kernel-dbg.elf: include/kern/autoconf.h include/klib/asm-offset.h subsystem ${start_obj}
+kernel-dbg.elf: include/kern/autoconf.h include/klib/asm-offset.h subsystem ${start_obj} \
+	${fsimg_objfile}
 ifeq ($(CONFIG_HAL),y)
 	${CC} -static ${PIC_OPT_FLAGS} ${CFLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\
-		-o $@ ${start_obj} 				\
+		-o $@ ${start_obj} ${fsimg_objfile}	                \
 		-Wl,--start-group ${kernlibs} -Wl,--end-group
 else
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} -Wl,--start-group ${kernlibs} -Wl,--end-group
@@ -77,6 +79,9 @@ subsystem: hal
 	for dir in ${subdirs} ; do \
 	${MAKE} -C $${dir} ;\
 	done
+
+${fsimg_objfile}:
+	${MAKE} -C fs ${fsimg_obj} ;
 
 run: hal kernel.elf
 	${MAKE} -C hal/hal $@ ;\

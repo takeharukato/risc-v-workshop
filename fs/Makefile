@@ -5,7 +5,7 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=fsimg.o
+objects=
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
@@ -25,15 +25,20 @@ ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
 
-fsimg.o: fsimg.S ${FSIMG}
+fsimg.S: fsimg.S.in ${FSIMG}
+	${RM} $@
+	${SED} -e 's|__fsimg_file__|${FSIMG}|g' 	\
+	       -e 's|__PAGE_SIZE__|${CONFIG_HAL_PAGE_SIZE}|g' 		\
+	fsimg.S.in > $@
+
+${fsimg_obj}: fsimg.S 
 
 ${FSIMG}:
-	${RM} ${FSIMG}
 	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
 	${BUSYBOX} mkfs.minix -v ${FSIMG}
 
 clean:
-	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}
+	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}  fsimg.S
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES}

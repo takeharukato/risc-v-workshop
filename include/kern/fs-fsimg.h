@@ -11,7 +11,7 @@
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 
-uintptr_t _fsimg_start;
-uintptr_t _fsimg_end;
+extern uintptr_t _fsimg_start;
+extern uintptr_t _fsimg_end;
 #endif  /*  ASM_FILE */
 #endif  /* _KERN_FS_FSIMG_H */

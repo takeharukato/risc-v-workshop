@@ -111,13 +111,22 @@ pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){
 	if ( rc != 0 )
 		goto error_out;
 
-	rc = hal_copy_kernel_pgtbl(pgt);    /* カーネル空間部分を初期化する   */
+	rc = mutex_lock(&pgt->mtx);    /* ユーザ空間側のロックを獲得する  */
 	if ( rc != 0 )
 		goto error_out;
 
+	rc = hal_copy_kernel_pgtbl(pgt);    /* カーネル空間部分を初期化する   */
+	if ( rc != 0 )
+		goto unlock_mtx_out;
+
 	*pgtp = pgt;  /* ページテーブル情報を返却する */
 
+	mutex_unlock(&pgt->mtx);      /* ユーザ空間側のロックを解放する  */
+
 	return 0;
+
+unlock_mtx_out:
+	mutex_unlock(&pgt->mtx);      /* ユーザ空間側のロックを解放する  */
 
 error_out:
 	return rc;
