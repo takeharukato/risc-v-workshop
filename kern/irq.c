@@ -104,6 +104,18 @@ irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
 }
 
 /**
+   割込み線の参照を獲得する (内部関数)
+   @param[in] irqline 操作対象の割込み線
+   @retval    真      参照を獲得できた
+   @retval    偽      参照を獲得できなかった
+ */
+static bool __unused
+irqline_get(irq_line *irqline){
+
+	return refcnt_inc_if_valid(&irqline->refs);
+}
+
+/**
    割込み線の参照を返却する (内部関数)
    @param[in] irqline 返却する割込み線
    @retval    真      最終参照者だった
@@ -118,15 +130,15 @@ irqline_put(irq_line *irqline){
 
 	kassert( queue_is_empty(&irqline->handlers) );
 
-	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
-
 	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
 	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
 
 
 	if ( !refcnt_dec_and_test(&irqline->refs) ) /* 最終参照者でない場合は抜ける */
 		return false;
-		
+
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */		
+
 	/* 
 	 * ハンドラキューが空になったら割込み線を優先度キューから外し, 
 	 * 割込みをマスクする

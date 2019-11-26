@@ -41,7 +41,8 @@ ifeq ($(CONFIG_HAL),y)
 		-o $@ ${start_obj} ${fsimg_objfile}	                \
 		-Wl,--start-group ${kernlibs} -Wl,--end-group
 else
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} -Wl,--start-group ${kernlibs} -Wl,--end-group
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${start_obj} ${fsimg_objfile} \
+	-Wl,--start-group ${kernlibs} -Wl,--end-group
 endif
 
 #
