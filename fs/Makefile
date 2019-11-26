@@ -5,15 +5,15 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=main.o spinlock.o cpuintr.o page-pfdb.o page-alloc.o page-slab.o vm-pgtbl.o \
-	vm-copy.o vm-map.o wqueue.o mutex.o irq.o
+objects=fsimg.o
+
 ifneq ($(CONFIG_HAL),y)
-objects += ulandpmem.o
+objects +=
 endif
 
 depends = $(patsubst %.o,%.d,${objects})
 
-lib=libkern.a
+lib=libfs.a
 
 all: ${depends} ${lib}
 
@@ -24,6 +24,13 @@ gcov:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
+
+fsimg.o: fsimg.S ${FSIMG}
+
+${FSIMG}:
+	${RM} ${FSIMG}
+	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
+	${BUSYBOX} mkfs.minix -v ${FSIMG}
 
 clean:
 	${RM} ${CLEAN_FILES} ${lib}

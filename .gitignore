@@ -118,3 +118,4 @@ kernel.map
 include/klib/asm-offset.h
 asm-offset.s
 configs/hal
+fsimg.img

@@ -11,6 +11,7 @@
 #include <kern/ktest.h>
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
+#include <kern/fsimg.h>
 
 /** 
     カーネルのアーキ共通テスト
@@ -44,10 +45,12 @@ int
 main(int argc, char *argv[]) {
 	
 	kprintf("Kernel\n");
+
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();
 	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
 
+	kprintf("fsimage: [%p, %p)\n", &_fsimg_start, &_fsimg_end);
 	kern_common_tests();
 	tflib_kernlayout_finalize();
 	return 0;

@@ -2,7 +2,7 @@ top=.
 include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 
-subdirs=kern klib hal test tools
+subdirs=kern klib fs hal test tools
 cleandirs=include ${subdirs}
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a test/libktest.a hal/hal/libhal.a

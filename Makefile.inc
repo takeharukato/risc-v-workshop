@@ -6,6 +6,7 @@ HAL_DIRS=${TARGET_CPUS}
 HAL_INC_DIRS=$(addprefix hal-,${TARGET_CPUS})
 
 CPU ?= `uname -m|sed -e "s/x86-64/x64/" -e "s/amd64/x64/" -e "s/x86_64/x64/" -e "s/i?86/ia32/"`
+
 HOST_CC ?= gcc
 CC=${CROSS_COMPILE}${HOST_CC}
 AR=${CROSS_COMPILE}ar
@@ -24,6 +25,7 @@ CP=cp
 RM=rm -f
 LN=ln
 ARFLAGS=rvc
+DD=dd
 INC_FLAGS = -I${top}/include
 WARN_FLAGS=-Wall -Werror
 OPT_FLAGS=-O0 -ggdb3
@@ -47,7 +49,10 @@ LDFLAGS=
 
 GIT=git
 ARCHIVE_NAME=risc-v-workshop
-FSIMG_FILE=${top}/fsimg.img
+FSIMG_FILE=fsimg.img
+FSIMG=${top}/${FSIMG_FILE}
+FSSIZE=16
+BUSYBOX=busybox
 
 QEMU ?= qemu-system-x86_64
 QEMU_KERNEL ?= ${top}/kernel.elf
