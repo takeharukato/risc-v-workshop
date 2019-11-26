@@ -84,6 +84,26 @@ irq_ctrlr_cmp(irq_ctrlr *key, irq_ctrlr *ent) {
 }
 
 /**
+   割込みハンドラのアドレスをキーとした割込みハンドラエントリ比較関数
+   @param[in] key  検索対象の割込みハンドラのアドレス
+   @param[in] ent  比較対象の割込みハンドラのアドレス
+   @retval 負  keyのアドレスがentより前にある
+   @retval 正  keyのアドレスがentより後にある
+   @retval 0   keyとentのアドレスが一致する
+ */
+static int
+irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
+
+	if ( key->handler < ent->handler )
+		return -1;
+
+	if ( key->handler > ent->handler )
+		return 1;
+		
+	return 0;
+}
+
+/**
    割込みハンドラを登録する
    @param[in] irq     登録する割込み番号
    @param[in] attr    登録する割込みの属性
@@ -198,6 +218,58 @@ unlock_out:
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
 	return rc;
+}
+
+/**
+   割込みハンドラの登録を抹消する
+   @param[in] irq     登録を抹消する割込み番号
+   @param[in] handler 登録を抹消する割込みハンドラ
+   @retval    0       正常終了
+   @retval   -EINVAL  IRQ番号/割込み優先度/トリガ種別が不正
+   @retval   -ENOENT  割込みハンドラが未登録
+ */
+int
+irq_unregister_handler(irq_no __unused irq, irq_handler __unused handler, void __unused *private){
+	int                rc;
+	irq_info         *inf;
+	irq_ctrlr      *ctrlr;
+	irq_handler_ent *hdlr;
+	irq_handler_ent   key;
+	irq_line     *irqline;
+	intrflags      iflags;
+
+	if ( irq >= NR_IRQS )
+		return -EINVAL;  /* IRQ番号が不正 */
+
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
+
+	key.handler = handler;  /* キーを設定 */
+	/* 割込み管理情報のロックを獲得 */
+	spinlock_lock_disable_intr(&inf->lock, &iflags);
+
+	irqline = &inf->irqs[irq];  /* 割込み線情報を参照 */
+	
+	queue_find_element(&irqline->handlers, irq_handler_ent, link, &key, 
+			   irq_handler_cmp, &hdlr);
+	if ( hdlr == NULL ) { /* 指定された割込みハンドラが見つからなかった */
+		
+		rc = -ENOENT;  /* 割込みハンドラが未登録 */
+		goto unlock_out;
+	}
+
+	queue_del(&irqline->handlers, &hdlr->link); /* キューから削除 */
+	/* TODO: 空になったら割込み線を優先度キューから外し, 割込みをマスクする */
+	/* 割込み管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&inf->lock, &iflags);
+	
+	return 0;
+
+unlock_out:	
+	/* 割込み管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&inf->lock, &iflags);
+
+	return rc;
+
 }
 
 /**
