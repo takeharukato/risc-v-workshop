@@ -11,8 +11,8 @@
 #include <kern/ktest.h>
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
-#include <kern/fsimg.h>
-
+#include <kern/fs-fsimg.h>
+#include <kern/fs-pcache.h>
 /** 
     カーネルのアーキ共通テスト
  */

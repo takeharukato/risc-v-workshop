@@ -87,6 +87,15 @@ typedef uint64_t         delay_cnt;  /*< ミリ秒以下のループ待ち指定
 typedef int64_t         epoch_time;  /*< エポックタイム  */
 
 /*
+ * ページキャッシュ
+ */
+typedef uint64_t    pcache_state;   /*< ページキャッシュの状態                */
+/*
+ * デバイス管理
+ */
+typedef uint32_t        fs_dev_id;  /*<  FSデバイスID (メジャー/マイナー番号) */
+typedef uint64_t           dev_id;  /*<  デバイスID (統合デバイス番号)        */
+/*
  * CPU管理/プラットフォーム管理
  */
 typedef uint64_t            cpu_id;  /*< CPU ID                        */

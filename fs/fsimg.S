@@ -9,6 +9,7 @@
 #define ASM_FILE
 
 #include <klib/asm-macros.h>
+#include <kern/fs-fsimg.h>
 #include <hal/hal-page.h>
 
 ASMMAC_DATA_SECTION
