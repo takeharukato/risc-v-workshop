@@ -50,7 +50,9 @@ main(int argc, char *argv[]) {
 	slab_prepare_preallocate_cahches();
 	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
 
-	kprintf("fsimage: [%p, %p)\n", &_fsimg_start, &_fsimg_end);
+	kprintf("fsimage: [%p, %p) len:%u\n", 
+		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
+		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 	kern_common_tests();
 	tflib_kernlayout_finalize();
 	return 0;

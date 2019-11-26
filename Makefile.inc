@@ -1,6 +1,11 @@
 # -*- mode: makefile-gmake; coding:utf-8 -*-
 #
 -include ${top}/.config
+
+ARCHIVE_NAME=risc-v-workshop
+FSIMG_FILE=fsimg.img
+FSSIZE=4
+
 TARGET_CPUS=riscv64 uland
 HAL_DIRS=${TARGET_CPUS}
 HAL_INC_DIRS=$(addprefix hal-,${TARGET_CPUS})
@@ -48,10 +53,7 @@ ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 LDFLAGS=
 
 GIT=git
-ARCHIVE_NAME=risc-v-workshop
-FSIMG_FILE=fsimg.img
 FSIMG=${top}/${FSIMG_FILE}
-FSSIZE=16
 BUSYBOX=busybox
 
 QEMU ?= qemu-system-x86_64

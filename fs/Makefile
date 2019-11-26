@@ -33,7 +33,7 @@ ${FSIMG}:
 	${BUSYBOX} mkfs.minix -v ${FSIMG}
 
 clean:
-	${RM} ${CLEAN_FILES} ${lib}
+	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES}
