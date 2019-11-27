@@ -13,13 +13,17 @@
 #include <hal/hal-page.h>
 
 ASMMAC_DATA_SECTION
-	
+
+ASMMAC_BALIGN(8)
+ASMMAC_FILL(1, 4, FS_FSIMG_MAGIC)  /* ファイルシステムイメージのマジック番号 */
 ASMMAC_BALIGN(__PAGE_SIZE__)
-ASMMAC_DECLARE_NAME(_fsimg_start)
+ASMMAC_DECLARE_NAME(_fsimg_start)  /* ファイルシステムイメージの開始アドレスシンボル */
 _fsimg_start:
 	.incbin "__fsimg_file__"
 ASMMAC_BALIGN(__PAGE_SIZE__)
-ASMMAC_DECLARE_NAME(_fsimg_end)
+ASMMAC_DECLARE_NAME(_fsimg_end)    /* ファイルシステムイメージの終了アドレスシンボル */
 _fsimg_end:
+ASMMAC_BALIGN(8)
+ASMMAC_FILL(1, 4, FS_FSIMG_MAGIC)  /* ファイルシステムイメージのマジック番号 */
 
 
