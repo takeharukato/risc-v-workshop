@@ -109,7 +109,7 @@ irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
    @retval    真      参照を獲得できた
    @retval    偽      参照を獲得できなかった
  */
-static bool __unused
+static bool
 irqline_get(irq_line *irqline){
 
 	return refcnt_inc_if_valid(&irqline->refs);
@@ -166,6 +166,80 @@ irqline_put(irq_line *irqline){
 		ctrlr->disable_irq(ctrlr, irqline->irq); /* 割込み線単位で割込みをマスクする */
 
 	return true; /* 最終参照者であることを返却 */
+}
+
+/**
+   割込み線上の割込みを扱う
+    @param[in] irq     割込み番号
+    @param[in] ctx     トラップコンテキスト
+    @retval    0       ハンドラを呼び出した
+    @retval   -ESRCH   擬似割込み(発生元不明割込み)
+    @retval   -ENOENT  割込み線が未初期化/解放中
+ */
+static int __unused
+handle_irq_line(irq_no irq,  struct _trap_context *ctx) {
+	int                rc;
+	irq_prio         prio;
+	irq_info         *inf;
+	irq_line     *irqline;
+	irq_ctrlr      *ctrlr;
+	int        is_handled;
+	intrflags      iflags;
+
+	if ( irq >= NR_IRQS )
+		return -EINVAL;  /* IRQ番号が不正 */
+
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
+
+	/* 割込み管理情報のロックを獲得 */
+	spinlock_lock_disable_intr(&inf->lock, &iflags);	
+
+	irqline = &inf->irqs[irq];        /* 割込み線情報を参照 */
+	kassert( irq == irqline->irq );
+
+	if ( !irqline_get(irqline) ) {     /* 割込み線への参照を獲得 */
+
+		rc = -ENOENT;  /* 割込み線が未初期化/解放中 */
+		goto unlock_out;
+	}
+	/* 割込み管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&inf->lock, &iflags);
+
+	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
+	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
+
+	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	{  /* 優先度マスクを設定 */
+
+		ctrlr->get_priority(ctrlr, &prio);  /* 現在の優先度割込みマスク値を取得 */
+		/* 割込み線の割込み優先度以下の割込みをマスク */
+		ctrlr->set_priority(ctrlr, irqline->prio); 
+	}
+
+	/* 指定された割込み線への割込みをマスク */
+	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )	 
+		ctrlr->disable_irq(ctrlr, irqline->irq);
+	
+	ctrlr->eoi(ctrlr, irqline->irq);  /* 割込み完了通知を発行 */
+
+	/* TODO: 割込みハンドラ呼び出し */
+	is_handled = IRQ_NOT_HANDLED;
+
+
+	/* 指定された割込み線への割込みを許可 */
+	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )	 
+		ctrlr->enable_irq(ctrlr, irqline->irq);
+
+	/* 割込み前の割込み優先度に設定 */
+	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	
+		ctrlr->set_priority(ctrlr, prio);
+
+	return is_handled;
+
+unlock_out:
+	/* 割込み管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&inf->lock, &iflags);
+
+	return rc;
 }
 
 /**

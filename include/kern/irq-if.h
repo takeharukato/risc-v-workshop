@@ -22,14 +22,14 @@
 /*
  * 割込みハンドラ属性/割込み線の属性値
  */
-#define IRQ_ATTR_EXCLUSIVE     (0x1)   /*< 割込み線共有不可                   */
-#define IRQ_ATTR_SHARED        (0x0)   /*< 割込み線共有可能                   */
-#define IRQ_ATTR_NESTABLE      (0x0)   /*< 多重割込み可能                     */
-#define IRQ_ATTR_NON_NESTABLE  (0x2)   /*< 多重割込み不可能                   */
-#define IRQ_ATTR_HANDLER_MASK  (0xf)   /*< 割込みハンドラ属性フラグのマスク   */
-#define IRQ_ATTR_LEVEL         (0x00)  /*< レベルトリガ割込み                 */
-#define IRQ_ATTR_EDGE          (0x10)  /*< エッジトリガ割込み                 */
-#define IRQ_ATTR_TRIGGER_MASK  (0xf0)  /*< トリガマスク                       */
+#define IRQ_ATTR_EXCLUSIVE     (0x1)   /*< 割込み線共有不可                          */
+#define IRQ_ATTR_SHARED        (0x0)   /*< 割込み線共有可能                          */
+#define IRQ_ATTR_NON_NESTABLE  (0x0)   /*< 多重割込み不可能                          */
+#define IRQ_ATTR_NESTABLE      (0x2)   /*< 多重割込み可能                            */
+#define IRQ_ATTR_HANDLER_MASK  (0xf)   /*< 割込みハンドラ/割込み線属性フラグのマスク */
+#define IRQ_ATTR_LEVEL         (0x00)  /*< レベルトリガ割込み                        */
+#define IRQ_ATTR_EDGE          (0x10)  /*< エッジトリガ割込み                        */
+#define IRQ_ATTR_TRIGGER_MASK  (0xf0)  /*< トリガマスク                              */
 
 /* 割込み検出ハンドラの返値
  */
