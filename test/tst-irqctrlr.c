@@ -162,6 +162,7 @@ static irq_ctrlr tst_ctrlr={
 static void
 irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 	int                  rc;
+	int                   i;
 	tst_irqctrlr_regs *regs;
 
 	regs = &g_regs;
@@ -175,19 +176,45 @@ irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 	
-	rc = irq_register_handler(1, IRQ_ATTR_NESTABLE, 12, tst_irq_handler, regs);
+	rc = irq_register_handler(1, IRQ_ATTR_NESTABLE, 7, tst_irq_handler, regs);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = irq_register_handler(2, IRQ_ATTR_NESTABLE, 7, tst_irq_handler, regs);
+	rc = irq_register_handler(2, IRQ_ATTR_NESTABLE, 12, tst_irq_handler, regs);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
 	regs->pending = 1<<1 | 1<<2 | 1<< 3;
-	irq_handle_irq(NULL);
+	for(i = 0; 4 > i; ++i )
+		irq_handle_irq(NULL);
+
+	kprintf("pending: 0x%lx mask:0x%lx\n",
+	    regs->pending, regs->mask);
+
+	rc = irq_unregister_handler(2, tst_irq_handler, regs);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rc = irq_unregister_handler(1, tst_irq_handler, regs);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rc = irq_register_ctrlr(&tst_ctrlr);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	irq_unregister_ctrlr(&tst_ctrlr);
+
+	kprintf("pending: 0x%lx mask:0x%lx\n",
+	    regs->pending, regs->mask);
 }
 
 void

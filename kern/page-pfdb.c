@@ -28,18 +28,18 @@ RB_GENERATE_STATIC(_pfdb_tree, _pfdb_ent, ent, _pfdb_ent_cmp);
     ページフレームデータベースエントリ比較関数
     @param[in] key 比較対象領域1
     @param[in] ent RB木内の各エントリ
-    @retval 負  keyの領域全体が entより前にある
-    @retval 正  keyの領域全体が entより後にある
+    @retval 正  keyの領域全体が entより前にある
+    @retval 負  keyの領域全体が entより後にある
     @retval 0   keyの領域全体が entに含まれる
  */
 static int 
 _pfdb_ent_cmp(struct _pfdb_ent *key, struct _pfdb_ent *ent){
 	
 	if ( key->max_pfn <= ent->min_pfn )
-		return -1;
+		return 1;
 
 	if ( ent->max_pfn <= key->min_pfn )
-		return 1;
+		return -1;
 
 	kassert( ( ent->min_pfn <= key->min_pfn ) &&
 		 ( key->max_pfn < ent->max_pfn ) );

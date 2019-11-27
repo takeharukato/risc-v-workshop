@@ -25,17 +25,17 @@ RB_GENERATE_STATIC(_irq_line_tree, _irq_line, ent, irq_line_cmp);
     割込み線情報比較関数
     @param[in] key 比較対象割込み線情報
     @param[in] ent RB木内の各エントリ
-    @retval 負  割込み線情報の優先度がentの優先度より前にある
-    @retval 正  割込み線情報の優先度がentの優先度より後にある
+    @retval 正  割込み線情報の優先度がentの優先度より前にある
+    @retval 負  割込み線情報の優先度がentの優先度より後にある
     @retval 0   割込み線情報の優先度とentの優先度が等しい
  */
 static int 
 irq_line_cmp(struct _irq_line *key, struct _irq_line *ent){
 	
-	if ( key->prio < ent->prio )
+	if ( key->prio > ent->prio )
 		return -1;
 
-	if ( key->prio > ent->prio )
+	if ( key->prio < ent->prio )
 		return 1;
 
 	return 0;	
@@ -127,8 +127,6 @@ irqline_put(irq_line *irqline){
 	irq_line         *res;
 	irq_ctrlr      *ctrlr;
 	irq_prio         prio;
-
-	kassert( !queue_is_empty(&irqline->handlers) );
 
 	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
 	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
@@ -478,7 +476,7 @@ unlock_out:
    @param[in] handler 登録を抹消する割込みハンドラ
    @retval    0       正常終了
    @retval   -EINVAL  IRQ番号/割込み優先度/トリガ種別が不正
-   @retval   -ENOENT  割込みハンドラが未登録
+   @retval   -ENOENT  割込みハンドラが未登録/コントローラ未初期化
  */
 int
 irq_unregister_handler(irq_no irq, irq_handler handler, void *private){
