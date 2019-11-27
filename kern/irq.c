@@ -133,14 +133,12 @@ irqline_put(irq_line *irqline){
 	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
 	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
 
-
 	if ( !refcnt_dec_and_test(&irqline->refs) ) /* 最終参照者でない場合は抜ける */
 		return false;
 
 	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */		
 
-	/* 
-	 * ハンドラキューが空になったら割込み線を優先度キューから外し, 
+	/* ハンドラキューが空になったら割込み線を優先度キューから外し, 
 	 * 割込みをマスクする
 	 */
 	res = RB_REMOVE(_irq_line_tree, &inf->prio_que, 
@@ -157,53 +155,98 @@ irqline_put(irq_line *irqline){
 		
 		/* 割込み線に設定された優先度以下の割込みが上がらないようにする 
 		 */
-		ctrlr->get_priority(ctrlr, &prio); /* 現在のマスク値を取得 */
+		ctrlr->get_priority(ctrlr, &prio);  /* 現在のマスク値を取得             */
 		if ( irqline->prio > prio )  /* 割込み線の優先度 > 現在のマスク値の場合 */
-			ctrlr->set_priority(ctrlr, irqline->prio); /* 割込みマスク更新 */
+			ctrlr->set_priority(ctrlr, irqline->prio);  /* 割込みマスク更新 */
 	}
 	
+	/* 割込み線単位で割込みをマスクする */
 	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )
-		ctrlr->disable_irq(ctrlr, irqline->irq); /* 割込み線単位で割込みをマスクする */
+		ctrlr->disable_irq(ctrlr, irqline->irq); 
 
 	return true; /* 最終参照者であることを返却 */
 }
 
 /**
-   割込み線上の割込みを扱う
-    @param[in] irq     割込み番号
-    @param[in] ctx     トラップコンテキスト
-    @retval    0       ハンドラを呼び出した
-    @retval   -ESRCH   擬似割込み(発生元不明割込み)
-    @retval   -ENOENT  割込み線が未初期化/解放中
+   割り込みハンドラを呼び出す
+   @param[in] irqline 割込み線情報
+   @param[in] ctx     割込みコンテキスト
+   @retval  0         割込みハンドラを呼び出して割込みを処理した
+   @retval -ESRCH     擬似割込み(割込みを処理するハンドラがいなかった)
+   @retval -ENOENT    割込み線が未初期化/解放中
  */
-static int __unused
-handle_irq_line(irq_no irq,  struct _trap_context *ctx) {
+static int
+invoke_irq_handler(irq_line *irqline, struct _trap_context *ctx){
+	int                rc;
+	list              *lp;
+	irq_handler_ent  *ent;
+	int        is_handled;
+
+	kassert( NR_IRQS > irqline->irq );  /* 割込み番号を確認 */
+#if defined(CONFIG_HAL)
+	kassert( krn_cpu_interrupt_disabled() );  /* 割込み禁止状態で呼び出されることを確認 */
+#endif  /* CONFIG_HAL */
+
+	if ( !irqline_get(irqline) ) { /* 割込み線への参照を獲得 */
+
+		rc = -ENOENT;  /* 割込み線が未初期化/解放中 */
+		goto error_out;
+	}
+
+	/*
+	 * 割込み線上に登録された割込みハンドラを呼び出す
+	 */
+	is_handled = IRQ_NOT_HANDLED;  /* 割込み処理未実施に初期化 */
+	queue_for_each(lp, &irqline->handlers) {
+
+		/* 割込みハンドラエントリ獲得 */
+		ent = container_of(lp, irq_handler_ent, link);
+
+		/*
+		 * 割込みハンドラ呼び出し
+		 */
+		if ( irqline->attr & IRQ_ATTR_NESTABLE )
+			krn_cpu_enable_interrupt(); /* 多重割り込みを許可する */
+		
+		/* ハンドラ呼び出し */
+		is_handled = ent->handler(irqline->irq, ctx, ent->private);
+
+		if ( irqline->attr & IRQ_ATTR_NESTABLE )
+			krn_cpu_disable_interrupt();  /* 割り込みを禁止する */
+
+		if ( is_handled == IRQ_HANDLED )
+			break;  /* 割込みを処理した */
+	}
+
+	irqline_put(irqline);     /* 割込み線への参照を解放 */
+
+	return ( is_handled == IRQ_NOT_HANDLED ) ? ( -ESRCH ) : (0);
+
+error_out:
+	return rc;
+}
+
+/**
+   割込み線上の割込みを扱う
+   @param[in] irqline 割込み線情報
+   @param[in] ctx     割込みコンテキスト
+   @retval    0       ハンドラを呼び出した
+   @retval   -ESRCH   擬似割込み(割込みを処理するハンドラがいなかった)
+   @retval   -ENOENT  割込み線が未初期化/解放中
+*/
+static int
+handle_irq_line(irq_line *irqline, struct _trap_context *ctx) {
 	int                rc;
 	irq_prio         prio;
-	irq_info         *inf;
-	irq_line     *irqline;
 	irq_ctrlr      *ctrlr;
-	int        is_handled;
-	intrflags      iflags;
 
-	if ( irq >= NR_IRQS )
-		return -EINVAL;  /* IRQ番号が不正 */
-
-	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
-
-	/* 割込み管理情報のロックを獲得 */
-	spinlock_lock_disable_intr(&inf->lock, &iflags);	
-
-	irqline = &inf->irqs[irq];        /* 割込み線情報を参照 */
-	kassert( irq == irqline->irq );
+	kassert( NR_IRQS > irqline->irq );  /* 割込み番号を確認 */
 
 	if ( !irqline_get(irqline) ) {     /* 割込み線への参照を獲得 */
 
 		rc = -ENOENT;  /* 割込み線が未初期化/解放中 */
-		goto unlock_out;
+		goto error_out;
 	}
-	/* 割込み管理情報のロックを解放 */
-	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
 	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
 	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
@@ -221,9 +264,10 @@ handle_irq_line(irq_no irq,  struct _trap_context *ctx) {
 	
 	ctrlr->eoi(ctrlr, irqline->irq);  /* 割込み完了通知を発行 */
 
-	/* TODO: 割込みハンドラ呼び出し */
-	is_handled = IRQ_NOT_HANDLED;
+	/* 割込み線に登録された割込みハンドラを呼び出す */
+	rc = invoke_irq_handler(irqline, ctx);
 
+	irqline_put(irqline);     /* 割込み線への参照を解放 */
 
 	/* 指定された割込み線への割込みを許可 */
 	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )	 
@@ -233,13 +277,78 @@ handle_irq_line(irq_no irq,  struct _trap_context *ctx) {
 	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	
 		ctrlr->set_priority(ctrlr, prio);
 
-	return is_handled;
+	if ( rc != 0 ) {
 
-unlock_out:
+		rc = -ESRCH;  /* 割込みを処理できなかった  */
+		goto error_out;
+	}
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   割込みを処理する
+   @param[in] ctx     割込みコンテキスト
+   @retval    0       ハンドラを呼び出した
+   @retval   -ESRCH   擬似割込み(割込みを処理するハンドラがいなかった)
+ */
+int
+irq_handle_irq(struct _trap_context *ctx){
+	irq_info         *inf;
+	irq_line     *irqline;
+	irq_ctrlr      *ctrlr;
+	int          is_found;
+	int        is_handled;
+	intrflags      iflags;
+
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
+
+	/* 割込み管理情報のロックを獲得 */
+	spinlock_lock_disable_intr(&inf->lock, &iflags);
+
+	/*
+	 * 割込み優先度順に割込みの発生を確認する
+	 */
+	is_found = IRQ_NOT_FOUND;  /* 割込み未検出 */
+	RB_FOREACH_REVERSE(irqline, _irq_line_tree, &inf->prio_que) {
+
+		if ( !irqline_get(irqline) )      /* 割込み線への参照を獲得 */
+			continue; /* 割込み線が未初期化/解放中 */
+
+		ctrlr = irqline->ctrlr;  /* コントローラを参照 */
+		kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
+
+		/* 割込みの検出 */
+		is_found = ctrlr->irq_is_pending(ctrlr, irqline->irq, irqline->prio,
+		    ctx);
+
+		if ( is_found == IRQ_FOUND ) { /* 割込み線上の割込みを処理する */
+
+			is_handled = handle_irq_line(irqline, ctx);
+			if ( is_handled == -ESRCH )  /* 割込み処理失敗 */
+				kprintf(KERN_WAR "Spurious interrupt: irq=%d on "
+				    "IRQ controller %s [%p]\n", irqline->irq, ctrlr->name, 
+				    ctrlr);
+			irqline_put(irqline);     /* 割込み線への参照を解放 */
+			break;
+		}
+
+		irqline_put(irqline);     /* 割込み線への参照を解放 */
+	}
+
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
-	return rc;
+	if ( is_found != IRQ_FOUND )
+		goto error_out;  /* エラー復帰 */
+
+	return 0;
+
+error_out:
+	return -ESRCH;  /* 割込みを処理できなかった  */
 }
 
 /**

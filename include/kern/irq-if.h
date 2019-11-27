@@ -71,8 +71,8 @@ typedef struct _irq_handler_ent{
  */
 typedef int (*irq_ctrl_config_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq, irq_attr _attr, 
     irq_prio _prio);
-typedef	bool (*irq_ctrl_irq_is_pending)(irq_no _irq, struct _trap_context *_ctx, 
-    irq_prio *_priop);
+typedef	bool (*irq_ctrl_irq_is_pending)(struct _irq_ctrlr *_ctrlr, irq_no _irq, 
+    irq_prio _prio, struct _trap_context *_ctx);
 typedef void (*irq_ctrl_enable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
 typedef void (*irq_ctrl_disable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
 typedef void (*irq_ctrl_get_priority)(struct _irq_ctrlr *_ctrlr, irq_prio *_prio);
