@@ -75,8 +75,10 @@ typedef	bool (*irq_ctrl_irq_is_pending)(struct _irq_ctrlr *_ctrlr, irq_no _irq,
     irq_prio _prio, struct _trap_context *_ctx);
 typedef void (*irq_ctrl_enable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
 typedef void (*irq_ctrl_disable_irq)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
-typedef void (*irq_ctrl_get_priority)(struct _irq_ctrlr *_ctrlr, irq_prio *_prio);
-typedef	void (*irq_ctrl_set_priority)(struct _irq_ctrlr *_ctrlr, irq_prio _prio);
+typedef void (*irq_ctrl_get_priority)(struct _irq_ctrlr *_ctrlr, irq_no _irq, 
+    irq_prio *_prio);
+typedef	void (*irq_ctrl_set_priority)(struct _irq_ctrlr *_ctrlr, irq_no _irq, 
+    irq_prio _prio);
 typedef	void (*irq_ctrl_eoi)(struct _irq_ctrlr *_ctrlr, irq_no _irq);
 typedef	int (*irq_ctrl_initialize)(struct _irq_ctrlr *_ctrlr);
 typedef void (*irq_ctrl_finalize)(struct _irq_ctrlr *_ctrlr);

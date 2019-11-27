@@ -31,6 +31,7 @@ kern_common_tests(void){
 #if !defined(CONFIG_HAL)
 	tst_rv64pgtbl();
 #endif 
+	tst_irqctrlr();
 }
 /** カーネルの初期化
  */
