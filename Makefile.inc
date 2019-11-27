@@ -54,7 +54,6 @@ LDFLAGS=
 
 GIT=git
 FSIMG=${top}/${FSIMG_FILE}
-BUSYBOX=busybox
 
 QEMU ?= qemu-system-x86_64
 QEMU_KERNEL ?= ${top}/kernel.elf

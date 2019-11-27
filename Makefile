@@ -81,6 +81,7 @@ subsystem: hal
 	${MAKE} -C $${dir} ;\
 	done
 
+mkfsimg:
 ${fsimg_objfile}:
 	${MAKE} -C fs ${fsimg_obj} ;
 

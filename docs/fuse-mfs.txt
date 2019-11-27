@@ -1,0 +1,17 @@
+マウント
+fuse-mfs /path/to/image_file /path/to/mountpoint/
+
+rm -fr rfs
+mkdir -p rfs
+/usr/local/bin/fuse-mfs -o allow_other `pwd`/fsimg.img `pwd`/rfs
+
+アンマウント
+fusermount -u /path/to/mountpoint/
+
+fusermount -u `pwd`/fsimg.img `pwd`/rfs
+
+ファイルシステムイメージの作成
+mkfs.mfs /path/to/image_file
+
+dd if=/dev/zero of=fsimg.img bs=1M count=4
+mkfs.mfs fsimg.img
