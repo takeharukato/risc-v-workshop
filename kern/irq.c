@@ -128,7 +128,7 @@ irqline_put(irq_line *irqline){
 	irq_ctrlr      *ctrlr;
 	irq_prio         prio;
 
-	kassert( queue_is_empty(&irqline->handlers) );
+	kassert( !queue_is_empty(&irqline->handlers) );
 
 	ctrlr = irqline->ctrlr;  /* コントローラを参照 */
 	kassert( IRQ_CTRLR_OPS_IS_VALID(ctrlr) );
@@ -303,7 +303,7 @@ irq_handle_irq(struct _trap_context *ctx){
 	irq_info         *inf;
 	irq_line     *irqline;
 	irq_ctrlr      *ctrlr;
-	int          is_found;
+	bool         is_found;
 	int        is_handled;
 	intrflags      iflags;
 
@@ -315,7 +315,7 @@ irq_handle_irq(struct _trap_context *ctx){
 	/*
 	 * 割込み優先度順に割込みの発生を確認する
 	 */
-	is_found = IRQ_NOT_FOUND;  /* 割込み未検出 */
+	is_found = false;  /* 割込み未検出 */
 	RB_FOREACH_REVERSE(irqline, _irq_line_tree, &inf->prio_que) {
 
 		if ( !irqline_get(irqline) )      /* 割込み線への参照を獲得 */
@@ -328,7 +328,7 @@ irq_handle_irq(struct _trap_context *ctx){
 		is_found = ctrlr->irq_is_pending(ctrlr, irqline->irq, irqline->prio,
 		    ctx);
 
-		if ( is_found == IRQ_FOUND ) { /* 割込み線上の割込みを処理する */
+		if ( is_found == true ) { /* 割込み線上の割込みを処理する */
 
 			is_handled = handle_irq_line(irqline, ctx);
 			if ( is_handled == -ESRCH )  /* 割込み処理失敗 */
@@ -345,7 +345,7 @@ irq_handle_irq(struct _trap_context *ctx){
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
-	if ( is_found != IRQ_FOUND )
+	if ( !is_found )
 		goto error_out;  /* エラー復帰 */
 
 	return 0;
@@ -555,7 +555,7 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
 	irq_ctrlr  *found;
 	intrflags  iflags;
 
-	if ( IRQ_CTRLR_OPS_IS_VALID(ctrlr) ){
+	if ( !IRQ_CTRLR_OPS_IS_VALID(ctrlr) ){
 
 		rc = -EINVAL;   /* コントローラハンドラの設定誤り */
 		goto error_out;

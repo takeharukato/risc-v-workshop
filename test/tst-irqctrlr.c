@@ -138,8 +138,8 @@ tst_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	kprintf("handler: irq:%d\n", irq);
 
 	regs = (tst_irqctrlr_regs *)private;
-	kprintf("handler: irq: %d regs-mask:0x%lx regs-prio:%d\n", 
-	    irq, regs->mask, regs->prio);
+	kprintf("handler: irq: %d regs->pending:0x%lx regs-mask:0x%lx regs-prio:%d\n", 
+	    irq, regs->pending, regs->mask, regs->prio);
 	
 	return IRQ_HANDLED;
 }
@@ -180,9 +180,13 @@ irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	regs->pending = 1 << 12;
 
-
+	rc = irq_register_handler(2, IRQ_ATTR_NESTABLE, 7, tst_irq_handler, regs);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	regs->pending = 1<<1 | 1<<2 | 1<< 3;
 	irq_handle_irq(NULL);
 }
 

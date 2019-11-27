@@ -13,6 +13,8 @@
 #include <kern/vm-if.h>
 #include <kern/fs-fsimg.h>
 #include <kern/fs-pcache.h>
+#include <kern/irq-if.h>
+
 /** 
     カーネルのアーキ共通テスト
  */
@@ -42,6 +44,7 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
+	irq_init();
 	kern_common_tests();
 }
 

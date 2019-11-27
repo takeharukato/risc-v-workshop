@@ -31,11 +31,6 @@
 #define IRQ_ATTR_EDGE          (0x10)  /*< エッジトリガ割込み                        */
 #define IRQ_ATTR_TRIGGER_MASK  (0xf0)  /*< トリガマスク                              */
 
-/* 割込み検出ハンドラの返値
- */
-#define IRQ_FOUND              (0)  /*< 割込みが見つかった       */
-#define IRQ_NOT_FOUND          (1)  /*< 割込みが見つからなかった */
-
 /* 割込みハンドラの返値
  */
 #define IRQ_HANDLED            (0)  /*< 割込みを処理した            */
