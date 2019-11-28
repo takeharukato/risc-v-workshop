@@ -90,6 +90,8 @@ typedef int64_t         epoch_time;  /*< エポックタイム  */
  * ページキャッシュ
  */
 typedef uint64_t    pcache_state;   /*< ページキャッシュの状態                */
+typedef int64_t            off_t;   /*<  オフセット位置(単位:バイト)          */
+
 /*
  * デバイス管理
  */

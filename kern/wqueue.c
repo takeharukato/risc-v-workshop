@@ -81,24 +81,6 @@ wque_init_wque_entry(wque_entry *ent){
 }
 
 /**
-   ウエイトキューで示される待ち条件で自スレッドを休眠する
-   @param[in] wque 操作対象のウエイトキュー
-   @retval 起床要因
- */
-wque_reason
-wque_wait_on_queue(wque_waitqueue *wque){
-	wque_entry   ent;
-
-	wque_init_wque_entry(&ent);  /* ウエイトキューエントリを初期化する */
-
-	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
-
-	/* TODO: スレッド管理実装後に休眠処理を追加する */
-
-	return ent.reason;  /* 起床要因を返却する */
-}
-
-/**
    スピンロックで排他している資源を待ち合わせる
    @param[in] wque 操作対象のウエイトキュー
    @param[in] lock 資源排他用ロック

@@ -57,7 +57,6 @@ bool wque_is_empty(struct _wque_waitqueue *_wque);
 
 void wque_init_wque_entry(struct _wque_entry *_ent);
 
-wque_reason wque_wait_on_queue(struct _wque_waitqueue *_wque);
 wque_reason wque_wait_on_queue_with_spinlock(struct _wque_waitqueue *_wque, 
     struct _spinlock *_lock);
 wque_reason wque_wait_on_event_with_mutex(struct _wque_waitqueue *_wque, struct _mutex *_mtx);

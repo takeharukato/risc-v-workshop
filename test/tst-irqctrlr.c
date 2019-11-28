@@ -205,13 +205,9 @@ irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rc = irq_register_ctrlr(&tst_ctrlr);
-	if ( rc == 0 )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
 
 	irq_unregister_ctrlr(&tst_ctrlr);
+	ktest_pass( sp );
 
 	kprintf("pending: 0x%lx mask:0x%lx\n",
 	    regs->pending, regs->mask);
