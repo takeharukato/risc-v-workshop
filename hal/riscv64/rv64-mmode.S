@@ -59,6 +59,8 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	/*
 	 *  コンテキスト保存処理完了
 	 */
+	ld   tp, SSCRATCH_CPUINF(s1)       /* CPU情報をtpにロード    */
+
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
 	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
 	and   s4, a2, a1   /* mip & MIP_MTIPを計算     */
@@ -130,7 +132,6 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	sub a4, a3, a5        /* 自hartのスタックの底を算出                  */
 
 	sd  a4, MSCRATCH_MSTACK_SP(t2) /* マシンモードスタックを設定         */
-	sd  a0, MSCRATCH_HARTID(t2)    /* 自hartidを設定                     */	
 
 	li  a4, RV64_CLINT_MTIMECMP_OFFSET   /* MTIME_CMPレジスタオフセットアドレス */
 	li  a5, RV64_CLINT_MTIMECMP_SIZE     /* MTIME_CMPレジスタサイズ */

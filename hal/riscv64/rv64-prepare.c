@@ -14,16 +14,12 @@
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
 
+#include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
 #include <hal/hal-dbg-console.h>
-#include <hal/rv64-mscratch.h>
-#include <hal/rv64-sscratch.h>
 
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
 static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終了物理アドレス */
-
-mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報        */
-sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御情報  */
 
 static spinlock prepare_lock=__SPINLOCK_INITIALIZER;  /* 初期化用排他ロック */
 
@@ -54,8 +50,9 @@ show_memory_stat(void) {
  */
 void
 prepare(uint64_t hartid){
-	intrflags iflags;
-	pfdb_ent   *pfdb;
+	intrflags    iflags;
+	pfdb_ent      *pfdb;
+	cpu_info  *cur_cinf;
 
 	if ( hartid == 0 ) {
 
@@ -83,8 +80,11 @@ prepare(uint64_t hartid){
 
 		slab_prepare_preallocate_cahches(); /* SLABを初期化する */
 		vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
-
 		show_memory_stat();  /* メモリ使用状況を表示する  */
+
+		krn_cpuinfo_init();  /* CPU情報を初期化する */
+		cur_cinf = krn_cpuinfo_fill(0, hartid); /* BSPを登録する */
+		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
 
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
 

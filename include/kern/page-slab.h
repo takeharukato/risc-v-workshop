@@ -10,7 +10,7 @@
 #define  _PAGE_SLAB_H 
 
 #include <kern/kern-types.h>
-#include <hal/hal-cpucache.h>
+#include <kern/kern-cpuinfo.h>
 
 /**    kmem-cache属性情報
  */

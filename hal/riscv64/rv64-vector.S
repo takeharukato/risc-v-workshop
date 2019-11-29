@@ -64,8 +64,10 @@ ASMMAC_FUNCTION(user_trap_vector)
 
 call_trap_common:
 
-	la   s1, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
-	csrw stvec, s1                  /* スーパバイザモードベクタアドレスを設定   */
+	ld   tp, SSCRATCH_CPUINF(s1)    /* CPU情報をtpにロード                      */
+
+	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
+	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
 
 	/*
 	 * 例外ハンドラ呼び出し

@@ -9,6 +9,7 @@
 
 #include <kern/kern-common.h>
 #include <kern/ktest.h>
+#include <kern/kern-if.h>
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
 #include <kern/fs-fsimg.h>
@@ -57,6 +58,10 @@ main(int argc, char *argv[]) {
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();
 	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
+
+	krn_cpuinfo_init();  /* CPU情報を初期化する */
+	krn_cpuinfo_fill(0, 0); /* BSPを登録する */
+
 
 	kern_init();
 

@@ -10,6 +10,7 @@
 #define  _KERN_KERN_IF_H 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
+#include <kern/kern-cpuinfo.h>
 
 /* BSS領域, カーネル領域算出用シンボル */
 extern uint64_t __bss_start, __bss_end;

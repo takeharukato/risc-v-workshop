@@ -9,6 +9,7 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
+#include <kern/kern-cpuinfo.h>
 #include <kern/irq-if.h>
 
 #include <hal/riscv64.h>
@@ -16,14 +17,6 @@
 #include <hal/hal-traps.h>
 #include <hal/rv64-plic.h>
 
-extern cpu_id hal_get_physical_cpunum(void); /* TODO: cpu情報実装時にhal-cpuinfo.hに移動*/
-
-/* TODO: cpu情報実装時にhal-cpuinfo.cに移動*/
-cpu_id
-hal_get_physical_cpunum(void){
-
-	return 0;
-}
 
 /**
    割込みコントローラをシャットダウンする
