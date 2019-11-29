@@ -83,7 +83,7 @@ prepare(uint64_t hartid){
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 
 		krn_cpuinfo_init();  /* CPU情報を初期化する */
-		cur_cinf = krn_cpuinfo_fill(0, hartid); /* BSPを登録する */
+		cur_cinf = krn_cpuinfo_fill(hartid); /* BSPを登録する */
 		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
 
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */

@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/page-if.h>
+#include <kern/kern-cpuinfo.h>
 
 /**
    キャッシュが使用中であることを確認する
@@ -211,12 +212,12 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 			/* キャッシュラインサイズ単位で, オブジェクト開始アドレスを
 			 * ずらす。
 			 */
-			cache->color_offset = hal_get_cpu_l1_dcache_linesize(); 
+			cache->color_offset = krn_get_cpu_l1_dcache_linesize(); 
 
 			/*  同時にキャッシュに存在しうるキャッシュライン数(セット数)
 			 *  周期でオフセットをラウンドする
 			 */
-			cache->color_num = hal_get_cpu_l1_dcache_color_num();
+			cache->color_num = krn_get_cpu_l1_dcache_color_num();
 			
 			/*  カラーリング用領域を確保  */
 			coloring_area = cache->color_offset * cache->color_num;
@@ -517,7 +518,7 @@ slab_kmem_cache_grow(kmem_cache *cache, pgalloc_flags mflags, slab **sinfop) {
 			/*  カラーリングオフセットのインデクスを更新する  */
 			cache->color_index = 
 				( cache->color_index + 1 ) % cache->color_num;
-			kassert( hal_get_cpu_dcache_size() > this_coloff );
+			kassert( krn_get_cpu_dcache_size() > this_coloff );
 		}
 
 		/*

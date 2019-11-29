@@ -12,8 +12,11 @@
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
+#include <klib/bitops.h>
+
 #include <kern/kern-types.h>
 #include <kern/spinlock.h>
+
 #include <hal/hal-cpuinfo.h>
 
 struct _thread_info;
@@ -33,6 +36,15 @@ typedef struct _cpu_info{
 }cpu_info;
 
 /**
+   CPUマップ
+ */
+typedef struct _cpu_map{
+	spinlock                                  lock;  /*< CPUマップのロック       */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)  available;  /*< 利用可能CPUビットマップ */
+	cpu_info                   cpuinfo[KC_CPUS_NR];  /*< CPU情報                 */
+}cpu_map;
+
+/**
    CPU情報初期化子
  */
 #define __KRN_CPUINFO_INITIALIZER(tip)				 \
@@ -43,14 +55,14 @@ typedef struct _cpu_info{
 
 void krn_cpuinfo_update(void);
 cpu_id krn_current_cpu_get(void);
-struct _cpu_info *krn_cpuinfo_fill(cpu_id _cpu_num, cpu_id _phys_id);
+struct _cpu_info *krn_cpuinfo_fill(cpu_id _phys_id);
 void krn_cpuinfo_init(void);
 
 cpu_id hal_get_physical_cpunum(void);
 void hal_cpuinfo_fill(struct _cpu_info *_cinf);
 
-size_t hal_get_cpu_l1_dcache_linesize(void);
-obj_cnt_type hal_get_cpu_l1_dcache_color_num(void);
-size_t hal_get_cpu_dcache_size(void);
+size_t krn_get_cpu_l1_dcache_linesize(void);
+obj_cnt_type krn_get_cpu_l1_dcache_color_num(void);
+size_t krn_get_cpu_dcache_size(void);
 #endif  /* !ASM_FILE */
 #endif  /* _KERN_CPU_INFO_H */
