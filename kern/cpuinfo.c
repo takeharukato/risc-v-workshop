@@ -15,33 +15,6 @@
 static cpu_map  cpumap; /* CPUマップ */
 
 /**
-   現在のCPUのCPU情報を得る
-   @return CPU情報
-   @note CPUのオフライン制御をサポートする場合はCPU情報の参照制御が必要
- */
-static cpu_info *
-current_cpuinfo_get(void){
-	cpu_id     curid;
-	cpu_map    *cmap;
-	cpu_info   *cinf;
-	intrflags iflags;
-
-	curid = krn_current_cpu_get();  /* CPUIDを得る */
-	kassert(KC_CPUS_NR > curid);
-
-	cmap = &cpumap;  /*  CPUマップを参照  */
-
-	/* CPUマップのロックを獲得 */
-	spinlock_lock_disable_intr(&cmap->lock, &iflags);
-
-	cinf = &cmap->cpuinfo[curid];  /* CPU情報を参照 */
-
-	/* CPUマップのロックを解放 */
-	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
-	
-	return cinf;  /*  CPU情報を返却  */
-}
-/**
    L1 データキャッシュラインサイズを返却する
    @return データキャッシュラインサイズ (単位:バイト)
  */
@@ -49,7 +22,7 @@ size_t
 krn_get_cpu_l1_dcache_linesize(void){
 	cpu_info *cinf;
 
-	cinf = current_cpuinfo_get();
+	cinf = krn_cpuinfo_get(krn_current_cpu_get());
 
 	return cinf->l1_dcache_linesize;  /* L1 データキャッシュラインサイズを返却する */
 }
@@ -61,7 +34,7 @@ obj_cnt_type
 krn_get_cpu_l1_dcache_color_num(void){
 	cpu_info *cinf;
 
-	cinf = current_cpuinfo_get();
+	cinf = krn_cpuinfo_get(krn_current_cpu_get());
 
 	return cinf->l1_dcache_colornum;  /* L1 データキャッシュカラーリング数を返却する */
 }
@@ -74,18 +47,86 @@ size_t
 krn_get_cpu_dcache_size(void){
 	cpu_info *cinf;
 
-	cinf = current_cpuinfo_get();
+	cinf = krn_cpuinfo_get(krn_current_cpu_get());
 
 	return cinf->l1_dcache_size;  /* L1 データキャッシュサイズを返却する */
 }
 
 /**
+   自プロセッサのCPU情報を更新する
  */
 void
 krn_cpuinfo_update(void){
 
 	/* TODO: スレッド管理実装後に実装 */
 }
+/**
+   CPUがオンラインであることを確認する
+   @param[in] cpu_num 論理CPUID
+   @retval    真      CPUがオンラインである
+   @retval    偽      CPUがオンラインでない
+ */
+bool
+krn_cpuinfo_cpu_is_online(cpu_id cpu_num){
+	bool          rc;
+	cpu_map    *cmap;
+	intrflags iflags;
+
+	if (KC_CPUS_NR > cpu_num)
+		return -EINVAL;
+
+	cmap = &cpumap;  /*  CPUマップを参照  */
+
+	/* CPUマップのロックを獲得 */
+	spinlock_lock_disable_intr(&cmap->lock, &iflags);
+
+	rc = bitops_isset(cpu_num,  &cmap->online); /* CPUがオンラインであることを確認 */
+
+	/* CPUマップのロックを解放 */
+	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
+
+	return rc;
+}
+/**
+   CPUをオンラインにする
+   @param[in] cpu_num 論理CPUID
+   @retval    0       正常終了
+   @retval   -EINVAL  CPUIDが不正
+   @retval   -EBUSY   既にオンラインになっている
+ */
+int
+krn_cpuinfo_online(cpu_id cpu_num){
+	int           rc;
+	cpu_map    *cmap;
+	intrflags iflags;
+
+	if (KC_CPUS_NR > cpu_num)
+		return -EINVAL;
+
+	cmap = &cpumap;  /*  CPUマップを参照  */
+
+	/* CPUマップのロックを獲得 */
+	spinlock_lock_disable_intr(&cmap->lock, &iflags);
+	if ( bitops_isset(cpu_num,  &cmap->online) ) {
+
+		rc = -EBUSY;  /* CPUが既にオンラインになっている */
+		goto unlock_out;
+	}
+
+	bitops_set(cpu_num, &cmap->online);  /* オンラインCPUを追加 */
+
+	/* CPUマップのロックを解放 */
+	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
+
+	return 0;
+
+unlock_out:
+	/* CPUマップのロックを解放 */
+	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
+
+	return rc;
+}
+
 /**
    論理CPUIDを取得する
  */
@@ -110,7 +151,7 @@ krn_current_cpu_get(void){
 
 		if ( cinf->phys_id == phys_id ) {
 
-			log_id = (cpu_id)i;  /* インデクスを論理CPUIDとして返却 */
+			log_id = cinf->log_id;  /* 論理CPUIDを返却 */
 			goto found;
 		}
 	}
@@ -125,6 +166,33 @@ found:
 	/* CPUマップのロックを解放 */
 	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
 	return log_id;  /* 論理CPUIDを返却 */
+}
+
+/**
+   CPU情報を取得する
+   @param[in] cpu_num 論理CPUID
+   @return CPU情報
+ */
+cpu_info *
+krn_cpuinfo_get(cpu_id cpu_num){
+	cpu_map    *cmap;
+	cpu_info   *cinf;
+	intrflags iflags;
+
+	if ( cpu_num > KC_CPUS_NR )
+		return NULL;
+
+	cmap = &cpumap;  /*  CPUマップを参照  */
+
+	/* CPUマップのロックを獲得 */
+	spinlock_lock_disable_intr(&cmap->lock, &iflags);
+
+	cinf = &cmap->cpuinfo[cpu_num];  /* CPU情報を参照 */
+
+	/* CPUマップのロックを解放 */
+	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
+
+	return cinf;  /* CPU情報を返却 */
 }
 
 /**
@@ -155,7 +223,9 @@ krn_cpuinfo_fill(cpu_id phys_id){
 	/* CPU情報のロックを獲得 */
 	spinlock_lock(&cinf->lock);
 
+	cinf->log_id = newid; /* 論理CPUIDを格納 */
 	cinf->phys_id = phys_id; /* 物理CPUIDを格納 */
+
 	hal_cpuinfo_fill(cinf);  /* CPU情報を格納   */
 
 	/* CPU情報のロックを解放 */
@@ -186,7 +256,7 @@ krn_cpuinfo_init(void){
 	cmap = &cpumap;
 	spinlock_init(&cmap->lock);    /* スピンロックを初期化            */
 	bitops_zero(&cmap->available); /* 利用可能CPUビットマップの初期化 */
-	
+	bitops_zero(&cmap->online);    /* オンラインCPUビットマップの初期化 */
 	for( i = 0; KC_CPUS_NR > i; ++i) {
 
 		cinf = &cmap->cpuinfo[i];            /* CPU情報を参照        */
@@ -196,6 +266,8 @@ krn_cpuinfo_init(void){
 		 * 初期化しない
 		 */
 		spinlock_init(&cinf->lock);    /* スピンロックを初期化 */
+		cinf->log_id  = 0;             /* 論理CPUIDを初期化 */
+		cinf->phys_id = 0;             /* 物理CPUIDを初期化 */
 		cinf->l1_dcache_linesize = 0;  /* キャッシュラインサイズを初期化 */
 		cinf->l1_dcache_colornum = 0;  /* キャッシュカラーリング数を初期化 */
 		cinf->l1_dcache_size = 0;      /* キャッシュサイズを初期化 */

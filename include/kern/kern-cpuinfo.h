@@ -21,11 +21,13 @@
 
 struct _thread_info;
 struct _proc;
+
 /**
    CPU情報
  */
 typedef struct _cpu_info{
 	spinlock                    lock;  /*< CPU情報のロック                              */
+	cpu_id                    log_id;  /*< 論理CPUID                                    */
 	cpu_id                   phys_id;  /*< 物理CPUID                                    */
 	size_t        l1_dcache_linesize;  /*< L1データキャッシュラインサイズ (単位:バイト) */
 	size_t        l1_dcache_colornum;  /*< L1データキャッシュカラーリング数 (単位:個)   */
@@ -41,6 +43,7 @@ typedef struct _cpu_info{
 typedef struct _cpu_map{
 	spinlock                                  lock;  /*< CPUマップのロック       */
 	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)  available;  /*< 利用可能CPUビットマップ */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)     online;  /*< オンラインCPUビットマップ */
 	cpu_info                   cpuinfo[KC_CPUS_NR];  /*< CPU情報                 */
 }cpu_map;
 
@@ -52,13 +55,23 @@ typedef struct _cpu_map{
 		.cur_ti = (struct _thread_info *)(tip),		 \
 		.cur_pgtp = (struct _thread_info *)(tip)->pgtp, \
 	}
+/**
+   オンラインCPUに対して処理を行う
+   @param[in] _cpu_num 論理CPU番号を格納する変数
+ */
+#define FOREACH_ONLINE_CPUS(_cpu_num)					\
+	for( (_cpu_num) = 0; KC_CPUS_NR > (_cpu_num); ++(_cpu_num))	\
+		if ( krn_cpuinfo_cpu_is_online( (_cpu_num) ) )
 
 void krn_cpuinfo_update(void);
+int krn_cpuinfo_online(cpu_id _cpu_num);
+bool krn_cpuinfo_cpu_is_online(cpu_id _cpu_num);
 cpu_id krn_current_cpu_get(void);
 struct _cpu_info *krn_cpuinfo_fill(cpu_id _phys_id);
 void krn_cpuinfo_init(void);
 
 cpu_id hal_get_physical_cpunum(void);
+cpu_info *krn_cpuinfo_get(cpu_id _cpu_num);
 void hal_cpuinfo_fill(struct _cpu_info *_cinf);
 
 size_t krn_get_cpu_l1_dcache_linesize(void);

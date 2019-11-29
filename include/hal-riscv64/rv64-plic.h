@@ -14,6 +14,7 @@
 #define PLIC_IRQ_MIN         (0)   /**< 最小割込み番号 */
 #define PLIC_IRQ_MAX         (PLIC_IRQ_MIN + PLIC_IRQ_NR) /**< 最大割込み番号+1 */
 #define PLIC_PRIO_DIS        (0)   /**< 割込み無効時の割込み優先度 */
+#define PLIC_PRIO_THRES_ALL  (0)   /**< 割込みマスク無効時の割込み優先度 */
 #define PLIC_PRIO_MIN        (1)   /**< 最小割込み優先度 */
 #define PLIC_PRIO_MAX        (7)   /**< 最大割込み優先度 */
 
@@ -112,6 +113,7 @@ typedef volatile uint32_t * plic_reg_ref;  /* PLICのレジスタ参照 */
 #define PLIC_SCLAIM_REG(_hart) \
 	((plic_reg_ref)(RV64_PLIC + PLIC_SCLAIM_OFFSET + ( (_hart) * PLIC_CLAIM_PER_HART) ) )
 
+irq_prio rv64_plic_set_priority_mask(irq_prio _prio);
 void rv64_plic_init(void);
 #endif  /* !ASM_FILE */
 #endif  /* _HAL_RV64_PLIC_H  */

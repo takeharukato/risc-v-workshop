@@ -1,9 +1,9 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=tst-spinlock.o tst-atomic.o tst-atomic64.o tst-memset.o tst-vmmap.o tst-irqctrlr.o
+objects=tst-spinlock.o tst-atomic.o tst-atomic64.o tst-memset.o tst-vmmap.o
 ifneq ($(CONFIG_HAL),y)
-objects += tst-rv64-pgtbl.o
+objects += tst-rv64-pgtbl.o tst-irqctrlr.o
 endif
 
 ifeq ($(CONFIG_HAL),y)

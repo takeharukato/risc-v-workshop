@@ -33,8 +33,8 @@ kern_common_tests(void){
 #endif 
 #if !defined(CONFIG_HAL)
 	tst_rv64pgtbl();
-#endif 
 	tst_irqctrlr();
+#endif 
 }
 /** カーネルの初期化
  */
@@ -45,7 +45,9 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
-	irq_init();
+	irq_init(); /* 割込み管理を初期化する */
+	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
+
 	kern_common_tests();
 }
 
@@ -61,7 +63,6 @@ main(int argc, char *argv[]) {
 
 	krn_cpuinfo_init();  /* CPU情報を初期化する */
 	krn_cpuinfo_fill(0, 0); /* BSPを登録する */
-
 
 	kern_init();
 

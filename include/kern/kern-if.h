@@ -18,5 +18,6 @@ extern uint64_t _kernel_start, _kheap_end;
 
 
 void kern_init(void);
+void hal_platform_init(void);
 #endif  /* !ASM_FILE */
 #endif  /* _KERN_KERN_IF_H  */

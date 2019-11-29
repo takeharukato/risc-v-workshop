@@ -16,6 +16,7 @@
 
 #include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
+#include <hal/rv64-plic.h>
 #include <hal/hal-dbg-console.h>
 
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
@@ -43,6 +44,14 @@ show_memory_stat(void) {
 	kprintf("\tslab_pages: %qu\n", st.slab_pages);
 	kprintf("\tanon_pages: %qu\n", st.anon_pages);
 	kprintf("\tpcache_pages: %qu\n", st.pcache_pages);
+}
+/**
+   カーネル初期化後のアーキ固有初期化処理
+ */
+void
+hal_platform_init(void){
+
+	rv64_plic_init();  /* PLICを初期化する */
 }
 
 /**
@@ -80,13 +89,19 @@ prepare(uint64_t hartid){
 
 		slab_prepare_preallocate_cahches(); /* SLABを初期化する */
 		vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
+
 		show_memory_stat();  /* メモリ使用状況を表示する  */
 
 		krn_cpuinfo_init();  /* CPU情報を初期化する */
+
 		cur_cinf = krn_cpuinfo_fill(hartid); /* BSPを登録する */
 		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
+		krn_cpuinfo_online(cur_cinf->log_id); /* CPUをオンラインにする */
 
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
+
+		/* 優先度マスクを無効にする */
+		rv64_plic_set_priority_mask(PLIC_PRIO_THRES_ALL);
 
 		kern_init();
 	} else {
@@ -96,6 +111,9 @@ prepare(uint64_t hartid){
 		kprintf("Boot on supervisor mode on %d hart\n", hartid);
 		spinlock_unlock_restore_intr(&prepare_lock, &iflags);
 		goto loop;
+		cur_cinf = krn_cpuinfo_fill(hartid); /* CPUを登録する */
+		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
+		krn_cpuinfo_online(cur_cinf->log_id); /* CPUをオンラインにする */
 	}
 	kprintf("end\n");
 loop:

@@ -44,6 +44,8 @@ plic_ctrlr_shudown(void){
 static int
 plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 
     irq_prio prio){
+	cpu_id       cpu;
+	cpu_info   *cinf;
 	plic_reg_ref reg;
 	
 	if ( irq >= PLIC_IRQ_MAX )
@@ -62,6 +64,16 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 	reg = PLIC_PRIO_REG(irq);  
 	*reg = prio;
 
+	/* 全てのCPUで割込みを有効化
+	 */
+	FOREACH_ONLINE_CPUS(cpu){
+
+		cinf = krn_cpuinfo_get(cpu);
+
+		/* 割込みマスクレジスタを取得 */
+		reg = (uint32_t *)PLIC_SENABLE_REG(cinf->phys_id);
+		*reg = (1 << irq);  /* 指定された割込みを開ける */
+	}
 	return 0;
 }
 
@@ -168,20 +180,11 @@ plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
  */
 static void
 plic_set_priority(irq_ctrlr __unused *ctrlr, irq_prio prio){
-	cpu_id       hart;
-	plic_reg_ref  reg;
-
-	if ( ( prio > PLIC_PRIO_MAX ) || ( prio < PLIC_PRIO_MIN ) )
-		return ;
 
 	kprintf("set_priority: name:%s prio:%d\n", ctrlr->name, prio);
+	rv64_plic_set_priority_mask(prio); /* 優先度を設定 */
 
-	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
-
-	reg = (uint32_t *)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
-	*reg = prio; /* 割込み優先度レジスタに設定 */
-
-	return;  /* 優先度を返却 */
+	return;  
 }
 
 /**
@@ -249,6 +252,30 @@ static irq_ctrlr plic_ctrlr={
 	.finalize = plic_finalize,
 	.private = NULL,
 };
+
+/**
+   Platform-Level Interrupt Controllerに自hartの割込み優先度を設定する
+   @param[in] ctrlr 割込みコントローラ
+   @param[in] prio  割込み優先度
+   @retval    設定前の優先度
+ */
+irq_prio
+rv64_plic_set_priority_mask(irq_prio prio){
+	cpu_id       hart;
+	plic_reg_ref  reg;
+	irq_prio old_prio;
+
+	if ( ( prio > PLIC_PRIO_MAX ) || ( prio < PLIC_PRIO_MIN ) )
+		return PLIC_PRIO_DIS;  /* 引数異常 */
+
+	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
+
+	reg = (uint32_t *)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
+	old_prio = *reg;  /* 現在の割込み優先度 */
+	*reg = prio; /* 割込み優先度レジスタに設定 */
+
+	return old_prio;  /* 設定前の値を返却 */
+}
 
 /**
    Platform-Level Interrupt Controller (PLIC)の初期化
