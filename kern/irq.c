@@ -58,7 +58,7 @@ irq_ctrlr_cmp_by_irq(irq_ctrlr *key, irq_ctrlr *ent) {
 	if (key->min_irq > ent->max_irq )
 		return 1;
 
-	kassert( ( ent->min_irq <= key->min_irq ) && ( key->min_irq <= ent->max_irq ) );
+	kassert( ( ent->min_irq <= key->min_irq ) && ( key->min_irq < ent->max_irq ) );
 	
 	return 0;
 }
@@ -588,13 +588,13 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
 		 * 包含する場合は, 割込み番号の重複とみなす。
 		 */
 		if ( ( ( ctrlr->min_irq <= found->min_irq ) 
-		    && ( found->min_irq <= ctrlr->max_irq ) ) ||
-		    ( ( ctrlr->min_irq <= found->max_irq ) 
-			&& ( found->max_irq <= ctrlr->max_irq ) ) ||
+		    && ( found->min_irq < ctrlr->max_irq ) ) ||
+		    ( ( ctrlr->min_irq < found->max_irq ) 
+			&& ( found->max_irq < ctrlr->max_irq ) ) ||
 		    ( ( ctrlr->min_irq <= found->min_irq ) 
-			&& ( found->max_irq <= ctrlr->max_irq ) ) ||
+			&& ( found->max_irq < ctrlr->max_irq ) ) ||
 		    ( ( found->min_irq <= ctrlr->min_irq ) 
-			&& ( ctrlr->max_irq <= found->max_irq ) ) ) {
+			&& ( ctrlr->max_irq < found->max_irq ) ) ) {
 
 			rc = -EBUSY;  /* コントローラの多重登録 */
 			goto unlock_out;

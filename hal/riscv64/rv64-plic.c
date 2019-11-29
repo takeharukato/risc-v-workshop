@@ -119,7 +119,7 @@ plic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
 
-	kprintf("enable: name:%s\n", ctrlr->name);
+	kprintf("enable: name:%s irq=%d\n", ctrlr->name, irq);
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
@@ -140,7 +140,7 @@ plic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
 
-	kprintf("disable: name:%s\n", ctrlr->name);
+	kprintf("disable: name:%s irq=%d\n", ctrlr->name, irq);
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
@@ -200,7 +200,7 @@ plic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
 
-	kprintf("eoi: name:%s irq:%d\n", ctrlr->name, irq);
+	kprintf("plic eoi: name:%s irq:%d\n", ctrlr->name, irq);
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 

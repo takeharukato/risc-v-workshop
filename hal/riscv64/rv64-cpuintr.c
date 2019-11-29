@@ -27,11 +27,12 @@ rv64_cpu_disable_interrupt(void){
 static void
 rv64_cpu_enable_interrupt(void){
 
-	/* スーパーバイザへの外部割込み, タイマ割込み, ソフトウエア割込みを許可する */
-	rv64_write_sie( rv64_read_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE );
+	/* スーパーバイザへの外部割込みを許可する */
+	rv64_write_sie( rv64_read_sie() | SIE_SEIE );
 	/* SSTATUS_SIE ビットをセットし, スーパーバイザへの割込みを許可する         */
 	rv64_write_sstatus( rv64_read_sstatus() | SSTATUS_SIE );
 }
+
 /**
    割込み状態を復元する  (内部関数)
    @param[in] iflags 割り込み状態フラグ格納先アドレス

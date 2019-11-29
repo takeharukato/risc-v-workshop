@@ -61,6 +61,8 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	 */
 	ld   tp, SSCRATCH_CPUINF(s1)       /* CPU情報をtpにロード    */
 
+	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
+	
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
 	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
 	and   s4, a2, a1   /* mip & MIP_MTIPを計算     */
@@ -80,10 +82,12 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	add  s6, s5, s4  /* 次のタイマ設定値を算出 */
 	sd   s6, (s3)    /* 次のタイマ設定値を設定 */
 
-	li   s5, MIP_SSIP /* スーパーバイザモードソフトウエア割込み発生 */
-        csrw sip, s5
+	li   s5, SIP_STIP /* スーパーバイザモードソフトウエア割込み発生 */
+	or   s7, s7, s5   /* タイマ割込み通知 */
 
 skip_mtimer:
+        csrw sip, s7      /* スーパバイザ割込み要因設定 */
+	
 	/*
 	 * コンテキスト復元
 	 */
