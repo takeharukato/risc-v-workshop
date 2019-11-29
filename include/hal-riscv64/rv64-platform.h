@@ -169,6 +169,8 @@
 #define HAL_PHY_TO_KERN_STRAIGHT(_paddr) \
 	( (vm_vaddr)( ((vm_paddr)(_paddr)) + HAL_KERN_VMA_BASE ) )
 #endif  /* CONFIG_HAL */
+
+void rv64_plic_init(void);
 #endif  /* !ASM_FILE */
 
 #endif  /*  _HAL_RV64_PLATFORM_H   */

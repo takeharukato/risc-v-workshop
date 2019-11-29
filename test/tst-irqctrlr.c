@@ -48,6 +48,9 @@ tst_irq_is_pending(irq_ctrlr *ctrlr, irq_no irq,
 
 	regs = (tst_irqctrlr_regs *)ctrlr->private;
 
+	kprintf("pending: name:%s irq:%d prio=%d\n", 
+	    ctrlr->name, irq, prio);
+
 	if ( regs->pending & (1 << irq) )
 		return true;
 
@@ -76,21 +79,21 @@ tst_disable_irq(irq_ctrlr *ctrlr, irq_no irq){
 }
 
 static void 
-tst_get_priority(irq_ctrlr *ctrlr, irq_no irq, irq_prio *prio){
+tst_get_priority(irq_ctrlr *ctrlr, irq_prio *prio){
 	tst_irqctrlr_regs *regs;
 
 	regs = (tst_irqctrlr_regs *)ctrlr->private;
-	kprintf("get_priority: name:%s irq:%d prio:%d\n", ctrlr->name, irq, regs->prio);
+	kprintf("get_priority: name:%s prio:%d\n", ctrlr->name, regs->prio);
 
 	*prio = regs->prio;
 }
 static void
-tst_set_priority(irq_ctrlr *ctrlr, irq_no irq, irq_prio prio){
+tst_set_priority(irq_ctrlr *ctrlr, irq_prio prio){
 	tst_irqctrlr_regs *regs;
 
 	regs = (tst_irqctrlr_regs *)ctrlr->private;
 
-	kprintf("set_priority: name:%s irq:%d prio:%d\n", ctrlr->name, irq, prio);
+	kprintf("set_priority: name:%s prio:%d\n", ctrlr->name, prio);
 
 	regs->prio = prio;
 }

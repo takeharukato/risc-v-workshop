@@ -153,11 +153,9 @@ irqline_put(irq_line *irqline){
 		
 		/* 割込み線に設定された優先度以下の割込みが上がらないようにする 
 		 */
-		ctrlr->get_priority(ctrlr, irqline->irq, 
-		    &prio);  /* 現在のマスク値を取得             */
+		ctrlr->get_priority(ctrlr, &prio);  /* 現在のマスク値を取得             */
 		if ( irqline->prio > prio )  /* 割込み線の優先度 > 現在のマスク値の場合 */
-			ctrlr->set_priority(ctrlr, irqline->irq, 
-			    irqline->prio);  /* 割込みマスク更新 */
+			ctrlr->set_priority(ctrlr, irqline->prio);  /* 割込みマスク更新 */
 	}
 	
 	/* 割込み線単位で割込みをマスクする */
@@ -253,10 +251,9 @@ handle_irq_line(irq_line *irqline, struct _trap_context *ctx) {
 
 	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	{  /* 優先度マスクを設定 */
 
-		ctrlr->get_priority(ctrlr, irqline->irq, 
-		    &prio);  /* 現在の優先度割込みマスク値を取得 */
+		ctrlr->get_priority(ctrlr, &prio);  /* 現在の優先度割込みマスク値を取得 */
 		/* 割込み線の割込み優先度以下の割込みをマスク */
-		ctrlr->set_priority(ctrlr, irqline->irq, irqline->prio); 
+		ctrlr->set_priority(ctrlr, irqline->prio); 
 	}
 
 	/* 指定された割込み線への割込みをマスク */
@@ -276,7 +273,7 @@ handle_irq_line(irq_line *irqline, struct _trap_context *ctx) {
 
 	/* 割込み前の割込み優先度に設定 */
 	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	
-		ctrlr->set_priority(ctrlr, irqline->irq, prio);
+		ctrlr->set_priority(ctrlr, prio);
 
 	if ( rc != 0 ) {
 

@@ -8,7 +8,7 @@ objects = rv64-prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o r
 	rv64-atomic.o rv64-atomic64.o rv64-pframe.o rv64-cpucache.o rv64-mmode.o \
 	rv64-vector.o rv64-traps.o
 ifeq ($(CONFIG_HAL),y)
-objects += boot.o rv64-dbg-console.o 
+objects += boot.o rv64-dbg-console.o rv64-plic.o
 endif
 
 depends = $(patsubst %.o,%.d,${objects})
