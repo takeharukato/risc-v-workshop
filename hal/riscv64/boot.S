@@ -94,16 +94,20 @@ clear_bss:
 	ld a1, (a3)               /* mscratchテーブルのアドレスをロード */
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	sub a1, a1, a2            /* mscratchテーブルの物理アドレスを算出   */
-	sd  a1, (a1)              /* mscratchテーブルの物理アドレスをストア */
+	sd  a1, (a3)              /* mscratchテーブルの物理アドレスをストア */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
 	
 	/*
 	 * MMU設定
 	 */
 	call setup_pre_pgtbl
-	call load_pre_pgtbl
 
 ap_boot: /* APの処理再開位置 */
+	/* ページテーブルをロード */
+	call load_pre_pgtbl
+	/* APの初期化のためにmscratchテーブルのアドレスを再ロード */
+	la a1, mscratch_tbl_addr  
+	ld a1, (a1)               /* mscratchテーブルのアドレスをロード */
 	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 
 	call setup_machine_mode  /* マシンモードの設定を実施 */
 
@@ -112,7 +116,7 @@ ap_boot: /* APの処理再開位置 */
 	 */
 	la a1, sscratch_tbl_addr  /* sscratchテーブルの仮想アドレスをロード */
 	ld a1, (a1)
-	/* 第1引数にhart, 第2引数にsscratchテーブルの物理アドレスを指定 */ 
+	/* 第1引数にhart, 第2引数にsscratchテーブルの仮想アドレスを指定 */ 
 	call setup_vector  /* 割込みベクタの設定 */
 
 	/*
