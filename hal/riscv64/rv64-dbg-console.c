@@ -36,8 +36,6 @@ static int
 uart_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	int ch;
 
-	//kprintf("handler: irq:%d\n", irq);
-
 	/* 受信可能になるのを待ち合わせる */
 	while((dbg_read_uart_reg(UART_LSR) & UART_LSR_RXRDY) == 0);
 
@@ -45,17 +43,22 @@ uart_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	hal_kconsole_putchar(ch);
 	if ( ch == '\r' )
 		hal_kconsole_putchar('\n');
+	else if ( ch == '\b' ) {
+
+		hal_kconsole_putchar(' ');
+		hal_kconsole_putchar('\b');
+	}
 
 	return IRQ_HANDLED;
 }
+
 void
 uart_rxintr_enable(void){
 	int rc;
 
 	rc = irq_register_handler(RV64_UART0_IRQ, IRQ_ATTR_NESTABLE|IRQ_ATTR_EDGE, 1, 
 	    uart_irq_handler, NULL);
-	if ( rc == 0 )
-		kprintf("Installed uart handler.\n");
+	kassert( rc == 0 );
 
 	/* 割込み通知を有効化 */
 	dbg_write_uart_reg(UART_INTR, UART_INTR_RDA);

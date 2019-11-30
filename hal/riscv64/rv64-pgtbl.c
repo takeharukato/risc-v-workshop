@@ -16,7 +16,7 @@
 #include <hal/rv64-platform.h>
 #include <hal/hal-pgtbl.h>
 
-#define ENABLE_SHOW_PAGE_MAP
+//#define RV64_SHOW_PAGE_MAP
 
 static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
 
@@ -28,7 +28,7 @@ static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
  */
 void 
 show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused size){
-#if defined(ENABLE_SHOW_PAGE_MAP)
+#if defined(RV64_SHOW_PAGE_MAP)
 	int               rc;
 	vm_vaddr   vaddr_sta;
 	vm_vaddr   vaddr_end;
@@ -58,7 +58,7 @@ show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused s
 		    ( (prot & VM_PROT_EXECUTE)      ? ('E') : ('-') ),
 		    ( (flags & VM_FLAGS_SUPERVISOR) ? ('S') : ('U') ));
 	}
-#endif  /*  ENABLE_SHOW_PAGE_MAP  */
+#endif  /*  RV64_SHOW_PAGE_MAP  */
 }
 
 /**
@@ -731,7 +731,7 @@ hal_map_kernel_space(void){
 
 	md = &pgtbl->md;  /* ページテーブルアーキテクチャ依存部を参照 */
 
-	kprintf("Kernel base: %p I/O base:%p kpgtbl-vaddr: %p kpgtbl-paddr: %p\n", 
+	kprintf("Kernel base: %p I/O base:%p kpgtbl-vaddr: %p satp: %p\n", 
 	    HAL_KERN_VMA_BASE, HAL_KERN_IO_BASE, pgtbl->pgtbl_base, md->satp);
 
 	/* マップ範囲の仮想アドレスと開始物理アドレスを算出

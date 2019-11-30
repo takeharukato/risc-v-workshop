@@ -25,11 +25,14 @@ static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終�
 
 static spinlock prepare_lock=__SPINLOCK_INITIALIZER;  /* 初期化用排他ロック */
 
+//#define RV64_SHOW_MEMSTAT
+
 /**
    物理メモリページプールの状態を表示
  */
 static void
 show_memory_stat(void) {
+#if defined(RV64_SHOW_MEMSTAT)
 	pfdb_stat         st;
 
 	kcom_obtain_pfdb_stat(&st);
@@ -45,6 +48,7 @@ show_memory_stat(void) {
 	kprintf("\tslab_pages: %qu\n", st.slab_pages);
 	kprintf("\tanon_pages: %qu\n", st.anon_pages);
 	kprintf("\tpcache_pages: %qu\n", st.pcache_pages);
+#endif  /* RV64_SHOW_MEMSTAT */
 }
 void uart_rxintr_enable(void);
 /**
@@ -56,7 +60,7 @@ hal_platform_init(void){
 	rv64_clic_init();  /* CLICを初期化する   */
 	rv64_plic_init();  /* PLICを初期化する   */
 	rv64_timer_init(); /* タイマを初期化する */
-	uart_rxintr_enable();
+	uart_rxintr_enable();  /* TODO: ドライバ作成後に削除 */
 }
 
 /**
