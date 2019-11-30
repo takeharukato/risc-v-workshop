@@ -45,13 +45,11 @@ clic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 	if ( irq >= CLIC_IRQ_MAX )
 		return -EINVAL;
 
-	kprintf("config: name:%s irq:%d attr=%x prio=%d\n", 
-	    ctrlr->name, irq, attr, prio);
-	
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
 	/* スーパーバイザタイマ割込み, ソフトウエア割込みを許可する */
 	sie |= (SIE_STIE | SIE_SSIE);
 	rv64_write_sie( sie ); /* Supervisor Interrupt Enableレジスタを更新する */
+	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
 
 	return 0;
 }
@@ -73,9 +71,6 @@ clic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
 	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
 		return false;
 
-	kprintf("clic pending: name:%s irq:%d prio=%d\n", 
-	    ctrlr->name, irq, prio);
-
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 
 	/* スーパーバイザタイマ割込み, ソフトウエア割込みのいずれかが上がっていることを確認 */
@@ -93,8 +88,6 @@ clic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
 		return ;
-
-	kprintf("enable: name:%s irq=%d\n", ctrlr->name, irq);
 
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
 	/* スーパーバイザタイマ割込み, ソフトウエア割込みを許可する */
@@ -114,8 +107,6 @@ clic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
 		return ;
 
-	kprintf("disable: name:%s irq=%d\n", ctrlr->name, irq);
-
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
 	/* スーパーバイザタイマ割込み, ソフトウエア割込みを禁止する */
 	sie &= ~(SIE_STIE | SIE_SSIE);
@@ -134,8 +125,6 @@ clic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
 		return ;
 
-	kprintf("clic eoi: name:%s irq:%d\n", ctrlr->name, irq);
-
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_SSIP; 	/* スーパーバイザソフトウエア割込みを落とす */
 	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */	
@@ -151,7 +140,6 @@ clic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 static int
 clic_initialize(irq_ctrlr __unused *ctrlr){
 
-	kprintf("init: name:%s\n", ctrlr->name);
 	clic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return 0;
@@ -164,7 +152,6 @@ clic_initialize(irq_ctrlr __unused *ctrlr){
 static void
 clic_finalize(irq_ctrlr __unused *ctrlr){
 
-	kprintf("finalize: name:%s\n", ctrlr->name);
 	clic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return ;

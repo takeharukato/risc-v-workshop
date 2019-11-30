@@ -53,8 +53,8 @@ ASMMAC_FUNCTION(machine_mode_vector)
 
 	mv   s1, t0                        /* mscratch情報           */
 	
-        csrrw t0, mscratch, t0             /* t0レジスタ             */
-	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避       */
+        csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
+	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
 
 	/*
 	 *  コンテキスト保存処理完了
@@ -65,7 +65,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
 	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
-	and   s4, a2, a1   /* mip & MIP_MTIPを計算     */
+	and   s4, s2, s3   /* mip & MIP_MTIPを計算     */
 	beqz  s4, skip_mtimer /* ビットが立っていなければタイマ更新処理をスキップする */
 	
 	/* これ以降以下のようにレジスタを使用する
@@ -74,13 +74,13 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	   s3  MTIMEレジスタ
 	   s4  タイマインターバル
 	 */
-	ld   s2, MSCRATCH_MTIMECMP_PADDR(s0)
-	ld   s3, MSCRATCH_MTIME_PADDR(s0)
-	ld   s4, MSCRATCH_TIMER_INTERVAL(s0)
+	ld   s2, MSCRATCH_MTIMECMP_PADDR(s1)
+	ld   s3, MSCRATCH_MTIME_PADDR(s1)
+	ld   s4, MSCRATCH_TIMER_INTERVAL(s1)
 
 	ld   s5, (s3)    /* 現在のMTIMEを読み込み  */
 	add  s6, s5, s4  /* 次のタイマ設定値を算出 */
-	sd   s6, (s3)    /* 次のタイマ設定値を設定 */
+	sd   s6, (s2)    /* 次のタイマ設定値を設定 */
 
 	li   s5, SIP_STIP /* スーパーバイザモードソフトウエア割込み発生 */
 	or   s7, s7, s5   /* タイマ割込み通知 */
@@ -151,11 +151,31 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	li  a4, RV64_CLINT_MTIME_INTERVAL    /* タイマインターバル           */
 	sd  a4, MSCRATCH_TIMER_INTERVAL(t2)  /* タイマインターバルをセット   */
 
+	/*
+	 * タイマをセット
+	 */
+	ld  a5, MSCRATCH_MTIME_PADDR(t2)     /* MTIMEレジスタのアドレスを取得 */
+	ld  a5, (a5)                         /* 現在のMTIME値を取得 */
+	li  a6, RV64_CLINT_MTIME_INTERVAL    /* タイマインターバル           */
+	add a5, a5, a6                       /* 次のタイマ値を算出           */
+	ld  a6, MSCRATCH_MTIMECMP_PADDR(t2)  /* 自hart MTIME_CMPレジスタアドレスをロード */
+	sd  a5, (a6)                         /* 次のタイマ値を設定           */
+	
 	csrw mscratch, t2                    /* mscratchレジスタ値を設定     */
 
 	la   a3, machine_mode_vector         /* マシンモードベクタアドレスをロード  */
 	csrw mtvec, a3                       /* マシンモードベクタアドレスを設定    */
 	
+	csrr a3, mie                         /* Machine interrupt enableレジスタをロード */
+	li   a4, MIE_MTIE                    /* マシンモードタイマ割込み                 */
+	or   a3, a3, a4                      /* マシンモードタイマ割込み許可を追加       */
+	csrw mie, a3                         /* マシンモードタイマ割込み許可を有効化     */
+
+	csrr a3, mstatus                     /* mstatusレジスタをロード  */
+	li   a4, MSTATUS_MIE                 /* マシンモード割込み許可値 */
+	or   a3, a3, a4                      /* マシンモード割込み許可を追加 */
+	csrw mstatus, a3                     /* マシンモード割込み許可 */
+
 	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
 	ld ra, 8(sp)     /*  raレジスタを復元する                            */
 	addi sp,sp,16    /*  スタック位置を復元する                          */

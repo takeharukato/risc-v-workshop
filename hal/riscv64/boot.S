@@ -27,7 +27,7 @@ ASMMAC_EXTERN_SYMBOL(prepare)
 ASMMAC_BOOT_FUNCTION(entry)
 #else
 ASMMAC_FUNCTION(entry)
-#endif  /* CONFIG_HAL */	
+#endif  /* CONFIG_HAL */    
        /*
 	* ブートスタック情報を算出する
 	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
@@ -63,8 +63,26 @@ ASMMAC_FUNCTION(entry)
 	bne  a0, x0, wait_bsp         /*  ページテーブル設定を待ち合わせる */
 	
 	/*
-	 * MMU設定/マシンモード情報テーブル設定 (BSPのみ実施)
+	 * BSSクリア/MMU設定/マシンモード情報テーブル設定 (BSPのみ実施)
 	 */
+	li a2, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	la a3, bss_start_addr
+	ld a3, (a3)
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	sub a3, a3, a2            /* BSS開始物理アドレスを算出   */
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
+	la a4, bss_end_addr
+	ld a4, (a4)
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	sub a4, a4, a2            /* BSS終了物理アドレスを算出   */
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	mv a5, a3                 /* 書き込み先アドレス */
+clear_bss:
+	sd x0, (a5)               /* 0クリア            */
+	add a5, a5, 8             /* アドレス加算       */
+	blt a5, a4, clear_bss     /* BSSをクリア        */
+
 	call setup_pre_pgtbl
 	call load_pre_pgtbl
 
@@ -163,4 +181,12 @@ mscratch_tbl_addr:
 ASMMAC_BALIGN(16)
 sscratch_tbl_addr:
 	.dword sscratch_tbl  /* sscratch_tblのアドレスを格納 */
+
+ASMMAC_BALIGN(16)
+bss_start_addr:
+	.dword __bss_start   /* bss開始アドレスを格納  */
+
+ASMMAC_BALIGN(16)
+bss_end_addr:
+	.dword __bss_end     /* bss終了アドレスを格納  */
 

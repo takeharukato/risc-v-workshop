@@ -68,11 +68,6 @@ prepare(uint64_t hartid){
 
 	if ( hartid == 0 ) {
 
-		/*
-		 * BSSを初期化する
-		 */
-		memset(&__bss_start, 0, (uintptr_t)&__bss_end - (uintptr_t)&__bss_start);
-
 		hal_dbg_console_init();  /* デバッグコンソールを初期化する  */
 
 		spinlock_lock_disable_intr(&prepare_lock, &iflags);

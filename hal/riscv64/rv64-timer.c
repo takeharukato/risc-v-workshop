@@ -27,13 +27,11 @@
 static int 
 rv64_timer_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	reg_type sip;
-
-	kprintf("timer handler: irq: %d\n", irq);
-
+	
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */
 	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */	
-	
+
 	return IRQ_HANDLED;
 }
 
