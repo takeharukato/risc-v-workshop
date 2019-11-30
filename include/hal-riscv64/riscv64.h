@@ -11,7 +11,7 @@
 #include <klib/misc.h>
 #include <klib/regbits.h>
 /*
- * Machine Status Register(mstatus)
+ * Machine Status Register(mstatus) (partial)
  * SiFive FU540-C000 Manual
  * RISC-V Privileged Architectures V1.10 Figure 3.7
  */
@@ -34,12 +34,24 @@
 
 /*Supervisor Status Register, sstatus
  */
+#define SSTATUS_SD_BIT   (63)  /* Some dirty */
+#define SSTATUS_UXL_BIT  (32)  /* XLEN for U-mode */
+#define SSTATUS_MXR_BIT  (19)  /* Make eXecutable Readable */
+#define SSTATUS_SUM_BIT  (18)  /* Supervisor User Memory access */
+#define SSTATUS_XS_BIT   (15)  /* User-mode extensions */
+#define SSTATUS_FS_BIT   (13)  /* Current state of the floating-point unit */
 #define SSTATUS_SPP_BIT   (8)  /* Previous mode, 1=Supervisor, 0=User */
 #define SSTATUS_SPIE_BIT  (5)  /* Supervisor Previous Interrupt Enable */
 #define SSTATUS_UPIE_BIT  (4)  /* User Previous Interrupt Enable */
 #define SSTATUS_SIE_BIT   (1)  /* Supervisor Interrupt Enable */
 #define SSTATUS_UIE_BIT   (0)  /* User Interrupt Enable */
 
+#define SSTATUS_SD         (regops_set_bit(SSTATUS_SD_BIT))
+#define SSTATUS_UXL        (regops_calc_mask_range(SSTATUS_UXL_BIT,SSTATUS_UXL_BIT+1))
+#define SSTATUS_MXR        (regops_set_bit(SSTATUS_MXR_BIT))
+#define SSTATUS_SUM        (regops_set_bit(SSTATUS_SUM_BIT))
+#define SSTATUS_XS         (regops_calc_mask_range(SSTATUS_XS_BIT,SSTATUS_XS_BIT+1))
+#define SSTATUS_FS         (regops_calc_mask_range(SSTATUS_FS_BIT,SSTATUS_FS_BIT+1))
 #define SSTATUS_SPP        (regops_set_bit(SSTATUS_SPP_BIT))
 #define SSTATUS_SPIE       (regops_set_bit(SSTATUS_SPIE_BIT))
 #define SSTATUS_UPIE       (regops_set_bit(SSTATUS_UPIE_BIT))
