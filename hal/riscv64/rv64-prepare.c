@@ -46,7 +46,7 @@ show_memory_stat(void) {
 	kprintf("\tanon_pages: %qu\n", st.anon_pages);
 	kprintf("\tpcache_pages: %qu\n", st.pcache_pages);
 }
-
+void uart_rxintr_enable(void);
 /**
    カーネル初期化後のアーキ固有初期化処理
  */
@@ -56,6 +56,7 @@ hal_platform_init(void){
 	rv64_clic_init();  /* CLICを初期化する   */
 	rv64_plic_init();  /* PLICを初期化する   */
 	rv64_timer_init(); /* タイマを初期化する */
+	uart_rxintr_enable();
 }
 
 /**

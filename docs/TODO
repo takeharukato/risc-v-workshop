@@ -16,10 +16,9 @@
 * 割り込み管理共通部[済み]
 * 割り込みコントローラ処理部
   - Platform-Level Interrupt Controller PLIC[済み]
-  - Core-Local Interrupt Controller CLIC
+  - Core-Local Interrupt Controller CLIC[済み]
     https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.adoc
-* タイマ有効化/シリアル割り込み無効化
-* 端末キュー
+* タイマ有効化/シリアル割り込み確認[済み]
 * プロセス管理部(カーネルプロセス)
 * スレッド管理部
   - 優先度継承中にプライオリティを変更するために
@@ -35,6 +34,7 @@
 * vnodeキャッシュ管理
 * minixfs
 * デバイスIF
+* 端末キュー
 * ELF
 * init
 * shell

@@ -12,6 +12,7 @@
 
 #include <dev/uart.h>
 #include <hal/rv64-platform.h>
+#include <kern/irq-if.h>
 
 /**
    UARTレジスタを参照する
@@ -30,6 +31,35 @@
    @param[in] 書き込み先レジスタオフセットアドレス
  */
 #define dbg_write_uart_reg(reg, v) (*(dbg_uart_reg(reg)) = (v))
+
+static int 
+uart_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
+	int ch;
+
+	//kprintf("handler: irq:%d\n", irq);
+
+	/* 受信可能になるのを待ち合わせる */
+	while((dbg_read_uart_reg(UART_LSR) & UART_LSR_RXRDY) == 0);
+
+	ch = dbg_read_uart_reg(UART_RHR); /* 1文字読み込む */
+	hal_kconsole_putchar(ch);
+	if ( ch == '\r' )
+		hal_kconsole_putchar('\n');
+
+	return IRQ_HANDLED;
+}
+void
+uart_rxintr_enable(void){
+	int rc;
+
+	rc = irq_register_handler(RV64_UART0_IRQ, IRQ_ATTR_NESTABLE|IRQ_ATTR_EDGE, 1, 
+	    uart_irq_handler, NULL);
+	if ( rc == 0 )
+		kprintf("Installed uart handler.\n");
+
+	/* 割込み通知を有効化 */
+	dbg_write_uart_reg(UART_INTR, UART_INTR_RDA);
+}
 
 /**
    デバッグ用コンソールを初期化する

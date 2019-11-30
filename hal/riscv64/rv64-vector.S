@@ -62,9 +62,9 @@ ASMMAC_FUNCTION(user_trap_vector)
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
+	ld   tp, SSCRATCH_CPUINF(s1)       /* CPU情報をtpにロード               */
+	
 call_trap_common:
-
-	ld   tp, SSCRATCH_CPUINF(s1)    /* CPU情報をtpにロード                      */
 
 	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
 	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
@@ -112,7 +112,6 @@ to_kernel:
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
 	ld     sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
         sret
-
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_TEXT_SECTION

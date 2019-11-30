@@ -325,12 +325,18 @@ irq_handle_irq(struct _trap_context *ctx){
 
 		if ( is_found == true ) { /* 割込み線上の割込みを処理する */
 
+			/* 割込み管理情報のロックを解放 */
+			spinlock_unlock_restore_intr(&inf->lock, &iflags);
+
 			is_handled = handle_irq_line(irqline, ctx);
 			if ( is_handled == -ESRCH )  /* 割込み処理失敗 */
 				kprintf(KERN_WAR "Spurious interrupt: irq=%d on "
 				    "IRQ controller %s [%p]\n", irqline->irq, ctrlr->name, 
 				    ctrlr);
 			irqline_put(irqline);     /* 割込み線への参照を解放 */
+
+			/* 割込み管理情報のロックを獲得 */
+			spinlock_lock_disable_intr(&inf->lock, &iflags);
 			break;
 		}
 
