@@ -9,13 +9,6 @@
 #if !defined(_KERN_VM_IF_H)
 #define  _KERN_VM_IF_H 
 
-#include <klib/freestanding.h>
-#include <kern/kern-types.h>
-#include <klib/statcnt.h>
-#include <hal/hal-pgtbl.h>
-
-struct _proc;
-
 #define VM_PROT_ACS_SHIFT    (0)        /*< アクセス属性へのシフト値  */
 #define VM_PROT_ACS_MASK						\
 	( (0xff) << VM_PROT_ACS_SHIFT ) /*< アクセス属性のマスク値  */
@@ -49,7 +42,15 @@ struct _proc;
 					       - ページフレームDB管理ページ
 					       - ユーザマップ
 					    */
+
 #if !defined(ASM_FILE)
+#include <klib/freestanding.h>
+#include <kern/kern-types.h>
+#include <klib/statcnt.h>
+#include <hal/hal-pgtbl.h>
+
+struct _proc;
+
 typedef struct _vm_pgtbl_type{
 	struct _mutex       mtx;   /*< ページテーブル操作用mutex                  */
 	hal_pte     *pgtbl_base;   /*< ページテーブルベース(カーネル仮想アドレス) */
@@ -58,6 +59,7 @@ typedef struct _vm_pgtbl_type{
 	stat_cnt       nr_pages;   /*< ページテーブルを構成するページ数           */
 	struct _hal_pgtbl_md md;   /*< アーキテクチャ依存部                       */
 }vm_pgtbl_type;
+typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
 
 void vm_pgtbl_cache_init(void);
 int pgtbl_alloc_pgtbl_page(vm_pgtbl _pgt, hal_pte **_tblp, vm_paddr *_paddrp);
@@ -72,5 +74,5 @@ int vm_copy_range(vm_pgtbl _dest, vm_pgtbl _src, vm_vaddr _vaddr, vm_flags _flag
 int vm_unmap(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
 int vm_map_userpage(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_prot _prot, vm_flags _flags,
     vm_size _pgsize, vm_size _size);
-#endif  /*  ASM_FILE  */
+#endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_VM_IF_H   */
