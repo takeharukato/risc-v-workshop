@@ -75,7 +75,28 @@ mutex_destroy(mutex *mtx){
 
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
 }
+/**
+   ミューテックスが自スレッドから獲得されていることを確認する
+   @param[in] mtx    操作対象のミューテックス
+   @retval    真     ミューテックスが自スレッドから獲得されている
+   @retval    偽     ミューテックスが自スレッドから獲得されていない
+ */
+bool
+mutex_locked_by_self(mutex *mtx){
+	bool          rc;
+	intrflags iflags;
 
+	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
+
+	/*  自スレッドがミューテックスオーナであることを確認  */
+	/*  TODO: スレッド管理実装後にコメントアウトする  */
+	//rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) ); 
+	rc = ( mtx->resources == 0 );
+
+	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
+
+	return rc;
+}
 /**
    ミューテックスの獲得を試みる
    @param[in] mtx    操作対象のミューテックス

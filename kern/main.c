@@ -13,7 +13,7 @@
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
 #include <kern/fs-fsimg.h>
-#include <kern/fs-pcache.h>
+#include <kern/dev-pcache.h>
 #include <kern/irq-if.h>
 
 /** 
@@ -46,6 +46,7 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
 	irq_init(); /* 割込み管理を初期化する */
+	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 //	kern_common_tests();
 	krn_cpu_enable_interrupt();

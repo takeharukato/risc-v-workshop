@@ -9,7 +9,8 @@
 #if !defined(_KERN_FS_FSIMG_H)
 #define  _KERN_FS_FSIMG_H 
 
-#define FS_FSIMG_MAGIC          (0xdeadbeef)
+#define FS_FSIMG_DEVID          (1)             /* デバイスID                        */
+#define FS_FSIMG_MAGIC          (0xdeadbeef)    /* FSIMGの前後に書き込むマジック番号 */
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>

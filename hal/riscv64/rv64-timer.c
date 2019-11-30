@@ -15,7 +15,7 @@
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
 #include <hal/rv64-clic.h>
-//#define RV64_SHOW_TIMER_COUNT
+#define RV64_SHOW_TIMER_COUNT
 /**
    タイマの発生回数を表示する
  */

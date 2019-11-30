@@ -35,6 +35,7 @@ typedef struct _mutex{
 
 void mutex_init(struct _mutex *_mtx);
 void mutex_destroy(struct _mutex *_mtx);
+bool mutex_locked_by_self(struct _mutex *_mtx);
 int mutex_try_lock(struct _mutex *_mtx);
 int mutex_lock(struct _mutex *_mtx);
 void mutex_unlock(struct _mutex *mtx);
