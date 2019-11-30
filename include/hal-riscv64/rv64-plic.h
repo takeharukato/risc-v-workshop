@@ -9,6 +9,7 @@
 #if !defined(_HAL_RV64_PLIC_H)
 #define  _HAL_RV64_PLIC_H
 #include <klib/misc.h>
+#include <klib/klib-consts.h>
 
 #define PLIC_IRQ_NR          (32)  /**< 割込み総数 */
 #define PLIC_IRQ_MIN         (0)   /**< 最小割込み番号 */
@@ -37,9 +38,9 @@
 /**< hart単位での割込み優先度レジスタ長(単位:バイト) */
 #define PLIC_PRIO_PER_HART   (ULONGLONG_C(0x2000))
 /**< マシンモード割込みクレームレジスタオフセット(単位:バイト) */
-#define PLIC_MCLAIM_OFFSET   (ULONGLONG_C(0x200000))
+#define PLIC_MCLAIM_OFFSET   (ULONGLONG_C(0x200004))
 /**< スーパーバイザモード割込みクレームレジスタオフセット(単位:バイト) */
-#define PLIC_SCLAIM_OFFSET   (ULONGLONG_C(0x201000))
+#define PLIC_SCLAIM_OFFSET   (ULONGLONG_C(0x201004))
 /**< hart単位での割込みクレームレジスタ長(単位:バイト) */
 #define PLIC_CLAIM_PER_HART  (ULONGLONG_C(0x2000))
 
@@ -63,7 +64,8 @@ typedef volatile uint32_t * plic_reg_ref;  /* PLICのレジスタ参照 */
    @return PLIC割込みペンディングレジスタアドレス
  */
 #define PLIC_PEND_REG(_irq) \
-	((plic_reg_ref)(RV64_PLIC + PLIC_PEND_OFFSET + ( (_irq) * PLIC_REGSIZE ) ))
+	((plic_reg_ref)(RV64_PLIC + PLIC_PEND_OFFSET \
+	    + ( (_irq) / ( PLIC_REGSIZE * BITS_PER_BYTE ) ) ) )
 
 /**
    マシンモード割込みマスクレジスタ取得

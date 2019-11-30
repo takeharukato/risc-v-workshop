@@ -46,6 +46,7 @@ show_memory_stat(void) {
 	kprintf("\tanon_pages: %qu\n", st.anon_pages);
 	kprintf("\tpcache_pages: %qu\n", st.pcache_pages);
 }
+
 /**
    カーネル初期化後のアーキ固有初期化処理
  */

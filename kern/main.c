@@ -48,8 +48,6 @@ kern_init(void) {
 	irq_init(); /* 割込み管理を初期化する */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 
-	krn_cpu_enable_interrupt();  /* TODO: アイドルスレッドから割込みを有効化する */
-
 	kern_common_tests();
 }
 

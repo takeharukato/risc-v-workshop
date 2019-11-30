@@ -63,9 +63,13 @@ ASMMAC_FUNCTION(entry)
 	bne  a0, x0, wait_bsp         /*  ページテーブル設定を待ち合わせる */
 	
 	/*
-	 * BSSクリア/MMU設定/マシンモード情報テーブル設定 (BSPのみ実施)
+	 * BSSクリア/マシンモード情報テーブル/MMU設定 (BSPのみ実施)
 	 */
 	li a2, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+
+	/*
+	 * BSSクリア (BSS中にあるマシンモード情報テーブルを設定する前に実施)
+	 */
 	la a3, bss_start_addr
 	ld a3, (a3)
 #if defined(CONFIG_UPPERHALF_KERNEL)
@@ -79,20 +83,25 @@ ASMMAC_FUNCTION(entry)
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
 	mv a5, a3                 /* 書き込み先アドレス */
 clear_bss:
-	sd x0, (a5)               /* 0クリア            */
-	add a5, a5, 8             /* アドレス加算       */
-	blt a5, a4, clear_bss     /* BSSをクリア        */
+	sd x0, (a5)               /* 0クリア                       */
+	add a5, a5, 8             /* アドレス加算                  */
+	blt a5, a4, clear_bss     /* BSSの終端に達するまで繰り返す */
 
-	call setup_pre_pgtbl
-	call load_pre_pgtbl
-
-	li a2, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	/*
+	 * マシンモード情報テーブルのアドレスを設定
+	 */
 	la a3, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
 	ld a1, (a3)               /* mscratchテーブルのアドレスをロード */
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	sub a1, a1, a2            /* mscratchテーブルの物理アドレスを算出   */
 	sd  a1, (a1)              /* mscratchテーブルの物理アドレスをストア */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	
+	/*
+	 * MMU設定
+	 */
+	call setup_pre_pgtbl
+	call load_pre_pgtbl
 
 ap_boot: /* APの処理再開位置 */
 	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 

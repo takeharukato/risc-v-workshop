@@ -55,9 +55,6 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 	if ( ( attr & IRQ_ATTR_EDGE ) == 0 )
 		return -EINVAL;
 
-	kprintf("config: name:%s irq:%d attr=%x prio=%d\n", 
-	    ctrlr->name, irq, attr, prio);
-	
 	/*
 	 * 割込み線の優先度を設定
 	 */
@@ -72,11 +69,11 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 
 		/* 割込みマスクレジスタを取得 */
 		reg = (uint32_t *)PLIC_SENABLE_REG(cinf->phys_id);
-		*reg = (1 << irq);  /* 指定された割込みを開ける */
+		*reg |= (1 << irq);  /* 指定された割込みを開ける */
 	}
+
 	return 0;
 }
-
 /**
    Platform-Level Interrupt Controller割込み検出処理
    @param[in] ctrlr 割込みコントローラ
@@ -96,11 +93,8 @@ plic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
 	if ( irq >= PLIC_IRQ_MAX )
 		return -EINVAL;
 
-	kprintf("plic pending: name:%s irq:%d prio=%d\n", 
-	    ctrlr->name, irq, prio);
-
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
-	reg = (uint32_t *)PLIC_SCLAIM_REG(hart); /* Hartに到着している割込みを確認 */
+	reg = PLIC_SCLAIM_REG(hart); /* Hartに到着している割込みを確認 */
 	claim_irq = *reg;  /* 処理する割込み番号を取得 */
 
 	return ( claim_irq == irq );  /* 指定された割込み番号と一致したら処理可能 */
@@ -118,8 +112,6 @@ plic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
-
-	kprintf("enable: name:%s irq=%d\n", ctrlr->name, irq);
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
@@ -139,8 +131,6 @@ plic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
-
-	kprintf("disable: name:%s irq=%d\n", ctrlr->name, irq);
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
@@ -164,9 +154,7 @@ plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
 	reg = (uint32_t *)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
 	cur_prio = *reg; /* 割込み優先度レジスタの設定値を獲得 */
 
-	kassert( ( PLIC_PRIO_MAX >= cur_prio ) && ( cur_prio >= PLIC_PRIO_MIN ) );
-
-	kprintf("get_priority: name:%s prio:%d\n", ctrlr->name, cur_prio);
+	kassert( PLIC_PRIO_MAX >= cur_prio );
 
 	*prio = cur_prio; /* 優先度を返却 */
 
@@ -181,7 +169,6 @@ plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
 static void
 plic_set_priority(irq_ctrlr __unused *ctrlr, irq_prio prio){
 
-	kprintf("set_priority: name:%s prio:%d\n", ctrlr->name, prio);
 	rv64_plic_set_priority_mask(prio); /* 優先度を設定 */
 
 	return;  
@@ -200,8 +187,6 @@ plic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 	if ( irq >= PLIC_IRQ_MAX )
 		return ;
 
-	kprintf("plic eoi: name:%s irq:%d\n", ctrlr->name, irq);
-
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
 	reg = (uint32_t *)PLIC_SCLAIM_REG(hart); /* HartのSupervisor claimを取得 */
@@ -215,7 +200,6 @@ plic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 static int
 plic_initialize(irq_ctrlr __unused *ctrlr){
 
-	kprintf("init: name:%s\n", ctrlr->name);
 	plic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return 0;
@@ -228,7 +212,6 @@ plic_initialize(irq_ctrlr __unused *ctrlr){
 static void
 plic_finalize(irq_ctrlr __unused *ctrlr){
 
-	kprintf("finalize: name:%s\n", ctrlr->name);
 	plic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return ;
@@ -265,7 +248,7 @@ rv64_plic_set_priority_mask(irq_prio prio){
 	plic_reg_ref  reg;
 	irq_prio old_prio;
 
-	if ( ( prio > PLIC_PRIO_MAX ) || ( prio < PLIC_PRIO_MIN ) )
+	if ( prio > PLIC_PRIO_MAX ) 
 		return PLIC_PRIO_DIS;  /* 引数異常 */
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */

@@ -9,6 +9,7 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
+
 #include <dev/uart.h>
 #include <hal/rv64-platform.h>
 
