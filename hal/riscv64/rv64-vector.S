@@ -62,8 +62,8 @@ ASMMAC_FUNCTION(user_trap_vector)
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
-	ld   tp, SSCRATCH_CPUINF(s1)       /* CPU情報をtpにロード               */
-	
+	ld   tp, SSCRATCH_HARTID(s1)       /* 物理CPUIDをtpにロード             */
+
 call_trap_common:
 
 	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */

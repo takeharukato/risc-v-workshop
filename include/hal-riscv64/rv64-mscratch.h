@@ -23,7 +23,7 @@ typedef struct _mscratch_info{
 	uintptr_t    mtimecmp_paddr;  /* CLINT MTIMECMPレジスタの物理アドレス               */
 	uintptr_t       mtime_paddr;  /* CLINT MTIMEレジスタの物理アドレス                  */
 	uint64_t timer_interval_cyc;  /* タイマ周期 (単位: cycle)                           */
-	cpu_info            *cpuinf;  /* CPU情報                                            */
+	cpu_id               hartid;  /* 物理CPUID                                          */
 }mscratch_info;
 #endif  /* !ASM_FILE */
 #endif  /* _HAL_RV64_MSCRATCH_H  */

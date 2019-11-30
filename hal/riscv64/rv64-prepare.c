@@ -68,9 +68,10 @@ hal_platform_init(void){
  */
 void
 prepare(uint64_t hartid){
-	intrflags    iflags;
+	int              rc;
 	pfdb_ent      *pfdb;
-	cpu_info  *cur_cinf;
+	cpu_id       log_id;
+	intrflags    iflags;
 
 	if ( hartid == 0 ) {
 
@@ -98,9 +99,11 @@ prepare(uint64_t hartid){
 
 		krn_cpuinfo_init();  /* CPU情報を初期化する */
 
-		cur_cinf = krn_cpuinfo_fill(hartid); /* BSPを登録する */
-		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
-		krn_cpuinfo_online(cur_cinf->log_id); /* CPUをオンラインにする */
+		rc = krn_cpuinfo_cpu_register(hartid, &log_id); /* BSPを登録する */
+		kassert( rc == 0 );
+
+		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
+		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
 
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
 
@@ -115,9 +118,12 @@ prepare(uint64_t hartid){
 		kprintf("Boot on supervisor mode on %d hart\n", hartid);
 		spinlock_unlock_restore_intr(&prepare_lock, &iflags);
 		goto loop;
-		cur_cinf = krn_cpuinfo_fill(hartid); /* CPUを登録する */
-		rv64_write_tp((uint64_t)cur_cinf); /* tpレジスタにCPU情報を設定する */
-		krn_cpuinfo_online(cur_cinf->log_id); /* CPUをオンラインにする */
+
+		rc = krn_cpuinfo_cpu_register(hartid, &log_id); /* BSPを登録する */
+		kassert( rc == 0 );
+
+		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
+		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
 	}
 	kprintf("end\n");
 loop:

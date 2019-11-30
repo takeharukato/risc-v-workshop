@@ -67,7 +67,7 @@ void krn_cpuinfo_update(void);
 int krn_cpuinfo_online(cpu_id _cpu_num);
 bool krn_cpuinfo_cpu_is_online(cpu_id _cpu_num);
 cpu_id krn_current_cpu_get(void);
-struct _cpu_info *krn_cpuinfo_fill(cpu_id _phys_id);
+int krn_cpuinfo_cpu_register(cpu_id _phys_id, cpu_id *_log_idp);
 void krn_cpuinfo_init(void);
 
 cpu_id hal_get_physical_cpunum(void);

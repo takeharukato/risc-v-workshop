@@ -54,7 +54,8 @@ kern_init(void) {
 #if !defined(CONFIG_HAL)
 int 
 main(int argc, char *argv[]) {
-	
+	cpu_id log_id;
+
 	kprintf("Kernel\n");
 
 	tflib_kernlayout_init();
@@ -62,7 +63,8 @@ main(int argc, char *argv[]) {
 	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
 
 	krn_cpuinfo_init();  /* CPU情報を初期化する */
-	krn_cpuinfo_fill(0, 0); /* BSPを登録する */
+	krn_cpuinfo_cpu_register(0, &log_id); /* BSPを登録する */
+	krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
 
 	kern_init();
 

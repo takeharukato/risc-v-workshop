@@ -59,7 +59,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	/*
 	 *  コンテキスト保存処理完了
 	 */
-	ld   tp, SSCRATCH_CPUINF(s1)       /* CPU情報をtpにロード    */
+	ld   tp, MSCRATCH_HARTID(s1)       /* 物理CPUIDをロード                 */
 
 	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
 	

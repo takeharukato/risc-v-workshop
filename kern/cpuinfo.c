@@ -197,11 +197,13 @@ krn_cpuinfo_get(cpu_id cpu_num){
 
 /**
    CPU情報を設定する
-   @param[in] phys_id     物理CPUID
-   @retun 設定したCPU情報へのポインタ
+   @param[in]  phys_id 物理CPUID
+   @param[out] log_idp 論理CPUID返却域
+   @retval     0       正常終了
+   @retval    -ENOENT  CPU情報に空きがない
  */
-cpu_info *
-krn_cpuinfo_fill(cpu_id phys_id){
+int
+krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 	cpu_id     newid;
 	cpu_map    *cmap;
 	cpu_info   *cinf;
@@ -236,13 +238,15 @@ krn_cpuinfo_fill(cpu_id phys_id){
 	/* CPUマップのロックを解放 */
 	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
 
-	return cinf;  /* 設定したCPU情報を返却する */
+	*log_idp = cinf->log_id;  /* 設定したCPU情報を返却する */
+
+	return 0;
 
 unlock_cmap_out:
 	/* CPUマップのロックを解放 */
 	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
 	
-	return NULL;
+	return -ENOENT;
 }
 /**
    CPU情報の初期化

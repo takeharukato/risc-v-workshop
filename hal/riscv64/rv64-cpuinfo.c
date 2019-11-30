@@ -28,11 +28,8 @@ sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御�
  */
 cpu_id
 hal_get_physical_cpunum(void){
-	cpu_info   *cinf;
 
-	cinf = (cpu_info *)rv64_read_tp(); /* CPU情報を取得 */
-
-	return cinf->phys_id;  /* 物理プロセッサIDを返却 */
+	return rv64_read_tp(); /* 物理プロセッサIDを返却 */
 }
 
 /**
@@ -58,7 +55,7 @@ hal_cpuinfo_fill(cpu_info *cinf){
 
 	md->mscratch = &mscratch_tbl[cinf->phys_id]; /* マシンモード制御情報       */
 	md->sscratch = &sscratch_tbl[cinf->phys_id]; /* スーパバイザモード制御情報 */
-	md->mscratch->cpuinf = cinf;  /* CPU情報へのポインタを設定                 */
-	md->sscratch->cpuinf = cinf;  /* CPU情報へのポインタを設定                 */
+	md->mscratch->hartid = cinf->phys_id;         /* 物理CPUIDを設定            */
+	md->sscratch->hartid = cinf->phys_id;         /* 物理CPUIDを設定            */
 	md->cinf = cinf;      /* 逆リンクを設定       */
 }

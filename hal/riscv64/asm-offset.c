@@ -34,22 +34,6 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(TI_THR_OFFSET, _thread_info, thr);
 
 	/*
-	 * CPU情報
-	 */
-	DEFINE_VAL(CINF_CPU_INFO_SIZE, sizeof(struct _cpu_info));
-	OFFSET(CINF_CUR_TI_OFFSET, _cpu_info, cur_ti);
-	OFFSET(CINF_CUR_PROC_OFFSET, _cpu_info, cur_proc);
-	OFFSET(CINF_CINF_MD_OFFSET, _cpu_info, cinf_md);
-
-	/*
-	 * アーキ依存CPU情報
-	 */
-	DEFINE_VAL(CINF_MD_HAL_CPUINFO_SIZE, sizeof(struct _hal_cpuinfo));
-	OFFSET(CINF_MD_CINF_OFFSET, _hal_cpuinfo, cinf);
-	OFFSET(CINF_MD_MSACRATCH_OFFSET, _hal_cpuinfo, mscratch);
-	OFFSET(CINF_MD_SSACRATCH_OFFSET, _hal_cpuinfo, sscratch);
-
-	/*
 	 * mscratch情報
 	 */
 	DEFINE_VAL(MSCRATCH_MSCRATCH_INFO_SIZE, sizeof(struct _mscratch_info));
@@ -58,16 +42,16 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(MSCRATCH_MTIMECMP_PADDR, _mscratch_info, mtimecmp_paddr);
 	OFFSET(MSCRATCH_MTIME_PADDR, _mscratch_info, mtime_paddr);
 	OFFSET(MSCRATCH_TIMER_INTERVAL, _mscratch_info, timer_interval_cyc);
-	OFFSET(MSCRATCH_CPUINF, _mscratch_info, cpuinf);
+	OFFSET(MSCRATCH_HARTID, _mscratch_info, hartid);
 
 	/*
 	 * sscratch情報
 	 */
 	DEFINE_VAL(SSCRATCH_SSCRATCH_INFO_SIZE, sizeof(struct _sscratch_info));
-	OFFSET(SSCRATCH_CPUINF, _sscratch_info, cpuinf);
 	OFFSET(SSCRATCH_SSTACK_SP, _sscratch_info, sstack_sp);
 	OFFSET(SSCRATCH_SAVED_SP, _sscratch_info, saved_sp);
 	OFFSET(SSCRATCH_ISTACK_SP, _sscratch_info, istack_sp);
+	OFFSET(SSCRATCH_HARTID, _sscratch_info, hartid);
 
 	/*
 	 * Trapコンテキスト情報
