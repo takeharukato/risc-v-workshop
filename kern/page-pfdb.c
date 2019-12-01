@@ -832,6 +832,7 @@ pfdb_add(uintptr_t phys_start, size_t length, pfdb_ent **pfdbp){
 		queue_init(&pgf->pv_head);  /* 物理->仮想アドレス変換キュー初期化 */
 		pgf->buddyp = pool;         /* ページプールを設定                 */
 		pgf->headp = NULL;          /* ページクラスタ情報初期化           */
+		list_init(&pgf->lru_ent);   /* LRUエントリの初期化                */
 		pgf->slabp = NULL;          /* SLABアドレスを初期化               */
 	}
 

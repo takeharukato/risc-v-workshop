@@ -273,6 +273,7 @@ typedef struct _page_frame{
 	struct _page_buddy   *buddyp;  /**< バディキュー                   */
 	struct _queue        pv_head;  /**< 物理->仮想アドレス変換用キュー */
 	struct _page_frame    *headp;  /**< クラスタ化ページの先頭ページ   */
+	struct _list         lru_ent;  /**< LRUへのエントリ                */
 	struct _slab          *slabp;  /**< スラブキャッシュ               */
 }page_frame;
 #endif  /* !ASM_FILE  */
