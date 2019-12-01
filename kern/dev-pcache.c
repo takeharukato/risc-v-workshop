@@ -55,6 +55,46 @@ _page_cache_ent_cmp(struct _page_cache *key, struct _page_cache *ent){
 }
 
 /**
+   ページキャッシュ用にページを割り当てる (内部関数)
+   @param[out] kvaddrp 獲得したメモリのカーネル仮想アドレス返却域
+   @retval     0      正常終了
+   @retval    -ENOMEM メモリ不足
+ */
+static int
+alloc_pcache_page(void **kvaddrp){
+	int          rc;
+	void    *kvaddr;
+
+	/* ページキャッシュ割り当て
+	 */
+	rc = pgif_get_free_page(&kvaddr, KMALLOC_NORMAL, PAGE_USAGE_PCACHE);
+	if ( rc != 0 ) {
+		
+		rc = -ENOMEM;   /* メモリ不足  */
+		goto error_out;
+	}
+
+	/* ページキャッシュ用ページを返却
+	 */
+	*kvaddrp = kvaddr;
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュ用に割り当てたページを解放する (内部関数)
+   @param[in]  kvaddr ページキャッシュ用にページ
+ */
+static void
+free_pcache_page(void *kvaddr){
+
+	pgif_free_page(kvaddr);      /* ページキャッシュページの解放   */
+}
+
+/**
    ページキャッシュ管理情報の割り当て (内部関数)
    @param[out] pcp ページキャッシュ管理情報アドレス返却域
    @retval  0      正常終了
@@ -85,6 +125,30 @@ allocate_new_pcache(page_cache **pcp){
 }
 
 /**
+   ページキャッシュの解放 (内部関数)
+   @param[in]      pc      ページキャッシュ管理情報
+ */
+static void __unused
+free_pcache(page_cache *pc){
+	intrflags     iflags;	
+
+	kassert( PCACHE_IS_BUSY(pc) );
+	kassert( !PCACHE_IS_DIRTY(pc) );
+
+	/* ページキャッシュプールのロックを獲得 */
+	spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
+
+	/* ページキャッシュプールにページが登録されている場合にページの登録を抹消 */
+	SPLAY_REMOVE(_pcache_tree, &pcache_pool.head, pc);
+
+	/* ページキャッシュプールのロックを解放 */
+	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+
+	free_pcache_page(pc->pc_data);    /* ページキャッシュのページ       */
+	slab_kmem_cache_free((void *)pc); /* ページキャッシュ管理情報の解放 */
+}
+
+/**
    ページキャッシュプールからページキャッシュを検索する (内部関数)
    @param[in]  dev    ブロックデバイスID
    @param[in]  offset オフセットページアドレス
@@ -98,9 +162,12 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 	int               rc;
 	page_cache       key;
 	page_cache      *res;
+	page_cache      *new;
+	void        *newpage;
 	wque_reason   reason;
 	intrflags     iflags;	
 
+	/* ページキャッシュプールのロックを獲得 */
 	spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
 
 	key.bdevid = dev;  /* 検索対象デバイス */
@@ -110,40 +177,93 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 	/*
 	 * ページキャッシュプールから指定されたデバイス上のページキャッシュを検索する
 	 */
-	res = SPLAY_FIND(_pcache_tree, &pcache_pool.head, &key);
-	if ( res == NULL ) {
+	for( ; ;  ) {
 
-		rc = -ENOENT;  /* ページキャッシュが見つからなかった */
-		goto unlock_out;
-	}
-
-	/* 他のスレッドがキャッシュを使用中だった場合は, 
-	 * キャッシュの解放を待ち合わせる
-	 */
-	while( ( res->state & PCACHE_STATE_BUSY ) != 0 ) {
-		
-		/* ページのウエイトキューで休眠する
-		 */
-		reason = wque_wait_on_queue_with_spinlock(&res->waiters, 
-		    &pcache_pool.lock);
-		if ( reason == WQUE_DESTROYED ) {  /* ページが破棄された場合 */
+		res = SPLAY_FIND(_pcache_tree, &pcache_pool.head, &key);
+		if ( res != NULL ) {
+	
+			/* 他のスレッドがキャッシュを使用中だった場合は, 
+			 * キャッシュの解放を待ち合わせる
+			 */
+			while( PCACHE_IS_BUSY(res) ) {
 			
-			rc = -ENOENT; /* ページキャッシュが見つからなかった */
-			goto unlock_out;
-		}
-		if ( reason == WQUE_DELIVEV ) {
+				/* ページのウエイトキューで休眠する
+				 */
+				reason = wque_wait_on_queue_with_spinlock(&res->waiters, 
+				    &pcache_pool.lock);
+				if ( reason == WQUE_DESTROYED ) {  /* ページが破棄された */
+				
+					rc = -ENOENT; /* ページキャッシュが見つからなかった */
+					goto unlock_out;
+				}
+				if ( reason == WQUE_DELIVEV ) {
+					
+					rc = -EINTR; /* イベントを受信した */
+					goto unlock_out;
+				}
+				kassert( reason == WQUE_RELEASED );
+			}
+			
+			res->state |= PCACHE_STATE_BUSY;  /* ページを使用中に遷移する  */
+		} else {
+			/* ページキャッシュプールのロックを解放 */
+			spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+			
+			/* ページキャッシュプール内にページがなかった場合, 
+			 * ページキャッシュを割り当て, BUSY状態に遷移しキャッシュに登録
+			 */
+		
+			/* ページキャッシュ用にページを獲得  */
+			rc = alloc_pcache_page(&newpage);
+			if ( rc != 0 ) {
+				
+				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
+				goto unlock_out;
+			}
+	
+			/* ページキャッシュ情報を割り当て  */
+			rc = allocate_new_pcache(&new);
+			if ( rc != 0 ) {
+				
+				/* ページキャッシュページ解放 */
+				free_pcache_page(newpage);
+				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
+				goto unlock_out;
+			}
+	
+			new->pc_data = newpage;      /* ページキャッシュページを設定 */
+			new->bdevid = dev;           /* 無効デバイスIDに設定         */
+			new->offset = key.offset;    /* オフセットアドレスを初期化   */
+			
+			/* ページ未読み込みに設定しページをロック  */
+			new->state = (PCACHE_STATE_BUSY|PCACHE_STATE_INVALID);
 
-			rc = -EINTR; /* イベントを受信した */
-			goto unlock_out;
+			/* ページキャッシュプールのロックを獲得 */
+			spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
+
+			/* ページキャッシュを登録 */
+			res = SPLAY_INSERT(_pcache_tree, &pcache_pool.head, new);
+			if ( res == NULL ) { /* 登録成功 */
+
+				res = new; /* 新規に割り当てページキャッシュを使用 */
+				break;  /* ページキャッシュ登録完了 */
+			}
+
+			/*
+			 * 登録済みのキャッシュを再検索するため割り当てたメモリを解放
+			 */
+			/* ページキャッシュページの解放  */
+			free_pcache_page(newpage); 
+			/* ページキャッシュ管理情報の解放 */
+			slab_kmem_cache_free((void *)new); 
 		}
-		kassert( reason == WQUE_RELEASED );
 	}
 
-	res->state |= PCACHE_STATE_BUSY;  /* ページを使用中に遷移する  */
+	/* ページキャッシュプールのロックを解放 */
 	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
 
 	mutex_lock(&res->mtx);  /* ページmutexを獲得する */
-	if ( ( res->state & ( PCACHE_STATE_VALID | PCACHE_STATE_DIRTY ) ) == 0 ) {
+	if ( !PCACHE_IS_VALID(res) ) {
 
 		/* 無効なページキャッシュだった場合は,
 		 * ページの内容をロードする
@@ -171,26 +291,21 @@ unlock_out:
    @retval    -EINTR  キャッシュの解放待ち中にイベントを受け付けた
  */
 int
-pagecache_get(dev_id dev, off_t offset, page_cache *pcp){
+pagecache_get(dev_id dev, off_t offset, page_cache **pcp){
 	int               rc;
 	page_cache       *pc;
 
 	rc = lookup_pagecache(dev, offset, &pc);  /* ページキャッシュを検索する */
-	if ( rc == -EINTR )
+	if ( rc != 0 )
 		return rc;  /* イベント受信 */
-	kassert( rc == 0 );  /* TODO: RAMDISKの場合のみ成立するassert */
-	/*
-	 * TODO: ページキャッシュの割り当て, BUSY状態でキャッシュに登録後,
-	 * ページの内容を読み込みVALIDに遷移
-	 */
 
 	/* ページキャッシュmutexを保持していることを確認 */
 	kassert( mutex_locked_by_self(&pc->mtx) );
-	kassert( pc->state & PCACHE_STATE_BUSY ); /* 自スレッドがページをロックしている */
-	kassert( ( pc->state & ( PCACHE_STATE_VALID | PCACHE_STATE_DIRTY ) ) != 0 );
-	kassert( ( pc->state & ( PCACHE_STATE_VALID | PCACHE_STATE_DIRTY ) ) 
-	    != ( PCACHE_STATE_VALID | PCACHE_STATE_DIRTY ) );
+	kassert( PCACHE_IS_BUSY(pc) );  /* 自スレッドがページをロックしている */
+	kassert( PCACHE_IS_VALID(pc) ); /* キャッシュが有効である */
 	kassert( pc->bdevid == dev);
+
+	*pcp = pc;  /* ページキャッシュを返却する */
 
 	return 0;
 }
@@ -204,7 +319,7 @@ pagecache_put(page_cache *pc){
 
 	/* ページキャッシュmutexを保持していることを確認 */
 	kassert( mutex_locked_by_self(&pc->mtx) );
-	kassert( pc->state & PCACHE_STATE_BUSY ); /* 自スレッドがページをロックしている */
+	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
 
 	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
 
@@ -225,14 +340,14 @@ pagecache_mark_dirty(page_cache *pc){
 
 	/* ページキャッシュmutexを保持していることを確認 */
 	kassert( mutex_locked_by_self(&pc->mtx) );
-	kassert( pc->state & PCACHE_STATE_BUSY ); /* 自スレッドがページをロックしている */
+	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
 
 	/* ページキャッシュのほうが2次記憶より新しい状態となるので
-	 * PCACHE_STATE_VALID (2次記憶との同期が完了している)を落とし,
+	 * PCACHE_STATE_CLEAN (2次記憶との同期が完了している)を落とし,
 	 * PCACHE_STATE_DIRTY (ページキャッシュのほうが2次記憶より新しい)
 	 * を設定する
 	 */
-	pc->state &= ~PCACHE_STATE_VALID;
+	pc->state &= ~PCACHE_STATE_CLEAN;
 	pc->state |= PCACHE_STATE_DIRTY; 
 }
 
@@ -245,8 +360,8 @@ pagecache_write(page_cache *pc){
 
 	/* ページキャッシュmutexを保持していることを確認 */
 	kassert( mutex_locked_by_self(&pc->mtx) );
-	kassert( pc->state & PCACHE_STATE_BUSY ); /* 自スレッドがページをロックしている */
-
+	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
+	
 	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
 
 	/* TODO: ブロックデバイスへの書き戻し */
@@ -255,10 +370,10 @@ pagecache_write(page_cache *pc){
 
 	/* ページキャッシュと2次記憶との同期が完了しているので
 	 * PCACHE_STATE_DIRTY (ページキャッシュのほうが2次記憶より新しい)を落とし,
- 	 * PCACHE_STATE_VALID (2次記憶との同期が完了している)を設定する
+ 	 * PCACHE_STATE_CLEAN (2次記憶との同期が完了している)を設定する
 	 */
 	pc->state &= ~PCACHE_STATE_DIRTY;
-	pc->state |= PCACHE_STATE_VALID;
+	pc->state |= PCACHE_STATE_CLEAN;
 }
 
 /**
@@ -292,7 +407,7 @@ pagecache_init(void){
 
 		pc->bdevid = FS_FSIMG_DEVID;     /* FSIMGデバイスに設定        */
 		pc->offset = off;                /* オフセットアドレスを設定   */
-		pc->state = PCACHE_STATE_VALID;  /* キャッシュ読込み済みに設定 */
+		pc->state = PCACHE_STATE_CLEAN;  /* キャッシュ読込み済みに設定 */
 		/* ページのカーネル仮想アドレスを設定 */
 		pc->pc_data = (void *)((uintptr_t)&_fsimg_start + off);
 		

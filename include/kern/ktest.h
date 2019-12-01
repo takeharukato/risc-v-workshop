@@ -181,4 +181,5 @@ void tst_rv64pgtbl(void);
 void tst_vmstrlen(void);
 void tst_vmmap(void);
 void tst_irqctrlr(void);
+void tst_pcache(void);
 #endif  /*  _KERN_KTEST_H  */

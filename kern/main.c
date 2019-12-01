@@ -27,6 +27,7 @@ kern_common_tests(void){
 	tst_atomic();
 	tst_atomic64();
 	tst_vmmap();
+	tst_pcache();
 #if defined(CONFIG_HAL)
 	tst_vmcopy();
 	tst_vmstrlen();
