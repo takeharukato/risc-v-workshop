@@ -205,6 +205,7 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			}
 			
 			res->state |= PCACHE_STATE_BUSY;  /* ページを使用中に遷移する  */
+			break;   /* ページキャッシュ獲得完了 */
 		} else {
 			/* ページキャッシュプールのロックを解放 */
 			spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);

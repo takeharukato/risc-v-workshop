@@ -77,6 +77,13 @@ typedef struct _page_cache_pool{
 	( (_pcache)->state & PCACHE_STATE_BUSY )
 
 /**
+   ページキャッシュと2時記憶の状態が一致していることを確認する
+   @param[in] _pcache プール内のページサイズ
+ */
+#define PCACHE_IS_CLEAN(_pcache) \
+	( (_pcache)->state & PCACHE_STATE_CLEAN )
+
+/**
    ページキャッシュの方が2時記憶より新しいことを確認する
    @param[in] _pcache プール内のページサイズ
  */

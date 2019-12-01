@@ -49,7 +49,7 @@ kern_init(void) {
 	irq_init(); /* 割込み管理を初期化する */
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
-//	kern_common_tests();
+	kern_common_tests();
 	krn_cpu_enable_interrupt();
 }
 
