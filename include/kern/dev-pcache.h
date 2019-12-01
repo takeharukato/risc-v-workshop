@@ -12,13 +12,14 @@
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
 
+#include <klib/queue.h>
 #include <klib/splay.h>
 #include <klib/refcount.h>
 
 #include <kern/spinlock.h>
 #include <kern/mutex.h>
 #include <kern/wqueue.h>
-
+#include <kern/page-if.h>
 /*
  * ページキャッシュの状態
  */
@@ -43,6 +44,7 @@ typedef struct _page_cache{
 	dev_id                       bdevid;  /**< デバイスID                           */
 	off_t                        offset;  /**< オフセット (単位:バイト)             */
 	pcache_state                  state;  /**< バッファの状態                       */
+	struct _page_frame              *pf;  /**< ページフレーム情報                   */
 	void                       *pc_data;  /**< ページキャッシュデータへのポインタ   */
 }page_cache;
 
@@ -57,17 +59,19 @@ typedef struct _page_cache_pool{
 	spinlock                              lock; /**< ページキャッシュツリーのロック */
 	size_t                               pgsiz; /**< ページサイズ                   */
 	SPLAY_HEAD(_pcache_tree, _page_cache) head; /**< ページキャッシュツリー         */
+	struct _queue                          lru; /**< LRUキャッシュ                  */
 }page_cache_pool;
 
 /**
    ページキャッシュプールの初期化子
-   @param[in] _root  SPLY木のルート
-   @param[in] _pgsiz プール内のページサイズ
+   @param[in] _pcache_pool  ページキャッシュプールのアドレス
+   @param[in] _pgsiz        プール内のページサイズ
  */
-#define __PCACHE_POOL_INITIALIZER(_root, _pgsiz)	\
-	{.lock = __SPINLOCK_INITIALIZER,                \
-	.pgsiz = (_pgsiz),                              \
-	.head = SPLAY_INITIALIZER((_root)),	        \
+#define __PCACHE_POOL_INITIALIZER(_pcache_pool, _pgsiz)	        \
+	{.lock = __SPINLOCK_INITIALIZER,                        \
+	.pgsiz = (_pgsiz),                                      \
+	.head = SPLAY_INITIALIZER(&((_pcache_pool)->head)),	\
+	.lru  = __QUEUE_INITIALIZER(&((_pcache_pool)->lru)),    \
 	}
 
 /**

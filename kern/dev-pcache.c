@@ -21,7 +21,7 @@
 static kmem_cache pcache_cache;  /* ページキャッシュのSLABキャッシュ */
 /** ページキャッシュプール
  */
-static page_cache_pool __unused pcache_pool = __PCACHE_POOL_INITIALIZER(&pcache_pool.head, PAGE_SIZE);
+static page_cache_pool pcache_pool = __PCACHE_POOL_INITIALIZER(&pcache_pool, PAGE_SIZE);
 
 /** ページキャッシュプールSPLAY木
  */
@@ -55,36 +55,6 @@ _page_cache_ent_cmp(struct _page_cache *key, struct _page_cache *ent){
 }
 
 /**
-   ページキャッシュ用にページを割り当てる (内部関数)
-   @param[out] kvaddrp 獲得したメモリのカーネル仮想アドレス返却域
-   @retval     0      正常終了
-   @retval    -ENOMEM メモリ不足
- */
-static int
-alloc_pcache_page(void **kvaddrp){
-	int          rc;
-	void    *kvaddr;
-
-	/* ページキャッシュ割り当て
-	 */
-	rc = pgif_get_free_page(&kvaddr, KMALLOC_NORMAL, PAGE_USAGE_PCACHE);
-	if ( rc != 0 ) {
-		
-		rc = -ENOMEM;   /* メモリ不足  */
-		goto error_out;
-	}
-
-	/* ページキャッシュ用ページを返却
-	 */
-	*kvaddrp = kvaddr;
-
-	return 0;
-
-error_out:
-	return rc;
-}
-
-/**
    ページキャッシュ管理情報とページキャッシュに割り当てたページを解放する (内部関数)
    @param[in]      pc      ページキャッシュ管理情報
  */
@@ -103,35 +73,51 @@ free_pagecache_nolock(page_cache *pc){
 }
 
 /**
-   ページキャッシュ管理情報の割り当て (内部関数)
+   ページキャッシュの割り当て (内部関数)
    @param[out] pcp ページキャッシュ管理情報アドレス返却域
    @retval  0      正常終了
    @retval -ENOMEM メモリ不足
  */
 static int
 allocate_new_pcache(page_cache **pcp){
-	int         rc;
-	page_cache *pc;
+	int               rc;
+	page_cache       *pc;
+	page_frame       *pf;
+	void        *newpage;
+
+	/* ページキャッシュ用にページを獲得  */
+	rc = pgif_get_free_page(&newpage, KMALLOC_NORMAL, PAGE_USAGE_PCACHE);
+	if ( rc != 0 ) 
+		return -ENOMEM;   /* メモリ不足  */
+
+	rc = pfdb_kvaddr_to_page_frame(newpage, &pf);
+	kassert( rc == 0 ); /* ページプール内のページであるため必ず成功する */
 
 	rc = slab_kmem_cache_alloc(&pcache_cache, KMALLOC_NORMAL, (void **)&pc);
 	if ( rc != 0 ) {
 		
 		kprintf("Cannot allocate page cache\n");
-		return rc;
+		goto free_newpage_out;
 	}
 
 	mutex_init(&pc->mtx);               /* ページmutexの初期化          */
 	wque_init_wait_queue(&pc->waiters); /* ページウエイトキューの初期化 */
 	/* 参照カウンタの初期化 (ページキャッシュプールからの参照分として1で初期化)  */
 	refcnt_init(&pc->refs);             
-	pc->bdevid = 0;                     /* 無効デバイスIDに設定         */
-	pc->offset = 0;                     /* オフセットアドレスを初期化   */
-	pc->state = PCACHE_STATE_INVALID;   /* 無効キャッシュに設定         */
-	pc->pc_data = NULL;                 /* ページアドレスを初期化       */
+	pc->bdevid  = 0;                     /* 無効デバイスIDに設定         */
+	pc->offset  = 0;                     /* オフセットアドレスを初期化   */
+	pc->state   = PCACHE_STATE_INVALID;  /* 無効キャッシュに設定         */
+	pc->pf      = pf;                    /* ページフレーム情報を設定     */
+	pc->pc_data = newpage;               /* ページアドレスを初期化       */
 
 	*pcp = pc;  /* ページキャッシュ管理情報を返却 */
 
 	return 0;
+
+free_newpage_out:
+	/* ページキャッシュページ解放 */
+	pgif_free_page(newpage);
+	return rc;
 }
 
 /**
@@ -159,10 +145,54 @@ fill_pagecache(page_cache *pc){
 }
 
 /**
+   ページキャッシュの獲得を待ち合わせる  (内部関数)
+   @param[in]  pc     ページキャッシュ管理情報
+   @retval     0      正常終了
+   @retval    -ENOENT キャッシュの解放待ち中にページを破棄した
+   @retval    -EINTR  キャッシュの解放待ち中にイベントを受け付けた
+ */
+static int
+wait_on_pagecache_nolock(page_cache *pc){
+	int               rc;
+	wque_reason   reason;
+
+	/* ページキャッシュプールのロックを保持した状態で呼びしていることを確認 */
+	kassert( spinlock_locked_by_self(&pcache_pool.lock) ); 
+
+	/* 他のスレッドがキャッシュを使用中だった場合は, 
+	 * キャッシュの解放を待ち合わせる
+	 */
+	while( PCACHE_IS_BUSY(pc) ) {
+		
+		/* ページのウエイトキューで休眠する
+		 */
+		reason = wque_wait_on_queue_with_spinlock(&pc->waiters, 
+		    &pcache_pool.lock);
+
+		if ( reason == WQUE_DESTROYED ) {  /* ページが破棄された */
+			
+			rc = -ENOENT; /* ページキャッシュが見つからなかった */
+			goto error_out;
+		}
+
+		if ( reason == WQUE_DELIVEV ) {
+			
+			rc = -EINTR; /* イベントを受信した */
+			goto error_out;
+		}
+		kassert( reason == WQUE_RELEASED );
+	}
+
+	return 0;
+
+error_out:
+	return rc;
+}
+/**
    ページキャッシュプールからページキャッシュを検索する (内部関数)
    @param[in]  dev    ブロックデバイスID
    @param[in]  offset オフセットページアドレス
-   @param[out] pcp    ページキャッシュ返却領域
+   @param[out] pcp    ページキャッシュ管理情報返却領域
    @retval     0      正常終了
    @retval    -ENOENT キャッシュ中に指定されたページがない
    @retval    -EINTR  キャッシュの解放待ち中にイベントを受け付けた
@@ -174,8 +204,6 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 	page_cache       *pc;
 	page_cache      *res;
 	page_cache      *new;
-	void        *newpage;
-	wque_reason   reason;
 	intrflags     iflags;	
 
 	/* ページキャッシュプールのロックを獲得 */
@@ -196,30 +224,13 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			/* 他のスレッドがキャッシュを使用中だった場合は, 
 			 * キャッシュの解放を待ち合わせる
 			 */
-			while( PCACHE_IS_BUSY(pc) ) {
-			
-				/* ページのウエイトキューで休眠する
-				 */
-				reason = wque_wait_on_queue_with_spinlock(&pc->waiters, 
-				    &pcache_pool.lock);
-				if ( reason == WQUE_DESTROYED ) {  /* ページが破棄された */
-				
-					rc = -ENOENT; /* ページキャッシュが見つからなかった */
-					goto unlock_out;
-				}
-				if ( reason == WQUE_DELIVEV ) {
-					
-					rc = -EINTR; /* イベントを受信した */
-					goto unlock_out;
-				}
-				kassert( reason == WQUE_RELEASED );
-			}
+			rc = wait_on_pagecache_nolock(pc);
+			if ( rc != 0 )
+				goto unlock_out; /* イベント受信かページが破棄された */
 
 			/* ページキャッシュのロックが解放されていることを確認する */
 			kassert( !PCACHE_IS_BUSY(pc) ); 
-
 			pc->state |= PCACHE_STATE_BUSY;  /* ページをロックする  */
-
 			break;   /* ページキャッシュ獲得完了 */
 		} else {
 			/* ページキャッシュプールのロックを解放 */
@@ -229,27 +240,16 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			 * ページキャッシュを割り当て, BUSY状態に遷移しキャッシュに登録
 			 */
 		
-			/* ページキャッシュ用にページを獲得  */
-			rc = alloc_pcache_page(&newpage);
-			if ( rc != 0 ) {
-				
-				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
-				goto error_out;
-			}
-	
 			/* ページキャッシュ情報を割り当て  */
 			rc = allocate_new_pcache(&new);
 			if ( rc != 0 ) {
 				
-				/* ページキャッシュページ解放 */
-				pgif_free_page(newpage);
 				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
 				goto error_out;
 			}
-	
-			new->pc_data = newpage;      /* ページキャッシュページを設定 */
-			new->bdevid = dev;           /* 無効デバイスIDに設定         */
-			new->offset = key.offset;    /* オフセットアドレスを初期化   */
+
+			new->bdevid  = dev;          /* 無効デバイスIDに設定         */
+			new->offset  = key.offset;   /* オフセットアドレスを初期化   */
 			
 			/* ページ未読み込みに設定しページをロック  */
 			new->state = (PCACHE_STATE_BUSY|PCACHE_STATE_INVALID);
@@ -520,8 +520,8 @@ pagecache_init(void){
 		pc->bdevid = FS_FSIMG_DEVID;     /* FSIMGデバイスに設定        */
 		pc->offset = off;                /* オフセットアドレスを設定   */
 		pc->state = PCACHE_STATE_CLEAN;  /* キャッシュ読込み済みに設定 */
-		/* ページのカーネル仮想アドレスを設定 */
-		pc->pc_data = (void *)((uintptr_t)&_fsimg_start + off);
+		/* ページをコピー */
+		memcpy(pc->pc_data, (void *)((uintptr_t)&_fsimg_start + off), PAGE_SIZE);
 		
 		/*
 		 * ページキャッシュプールに登録
