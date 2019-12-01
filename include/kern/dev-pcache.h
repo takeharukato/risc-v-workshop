@@ -39,6 +39,7 @@ typedef struct _page_cache{
 	struct _mutex                   mtx;  /**< 排他用ロック(状態更新用)             */
 	struct _wque_waitqueue      waiters;  /**< ページバッファ待ちキュー             */
 	SPLAY_ENTRY(_page_cache)        ent;  /**< SPLAY木へのエントリ                  */
+	refcounter                     refs;  /**< 参照カウンタ                         */
 	dev_id                       bdevid;  /**< デバイスID                           */
 	off_t                        offset;  /**< オフセット (単位:バイト)             */
 	pcache_state                  state;  /**< バッファの状態                       */

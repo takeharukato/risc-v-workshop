@@ -85,13 +85,21 @@ error_out:
 }
 
 /**
-   ページキャッシュ用に割り当てたページを解放する (内部関数)
-   @param[in]  kvaddr ページキャッシュ用にページ
+   ページキャッシュ管理情報とページキャッシュに割り当てたページを解放する (内部関数)
+   @param[in]      pc      ページキャッシュ管理情報
  */
 static void
-free_pcache_page(void *kvaddr){
+free_pagecache_nolock(page_cache *pc){
 
-	pgif_free_page(kvaddr);      /* ページキャッシュページの解放   */
+       kassert( PCACHE_IS_BUSY(pc) );   /* ページの更新権を得ていることを確認 */
+       kassert( !PCACHE_IS_DIRTY(pc) ); /* 2次記憶へのキャッシュ書き出し完了を確認 */
+       /* ページキャッシュプールのロックを獲得済みであることを確認 */
+       kassert( spinlock_locked_by_self(&pcache_pool.lock) ); 
+
+       pc->state &= ~PCACHE_STATE_BUSY;  /* ページのロックを解放する */
+
+       pgif_free_page(pc->pc_data);      /* ページキャッシュページの解放   */
+       slab_kmem_cache_free((void *)pc); /* ページキャッシュ管理情報の解放 */
 }
 
 /**
@@ -114,6 +122,8 @@ allocate_new_pcache(page_cache **pcp){
 
 	mutex_init(&pc->mtx);               /* ページmutexの初期化          */
 	wque_init_wait_queue(&pc->waiters); /* ページウエイトキューの初期化 */
+	/* 参照カウンタの初期化 (ページキャッシュプールからの参照分として1で初期化)  */
+	refcnt_init(&pc->refs);             
 	pc->bdevid = 0;                     /* 無効デバイスIDに設定         */
 	pc->offset = 0;                     /* オフセットアドレスを初期化   */
 	pc->state = PCACHE_STATE_INVALID;   /* 無効キャッシュに設定         */
@@ -125,27 +135,27 @@ allocate_new_pcache(page_cache **pcp){
 }
 
 /**
-   ページキャッシュの解放 (内部関数)
-   @param[in]      pc      ページキャッシュ管理情報
+   ページキャッシュに2次記憶の内容を読み込む (内部関数)
+   @param[in]  pc     ページキャッシュ
  */
-static void __unused
-free_pcache(page_cache *pc){
-	intrflags     iflags;	
+static void
+fill_pagecache(page_cache *pc){
 
-	kassert( PCACHE_IS_BUSY(pc) );
-	kassert( !PCACHE_IS_DIRTY(pc) );
+	/* ページキャッシュmutexを保持していることを確認 */
+	kassert( mutex_locked_by_self(&pc->mtx) );
+	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
+	kassert( !PCACHE_IS_VALID(pc) ); /* 有効なキャッシュでない */
 
-	/* ページキャッシュプールのロックを獲得 */
-	spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
+	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
 
-	/* ページキャッシュプールにページが登録されている場合にページの登録を抹消 */
-	SPLAY_REMOVE(_pcache_tree, &pcache_pool.head, pc);
+	/* TODO: ブロックデバイスからの読込み */
 
-	/* ページキャッシュプールのロックを解放 */
-	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+	mutex_lock(&pc->mtx);  /* ページmutexを獲得 */
 
-	free_pcache_page(pc->pc_data);    /* ページキャッシュのページ       */
-	slab_kmem_cache_free((void *)pc); /* ページキャッシュ管理情報の解放 */
+	/* ページキャッシュと2次記憶との同期が完了しているので
+	 * PCACHE_STATE_CLEAN (2次記憶との同期が完了している)を設定する
+	 */
+	pc->state |= PCACHE_STATE_CLEAN;
 }
 
 /**
@@ -161,6 +171,7 @@ static int
 lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 	int               rc;
 	page_cache       key;
+	page_cache       *pc;
 	page_cache      *res;
 	page_cache      *new;
 	void        *newpage;
@@ -177,19 +188,19 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 	/*
 	 * ページキャッシュプールから指定されたデバイス上のページキャッシュを検索する
 	 */
-	for( ; ;  ) {
+	for( ; ; ) {
 
-		res = SPLAY_FIND(_pcache_tree, &pcache_pool.head, &key);
-		if ( res != NULL ) {
+		pc = SPLAY_FIND(_pcache_tree, &pcache_pool.head, &key);
+		if ( pc != NULL ) {
 	
 			/* 他のスレッドがキャッシュを使用中だった場合は, 
 			 * キャッシュの解放を待ち合わせる
 			 */
-			while( PCACHE_IS_BUSY(res) ) {
+			while( PCACHE_IS_BUSY(pc) ) {
 			
 				/* ページのウエイトキューで休眠する
 				 */
-				reason = wque_wait_on_queue_with_spinlock(&res->waiters, 
+				reason = wque_wait_on_queue_with_spinlock(&pc->waiters, 
 				    &pcache_pool.lock);
 				if ( reason == WQUE_DESTROYED ) {  /* ページが破棄された */
 				
@@ -203,8 +214,12 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 				}
 				kassert( reason == WQUE_RELEASED );
 			}
-			
-			res->state |= PCACHE_STATE_BUSY;  /* ページを使用中に遷移する  */
+
+			/* ページキャッシュのロックが解放されていることを確認する */
+			kassert( !PCACHE_IS_BUSY(pc) ); 
+
+			pc->state |= PCACHE_STATE_BUSY;  /* ページをロックする  */
+
 			break;   /* ページキャッシュ獲得完了 */
 		} else {
 			/* ページキャッシュプールのロックを解放 */
@@ -219,7 +234,7 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			if ( rc != 0 ) {
 				
 				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
-				goto unlock_out;
+				goto error_out;
 			}
 	
 			/* ページキャッシュ情報を割り当て  */
@@ -227,9 +242,9 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			if ( rc != 0 ) {
 				
 				/* ページキャッシュページ解放 */
-				free_pcache_page(newpage);
+				pgif_free_page(newpage);
 				rc = -ENOENT;  /* ページキャッシュ獲得失敗 */
-				goto unlock_out;
+				goto error_out;
 			}
 	
 			new->pc_data = newpage;      /* ページキャッシュページを設定 */
@@ -246,39 +261,121 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			res = SPLAY_INSERT(_pcache_tree, &pcache_pool.head, new);
 			if ( res == NULL ) { /* 登録成功 */
 
-				res = new; /* 新規に割り当てページキャッシュを使用 */
+				pc = new; /* 新規に割り当てページキャッシュを使用 */
 				break;  /* ページキャッシュ登録完了 */
 			}
 
 			/*
 			 * 登録済みのキャッシュを再検索するため割り当てたメモリを解放
 			 */
-			/* ページキャッシュページの解放  */
-			free_pcache_page(newpage); 
-			/* ページキャッシュ管理情報の解放 */
-			slab_kmem_cache_free((void *)new); 
+			/* ページキャッシュの解放  */
+			free_pagecache_nolock(new);
 		}
 	}
-
+	/* 参照カウンタをインクリメント 
+	 * ページキャッシュプールからの参照があるので必ず成功する
+	 */
+	kassert(refcnt_inc_if_valid(&pc->refs));
 	/* ページキャッシュプールのロックを解放 */
 	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
 
-	mutex_lock(&res->mtx);  /* ページmutexを獲得する */
-	if ( !PCACHE_IS_VALID(res) ) {
+	kassert( PCACHE_IS_BUSY(pc) ); /* ページキャッシュロック済みであることを確認する */
+
+	mutex_lock(&pc->mtx);  /* ページmutexを獲得する */
+	if ( !PCACHE_IS_VALID(pc) ) {
 
 		/* 無効なページキャッシュだった場合は,
 		 * ページの内容をロードする
 		 */
-		kassert_no_reach();
+		fill_pagecache(pc);
 	}
 
-	*pcp = res;
+	*pcp = pc;  /* ページキャッシュを返却する */
 
 	return 0;
 
 unlock_out:
+	/* ページキャッシュプールのロックを解放 */
 	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+error_out:
+	return rc;
+}
 
+/**
+   ページキャッシュの参照を落とし最終参照者だった場合にページキャッシュを解放する (内部関数)
+   @param[in]  pc     ページキャッシュ
+   @retval     真     ページキャッシュの最終参照者だった
+   @retval     偽     ページキャッシュの最終参照者でなかった
+ */
+static bool
+dec_pcache_reference(page_cache *pc){
+	bool              rc;
+	page_cache      *res;
+	intrflags     iflags;
+
+	/* ページキャッシュmutexを保持していることを確認 */
+	kassert( mutex_locked_by_self(&pc->mtx) );
+	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
+
+	krn_cpu_save_and_disable_interrupt(&iflags); /* 割込みを禁止する */
+
+	/* ページの参照を落とす
+	 * 最終参照者だった場合ページキャッシュプールからページを取り除くために
+	 * ページキャッシュプールのロックを獲得する
+	 */
+	rc = refcnt_dec_and_lock(&pc->refs, &pcache_pool.lock);
+	if ( rc ) {  /* ページの最終参照者だった場合 */
+
+		if ( PCACHE_IS_DIRTY(pc) ) { /* キャッシュの方が2時記憶より新しい場合 */
+			
+			/* ページキャッシュの方が2時記憶より新しい場合は,
+			 * ページの書き出しを行いページキャッシュプールから
+			 * ページの登録を抹消可能な状態にしてからページを解放する
+			 *
+			 * ページをロックした状態(PCACHE_IS_BUSY(pc))であることから
+			 * この間に他のスレッドがページの内容を更新することはない
+			 */
+
+			/* ページキャッシュプールのロックを解放 */
+			spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+
+			pagecache_write(pc);     /* ページを書き戻す  */
+
+			/* ページキャッシュプールのロックを獲得 */
+			spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
+		}
+		kassert( PCACHE_IS_CLEAN(pc) );  /* ページ書き出し済みであることを確認 */
+		
+		/* 解放対象のページで待っているスレッドがいる場合は, 
+		 * ページキャッシュの登録抹消を取りやめる
+		 */
+		if ( !wque_is_empty(&pc->waiters) ) { /* 解放対象のページ待ちスレッドがいる */
+
+			/* ページキャッシュプールからの参照分を再設定  */
+			refcnt_init(&pc->refs);          
+			/* ページキャッシュプールのロックを解放 */
+			spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+			goto free_out;
+		}
+
+		/* これ以降ページの内容を更新する処理はないので, 
+		 * ページmutexを解放する
+		 */
+		mutex_unlock(&pc->mtx);
+
+		/* ページキャッシュプールからページの登録を抹消 */
+		res = SPLAY_REMOVE(_pcache_tree, &pcache_pool.head, pc);
+		kassert( res != NULL );
+
+		free_pagecache_nolock(pc); /* ページキャッシュの解放  */
+
+		/* ページキャッシュプールのロックを解放 */
+		spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+		goto free_out;
+	}
+	krn_cpu_restore_interrupt(&iflags);  /* 割込みを復元する */
+
+free_out:
 	return rc;
 }
 
@@ -322,14 +419,28 @@ pagecache_put(page_cache *pc){
 	kassert( mutex_locked_by_self(&pc->mtx) );
 	kassert( PCACHE_IS_BUSY(pc) ); /* 自スレッドがページをロックしている */
 
-	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
+	/* ページの参照を落とす
+	 * 最終参照者だった場合は, ページキャッシュを解放してぬける
+	 */
+	if ( dec_pcache_reference(pc) )
+		goto free_out;  /* 最終参照者だったためページを解放した */
 
+	/* ページのロックを解放するため, ページmutexを解放して,
+	 * ページキャッシュプールのロックを獲得する
+	 */
+	mutex_unlock(&pc->mtx);  /* ページmutexを解放する */
+
+	/* ページキャッシュプールのロックを獲得 */
 	spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
 
 	pc->state &= ~PCACHE_STATE_BUSY;  /* ページのロックを解放する */
 	wque_wakeup(&pc->waiters, WQUE_RELEASED);  /* ページ待ちスレッドを起床する */
 
+	/* ページキャッシュプールのロックを解放 */
 	spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
+
+free_out:
+	return;
 }
 
 /**
@@ -353,7 +464,7 @@ pagecache_mark_dirty(page_cache *pc){
 }
 
 /**
-   ページキャッシュをディスクに書き戻す
+   ページキャッシュを2次記憶に書き戻す
    @param[in]  pc     ページキャッシュ
  */
 void
@@ -415,8 +526,13 @@ pagecache_init(void){
 		/*
 		 * ページキャッシュプールに登録
 		 */
+
+		/* ページキャッシュプールのロックを獲得 */
 		spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
+
 		res = SPLAY_INSERT(_pcache_tree, &pcache_pool.head, pc);
+
+		/* ページキャッシュプールのロックを解放 */
 		spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
 		kassert(res == NULL);
 	}
