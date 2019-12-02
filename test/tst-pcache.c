@@ -23,6 +23,7 @@ pcache1(struct _ktest_stats *sp, void __unused *arg){
 	off_t      off;
 	size_t  fssize;
 	page_cache *pc;
+	obj_cnt_type free_nr;
 
 	fssize=(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start;
 	for(off = 0; fssize > off; off += PAGE_SIZE) {
@@ -60,6 +61,12 @@ pcache1(struct _ktest_stats *sp, void __unused *arg){
 			ktest_fail( sp );
 		pagecache_put(pc);
 	}
+	pagecache_shrink_pages(512, &free_nr);
+	if ( free_nr == 512 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	
 }
 
 void

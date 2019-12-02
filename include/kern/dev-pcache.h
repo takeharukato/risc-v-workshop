@@ -112,6 +112,6 @@ void pagecache_put(struct _page_cache *_pc);
 void pagecache_mark_dirty(struct _page_cache *_pc);
 int pagecache_read(dev_id dev, off_t offset, struct _page_cache **pcp);
 void pagecache_write(struct _page_cache *_pc);
-void pagecache_shrink_pages(obj_cnt_type *_free_nrp);
+void pagecache_shrink_pages(obj_cnt_type _max, obj_cnt_type *_free_nrp);
 void pagecache_init(void);
 #endif  /*  _KERN_DEV_PCACHE_H  */

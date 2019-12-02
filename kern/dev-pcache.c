@@ -522,10 +522,11 @@ pagecache_write(page_cache *pc){
 }
 /**
    LRUの内容に従ってページを解放する
-   @param[in] free_nrp 解放したページ数を返却する領域
+   @param[in]  max      最大解放ページ数(単位: ページ)
+   @param[out] free_nrp 解放したページ数を返却する領域
  */
 void
-pagecache_shrink_pages(obj_cnt_type *free_nrp){
+pagecache_shrink_pages(obj_cnt_type max, obj_cnt_type *free_nrp){
 	obj_cnt_type free_nr;
 	list             *lp;
 	list           *next;
@@ -603,8 +604,12 @@ pagecache_shrink_pages(obj_cnt_type *free_nrp){
 
 			/* ページキャッシュプールのロックを解放 */
 			spinlock_unlock(&pcache_pool.lock);
-		} else
+		} else {
+
 			++free_nr;  /* 解放ページ数を加算 */
+			if ( free_nr == max )
+				break;  /* 最大解放ページ数に達した */
+		}
 		/* ページキャッシュプールのロックを獲得 */
 		spinlock_lock(&pcache_pool.lock);
 	}
