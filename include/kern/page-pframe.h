@@ -258,6 +258,7 @@
 
 struct _slab;
 struct _page_buddy;
+struct _page_cache;
 
 /** ページフレーム情報
  */
@@ -275,6 +276,7 @@ typedef struct _page_frame{
 	struct _page_frame    *headp;  /**< クラスタ化ページの先頭ページ   */
 	struct _list         lru_ent;  /**< LRUへのエントリ                */
 	struct _slab          *slabp;  /**< スラブキャッシュ               */
+	struct _page_cache  *pcachep;  /**< ページキャッシュ               */
 }page_frame;
 #endif  /* !ASM_FILE  */
 #endif  /*  _PAGE_PFRAME_H  */

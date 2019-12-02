@@ -834,6 +834,7 @@ pfdb_add(uintptr_t phys_start, size_t length, pfdb_ent **pfdbp){
 		pgf->headp = NULL;          /* ページクラスタ情報初期化           */
 		list_init(&pgf->lru_ent);   /* LRUエントリの初期化                */
 		pgf->slabp = NULL;          /* SLABアドレスを初期化               */
+		pgf->pcachep = NULL;        /* ページキャッシュアドレスを初期化   */
 	}
 
 	/*
@@ -1251,8 +1252,13 @@ pfdb_dec_page_use_count(page_frame *pf){
 	if ( rc ) { /*  利用カウントが0になったら解放する  */
 		
 		kassert( PAGE_IS_USED(pf) );  /*  多重開放でないことを確認  */
+
 		/* マップされていないことを確認 */
 		kassert( pfdb_ref_page_map_count(pf) == 0 ); 
+
+		/* LRUにつながっていないことを確認 */
+		list_not_linked(&pf->lru_ent);
+
 		spinlock_lock_disable_intr(&pf->buddyp->lock, &iflags);
 		enqueue_page_to_buddy_pool(pf->buddyp, pf);  /*  ページを解放する  */
 		spinlock_unlock_restore_intr(&pf->buddyp->lock, &iflags);
