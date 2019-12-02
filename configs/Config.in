@@ -22,7 +22,8 @@ config CONFIG_CPUS_NR
 
 config CONFIG_UPPERHALF_KERNEL
     bool "Use Upper Half Kernel"
-    default n
+    default n if !CONFIG_RISCV64
+    default y if CONFIG_RISCV64
     help
       Kernel virtual memory is placed onto upper half of virtual memory space.
 
