@@ -130,6 +130,13 @@ ap_boot: /* APの処理再開位置 */
 	 */
 	li a2, MIDELEG_MASK
 	csrw mideleg, a2
+
+	/*
+	 * サイクルカウンタ命令の有効化
+         */
+	li a2, COUNTEREN_VAL
+	csrw  scounteren, a2   /* スーパバイザモードカウンタイネーブル */
+
 	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
 	 */
 	csrr a1, mstatus          /* mstatusを読み込む */

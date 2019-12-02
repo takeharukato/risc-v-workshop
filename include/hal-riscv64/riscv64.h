@@ -272,6 +272,9 @@
 
 /* 割込み回送マスク */
 #define MIDELEG_MASK (MIE_MASK)
+/* [m|h|s]counterenの設定値 */
+#define COUNTEREN_VAL                    (~(UINT32_C(0)))
+
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>

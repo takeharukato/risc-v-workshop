@@ -120,6 +120,12 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
 	add  s0, sp, 16  /*  fpを更新する                                    */
 
+	/*
+	 * サイクルカウンタ命令の有効化
+         */
+	li a2, COUNTEREN_VAL
+	csrw  mcounteren, a2   /* マシンモードカウンタイネーブル */
+
 	li   t1, MSCRATCH_MSCRATCH_INFO_SIZE /* mscratch情報のサイズをロード */
 	mul  t1, t1, a0           /* 自hartのmscratch情報オフセットアドレスを算出  */
 	add  t2, a1, t1           /* 自hartのmscratch情報アドレスを算出  */
