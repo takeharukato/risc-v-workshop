@@ -517,10 +517,6 @@ pagecache_write(page_cache *pc){
 void
 pagecache_init(void){
 	int             rc;
-	off_t          off;
-	page_cache     *pc;
-	page_cache    *res;
-	intrflags   iflags;
 
 	/*
 	 * ページキャッシュのSLABキャッシュを初期化する
@@ -528,35 +524,4 @@ pagecache_init(void){
 	rc = slab_kmem_cache_create(&pcache_cache, "page-cache cache", sizeof(page_cache),
 	    SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
-	
-	/*
-	 * ファイルシステムイメージ(FSIMG)のページキャッシュを登録
-	 * TODO: ファイルシステムイメージ(FSIMG)処理部に移動
-	 */
-	for(off = 0;
-	    (off_t)((uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start) > off;
-	    off += PAGE_SIZE) {
-
-		rc = allocate_new_pcache(&pc);  /* ページキャッシュ管理情報の割り当て */
-		kassert( rc == 0 );
-
-		pc->bdevid = FS_FSIMG_DEVID;     /* FSIMGデバイスに設定        */
-		pc->offset = off;                /* オフセットアドレスを設定   */
-		pc->state = PCACHE_STATE_CLEAN;  /* キャッシュ読込み済みに設定 */
-		/* ページをコピー */
-		memcpy(pc->pc_data, (void *)((uintptr_t)&_fsimg_start + off), PAGE_SIZE);
-		
-		/*
-		 * ページキャッシュプールに登録
-		 */
-
-		/* ページキャッシュプールのロックを獲得 */
-		spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
-
-		res = SPLAY_INSERT(_pcache_tree, &pcache_pool.head, pc);
-
-		/* ページキャッシュプールのロックを解放 */
-		spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
-		kassert(res == NULL);
-	}
 }

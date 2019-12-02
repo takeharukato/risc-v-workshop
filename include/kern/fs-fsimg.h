@@ -19,6 +19,7 @@ struct _page_cache;
 
 extern uintptr_t _fsimg_start;  /* ファイルシステムイメージの開始アドレスシンボル */
 extern uintptr_t _fsimg_end;    /* ファイルシステムイメージの終了アドレスシンボル */
+void fsimg_load(void);
 void fsimg_strategy(struct _page_cache *pc);
 #endif  /*  !ASM_FILE */
 #endif  /* _KERN_FS_FSIMG_H */

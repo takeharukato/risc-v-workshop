@@ -48,6 +48,7 @@ kern_init(void) {
 
 	irq_init(); /* 割込み管理を初期化する */
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
+	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 	kern_common_tests();
 	krn_cpu_enable_interrupt();

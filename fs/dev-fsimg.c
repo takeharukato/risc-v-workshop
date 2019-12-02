@@ -34,4 +34,25 @@ fsimg_strategy(page_cache *pc){
 	else
 		memcpy(pc->pc_data, sp, PAGE_SIZE);
 }
+/**
+   ファイルシステムイメージのロード
+ */
+void
+fsimg_load(void) {
+	int             rc;
+	off_t          off;
+	size_t      fssize;
+	page_cache     *pc;
 
+	/*
+	 * ファイルシステムイメージ(FSIMG)のページキャッシュを登録
+	 */
+	fssize=(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start;
+	for(off = 0; fssize > off; off += PAGE_SIZE) {
+
+		rc = pagecache_get(FS_FSIMG_DEVID, off,  &pc);
+		kassert( rc == 0 );
+		kassert( PCACHE_IS_VALID(pc) );
+		pagecache_put(pc);
+	}
+}
