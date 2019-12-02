@@ -134,6 +134,7 @@ fill_pagecache(page_cache *pc){
 	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
 
 	/* TODO: ブロックデバイスからの読込み */
+	fsimg_strategy(pc);
 
 	mutex_lock(&pc->mtx);  /* ページmutexを獲得 */
 
@@ -344,7 +345,10 @@ dec_pcache_reference(page_cache *pc){
 			spinlock_lock_disable_intr(&pcache_pool.lock, &iflags);
 		}
 		kassert( PCACHE_IS_CLEAN(pc) );  /* ページ書き出し済みであることを確認 */
-		
+#if 1		
+		/* ページ待ちスレッドをページ破棄により起床する */
+		wque_wakeup(&pc->waiters, WQUE_DESTROYED);  
+#else
 		/* 解放対象のページで待っているスレッドがいる場合は, 
 		 * ページキャッシュの登録抹消を取りやめる
 		 */
@@ -356,7 +360,7 @@ dec_pcache_reference(page_cache *pc){
 			spinlock_unlock_restore_intr(&pcache_pool.lock, &iflags);
 			goto free_out;
 		}
-
+#endif
 		/* これ以降ページの内容を更新する処理はないので, 
 		 * ページmutexを解放する
 		 */
@@ -406,6 +410,25 @@ pagecache_get(dev_id dev, off_t offset, page_cache **pcp){
 
 	return 0;
 }
+/**
+   ページキャッシュに読み込む
+   @param[in]  dev    ブロックデバイスID
+   @param[in]  offset オフセットページアドレス
+   @param[out] pcp    ページキャッシュ返却領域
+   @retval     0      正常終了
+   @retval    -ENOENT キャッシュ中に指定されたページがない
+   @retval    -EINTR  キャッシュの解放待ち中にイベントを受け付けた
+   @note      pagecache_getの別名として実装
+ */
+int
+pagecache_read(dev_id dev, off_t offset, page_cache **pcp){
+
+	/* ページキャッシュを検索, キャッシュされてなければ
+	 * キャッシュを新設して, 2次記憶の内容を読み込む
+	 */
+	return pagecache_get(dev, offset, pcp);
+}
+
 /**
    ページキャッシュを解放する
    @param[in]  pc     ページキャッシュ
@@ -476,6 +499,7 @@ pagecache_write(page_cache *pc){
 	mutex_unlock(&pc->mtx);  /* ページmutexを解放 */
 
 	/* TODO: ブロックデバイスへの書き戻し */
+	fsimg_strategy(pc);
 
 	mutex_lock(&pc->mtx);  /* ページmutexを獲得 */
 
