@@ -5,7 +5,7 @@
 top=..
 include ${top}/Makefile.inc
 
-objects=
+objects=dev-fsimg.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=

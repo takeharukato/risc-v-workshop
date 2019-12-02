@@ -7,7 +7,6 @@
 /*                                                                    */
 /**********************************************************************/
 
-
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
