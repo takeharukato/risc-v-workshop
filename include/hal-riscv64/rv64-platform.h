@@ -138,6 +138,9 @@
     (100us毎にカウントアップする)
  */ 
 #define RV64_CLINT_MTIME_FREQ        (ULONGLONG_C(1000000000))
+/** QEMU Core Local Interruptor (CLINT) MTIME レジスタのカウンタ1us単位での更新値
+ */
+#define RV64_CLINT_MTIME_PER_US      (ULONGLONG_C(1000))
 
 /** QEMU virtI/O MMIO Interface 物理アドレス */
 #define RV64_VIRTIO0_PADDR  (ULONGLONG_C(0x10001000))

@@ -78,9 +78,10 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	ld   s3, MSCRATCH_MTIME_PADDR(s1)
 	ld   s4, MSCRATCH_TIMER_INTERVAL(s1)
 
-	ld   s5, (s3)    /* 現在のMTIMEを読み込み  */
-	add  s6, s5, s4  /* 次のタイマ設定値を算出 */
-	sd   s6, (s2)    /* 次のタイマ設定値を設定 */
+	ld   s5, (s3)                        /* 現在のMTIMEを読み込み     */
+	sd   s5, MSCRATCH_LAST_TIME_VAL(s1)  /* タイマ設定時のMTIMEを記録 */
+	add  s6, s5, s4                      /* 次のタイマ設定値を算出    */
+	sd   s6, (s2)                        /* 次のタイマ設定値を設定    */
 
 	li   s5, SIP_STIP /* スーパーバイザモードソフトウエア割込み発生 */
 	or   s7, s7, s5   /* タイマ割込み通知 */

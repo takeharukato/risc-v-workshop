@@ -290,6 +290,9 @@ uint64_t rv64_read_sip(void);
 uint64_t rv64_write_sip(uint64_t _new);
 uint64_t rv64_read_tp(void);
 uint64_t rv64_write_tp(uint64_t _new);
+uint64_t rv64_read_time(void);
+uint64_t rv64_read_cycle(void);
+uint64_t rv64_read_instret(void);
 void rv64_write_satp(uint64_t _stap);
 void rv64_flush_tlb_local(void);
 #endif  /* !ASM_FILE */
