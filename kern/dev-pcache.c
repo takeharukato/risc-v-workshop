@@ -232,12 +232,23 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			kassert( !PCACHE_IS_BUSY(pc) ); 
 			pc->state |= PCACHE_STATE_BUSY;  /* ページをロックする  */
 
-			/* LRUにつながっていることを確認 */
-			kassert(!list_not_linked(&pc->pf->lru_ent)); 
-			 /* LRU参照分の参照カウンタを減算 */
-			kassert(!refcnt_dec_and_test(&pc->refs));
-			queue_del(&pcache_pool.lru, &pc->pf->lru_ent);  /* LRUから削除 */
-			break;   /* ページキャッシュ獲得完了 */
+			/* LRUにつながっていることを確認したらLRUから外す
+			 * 
+			 * @note シュリンカがページを処理した際に
+			 * 対象ページを待ち合わせている場合は, LRUから
+			 * 外して, ページ獲得～ページ読み書き処理後の
+			 * ロック解放時にLRUへの登録を期待する。
+			 * このため, 上記条件の場合LRUから外れたページを
+			 * 獲得することになるためLRUへの接続有無を判定する必要がある。
+			 */
+			if (!list_not_linked(&pc->pf->lru_ent)) {
+
+				/* LRU参照分の参照カウンタを減算 */
+				kassert(!refcnt_dec_and_test(&pc->refs));
+				/* LRUから削除 */
+				queue_del(&pcache_pool.lru, &pc->pf->lru_ent); 
+				break;   /* ページキャッシュ獲得完了 */
+			}
 		} else {
 			/* ページキャッシュプールのロックを解放 */
 			spinlock_unlock(&pcache_pool.lock);
@@ -268,7 +279,7 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			if ( res == NULL ) { /* 登録成功 */
 
 				pc = new; /* 新規に割り当てページキャッシュを使用 */
-				break;  /* ページキャッシュ登録完了 */
+				break;    /* ページキャッシュ登録完了             */
 			}
 
 			/*
@@ -521,12 +532,13 @@ pagecache_write(page_cache *pc){
 	pc->state |= PCACHE_STATE_CLEAN;
 }
 /**
-   LRUの内容に従ってページを解放する
-   @param[in]  max      最大解放ページ数(単位: ページ)
-   @param[out] free_nrp 解放したページ数を返却する領域
+   LRUの内容に従ってページの2次記憶への書き出し、解放を実施する
+   @param[in]  max       最大解放ページ数(単位: ページ)
+   @param[in]  wbonly    ページを解放せず２次記憶への書き出しのみを行う
+   @param[out] free_nrp  解放したページ数を返却する領域
  */
 void
-pagecache_shrink_pages(obj_cnt_type max, obj_cnt_type *free_nrp){
+pagecache_shrink_pages(obj_cnt_type max, bool wbonly, obj_cnt_type *free_nrp){
 	obj_cnt_type free_nr;
 	list             *lp;
 	list           *next;
@@ -544,7 +556,14 @@ pagecache_shrink_pages(obj_cnt_type max, obj_cnt_type *free_nrp){
 		kassert( pf->pcachep != NULL );
 		
 		pc = pf->pcachep;  /* ページキャッシュアドレスを獲得 */
-		/* ロックされているページがLRUに繋がっていないことを確認 */
+		/* ロックされているページがLRUに繋がっていないことを確認 
+		 * LRU中のページに対する操作は,
+		 * 1) DIRTYなページを2次記憶に書き戻してCLEANに遷移する
+		 * 2) CLEANなページを解放する
+		 * の2つであるので, いずれのケースにおいてもBUSY(使用中)ページに対しては
+		 * 行えない操作である。したがって, pagecache_getがBUSYビットをセットした
+		 * 時点でLRUから外していなければならない
+		 */
 		kassert( !PCACHE_IS_BUSY(pc) ); 
 
 		pc->state |= PCACHE_STATE_BUSY;  /* ページをロックする  */
@@ -569,33 +588,28 @@ pagecache_shrink_pages(obj_cnt_type max, obj_cnt_type *free_nrp){
 
 		mutex_unlock(&pc->mtx);  /* ページmutexを解放する */
 
-		kassert(!refcnt_dec_and_test(&pc->refs)); /*ページ操作用の参照を解放 */
-		kassert( PCACHE_IS_CLEAN(pc) );    /* ページ書き出し済みであることを確認 */
-		/* ページの解放を試みる
-		 * 他スレッドから参照されおらず(自スレッドがページをロックしており), かつ,
-		 * 自身のページ操作用参照を落としており, かつ,
-		 * LRUから削除済みでであることからページの解放を試みる
+		/*
+		 * ページの書き出しのみを行う場合は, 次のページに処理を移行する
 		 */
-		if ( !dec_pcache_reference(pc) ) {
-			
-			/* 対象のページを待ち合わせているスレッドがいた場合 
-			 * リストのトラバースが無限ループしないように, 
-			 * 対象のページキャッシュをLRUの先頭につなぐ。
-			 * 起床されたページ待ちスレッドがいる時点でページを
-			 * 利用しようとしているため, 対象のページは, 
-			 * 起床されたスレッドのページ操作後に末尾に追加される。
-			 * 起床対象のスレッドが強制終了し, ページを獲得しなかったとしても
-			 * この時点では, 利用要求があったことから解放対象としなくても
-			 * 論理的な整合性は取れている。
-			 */
+		if ( wbonly ) {
+
 			/* ページキャッシュプールのロックを獲得 */
 			spinlock_lock(&pcache_pool.lock);
-			
-			/* LRU参照分の参照カウンタを加算 */
-			kassert(refcnt_inc_if_valid(&pc->refs));
+			continue;        
+		}
 
-			/* LRUの先頭に追加  */
-			queue_add_top(&pcache_pool.lru, &pc->pf->lru_ent);  
+		kassert(!refcnt_dec_and_test(&pc->refs));  /*ページ操作用の参照を解放 */
+		kassert( PCACHE_IS_CLEAN(pc) ); /* ページ書き出し済みであることを確認 */
+
+		/* 対象のページを待ち合わせているスレッドがいた場合解放を取りやめる
+		 * 対象のページは, 起床されたスレッドのページ操作後に, LRUの
+		 * 末尾に追加されるので本処理ではLRUへの追加は不要。
+		 * このようにすることでLRU操作箇所を局所化し, 排他処理の単純化を
+		 * はかる。
+		 */
+		/* ページキャッシュプールのロックを獲得 */
+		spinlock_lock(&pcache_pool.lock);
+		if ( !wque_is_empty(&pc->waiters) ) {
 
 			pc->state &= ~PCACHE_STATE_BUSY;  /* ページのロックを解放する */
 
@@ -604,7 +618,18 @@ pagecache_shrink_pages(obj_cnt_type max, obj_cnt_type *free_nrp){
 
 			/* ページキャッシュプールのロックを解放 */
 			spinlock_unlock(&pcache_pool.lock);
-		} else {
+			continue;
+		}
+
+		/* ページキャッシュプールのロックを解放 */
+		spinlock_unlock(&pcache_pool.lock);
+
+		/* ページの解放を試みる
+		 * 他スレッドから参照されおらず(自スレッドがページをロックしており), かつ,
+		 * 自身のページ操作用参照を落としており, かつ,
+		 * LRUから削除済みでであることからページの解放を試みる
+		 */
+		if ( dec_pcache_reference(pc) ) {
 
 			++free_nr;  /* 解放ページ数を加算 */
 			if ( free_nr == max )

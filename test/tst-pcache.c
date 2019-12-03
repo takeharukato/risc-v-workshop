@@ -61,7 +61,7 @@ pcache1(struct _ktest_stats *sp, void __unused *arg){
 			ktest_fail( sp );
 		pagecache_put(pc);
 	}
-	pagecache_shrink_pages(512, &free_nr);
+	pagecache_shrink_pages(512, true, &free_nr);
 	if ( free_nr == 512 )
 		ktest_pass( sp );
 	else

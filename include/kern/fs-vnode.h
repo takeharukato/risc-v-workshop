@@ -30,12 +30,12 @@ typedef uint32_t mi_state;
 
 struct    _mmount;
 struct _namesapce;
+
 /**
    メモリinode
  */
 typedef struct _vnode {
 	refcounter              v_ref;  /**< 参照カウンタ                      */
-	SPLAY_ENTRY(_vnode)     v_ent;  /**< vnodeキャッシュへのエントリ       */
 	SPLAY_ENTRY(_vnode)  v_mntent;  /**< マウント情報vnodeテーブルエントリ */
 	fs_vnid                v_vnid;  /**< vnode 番号                        */
 	fs_mode                v_mode;  /**< ファイル種別/アクセス フラグ      */
@@ -46,7 +46,6 @@ typedef struct _vnode {
 					 *  指す
 					 */
 	struct _mmount       *v_mount;  /**< マウント情報へのバックリンク     */
-	struct _namesapce       *v_ns;  /**< ネームスページ情報へのポインタ   */
 	fs_dinode            v_dinode;  /**< disk inodeのコピーへのポインタ   */
 }vnode;
 

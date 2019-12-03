@@ -47,6 +47,14 @@ typedef struct _call_out_ent{
 	void                   *private;  /**< コールアウト関数プライベート情報 */
 }call_out_ent;
 
+#define __SYSTEM_TIMER_INITIALIZER   {		\
+	.lock = __SPINLOCK_INITIALIZER,		\
+	.hwcount = 0,			        \
+	.ticks   = 0,			        \
+	.uptime  = 0,			        \
+	}
+
+
 void timer_update_uptime(void);
 void timer_update_thread_time(void);
 void callout_ent_init(call_out_ent *_entp, void (*_callout)(void *_private), void *_private);

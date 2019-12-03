@@ -30,7 +30,7 @@ show_timer_count(void){
 
 	msinfo = rv64_current_mscratch();
 	if ( ( count % 100 ) == 0 )
-		kprintf("timer[%lu] next: %qd last: %qd\n", 
+		kprintf("timer[%lu] next: %qd last: %qd\n", count,
 			msinfo->last_time_val + msinfo->timer_interval_cyc, 
 			msinfo->last_time_val);
 	++count;
