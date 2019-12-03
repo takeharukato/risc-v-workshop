@@ -15,6 +15,9 @@
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
 #include <hal/rv64-clic.h>
+#include <hal/rv64-mscratch.h>
+#include <hal/rv64-sscratch.h>
+
 #define RV64_SHOW_TIMER_COUNT
 /**
    タイマの発生回数を表示する
@@ -23,9 +26,13 @@ static void
 show_timer_count(void){
 #if defined(RV64_SHOW_TIMER_COUNT)
 	static uint64_t count;
+	mscratch_info *msinfo;
 
+	msinfo = rv64_current_mscratch();
 	if ( ( count % 100 ) == 0 )
-		kprintf("timer[%lu]\n", count);
+		kprintf("timer[%lu] next: %qd last: %qd\n", 
+			msinfo->last_time_val + msinfo->timer_interval_cyc, 
+			msinfo->last_time_val);
 	++count;
 #endif  /* RV64_SHOW_TIMER_COUNT */
 }

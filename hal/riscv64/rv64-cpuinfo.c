@@ -23,6 +23,24 @@ mscratch_info mscratch_tbl[KC_CPUS_NR];  /*  マシンモード制御情報     
 sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御情報  */
 
 /**
+   自hartのsscratchを参照する
+*/
+sscratch_info *
+rv64_current_sscratch(void){
+	
+	return &sscratch_tbl[hal_get_physical_cpunum()];
+}
+
+/**
+   自hartのmscratchを参照する
+*/
+mscratch_info *
+rv64_current_mscratch(void){
+	
+	return &mscratch_tbl[hal_get_physical_cpunum()];
+}
+
+/**
    物理プロセッサIDを取得する
    @retval 物理プロセッサID (hartid)
  */
