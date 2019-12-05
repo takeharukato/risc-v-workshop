@@ -15,6 +15,7 @@
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
 #include <hal/rv64-clic.h>
+#include <hal/rv64-platform.h>
 #include <hal/rv64-mscratch.h>
 #include <hal/rv64-sscratch.h>
 
@@ -27,13 +28,22 @@ show_timer_count(void){
 #if defined(RV64_SHOW_TIMER_COUNT)
 	static uint64_t count;
 	mscratch_info *msinfo;
-
+	
 	msinfo = rv64_current_mscratch();
-	if ( ( count % 100 ) == 0 )
+	if ( ( count % 100 ) == 0 ) {
+
 		kprintf("timer[%lu] next: %qd last: %qd\n", count,
 			msinfo->last_time_val + msinfo->timer_interval_cyc, 
 			msinfo->last_time_val);
+		msinfo->timer_interval_cyc /= 2;
+	}
 	++count;
+
+	if ( msinfo->timer_interval_cyc < (RV64_CLINT_MTIME_INTERVAL/10) ) {
+
+		msinfo->timer_interval_cyc=RV64_CLINT_MTIME_INTERVAL;		
+
+	}
 #endif  /* RV64_SHOW_TIMER_COUNT */
 }
 /**
