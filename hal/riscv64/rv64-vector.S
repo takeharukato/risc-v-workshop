@@ -25,9 +25,13 @@ ASMMAC_FUNCTION(supervisor_trap_vector)
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */	
 	
 	/*
-	 * sp, t0以外のレジスタを保存する
+	 * sp, t0, sepc, sstatus以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
+	/*
+	 * sepc, sstatusレジスタを保存する
+	 */
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
 
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)   /* t0レジスタを退避           */
 	
@@ -50,9 +54,13 @@ ASMMAC_FUNCTION(user_trap_vector)
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
 
 	/*
-	 * sp, t0以外のレジスタを保存する
+	 * sp, t0, sepc, sstatus以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
+	/*
+	 * sepc, sstatusレジスタを保存する
+	 */
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
 	
 	ld   s1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
 	sd   s1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */

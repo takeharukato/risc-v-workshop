@@ -38,14 +38,14 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
 
 	/*
-	 * epc, sp, mstaus/sstatus, t0以外のレジスタを保存する
+	 * mepc, sp, mstaus, t0以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
 	
 	csrr s1, mepc                      /* 割込み元アドレス       */
 	sd   s1, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを退避 */
 
-	csrr s1, mstatus                       /* 例外発生時のmstatus  */
+	csrr s1, mstatus                       /* 割込み発生時のmstatus  */
 	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* mstatusを退避        */
 
 	ld   s1, MSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
