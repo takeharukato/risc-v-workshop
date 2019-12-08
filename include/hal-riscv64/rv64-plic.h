@@ -25,11 +25,11 @@
 #define PLIC_PRIO_OFFSET     (ULONGLONG_C(0x0)) 
  /**< 保留割込みレジスタオフセット(単位:バイト) */
 #define PLIC_PEND_OFFSET     (ULONGLONG_C(0x1000))
-/**< マシンモード割込みマスクレジスタオフセット(単位:バイト) */
+/**< マシンモード割込み許可レジスタオフセット(単位:バイト) */
 #define PLIC_MENABLE_OFFSET  (ULONGLONG_C(0x2000))
-/**< スーパーバイザモード割込みマスクレジスタオフセット(単位:バイト) */
+/**< スーパーバイザモード割込み許可レジスタオフセット(単位:バイト) */
 #define PLIC_SENABLE_OFFSET  (ULONGLONG_C(0x2080))
-/**< hart単位での割込みマスクレジスタ長(単位:バイト) */
+/**< hart単位での割込み許可レジスタ長(単位:バイト) */
 #define PLIC_ENABLE_PER_HART (ULONGLONG_C(0x100))
 /**< マシンモード割込み優先度レジスタオフセット(単位:バイト) */
 #define PLIC_MPRIO_OFFSET    (ULONGLONG_C(0x200000))
@@ -68,17 +68,17 @@ typedef volatile uint32_t * plic_reg_ref;  /* PLICのレジスタ参照 */
 	    + ( (_irq) / ( PLIC_REGSIZE * BITS_PER_BYTE ) ) ) )
 
 /**
-   マシンモード割込みマスクレジスタ取得
+   マシンモード割込み許可レジスタ取得
    @param[in] _hart 物理プロセッサID (hart番号)
-   @return マシンモード割込みマスクレジスタアドレス
+   @return マシンモード割込み許可レジスタアドレス
  */
 #define PLIC_MENABLE_REG(_hart) \
 	((plic_reg_ref)(RV64_PLIC + PLIC_MENABLE_OFFSET + ( (_hart) * PLIC_ENABLE_PER_HART) ) )
 
 /**
-   スーパーバイザモード割込みマスクレジスタ取得
+   スーパーバイザモード割込み許可レジスタ取得
    @param[in] _hart 物理プロセッサID (hart番号)
-   @return スーパーバイザモード割込みマスクレジスタアドレス
+   @return スーパーバイザモード割込み許可レジスタアドレス
  */
 #define PLIC_SENABLE_REG(_hart) \
 	((plic_reg_ref)(RV64_PLIC + PLIC_SENABLE_OFFSET + ( (_hart) * PLIC_ENABLE_PER_HART) ) )

@@ -143,13 +143,13 @@
 #define RV64_CLINT_MTIME_PER_US      (ULONGLONG_C(1000))
 
 /** QEMU virtI/O MMIO Interface 物理アドレス */
-#define RV64_VIRTIO0_PADDR  (ULONGLONG_C(0x10001000))
+#define RV64_VIRTIO0_PADDR           (ULONGLONG_C(0x10001000))
 /** QEMU virtI/O MMIO Interface 仮想アドレス */
-#define RV64_VIRTIO0        (RV64_VIRTIO0_PADDR + HAL_KERN_IO_BASE)
+#define RV64_VIRTIO0                 (RV64_VIRTIO0_PADDR + HAL_KERN_IO_BASE)
 /** QEMU virtI/O MMIO Interface レジスタサイズ */
-#define RV64_VIRTIO0_SIZE   (PAGE_SIZE)
+#define RV64_VIRTIO0_SIZE            (PAGE_SIZE)
 /** QEMU virtI/O MMIO Interface 割込み番号   */
-#define RV64_VIRTIO0_IRQ    (1)
+#define RV64_VIRTIO0_IRQ             (1)
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>

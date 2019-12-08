@@ -15,6 +15,7 @@
 #include <kern/fs-fsimg.h>
 #include <kern/dev-pcache.h>
 #include <kern/irq-if.h>
+#include <kern/timer.h>
 
 /** 
     カーネルのアーキ共通テスト
@@ -47,6 +48,7 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
 	irq_init(); /* 割込み管理を初期化する */
+	tim_callout_init();  /* コールアウト機構を初期化する */
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */

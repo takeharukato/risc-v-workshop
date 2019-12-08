@@ -32,16 +32,18 @@ show_timer_count(void){
 	msinfo = rv64_current_mscratch();
 	if ( ( count % 100 ) == 0 ) {
 
-		kprintf("timer[%lu] next: %qd last: %qd\n", count,
+		kprintf("timer[%lu] next: %qd last: %qd next-interval: %qd\n", count,
 			msinfo->last_time_val + msinfo->timer_interval_cyc, 
-			msinfo->last_time_val);
-		msinfo->timer_interval_cyc /= 2;
+		    msinfo->last_time_val,
+		    ( (msinfo->timer_interval_cyc / 5) < (RV64_CLINT_MTIME_INTERVAL/100) ) 
+		    ? ( RV64_CLINT_MTIME_INTERVAL ) : (msinfo->timer_interval_cyc / 5) );
+		msinfo->timer_interval_cyc /= 5;
 	}
 	++count;
 
-	if ( msinfo->timer_interval_cyc < (RV64_CLINT_MTIME_INTERVAL/10) ) {
+	if ( msinfo->timer_interval_cyc < (RV64_CLINT_MTIME_INTERVAL/100) ) {
 
-		msinfo->timer_interval_cyc=RV64_CLINT_MTIME_INTERVAL;		
+		msinfo->timer_interval_cyc = RV64_CLINT_MTIME_INTERVAL;
 
 	}
 #endif  /* RV64_SHOW_TIMER_COUNT */
@@ -58,11 +60,11 @@ static int
 rv64_timer_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	reg_type sip;
 
+	show_timer_count();
+
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */
 	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */	
-
-	show_timer_count();
 
 	return IRQ_HANDLED;
 }

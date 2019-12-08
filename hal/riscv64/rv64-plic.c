@@ -115,7 +115,7 @@ plic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (uint32_t *)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
+	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
 	*reg = (1 << irq);  /* 指定された割込みを開ける */
 }
 
@@ -134,7 +134,7 @@ plic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (uint32_t *)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
+	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
 	*reg &= ~(1 << irq);  /* 指定された割込みを閉じる */
 }
 
@@ -151,7 +151,7 @@ plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (uint32_t *)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
+	reg = (plic_reg_ref)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
 	cur_prio = *reg; /* 割込み優先度レジスタの設定値を獲得 */
 
 	kassert( PLIC_PRIO_MAX >= cur_prio );
@@ -175,7 +175,7 @@ plic_set_priority(irq_ctrlr __unused *ctrlr, irq_prio prio){
 }
 
 /**
-   Platform-Level Interrupt Controller割込み優先度設定処理
+   Platform-Level Interrupt Controller割込み完了通知
    @param[in] ctrlr 割込みコントローラ
    @param[in] irq   割込み番号
  */
@@ -189,7 +189,7 @@ plic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (uint32_t *)PLIC_SCLAIM_REG(hart); /* HartのSupervisor claimを取得 */
+	reg = (plic_reg_ref)PLIC_SCLAIM_REG(hart); /* HartのSupervisor claimを取得 */
 	*reg = irq;  /* 処理した割込み番号を通知 */
 }
 
@@ -253,7 +253,7 @@ rv64_plic_set_priority_mask(irq_prio prio){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (uint32_t *)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
+	reg = (plic_reg_ref)PLIC_SPRIO_REG(hart); /* 割込み優先度レジスタ */
 	old_prio = *reg;  /* 現在の割込み優先度 */
 	*reg = prio; /* 割込み優先度レジスタに設定 */
 
