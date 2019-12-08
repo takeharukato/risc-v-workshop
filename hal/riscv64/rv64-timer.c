@@ -30,22 +30,15 @@ show_timer_count(void){
 	mscratch_info *msinfo;
 	
 	msinfo = rv64_current_mscratch();
-	if ( ( count % 100 ) == 0 ) {
-
-		kprintf("timer[%lu] next: %qd last: %qd next-interval: %qd\n", count,
+	if ( ( count % 100 ) == 0 ) 
+		kprintf("timer[%lu] next: %qd last: %qd\n", count,
 			msinfo->last_time_val + msinfo->timer_interval_cyc, 
-		    msinfo->last_time_val,
-		    ( (msinfo->timer_interval_cyc / 5) < (RV64_CLINT_MTIME_INTERVAL/100) ) 
-		    ? ( RV64_CLINT_MTIME_INTERVAL ) : (msinfo->timer_interval_cyc / 5) );
-		msinfo->timer_interval_cyc /= 5;
-	}
+		    msinfo->last_time_val);
+
 	++count;
 
-	if ( msinfo->timer_interval_cyc < (RV64_CLINT_MTIME_INTERVAL/100) ) {
+	msinfo->timer_interval_cyc = RV64_CLINT_MTIME_INTERVAL;
 
-		msinfo->timer_interval_cyc = RV64_CLINT_MTIME_INTERVAL;
-
-	}
 #endif  /* RV64_SHOW_TIMER_COUNT */
 }
 /**
