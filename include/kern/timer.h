@@ -21,13 +21,21 @@
 #include <klib/list.h>
 
 /**
+   カーネル内timespec
+ */
+typedef struct _ktimespec{
+	epoch_time  tv_sec;  /**< 秒      */
+	long       tv_nsec;  /**< ナノ秒  */
+}ktimespec;
+
+/**
    システム時間情報
  */
 typedef struct _system_timer{
-	spinlock            lock;  /**< 排他用ロック                                       */
-	hwtimer_counter  hwcount;  /**< 電源投入時からのハードウエアタイマの累積加算値     */
-	ticks              ticks;  /**< 電源投入時からのティック発生回数                   */
-	uptime_counter    uptime;  /**< 起動後の時間 (単位:タイムスライス単位での経過時間) */
+	spinlock             lock;  /**< 排他用ロック                                       */
+	hwtimer_counter   hwcount;  /**< 電源投入時からのハードウエアタイマの累積加算値     */
+	uptime_counter     uptime;  /**< 起動後の時間 (単位:ティック発生回数)               */
+	struct _ktimespec curtime;  /**< 現在時刻                                           */
 }system_timer;
 
 /**
@@ -54,13 +62,21 @@ typedef struct _call_out_ent{
 }call_out_ent;
 
 /**
+   カーネルtimespecの初期化子
+ */
+#define __KTIMESPEC_INITIALIZER   {	\
+		.tv_sec = 0,		\
+		.tv_nsec = 0,	        \
+	}
+
+/**
    システムタイマの初期化子
  */
 #define __SYSTEM_TIMER_INITIALIZER   {		\
 	.lock = __SPINLOCK_INITIALIZER,		\
 	.hwcount = 0,			        \
-	.ticks   = 0,			        \
 	.uptime  = 0,			        \
+	.curtime   = __KTIMESPEC_INITIALIZER,   \
 	}
 /**
    コールアウトキューの初期化子
@@ -85,9 +101,8 @@ typedef struct _call_out_ent{
 #else
 #error "Invalid timer interval"
 #endif
-void tim_update_uptime(void);
-void tim_update_thread_time(void);
-int tim_callout_add(uptime_counter _rel_expire_ms, tim_callout_type _callout, void *_private);
+void tim_update_walltime(struct _ktimespec *_diff, uptime_counter _utimediff);
+int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private);
 void tim_callout_init(void);
 #endif  /*  ASM_FILE */
 #endif  /*  _KERN_TIMER_H   */

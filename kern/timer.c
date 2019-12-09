@@ -19,7 +19,6 @@ static kmem_cache callout_ent_cache;  /* コールアウトエントリのキャ
 /* コールアウトキュー */
 static call_out_que g_callout_que = __CALLOUT_QUE_INITIALIZER(&g_callout_que);
 
-
 /** 
     コールアウトエントリ比較関数
     @param[in] key 比較対象エントリ
@@ -49,7 +48,7 @@ calloutent_cmp(call_out_ent *key, call_out_ent *ent) {
    @retval   -ENOMEM         メモリ不足
  */
 int
-tim_callout_add(uptime_counter rel_expire_ms, tim_callout_type callout, void *private){
+tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private){
 	int                     rc;
 	uptime_counter  abs_expire;
 	call_out_ent          *cur;
@@ -95,6 +94,36 @@ error_out:
 	return rc;
 }
 
+/**
+   システム時刻を更新する
+   @param[in] diff 時刻の加算値 (単位: timespec)
+   @param[in] utimediff 時刻の加算値 (単位: ticks)
+ */
+void 
+tim_update_walltime(ktimespec *diff, uptime_counter utimediff){
+	ktimespec     ld;
+	intrflags iflags;
+
+	/*
+	 * 引数をローカル変数に退避
+	 */
+	ld.tv_nsec = diff->tv_nsec;
+	ld.tv_sec  = diff->tv_sec;
+
+	/*  コールアウトキューのロックを獲得  */
+	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+
+	g_walltime.uptime += utimediff;	
+	g_walltime.curtime.tv_nsec += ld.tv_nsec;
+	if ( g_walltime.curtime.tv_nsec > TIMER_NS_PER_SEC ) {
+
+		g_walltime.curtime.tv_sec +=  g_walltime.curtime.tv_nsec / TIMER_NS_PER_SEC;
+		g_walltime.curtime.tv_nsec %= TIMER_NS_PER_SEC;
+	}
+	g_walltime.curtime.tv_sec += ld.tv_sec;
+	/*  コールアウトキューのロックを解放  */
+	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+}
 /**
    コールアウト機構の初期化
  */
