@@ -93,10 +93,13 @@ typedef struct _call_out_ent{
    @return jiffies値
  */
 #if defined(CONFIG_TIMER_INTERVAL_MS_1MS)
+#define MS_PER_TICKS       (1)
 #define MS_TO_JIFFIES(_ms) ((_ms))
 #elif defined(CONFIG_TIMER_INTERVAL_MS_10MS)
+#define MS_PER_TICKS       (10)
 #define MS_TO_JIFFIES(_ms) (roundup_align((_ms), 10)/10)
 #elif defined(CONFIG_TIMER_INTERVAL_MS_100MS)
+#define MS_PER_TICKS       (100)
 #define MS_TO_JIFFIES(_ms) (roundup_align((_ms), 100)/100)
 #else
 #error "Invalid timer interval"

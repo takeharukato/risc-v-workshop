@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 #include <kern/kern-cpuinfo.h>
 #include <kern/irq-if.h>
+#include <kern/timer.h>
 
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
@@ -51,9 +52,15 @@ show_timer_count(void){
  */
 static int 
 rv64_timer_handler(irq_no irq, struct _trap_context *ctx, void *private){
-	reg_type sip;
+	reg_type  sip;
+	ktimespec dif;
 
 	show_timer_count();
+
+	dif.tv_nsec = TIMER_US_PER_MS * TIMER_NS_PER_US * MS_PER_TICKS;
+	dif.tv_sec = 0;
+
+	tim_update_walltime(&dif, 1);
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */

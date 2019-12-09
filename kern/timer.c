@@ -113,16 +113,24 @@ tim_update_walltime(ktimespec *diff, uptime_counter utimediff){
 	/*  コールアウトキューのロックを獲得  */
 	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
 
-	g_walltime.uptime += utimediff;	
 	g_walltime.curtime.tv_nsec += ld.tv_nsec;
-	if ( g_walltime.curtime.tv_nsec > TIMER_NS_PER_SEC ) {
+	if ( ( g_walltime.curtime.tv_nsec / TIMER_NS_PER_SEC ) > 0 ) {
 
-		g_walltime.curtime.tv_sec +=  g_walltime.curtime.tv_nsec / TIMER_NS_PER_SEC;
+		g_walltime.curtime.tv_sec  += g_walltime.curtime.tv_nsec / TIMER_NS_PER_SEC;
 		g_walltime.curtime.tv_nsec %= TIMER_NS_PER_SEC;
 	}
 	g_walltime.curtime.tv_sec += ld.tv_sec;
+
+	g_walltime.uptime += utimediff;	
+
 	/*  コールアウトキューのロックを解放  */
 	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+
+#if defined(SHOW_WALLTIME)
+	if ( ( g_walltime.uptime % 100 ) == 0 )
+		kprintf("uptime: %qu sec: %qu nsec: %qu\n", 
+			g_walltime.uptime, g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
+#endif  /*  SHOW_WALLTIME  */
 }
 /**
    コールアウト機構の初期化
