@@ -78,9 +78,6 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	ld   s3, MSCRATCH_MTIME_PADDR(s1)
 	ld   s4, MSCRATCH_TIMER_INTERVAL(s1)
 
-	csrr s5, cycle                       /* 現在のCPU実行サイクル数を取得      */
-	sd   s5, MSCRATCH_LAST_CYCLE_VAL(s1) /* タイマ設定時の実行サイクル数を記録 */
-	
 	ld   s5, (s3)                        /* 現在のMTIMEを読み込み     */
 	sd   s5, MSCRATCH_LAST_TIME_VAL(s1)  /* タイマ設定時のMTIMEを記録 */
 	add  s6, s5, s4                      /* 次のタイマ設定値を算出    */

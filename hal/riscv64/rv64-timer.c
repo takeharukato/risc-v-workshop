@@ -23,26 +23,26 @@
 #define RV64_SHOW_TIMER_COUNT
 /**
    タイマの発生回数を表示する
+   @param[in] private プライベート情報
  */
 static void
-show_timer_count(void){
+show_timer_count(void __unused *private){
 #if defined(RV64_SHOW_TIMER_COUNT)
 	static uint64_t count;
+	int                rc;
 	mscratch_info *msinfo;
-	uint64_t    cur_cycle;
 
 	msinfo = rv64_current_mscratch();
-	cur_cycle = rv64_read_cycle();
-	if ( ( count % 100 ) == 0 ) 
-		kprintf("timer[%lu] next: %qd last: %qd last-cycle: %qd current-cycle: %qd\n",
-			count, msinfo->last_time_val + msinfo->timer_interval_cyc, 
-			msinfo->last_time_val, msinfo->last_cycle_val, cur_cycle);
+	kprintf("timer[%lu] next: %qd last: %qd\n",
+	    count, msinfo->last_time_val + msinfo->timer_interval_cyc, 
+	    msinfo->last_time_val);
 
 	++count;
 
-	msinfo->timer_interval_cyc = RV64_CLINT_MTIME_INTERVAL;
+	rc = tim_callout_add(1000, show_timer_count, NULL);
+	kassert( rc == 0);
 
-#endif  /* RV64_SHOW_TIMER_COUNT */
+#endif 
 }
 /**
    タイマ割込みハンドラ
@@ -56,8 +56,6 @@ static int
 rv64_timer_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	reg_type  sip;
 	ktimespec dif;
-
-	show_timer_count();
 
 	dif.tv_nsec = TIMER_US_PER_MS * TIMER_NS_PER_US * MS_PER_TICKS;
 	dif.tv_sec = 0;
@@ -81,5 +79,8 @@ rv64_timer_init(void) {
 	/* タイマハンドラを登録 */
 	rc = irq_register_handler(CLIC_TIMER_IRQ, IRQ_ATTR_NON_NESTABLE|IRQ_ATTR_EXCLUSIVE, 
 	    CLIC_TIMER_PRIO, rv64_timer_handler, NULL);
+	kassert( rc == 0);
+
+	rc = tim_callout_add(1000, show_timer_count, NULL);
 	kassert( rc == 0);
 }

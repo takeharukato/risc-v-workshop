@@ -46,6 +46,7 @@ calloutent_cmp(call_out_ent *key, call_out_ent *ent) {
    @param[in] private        コールアウト関数プライベート情報
    @retval    0              正常終了
    @retval   -ENOMEM         メモリ不足
+   @note LO: コールアウトキューのロック, 時刻情報のロックの順で獲得
  */
 int
 tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private){
@@ -95,6 +96,60 @@ error_out:
 }
 
 /**
+   コールアウトを呼び出す
+   @note LO: コールアウトキューのロック, 時刻情報のロックの順で獲得
+ */
+static void
+invoke_callout(void){
+	call_out_ent          *cur;
+	call_out_que        *coque;
+	intrflags           iflags;
+
+	coque = &g_callout_que;
+
+	/*  コールアウトキューのロックを獲得  */
+	spinlock_lock_disable_intr(&coque->lock, &iflags);
+
+	/*  時刻情報のロックを獲得  */
+	spinlock_lock(&g_walltime.lock);
+
+	/* コールアウトキューが空でなければ先頭の要素の起動時刻と現在時刻を比較し, 
+	 * 現在時刻がコールアウト起動時刻以降の時刻の場合はコールアウトを呼び出す
+	 */
+	while( !queue_is_empty(&coque->head) ) {
+
+		/* コールアウトキューの先頭を参照 */
+		cur = container_of(queue_ref_top(&coque->head), call_out_ent, link);
+
+		/* 現在時刻を比較 */
+		if ( cur->expire > g_walltime.uptime ) 
+			break;  /* 呼び出し対象のコールアウトがない */
+
+		/* コールアウトを取りだし */
+		cur = container_of(queue_get_top(&coque->head), call_out_ent, link);
+
+		/*  時刻情報のロックを解放  */
+		spinlock_unlock(&g_walltime.lock);
+		
+		/* コールアウトキューのロックを解放 */
+		spinlock_unlock_restore_intr(&coque->lock, &iflags);
+		
+		cur->callout(cur->private);  /* コールアウト呼び出し */
+		
+		/*  コールアウトキューのロックを獲得  */
+		spinlock_lock_disable_intr(&coque->lock, &iflags);
+		
+		/*  時刻情報のロックを獲得  */
+		spinlock_lock(&g_walltime.lock);
+	}
+	
+	/*  時刻情報のロックを解放  */
+	spinlock_unlock(&g_walltime.lock);
+
+	/* コールアウトキューのロックを解放 */
+	spinlock_unlock_restore_intr(&coque->lock, &iflags);
+}
+/**
    システム時刻を更新する
    @param[in] diff 時刻の加算値 (単位: timespec)
    @param[in] utimediff 時刻の加算値 (単位: ticks)
@@ -125,6 +180,8 @@ tim_update_walltime(ktimespec *diff, uptime_counter utimediff){
 
 	/*  コールアウトキューのロックを解放  */
 	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+
+	invoke_callout();  /* コールアウト呼び出し */
 
 #if defined(SHOW_WALLTIME)
 	if ( ( g_walltime.uptime % 100 ) == 0 )
