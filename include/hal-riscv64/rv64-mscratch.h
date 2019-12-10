@@ -24,6 +24,8 @@ typedef struct _mscratch_info{
 	uintptr_t       mtime_paddr;  /* CLINT MTIMEレジスタの物理アドレス                  */
 	uint64_t timer_interval_cyc;  /* タイマ周期 (単位: cycle)                           */
 	uint64_t      last_time_val;  /* タイマ設定時のCLINT MTIMEレジスタの値              */
+	uint64_t     last_cycle_val;  /* タイマ設定時のcycleレジスタの値                    */
+	uint64_t    cycle_per_mtime;  /* タイマカウント当たりのcycleレジスタの増加値        */
 	cpu_id               hartid;  /* 物理CPUID                                          */
 }mscratch_info;
 #endif  /* !ASM_FILE */

@@ -29,12 +29,14 @@ show_timer_count(void){
 #if defined(RV64_SHOW_TIMER_COUNT)
 	static uint64_t count;
 	mscratch_info *msinfo;
-	
+	uint64_t    cur_cycle;
+
 	msinfo = rv64_current_mscratch();
+	cur_cycle = rv64_read_cycle();
 	if ( ( count % 100 ) == 0 ) 
-		kprintf("timer[%lu] next: %qd last: %qd\n", count,
-			msinfo->last_time_val + msinfo->timer_interval_cyc, 
-		    msinfo->last_time_val);
+		kprintf("timer[%lu] next: %qd last: %qd last-cycle: %qd current-cycle: %qd\n",
+			count, msinfo->last_time_val + msinfo->timer_interval_cyc, 
+			msinfo->last_time_val, msinfo->last_cycle_val, cur_cycle);
 
 	++count;
 
