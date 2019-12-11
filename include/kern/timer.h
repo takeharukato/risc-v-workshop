@@ -20,6 +20,8 @@
 #include <klib/queue.h>
 #include <klib/list.h>
 
+struct _trap_context;
+
 /**
    カーネル内timespec
  */
@@ -36,20 +38,15 @@ typedef struct _system_timer{
 	hwtimer_counter   hwcount;  /**< 電源投入時からのハードウエアタイマの累積加算値     */
 	uptime_counter     uptime;  /**< 起動後の時間 (単位:ティック発生回数)               */
 	struct _ktimespec curtime;  /**< 現在時刻                                           */
+	struct _queue        head;  /**< コールアウトキューのヘッド */
 }system_timer;
 
 /**
-   コールアウトキュー
- */
-typedef struct _call_out_que{
-	spinlock         lock;  /**< 排他用ロック   */
-	struct _queue    head;  /**< キューのヘッド */
-}call_out_que;
-
-/**
    コールアウト関数定義
+   @param[in] _ctx     割込みコンテキスト
+   @param[in] _private プライベート情報
  */
-typedef void (*tim_callout_type)(void *_private);  
+typedef void (*tim_callout_type)(struct _trap_context *_ctx, void *_private);  
 
 /**
    コールアウトエントリ
@@ -71,20 +68,14 @@ typedef struct _call_out_ent{
 
 /**
    システムタイマの初期化子
+   @param[in] _walltime システム時刻情報へのポインタ
  */
-#define __SYSTEM_TIMER_INITIALIZER   {		\
+#define __SYSTEM_TIMER_INITIALIZER(_walltime)   {	\
 	.lock = __SPINLOCK_INITIALIZER,		\
 	.hwcount = 0,			        \
 	.uptime  = 0,			        \
 	.curtime   = __KTIMESPEC_INITIALIZER,   \
-	}
-/**
-   コールアウトキューの初期化子
-   @param[in] _que コールアウトキューへのポインタ
- */
-#define __CALLOUT_QUE_INITIALIZER(_coque)   {			\
-		.lock = __SPINLOCK_INITIALIZER,			\
-		.head = __QUEUE_INITIALIZER(&(_coque)->head),	\
+	.head = __QUEUE_INITIALIZER(&((_walltime)->head)), \
 	}
 
 /**
@@ -104,8 +95,11 @@ typedef struct _call_out_ent{
 #else
 #error "Invalid timer interval"
 #endif
-void tim_update_walltime(struct _ktimespec *_diff, uptime_counter _utimediff);
-int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private);
+void tim_update_walltime(struct _trap_context *_ctx, struct _ktimespec *_diff,
+			 uptime_counter _utimediff);
+int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private, 
+		    struct _call_out_ent **entp);
+int tim_callout_cancel(struct _call_out_ent *_ent);
 void tim_callout_init(void);
 #endif  /*  ASM_FILE */
 #endif  /*  _KERN_TIMER_H   */
