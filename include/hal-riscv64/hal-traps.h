@@ -142,4 +142,4 @@ typedef struct _trap_context{
 	reg_type      epc;  /* saved user program counter */
 }trap_context;
 #endif  /*  ASM_FILE  */
-#endif  /* _HAL_RV64_MSCRATCH_H  */
+#endif  /* _HAL_HAL_TRAPS_H  */

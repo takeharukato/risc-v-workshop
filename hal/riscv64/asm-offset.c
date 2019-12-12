@@ -16,6 +16,7 @@
 #include <hal/rv64-mscratch.h>
 #include <hal/rv64-sscratch.h>
 #include <hal/hal-traps.h>
+#include <hal/hal-thread.h>
 
 int
 main(int __unused argc, char __unused *argv[]) {
@@ -91,5 +92,23 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_T6, _trap_context, t6);
 	OFFSET(RV64_TRAP_CONTEXT_ESTATUS, _trap_context, estatus);
 	OFFSET(RV64_TRAP_CONTEXT_EPC, _trap_context, epc);
+
+	/*
+	 * スレッドスイッチコンテキスト情報
+	 */
+	DEFINE_VAL(RV64_THRSW_CONTEXT_SIZE, sizeof(struct _rv64_thrsw_context));
+	OFFSET(RV64_THRSW_CONTEXT_S0, _rv64_thrsw_context, s0);
+	OFFSET(RV64_THRSW_CONTEXT_S1, _rv64_thrsw_context, s1);
+	OFFSET(RV64_THRSW_CONTEXT_S2, _rv64_thrsw_context, s2);
+	OFFSET(RV64_THRSW_CONTEXT_S3, _rv64_thrsw_context, s3);
+	OFFSET(RV64_THRSW_CONTEXT_S4, _rv64_thrsw_context, s4);
+	OFFSET(RV64_THRSW_CONTEXT_S5, _rv64_thrsw_context, s5);
+	OFFSET(RV64_THRSW_CONTEXT_S6, _rv64_thrsw_context, s6);
+	OFFSET(RV64_THRSW_CONTEXT_S7, _rv64_thrsw_context, s7);
+	OFFSET(RV64_THRSW_CONTEXT_S8, _rv64_thrsw_context, s8);
+	OFFSET(RV64_THRSW_CONTEXT_S9, _rv64_thrsw_context, s9);
+	OFFSET(RV64_THRSW_CONTEXT_S10, _rv64_thrsw_context, s10);
+	OFFSET(RV64_THRSW_CONTEXT_S11, _rv64_thrsw_context, s11);
+
 	return 0;
 }
