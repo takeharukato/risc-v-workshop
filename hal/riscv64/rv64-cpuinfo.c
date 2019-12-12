@@ -73,7 +73,6 @@ hal_cpuinfo_fill(cpu_info *cinf){
 
 	md->mscratch = &mscratch_tbl[cinf->phys_id]; /* マシンモード制御情報       */
 	md->sscratch = &sscratch_tbl[cinf->phys_id]; /* スーパバイザモード制御情報 */
-	md->mscratch->hartid = cinf->phys_id;         /* 物理CPUIDを設定            */
-	md->sscratch->hartid = cinf->phys_id;         /* 物理CPUIDを設定            */
+	md->sscratch->hartid = cinf->phys_id;        /* 物理CPUIDを設定            */
 	md->cinf = cinf;      /* 逆リンクを設定       */
 }

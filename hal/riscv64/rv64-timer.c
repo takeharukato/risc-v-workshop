@@ -15,7 +15,7 @@
 
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
-#include <hal/rv64-clic.h>
+#include <hal/rv64-clint.h>
 #include <hal/rv64-platform.h>
 #include <hal/rv64-mscratch.h>
 #include <hal/rv64-sscratch.h>
@@ -59,10 +59,11 @@ rv64_timer_handler(irq_no irq, trap_context *ctx, void *private){
 	reg_type  sip;
 	ktimespec dif;
 
+	/* ティック一回分の時刻更新量を算出 */
 	dif.tv_nsec = TIMER_US_PER_MS * TIMER_NS_PER_US * MS_PER_TICKS;
 	dif.tv_sec = 0;
 
-	tim_update_walltime(ctx, &dif, 1);
+	tim_update_walltime(ctx, &dif, 1);  /* 時刻更新 */
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */
@@ -80,8 +81,8 @@ rv64_timer_init(void) {
 	call_out_ent  *ent;
 
 	/* タイマハンドラを登録 */
-	rc = irq_register_handler(CLIC_TIMER_IRQ, IRQ_ATTR_NON_NESTABLE|IRQ_ATTR_EXCLUSIVE, 
-	    CLIC_TIMER_PRIO, rv64_timer_handler, NULL);
+	rc = irq_register_handler(CLINT_TIMER_IRQ, IRQ_ATTR_NON_NESTABLE|IRQ_ATTR_EXCLUSIVE, 
+	    CLINT_TIMER_PRIO, rv64_timer_handler, NULL);
 	kassert( rc == 0);
 
 	rc = tim_callout_add(1000, show_timer_count, NULL, &ent);

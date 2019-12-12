@@ -17,7 +17,7 @@
 #include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
 #include <hal/rv64-plic.h>
-#include <hal/rv64-clic.h>
+#include <hal/rv64-clint.h>
 #include <hal/hal-dbg-console.h>
 
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
@@ -57,9 +57,9 @@ void uart_rxintr_enable(void);
 void
 hal_platform_init(void){
 
-	rv64_clic_init();  /* CLICを初期化する   */
-	rv64_plic_init();  /* PLICを初期化する   */
-	rv64_timer_init(); /* タイマを初期化する */
+	rv64_clint_init();  /* CLINTを初期化する  */
+	rv64_plic_init();   /* PLICを初期化する   */
+	rv64_timer_init();  /* タイマを初期化する */
 	uart_rxintr_enable();  /* TODO: ドライバ作成後に削除 */
 }
 

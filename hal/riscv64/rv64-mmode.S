@@ -30,7 +30,7 @@ ASMMAC_BOOT_FUNCTION(machine_mode_vector)
 #else
 ASMMAC_FUNCTION(machine_mode_vector)
 #endif  /*  CONFIG_HAL  */
-        csrrw t0, mscratch, t0
+        csrrw t0, mscratch, t0  /* t0とmscratchを交換 */
 	/* これ以降t0以外のレジスタを使用する
 	 */
 	sd   sp, MSCRATCH_SAVED_SP(t0)  /* スタックを保存する                   */
@@ -56,11 +56,6 @@ ASMMAC_FUNCTION(machine_mode_vector)
         csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
 
-	/*
-	 *  コンテキスト保存処理完了
-	 */
-	ld   tp, MSCRATCH_HARTID(s1)       /* 物理CPUIDをロード                 */
-
 	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
 	
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
@@ -83,7 +78,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	add  s6, s5, s4                      /* 次のタイマ設定値を算出    */
 	sd   s6, (s2)                        /* 次のタイマ設定値を設定    */
 
-	li   s5, SIP_STIP /* スーパーバイザモードソフトウエア割込み発生 */
+	li   s5, SIP_STIP /* スーパーバイザモードタイマ割込み発生 */
 	or   s7, s7, s5   /* タイマ割込み通知 */
 
 skip_mtimer:
@@ -120,12 +115,6 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
 	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
 	add  s0, sp, 16  /*  fpを更新する                                    */
-
-	/*
-	 * サイクルカウンタ命令の有効化
-         */
-	li a2, COUNTEREN_VAL
-	csrw  mcounteren, a2   /* マシンモードカウンタイネーブル */
 
 	li   t1, MSCRATCH_MSCRATCH_INFO_SIZE /* mscratch情報のサイズをロード */
 	mul  t1, t1, a0           /* 自hartのmscratch情報オフセットアドレスを算出  */

@@ -3,7 +3,7 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  RISC-V64 Core-Local Interrupt Controller operations               */
+/*  RISC-V64 Core Local Interruptor operations                        */
 /*                                                                    */
 /**********************************************************************/
 
@@ -14,13 +14,13 @@
 
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
-#include <hal/rv64-clic.h>
+#include <hal/rv64-clint.h>
 
 /**
    割込みコントローラをシャットダウンする
  */
 static void
-clic_ctrlr_shudown(void){
+clint_ctrlr_shudown(void){
 	reg_type sie;
 
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
@@ -38,11 +38,11 @@ clic_ctrlr_shudown(void){
    @retval    0     正常終了
  */
 static int
-clic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 
+clint_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 
     irq_prio prio){
 	reg_type sie;
 
-	if ( irq >= CLIC_IRQ_MAX )
+	if ( irq >= CLINT_IRQ_MAX )
 		return -EINVAL;
 
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
@@ -64,11 +64,11 @@ clic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
    @retval    偽    指定された割込みが処理可能となっていない
  */
 static bool
-clic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq, 
+clint_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq, 
     irq_prio __unused prio, trap_context __unused *ctx){
 	reg_type sip;
 
-	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
+	if ( ( irq >= CLINT_IRQ_MAX ) || ( CLINT_IRQ_MIN > irq ) )
 		return false;
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
@@ -83,10 +83,10 @@ clic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
    @param[in] irq   割込み番号
  */
 static void
-clic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
+clint_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 	reg_type     sie;
 
-	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
+	if ( ( irq >= CLINT_IRQ_MAX ) || ( CLINT_IRQ_MIN > irq ) )
 		return ;
 
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
@@ -101,10 +101,10 @@ clic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
    @param[in] irq   割込み番号
  */
 static void
-clic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
+clint_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 	reg_type     sie;
 
-	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
+	if ( ( irq >= CLINT_IRQ_MAX ) || ( CLINT_IRQ_MIN > irq ) )
 		return ;
 
 	sie = rv64_read_sie();  /* Supervisor Interrupt Enableレジスタの現在値を読み込む */
@@ -119,10 +119,10 @@ clic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
    @param[in] irq   割込み番号
  */
 static void
-clic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
+clint_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 	reg_type sip;
 
-	if ( ( irq >= CLIC_IRQ_MAX ) || ( CLIC_IRQ_MIN > irq ) )
+	if ( ( irq >= CLINT_IRQ_MAX ) || ( CLINT_IRQ_MIN > irq ) )
 		return ;
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
@@ -138,9 +138,9 @@ clic_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
    @param[in] ctrlr 割込みコントローラ
  */
 static int
-clic_initialize(irq_ctrlr __unused *ctrlr){
+clint_initialize(irq_ctrlr __unused *ctrlr){
 
-	clic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
+	clint_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return 0;
 }
@@ -150,9 +150,9 @@ clic_initialize(irq_ctrlr __unused *ctrlr){
    @param[in] ctrlr 割込みコントローラ
  */
 static void
-clic_finalize(irq_ctrlr __unused *ctrlr){
+clint_finalize(irq_ctrlr __unused *ctrlr){
 
-	clic_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
+	clint_ctrlr_shudown();  /* コントローラ内の全ての割込みを無効化 */
 
 	return ;
 }
@@ -160,29 +160,29 @@ clic_finalize(irq_ctrlr __unused *ctrlr){
 /**
    Core-Local Interrupt Controller 割込みコントローラ定義
  */
-static irq_ctrlr clic_ctrlr={
-	.name = "CLIC",
-	.min_irq = CLIC_IRQ_MIN,
-	.max_irq = CLIC_IRQ_MAX,
-	.config_irq = clic_config_irq,
-	.irq_is_pending = clic_irq_is_pending,
-	.enable_irq = clic_enable_irq,
-	.disable_irq = clic_disable_irq,
+static irq_ctrlr clint_ctrlr={
+	.name = "CLINT",
+	.min_irq = CLINT_IRQ_MIN,
+	.max_irq = CLINT_IRQ_MAX,
+	.config_irq = clint_config_irq,
+	.irq_is_pending = clint_irq_is_pending,
+	.enable_irq = clint_enable_irq,
+	.disable_irq = clint_disable_irq,
 	.get_priority = NULL,
 	.set_priority = NULL,
-	.eoi = clic_eoi,
-	.initialize = clic_initialize,
-	.finalize = clic_finalize,
+	.eoi = clint_eoi,
+	.initialize = clint_initialize,
+	.finalize = clint_finalize,
 	.private = NULL,
 };
 
 /**
-   Core-Local Interrupt Controller (CLIC)の初期化
+   Core-Local Interrupt Controller (CLINT)の初期化
  */
 void
-rv64_clic_init(void){
+rv64_clint_init(void){
 	int rc;
 
-	rc = irq_register_ctrlr(&clic_ctrlr); /* コントローラの登録 */
+	rc = irq_register_ctrlr(&clint_ctrlr); /* コントローラの登録 */
 	kassert( rc == 0 );
 }

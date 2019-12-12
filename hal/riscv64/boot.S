@@ -135,6 +135,7 @@ ap_boot: /* APの処理再開位置 */
 	 * サイクルカウンタ命令の有効化
          */
 	li a2, COUNTEREN_VAL
+	csrw  mcounteren, a2   /* マシンモードカウンタイネーブル       */
 	csrw  scounteren, a2   /* スーパバイザモードカウンタイネーブル */
 
 	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
