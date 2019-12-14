@@ -21,7 +21,7 @@ ASMMAC_DECLARE_NAME(rv64_xchg64)
     @retval 交換前の値
     @note  uint32_t rv64_xchg(volatile uint32_t *addr, uint32_t newval) 相当
 */
-rv64_xchg:
+ASMMAC_FUNCTION(rv64_xchg)
 	addi sp,sp,-24 /* レジスタ3つ分のアドレスを確保する                              */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                                          */
 	sd ra,  8(sp)  /*  raレジスタを待避する                                          */
@@ -44,7 +44,7 @@ rv64_xchg:
     @retval 交換前の値
     @note  uint64_t rv64_xchg64(volatile uint64_t *addr, uint64_t newval) 相当
 */
-rv64_xchg64:
+ASMMAC_FUNCTION(rv64_xchg64)
 	addi sp,sp,-24 /* レジスタ3つ分のアドレスを確保する                              */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                                          */
 	sd ra,  8(sp)  /*  raレジスタを待避する                                          */

@@ -35,11 +35,12 @@ plic_ctrlr_shudown(void){
 
 /**
    Platform-Level Interrupt Controller割込み線初期化
-   @param[in] ctrlr 割込みコントローラ
-   @param[in] irq   割込み番号
-   @param[in] attr  割込み属性
-   @param[in] prio  割込み優先度
-   @retval    0     正常終了
+   @param[in] ctrlr  割込みコントローラ
+   @param[in] irq    割込み番号
+   @param[in] attr   割込み属性
+   @param[in] prio   割込み優先度
+   @retval    0      正常終了
+   @retval   -EINVAL 引数異常
  */
 static int
 plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 

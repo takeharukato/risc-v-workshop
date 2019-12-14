@@ -70,21 +70,21 @@ ASMMAC_FUNCTION(user_trap_vector)
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
+	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
+	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
+
 	ld   tp, SSCRATCH_HARTID(s1)       /* 物理CPUIDをtpにロード             */
 
 call_trap_common:
 
-	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
-	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
-
 	/*
 	 * 例外ハンドラ呼び出し
 	 */
-	mv   a0, sp                        /* トラップコンテキスト              */
-	csrr a1, scause                    /* 例外発生要因                      */
-	csrr a2, stval                     /* Supervisor Trap Value             */
+	mv   a0, sp                        /* 例外コンテキスト              */
+	csrr a1, scause                    /* 例外発生要因                  */
+	csrr a2, stval                     /* Supervisor Trap Value         */
 
-	call trap_common                   /* 共通例外ハンドラ呼び出し          */
+	call trap_common                   /* 共通例外ハンドラ呼び出し      */
 /**
     void rv64_return_from_trap(void)相当のサブルーチン
  */
