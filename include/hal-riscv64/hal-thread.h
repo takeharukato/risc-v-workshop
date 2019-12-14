@@ -12,14 +12,16 @@
 
 /**
    スレッドスイッチコンテスト退避処理
-   @param[in] _ctx  スレッドスイッチコンテキスト保存先アドレス
+   @param[in] _ctx  スレッドスイッチコンテキスト保存先アドレス(caller saveレジスタを指定)
    @note 関数呼び出し間で保存しなければならないs0-s11の12レジスタ
    (Callee savedレジスタ)を保存する。spは別途スレッド管理情報中に保存する。
+   スレッドスタートアドレスの指定のためにリターンアドレス(ra)を保存する。
    RISC-V ELF psABI specificationのInteger Register Convention
    https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md
    参照。
  */
 #define RV64_ASM_SAVE_THRSW_CONTEXT(_ctx)        \
+	sd ra,  RV64_THRSW_CONTEXT_RA(_ctx);        \
 	sd s0,  RV64_THRSW_CONTEXT_S0(_ctx);        \
 	sd s1,  RV64_THRSW_CONTEXT_S1(_ctx);        \
 	sd s2,  RV64_THRSW_CONTEXT_S2(_ctx);        \
@@ -35,9 +37,10 @@
 
 /**
    スレッドスイッチコンテスト復元処理
-   @param[in] _ctx  スレッドスイッチコンテキスト保存先アドレス
+   @param[in] _ctx  スレッドスイッチコンテキスト保存先アドレス(caller saveレジスタを指定)
    @note 関数呼び出し間で保存しなければならないs0-s11の12レジスタ
-   (Callee savedレジスタ)を復元する。spは別途スレッド管理情報からに復元する。
+   (Callee savedレジスタ)を復元する。spは別途スレッド管理情報から復元する。
+   スレッドスタートアドレスの指定のためにリターンアドレス(ra)を復元する。
    RISC-V ELF psABI specificationのInteger Register Convention
    https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md
    参照。
@@ -55,6 +58,7 @@
 	ld s2, RV64_THRSW_CONTEXT_S2(_ctx);     \
 	ld s1, RV64_THRSW_CONTEXT_S1(_ctx);     \
 	ld s0, RV64_THRSW_CONTEXT_S0(_ctx);     \
+	ld ra, RV64_THRSW_CONTEXT_RA(_ctx);
 
 #else
 #include <klib/freestanding.h>
@@ -69,6 +73,7 @@
    参照。
  */
 typedef struct _rv64_thrsw_context{
+	reg_type       ra;  /*  x1 */
 	reg_type       s0;  /*  x8 */
 	reg_type       s1;  /*  x9 */
 	reg_type       s2;  /* x18 */

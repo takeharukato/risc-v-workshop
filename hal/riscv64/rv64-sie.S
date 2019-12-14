@@ -20,7 +20,7 @@ ASMMAC_DECLARE_NAME(rv64_write_sie)
     @retval Supervisor interrupt enableレジスタの内容
     @note  uint64_t rv64_read_sie(void) 相当
 */
-rv64_read_sie:
+ASMMAC_FUNCTION(rv64_read_sie)
 	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
 	sd   ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
@@ -39,7 +39,7 @@ rv64_read_sie:
     @retval 更新前のSupervisor interrupt enableレジスタの内容
     @note  uint64_t rv64_write_sie(uint64_t new) 相当
 */
-rv64_write_sie:
+ASMMAC_FUNCTION(rv64_write_sie)
 	addi sp,sp,-24   /*  レジスタ3つ分のアドレスを確保する               */
 	sd   s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd   ra,  8(sp)  /*  raレジスタを待避する                            */

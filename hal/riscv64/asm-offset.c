@@ -96,6 +96,7 @@ main(int __unused argc, char __unused *argv[]) {
 	 * スレッドスイッチコンテキスト情報
 	 */
 	DEFINE_VAL(RV64_THRSW_CONTEXT_SIZE, sizeof(struct _rv64_thrsw_context));
+	OFFSET(RV64_THRSW_CONTEXT_RA, _rv64_thrsw_context, ra);
 	OFFSET(RV64_THRSW_CONTEXT_S0, _rv64_thrsw_context, s0);
 	OFFSET(RV64_THRSW_CONTEXT_S1, _rv64_thrsw_context, s1);
 	OFFSET(RV64_THRSW_CONTEXT_S2, _rv64_thrsw_context, s2);
