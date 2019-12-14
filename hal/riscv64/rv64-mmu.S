@@ -25,7 +25,7 @@ rv64_write_satp:
 	sd   s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd   ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
-	add  s0, sp, 16  /*  fpを更新する                                    */
+	add  s0, sp, 24  /*  fpを更新する                                    */
 
 	mv s1, a0        /*  第1引数(設定するレジスタ値)をs1に代入           */
 	csrw satp, s1    /*  satpレジスタ値をロードする                      */

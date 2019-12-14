@@ -26,7 +26,7 @@ ASMMAC_FUNCTION(rv64_xchg)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                                          */
 	sd ra,  8(sp)  /*  raレジスタを待避する                                          */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                                          */
-	add s0, sp, 16 /*  fpを更新する                                                  */
+	add s0, sp, 24 /*  fpを更新する                                                  */
 
 	mv s1, a0      /*  第1引数(ロック変数格納先アドレス)をs1に代入                   */
 	amoswap.w.aqrl a0,a1,(s1)  /* s1のメモリの内容をa1の値に設定し, 前の値をa0に設定 */
@@ -49,7 +49,7 @@ ASMMAC_FUNCTION(rv64_xchg64)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                                          */
 	sd ra,  8(sp)  /*  raレジスタを待避する                                          */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                                          */
-	add s0, sp, 16 /*  fpを更新する                                                  */
+	add s0, sp, 24 /*  fpを更新する                                                  */
 
 	mv s1, a0      /*  第1引数(ロック変数格納先アドレス)をs1に代入                   */
 	amoswap.d.aqrl a0,a1,(s1)  /* s1のメモリの内容をa1の値に設定し, 前の値をa0に設定 */

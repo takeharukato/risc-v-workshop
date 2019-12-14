@@ -32,7 +32,7 @@ ASMMAC_FUNCTION(hal_atomic64_add_fetch)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
-	add s0, sp, 16 /*  fpを更新する                                    */
+	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1      /*  第2引数(加算値)をs2に代入                       */	
 	/* s1の指し示すメモリの内容にs2の値を加算しs1のアドレスに格納, 前の値をa0に設定 */
@@ -57,7 +57,7 @@ ASMMAC_FUNCTION(hal_atomic64_and_fetch)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
-	add s0, sp, 16 /*  fpを更新する                                    */
+	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
 	/* s1の指し示すメモリの内容とs2の値の論理積をs1のアドレスに格納, 前の値をa0に設定 */
@@ -82,7 +82,7 @@ ASMMAC_FUNCTION(hal_atomic64_or_fetch)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */	
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
-	add s0, sp, 16 /*  fpを更新する                                    */
+	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
 	/* s1の指し示すメモリの内容とs2の値の論理和をs1のアドレスに格納, 前の値をa0に設定 */
@@ -107,7 +107,7 @@ ASMMAC_FUNCTION(hal_atomic64_xor_fetch)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */	
 	sd s0,  0(sp)  /*  s0(fp)レジスタを待避する                        */
-	add s0, sp, 16 /*  fpを更新する                                    */
+	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
 	/* s1の指し示すメモリの内容とs2の排他論理和をs1のアドレスに格納, 前の値をa0に設定 */
@@ -132,7 +132,7 @@ ASMMAC_FUNCTION(hal_atomic64_set_fetch)
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0(fp)レジスタを待避する                        */
-	add s0, sp, 16 /*  fpを更新する                                    */	
+	add s0, sp, 32 /*  fpを更新する                                    */	
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1      /*  第2引数(設定する整数値)をs2に代入               */	
 	/* s1の指し示すメモリの内容をs2の値に設定し, 前の値をa0に設定      */
@@ -160,7 +160,7 @@ ASMMAC_FUNCTION(hal_atomic64_cmpxchg_fetch)
 	sd s1, 16(sp)     /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)     /*  raレジスタを待避する                            */
 	sd s0,  0(sp)     /*  s0レジスタを待避する                            */
-	add s0, sp, 16    /*  fpを更新する                                    */
+	add s0, sp, 40    /*  fpを更新する                                    */
 	mv s1, a0         /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
 	mv s2, a1         /*  第2引数(更新前の値の期待値)をs2に代入           */
 	mv s3, a2         /*  第3引数(更新後の値)をs3に代入                   */
@@ -193,7 +193,7 @@ ASMMAC_FUNCTION(hal_atomic64_cmpxchg_ptr_fetch)
 	sd a1, 16(sp)  /*  a1レジスタを待避する                                 */
 	sd ra,  8(sp)  /*  raレジスタを待避する                                 */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                                 */
-	add s0, sp, 16 /*  fpを更新する                                         */
+	add s0, sp, 32 /*  fpを更新する                                         */
 	call hal_atomic64_cmpxchg_fetch /* hal_atomic64_cmpxchg_fetchを呼び出す */
 	ld s0,  0(sp)  /*  s0レジスタを復元する                                 */
 	ld ra,  8(sp)  /*  raレジスタを復元する                                 */
