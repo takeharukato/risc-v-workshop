@@ -26,8 +26,8 @@ struct _trap_context;
    カーネル内timespec
  */
 typedef struct _ktimespec{
-	epoch_time  tv_sec;  /**< 秒      */
-	long       tv_nsec;  /**< ナノ秒  */
+	epoch_time    tv_sec;  /**< 秒      */
+	long         tv_nsec;  /**< ナノ秒  */
 }ktimespec;
 
 /**
@@ -36,7 +36,6 @@ typedef struct _ktimespec{
 typedef struct _system_timer{
 	spinlock             lock;  /**< 排他用ロック                                       */
 	hwtimer_counter   hwcount;  /**< 電源投入時からのハードウエアタイマの累積加算値     */
-	uptime_counter     uptime;  /**< 起動後の時間 (単位:ティック発生回数)               */
 	struct _ktimespec curtime;  /**< 現在時刻                                           */
 	struct _queue        head;  /**< コールアウトキューのヘッド */
 }system_timer;
@@ -53,7 +52,7 @@ typedef void (*tim_callout_type)(struct _trap_context *_ctx, void *_private);
  */
 typedef struct _call_out_ent{
 	struct _list               link;  /**< コールアウトキューへのリンク     */
-	uptime_counter           expire;  /**< コールアウト時間 (uptime単位)    */
+	struct _ktimespec        expire;  /**< コールアウト時間 (timespec単位)  */
 	tim_callout_type        callout;  /**< コールアウト関数 */
 	void                   *private;  /**< コールアウト関数プライベート情報 */
 }call_out_ent;
@@ -73,7 +72,6 @@ typedef struct _call_out_ent{
 #define __SYSTEM_TIMER_INITIALIZER(_walltime)   {	\
 	.lock = __SPINLOCK_INITIALIZER,		\
 	.hwcount = 0,			        \
-	.uptime  = 0,			        \
 	.curtime   = __KTIMESPEC_INITIALIZER,   \
 	.head = __QUEUE_INITIALIZER(&((_walltime)->head)), \
 	}
@@ -95,8 +93,7 @@ typedef struct _call_out_ent{
 #else
 #error "Invalid timer interval"
 #endif
-void tim_update_walltime(struct _trap_context *_ctx, struct _ktimespec *_diff,
-			 uptime_counter _utimediff);
+void tim_update_walltime(struct _trap_context *_ctx, struct _ktimespec *_diff);
 int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private, 
 		    struct _call_out_ent **entp);
 int tim_callout_cancel(struct _call_out_ent *_ent);

@@ -63,7 +63,7 @@ rv64_timer_handler(irq_no irq, trap_context *ctx, void *private){
 	dif.tv_nsec = TIMER_US_PER_MS * TIMER_NS_PER_US * MS_PER_TICKS;
 	dif.tv_sec = 0;
 
-	tim_update_walltime(ctx, &dif, 1);  /* 時刻更新 */
+	tim_update_walltime(ctx, &dif);  /* 時刻更新 */
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */

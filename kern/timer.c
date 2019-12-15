@@ -30,10 +30,16 @@ static kmem_cache callout_ent_cache;  /* コールアウトエントリのキャ
 static int
 calloutent_cmp(call_out_ent *key, call_out_ent *ent) {
 
-	if ( key->expire < ent->expire )
+	if ( key->expire.tv_sec < ent->expire.tv_sec )
 		return -1;
 
-	if ( key->expire > ent->expire )
+	if ( key->expire.tv_sec > ent->expire.tv_sec )
+		return 1;
+
+	if ( key->expire.tv_nsec < ent->expire.tv_nsec )
+		return -1;
+
+	if ( key->expire.tv_nsec > ent->expire.tv_nsec )
 		return 1;
 
 	return 0;
@@ -52,7 +58,8 @@ int
 tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private, 
 		call_out_ent **entp){
 	int                     rc;
-	uptime_counter  abs_expire;
+	epoch_time             sec;
+	long                  nsec;
 	call_out_ent          *cur;
 	intrflags           iflags;
 
@@ -63,16 +70,23 @@ tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private
 	/*  時刻情報のロックを獲得  */
 	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
 
-
-	 /* タイマ起動時刻をjiffies単位で算出 */
-	abs_expire = g_walltime.uptime + MS_TO_JIFFIES(rel_expire_ms); 
-
 	/* コールアウトエントリを設定
 	 */
 	list_init(&cur->link);      /* キューへのリストエントリを初期化 */
 	cur->callout = callout;     /* コールアウト関数を設定           */
 	cur->private = private;     /* プライベート情報を設定           */
-	cur->expire = abs_expire;   /* タイマ起動時刻を設定             */
+
+	 /* タイマ起動時刻をtimespec単位で算出 */
+	sec = rel_expire_ms / TIMER_MS_PER_SEC;
+	nsec = (rel_expire_ms % TIMER_MS_PER_SEC) * TIMER_US_PER_MS * TIMER_NS_PER_US;
+
+	cur->expire.tv_sec = g_walltime.curtime.tv_sec + sec;
+	if ( g_walltime.curtime.tv_nsec + nsec >= TIMER_NS_PER_SEC ) {
+
+		++cur->expire.tv_sec;
+		nsec %= TIMER_NS_PER_SEC;
+	}
+	cur->expire.tv_nsec = g_walltime.curtime.tv_nsec + nsec;
 	
 	/* タイマ起動時刻をキーに昇順でキューに接続
 	 */
@@ -153,7 +167,10 @@ invoke_callout(trap_context *ctx){
 		cur = container_of(queue_ref_top(&g_walltime.head), call_out_ent, link);
 
 		/* 現在時刻を比較 */
-		if ( cur->expire > g_walltime.uptime ) 
+		if ( cur->expire.tv_sec > g_walltime.curtime.tv_sec ) 
+			break;  /* 呼び出し対象のコールアウトがない */
+		if ( ( cur->expire.tv_sec == g_walltime.curtime.tv_sec ) 
+		    && ( cur->expire.tv_nsec > g_walltime.curtime.tv_nsec ) )
 			break;  /* 呼び出し対象のコールアウトがない */
 
 		/* コールアウトを取りだし */
@@ -175,10 +192,9 @@ invoke_callout(trap_context *ctx){
    システム時刻を更新する
    @param[in] ctx       割込みコンテキスト
    @param[in] diff      時刻の加算値 (単位: timespec)
-   @param[in] utimediff 時刻の加算値 (単位: ticks)
  */
 void 
-tim_update_walltime(trap_context *ctx, ktimespec *diff, uptime_counter utimediff){
+tim_update_walltime(trap_context *ctx, ktimespec *diff){
 	ktimespec     ld;
 	intrflags iflags;
 
@@ -199,17 +215,15 @@ tim_update_walltime(trap_context *ctx, ktimespec *diff, uptime_counter utimediff
 	}
 	g_walltime.curtime.tv_sec += ld.tv_sec;
 
-	g_walltime.uptime += utimediff;	
-
 	/*  時刻情報のロックを解放  */
 	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
 
 	invoke_callout(ctx);  /* コールアウト呼び出し */
 
 #if defined(SHOW_WALLTIME)
-	if ( ( g_walltime.uptime % 100 ) == 0 )
-		kprintf("uptime: %qu sec: %qu nsec: %qu\n", 
-			g_walltime.uptime, g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
+	if ( ( g_walltime.curtime.tv_sec % 5 ) == 0 )
+		kprintf("sec: %qu nsec: %qu\n", 
+			g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
 #endif  /*  SHOW_WALLTIME  */
 }
 /**
