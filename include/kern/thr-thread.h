@@ -13,6 +13,7 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-consts.h>
+#include <kern/kern-types.h>
 #include <kern/spinlock.h>
 #include <kern/wqueue.h>
 
@@ -21,8 +22,6 @@
 #include <klib/rbtree.h>
 
 struct _thread_info;
-
-typedef int64_t thr_prio;     /**< スレッドの優先度 */
 
 /**
    スレッドの状態
@@ -70,5 +69,5 @@ typedef struct _thread_db{
 	RB_HEAD(_threaddb_tree, _thread) root;  /**< スレッドDB             */
 }thread_db;
 
-#endif  /* ASM_FILE */
+#endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */
