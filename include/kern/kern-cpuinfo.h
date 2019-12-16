@@ -17,6 +17,8 @@
 #include <kern/kern-types.h>
 #include <kern/spinlock.h>
 
+#include <klib/rbtree.h>
+
 #include <hal/hal-cpuinfo.h>
 
 struct _thread_info;
@@ -27,6 +29,7 @@ struct _proc;
  */
 typedef struct _cpu_info{
 	spinlock                    lock;  /*< CPU情報のロック                              */
+	RB_ENTRY(_cpu_info)          ent;  /*< CPUマップツリーのエントリ                    */
 	cpu_id                    log_id;  /*< 論理CPUID                                    */
 	cpu_id                   phys_id;  /*< 物理CPUID                                    */
 	size_t        l1_dcache_linesize;  /*< L1データキャッシュラインサイズ (単位:バイト) */
@@ -41,10 +44,11 @@ typedef struct _cpu_info{
    CPUマップ
  */
 typedef struct _cpu_map{
-	spinlock                                  lock;  /*< CPUマップのロック       */
-	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)  available;  /*< 利用可能CPUビットマップ */
-	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)     online;  /*< オンラインCPUビットマップ */
-	cpu_info                   cpuinfo[KC_CPUS_NR];  /*< CPU情報                 */
+	spinlock                                  lock;  /**< CPUマップのロック         */
+	RB_HEAD(_cpu_map_tree, _cpu_info)         head;  /**< 物理CPUID検索インデクス   */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)  available;  /**< 利用可能CPUビットマップ   */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)     online;  /**< オンラインCPUビットマップ */
+	cpu_info                   cpuinfo[KC_CPUS_NR];  /**< CPU情報                   */
 }cpu_map;
 
 /**

@@ -14,6 +14,31 @@
 
 static cpu_map  cpumap; /* CPUマップ */
 
+/** 物理CPUID検索インデクス
+ */
+static int _cpu_info_cmp(struct _cpu_info *_key, struct _cpu_info *_ent);
+RB_GENERATE_STATIC(_cpu_map_tree, _cpu_info, ent, _cpu_info_cmp);
+
+/** 
+    CPU情報エントリ比較関数
+    @param[in] key 比較対象エントリ
+    @param[in] ent CPU情報の各エントリ
+    @retval 正  keyが物理CPUIDがentより小さい
+    @retval 負  keyが物理CPUIDがentより大きい
+    @retval 0   keyとentの物理CPUIDが等しい
+ */
+static int 
+_cpu_info_cmp(struct _cpu_info *key, struct _cpu_info *ent){
+	
+	if ( key->phys_id < ent->phys_id )
+		return 1;
+
+	if ( ent->phys_id  > key->phys_id )
+		return -1;
+
+	return 0;	
+}
+
 /**
    L1 データキャッシュラインサイズを返却する
    @return データキャッシュラインサイズ (単位:バイト)
@@ -60,6 +85,7 @@ krn_cpuinfo_update(void){
 
 	/* TODO: スレッド管理実装後に実装 */
 }
+
 /**
    CPUがオンラインであることを確認する
    @param[in] cpu_num 論理CPUID
@@ -132,10 +158,9 @@ unlock_out:
  */
 cpu_id
 krn_current_cpu_get(void){
-	int            i;
 	cpu_map    *cmap;
 	cpu_info   *cinf;
-	cpu_id   phys_id;
+	cpu_info     key;
 	cpu_id    log_id;
 	intrflags iflags;
 
@@ -144,18 +169,13 @@ krn_current_cpu_get(void){
 	/* CPUマップのロックを獲得 */
 	spinlock_lock_disable_intr(&cmap->lock, &iflags);
 
-	phys_id = hal_get_physical_cpunum();  /* 物理CPUIDを取得 */
-	for(i = 0; KC_CPUS_NR > i; ++i) {
-
-		cinf = &cmap->cpuinfo[i];  /* CPU情報を参照 */
-
-		if ( cinf->phys_id == phys_id ) {
-
-			log_id = cinf->log_id;  /* 論理CPUIDを返却 */
-			goto found;
-		}
+	key.phys_id = hal_get_physical_cpunum();  /* 物理CPUIDを取得 */
+	cinf = RB_FIND(_cpu_map_tree, &cmap->head, &key); 
+	if ( cinf != NULL ) {
+		
+		log_id = cinf->log_id; /* 論理CPUIDを返却 */
+		goto found;
 	}
-
 	/* CPUマップのロックを解放 */
 	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
 
@@ -207,6 +227,7 @@ krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 	cpu_id     newid;
 	cpu_map    *cmap;
 	cpu_info   *cinf;
+	cpu_info    *res;
 	intrflags iflags;
 
 	cmap = &cpumap;
@@ -221,6 +242,9 @@ krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 	--newid;  /* 配列のインデクスに変換 */
 
 	cinf = &cmap->cpuinfo[newid];  /* CPU情報を参照 */
+
+	res = RB_INSERT(_cpu_map_tree, &cmap->head, cinf);   /* RBツリーによるインデクス */
+	kassert( res == NULL );
 
 	/* CPU情報のロックを獲得 */
 	spinlock_lock(&cinf->lock);
