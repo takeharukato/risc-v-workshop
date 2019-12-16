@@ -14,15 +14,15 @@
 
 ASMMAC_TEXT_SECTION
 
-ASMMAC_DECLARE_NAME(hal_do_context_switch)
+ASMMAC_DECLARE_NAME(hal_thread_switch)
 
 /**
     スレッドを切り替える
     @param[in] prev 現在のスレッドのスレッドスイッチコンテキスト格納先アドレスを指し示すポインタのアドレス
     @param[in] next 切り替え先のスレッドのスレッドスイッチコンテキスト格納先アドレスを指し示すポインタのアドレス
-    @note  void hal_do_context_switch(void **prev, void **next) 相当
+    @note  void hal_thread_switch(void **prev, void **next) 相当
 */
-ASMMAC_FUNCTION(hal_do_context_switch)
+ASMMAC_FUNCTION(hal_thread_switch)
 	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
 	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
 	sd   s0,  (sp)   /*  s0レジスタを待避する                            */
