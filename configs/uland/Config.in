@@ -21,4 +21,23 @@ config CONFIG_HAL_MEMORY_SIZE_MB
        default 128
        range 128 1024
 
+choice
+    prompt "Timer Interval"
+    default CONFIG_TIMER_INTERVAL_MS_10MS
 
+config CONFIG_TIMER_INTERVAL_MS_1MS
+    bool "1 milliseconds"
+    help
+      This sets timer tick as 1 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_10MS
+    bool "10 milliseconds"
+    help
+      This sets timer tick as 10 milliseconds.
+
+config CONFIG_TIMER_INTERVAL_MS_100MS
+    bool "100 milliseconds"
+    help
+      This sets timer tick as 100 milliseconds.
+
+endchoice

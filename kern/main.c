@@ -27,6 +27,7 @@ kern_common_tests(void){
 	tst_spinlock();
 	tst_atomic();
 	tst_atomic64();
+	tst_cpuinfo();
 	tst_vmmap();
 	tst_pcache();
 #if defined(CONFIG_HAL)

@@ -182,4 +182,5 @@ void tst_vmstrlen(void);
 void tst_vmmap(void);
 void tst_irqctrlr(void);
 void tst_pcache(void);
+void tst_cpuinfo(void);
 #endif  /*  _KERN_KTEST_H  */

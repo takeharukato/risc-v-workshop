@@ -9,8 +9,6 @@
 #if !defined(_HAL_X64_RFLAGS_H)
 #define _HAL_X64_RFLAGS_H
 
-#include <klib/freestanding.h>
-#include <kern/kern-types.h>
 #include <klib/regbits.h>
 
 #define X64_RFLAGS_CF    (0) /*< キャリーフラグ */
