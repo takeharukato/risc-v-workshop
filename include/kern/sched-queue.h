@@ -1,0 +1,84 @@
+/* -*- mode: C; coding:utf-8 -*- */
+/**********************************************************************/
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
+/*                                                                    */
+/*  scheduler queue definitions                                       */
+/*                                                                    */
+/**********************************************************************/
+#if !defined(_KERN_SCHED_QUEUE_H)
+#define  _KERN_SCHED_QUEUE_H 
+
+/*
+ * 優先度定義
+ */
+/**< 各スケジューリング方針毎の優先度数 */
+#define SCHED_PRIO_PER_POLICY   (64)
+
+/**< ラウンドロビンクラスの最低優先度   */
+#define SCHED_MIN_RR_PRIO       (0)
+/**< ラウンドロビンクラスの最高優先度   */
+#define SCHED_MAX_RR_PRIO       (SCHED_MIN_RR_PRIO + SCHED_PRIO_PER_POLICY) 
+
+/**< First Come First Servedクラスの最低優先度   */
+#define SCHED_MIN_FCFS_PRIO     (SCHED_MAX_RR_PRIO) 
+/**< First Come First Servedクラスの最高優先度   */
+#define SCHED_MAX_FCFS_PRIO     (SCHED_MIN_FCFS_PRIO + SCHED_PRIO_PER_POLICY)
+
+/**< 割込みスレッドクラスの最低優先度   */
+#define SCHED_MIN_ITHR_PRIO     (SCHED_MAX_FCFS_PRIO)
+/**< 割込みスレッドクラスの最高優先度   */
+#define SCHED_MAX_ITHR_PRIO     (SCHED_MIN_FCFS_PRIO + SCHED_PRIO_PER_POLICY)
+
+/**< システムスレッドの最低優先度 */
+#define SCHED_MIN_SYS_PRIO      (SCHED_MAX_ITHR_PRIO)
+/**< システムスレッドの最高優先度 */
+#define SCHED_MAX_SYS_PRIO      (SCHED_MIN_SYS_PRIO + SCHED_PRIO_PER_POLICY)
+
+/* ユーザスレッドが動作しうる最低優先度 */
+#define SCHED_MIN_USER_PRIO     (SCHED_MIN_RR_PRIO)
+/* ユーザスレッドが動作しうる最高優先度 */
+#define SCHED_MAX_USER_PRIO     (SCHED_MAX_FCFS_PRIO)
+
+/* スレッドの最低優先度 */
+#define SCHED_MIN_PRIO          (SCHED_MIN_USER_PRIO)
+/* スレッドの最高優先度 */
+#define SCHED_MAX_PRIO          (SCHED_MAX_SYS_PRIO)
+
+#if !defined(ASM_FILE)
+#include <klib/freestanding.h>
+#include <kern/kern-types.h>
+#include <kern/spinlock.h>
+#include <klib/queue.h>
+#include <klib/list.h>
+#include <klib/bitops.h>
+
+sturct _thread;
+
+/**
+   スケジューラのレディキューへのエントリ
+ */
+typedef struct _sched_readyqueue_ent{
+	struct _list   link;  /**< スケジューラキューへのリンク */
+	sturct _thread *thr;  /**< スレッドへのポインタ         */
+}sched_queue_ent;
+
+/**
+   スケジューラレディーキュー
+   @note キュー間での移動があるのでスケジューラキューのロックを獲得して操作する
+ */
+typedef struct _sched_readyqueue{
+	struct _queue  que;  /**< スケジューラエントリキュー */
+}sched_readyqueue;
+
+/**
+   スケジューラキュー
+ */
+typedef struct _sched_queue{
+	spinlock                                   lock;  /**< スケジューラキューのロック */
+	struct _sched_readyqueue    que[SCHED_MAX_PRIO];  /**< スケジューラキュー         */
+	BITMAP_TYPE(, uint64_t, SCHED_MAX_PRIO)  bitmap;  /**< スケジューラビットマップ   */
+}sched_queue;
+
+#endif  /*  !ASM_FILE  */
+#endif  /*  _KERN_SCHED_IF_H   */
