@@ -137,7 +137,7 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	li  a5, RV64_CLINT_MTIMECMP_SIZE     /* MTIME_CMPレジスタサイズ */
 	mul a5, a5, a0                       /* 自hart MTIME_CMPレジスタオフセット       */
 	add a3, a2, a4                       /* MTIME_CMPレジスタアドレス                */
-	add a3, a3, a5                       /* 自hartMTIME_CMPレジスタアドレス          */
+	add a3, a3, a5                       /* 自hart MTIME_CMPレジスタアドレス         */
 	sd  a3, MSCRATCH_MTIMECMP_PADDR(t2)  /* 自hart MTIME_CMPレジスタアドレスをセット */
 
 	li  a4, RV64_CLINT_MTIME_OFFSET      /* MTIMEレジスタオフセットアドレス */
@@ -151,7 +151,8 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	 * タイマをセット
 	 */
 	ld  a5, MSCRATCH_MTIME_PADDR(t2)     /* MTIMEレジスタのアドレスを取得 */
-	ld  a5, (a5)                         /* 現在のMTIME値を取得 */
+	ld  a5, (a5)                         /* 現在のMTIME値を取得          */
+	sd  a5, MSCRATCH_BOOT_TIME_VAL(t2)   /* ブート時のMTIME値を保存      */
 	li  a6, RV64_CLINT_MTIME_INTERVAL    /* タイマインターバル           */
 	add a5, a5, a6                       /* 次のタイマ値を算出           */
 	ld  a6, MSCRATCH_MTIMECMP_PADDR(t2)  /* 自hart MTIME_CMPレジスタアドレスをロード */

@@ -42,6 +42,7 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(MSCRATCH_SAVED_SP, _mscratch_info, saved_sp);
 	OFFSET(MSCRATCH_MTIMECMP_PADDR, _mscratch_info, mtimecmp_paddr);
 	OFFSET(MSCRATCH_MTIME_PADDR, _mscratch_info, mtime_paddr);
+	OFFSET(MSCRATCH_BOOT_TIME_VAL, _mscratch_info, boot_time_val);
 	OFFSET(MSCRATCH_TIMER_INTERVAL, _mscratch_info, timer_interval_cyc);
 	OFFSET(MSCRATCH_LAST_TIME_VAL, _mscratch_info, last_time_val);
 

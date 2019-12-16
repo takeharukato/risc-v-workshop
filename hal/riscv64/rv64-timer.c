@@ -35,9 +35,11 @@ show_timer_count(trap_context *ctx, void __unused *private){
 	call_out_ent     *ent;
 
 	msinfo = rv64_current_mscratch();
-	kprintf("timer[%lu] next: %qd last: %qd epc=%p\n",
-	    count, msinfo->last_time_val + msinfo->timer_interval_cyc, 
-		msinfo->last_time_val, ctx->epc);
+	kprintf("timer[%lu] next: %qd last: %qd boot: %qd epc=%p\n",
+	    count, 
+	    msinfo->last_time_val + msinfo->timer_interval_cyc - msinfo->boot_time_val, 
+	    msinfo->last_time_val - msinfo->boot_time_val, msinfo->boot_time_val,
+	    ctx->epc);
 
 	++count;
 
