@@ -35,7 +35,6 @@ typedef struct _ktimespec{
  */
 typedef struct _system_timer{
 	spinlock             lock;  /**< 排他用ロック                                       */
-	hwtimer_counter   hwcount;  /**< 電源投入時からのハードウエアタイマの累積加算値     */
 	struct _ktimespec curtime;  /**< 現在時刻                                           */
 	struct _queue        head;  /**< コールアウトキューのヘッド */
 }system_timer;
@@ -71,7 +70,6 @@ typedef struct _call_out_ent{
  */
 #define __SYSTEM_TIMER_INITIALIZER(_walltime)   {	\
 	.lock = __SPINLOCK_INITIALIZER,		\
-	.hwcount = 0,			        \
 	.curtime   = __KTIMESPEC_INITIALIZER,   \
 	.head = __QUEUE_INITIALIZER(&((_walltime)->head)), \
 	}

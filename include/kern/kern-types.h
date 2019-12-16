@@ -82,7 +82,6 @@ typedef ptrdiff_t          vm_size;  /*< アドレスのサイズ表現 (符号�
  * 時間/時刻管理
  */
 typedef uint32_t         tim_tmout;  /*< タイマハンドラのタイムアウト時間               */
-typedef uint64_t   hwtimer_counter;  /*< 電源投入時からのハードウエアタイマの累積加算値 */
 typedef uint64_t     delay_counter;  /*< ミリ秒以下のループ待ち指定値                   */
 typedef int64_t         epoch_time;  /*< エポックタイム                                 */
 typedef epoch_time  uptime_counter;  /*< uptimeカウンタ                                 */
