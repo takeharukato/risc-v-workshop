@@ -255,7 +255,6 @@
 #define PAGE_CLEAR_USECASE(_pf) \
 	do{ ( (struct _page_frame *)(_pf) )->state &= ~PAGE_STATE_UCASE_MASK; }while(0)
 
-
 struct _slab;
 struct _page_buddy;
 struct _page_cache;

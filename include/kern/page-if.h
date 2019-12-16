@@ -6,20 +6,12 @@
 /*  kernel cache and page allocation interface definitions            */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_PAGE_PAGE_H)
-#define  _PAGE_PAGE_H 
+#if !defined(_KERN_PAGE_IF_H)
+#define  _KERN_PAGE_IF_H 
 
-#include <klib/freestanding.h>
 #include <kern/kern-types.h>
-
 #include <kern/page-macros.h>
-
 #include <kern/page-pframe.h>
-
-#if !defined(ASM_FILE)
-#include <kern/page-pfdb.h>
-#endif  /* !ASM_FILE  */
-
 #include <kern/page-slab.h>
 
 /** ページ利用用途
@@ -43,6 +35,10 @@
 	(KM_SFLAGS_CLR_NONE)   /*< メモリをクリアしない       */
 
 #if !defined(ASM_FILE)
+
+#include <klib/freestanding.h>
+#include <kern/page-pfdb.h>
+
 int pgif_calc_page_order(size_t _size, page_order *_res);
 
 int pgif_get_free_page_cluster(void **_addrp, page_order _order, 
@@ -50,4 +46,4 @@ int pgif_get_free_page_cluster(void **_addrp, page_order _order,
 int pgif_get_free_page(void **_addrp, pgalloc_flags _pgflags, page_usage _usage);
 void pgif_free_page(void *_addr);
 #endif  /*  !ASM_FILE  */
-#endif  /*  _PAGE_PAGE_H   */
+#endif  /*  _KERN_PAGE_IF_H   */
