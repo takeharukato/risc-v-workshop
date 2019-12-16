@@ -7,7 +7,7 @@ objects = rv64-prepare.o rv64-xchg.o rv64-spinlock.o rv64-sstatus.o rv64-mie.o r
 	rv64-sip.o rv64-cpuintr.o rv64-backtrace.o rv64-pgtbl.o rv64-bootmap.o rv64-mmu.o \
 	rv64-atomic.o rv64-atomic64.o rv64-pframe.o rv64-cpucache.o rv64-mmode.o \
 	rv64-vector.o rv64-traps.o rv64-cpuinfo.o rv64-tpreg.o rv64-timer.o rv64-cycle.o \
-	rv64-ctxsw.o
+	rv64-ctxsw.o rv64-stack.o
 ifeq ($(CONFIG_HAL),y)
 objects += boot.o rv64-dbg-console.o rv64-plic.o rv64-clint.o
 endif

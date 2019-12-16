@@ -17,7 +17,7 @@ ASMMAC_DECLARE_NAME(rv64_write_mie)
 	
 /** 
     Machine interrupt enableレジスタの内容を返却
-    @retval Machine interrupt enableレジスタの内容
+    @return Machine interrupt enableレジスタの内容
     @note  uint64_t rv64_read_mie(void) 相当
 */
 ASMMAC_FUNCTION(rv64_read_mie)
@@ -36,7 +36,7 @@ ASMMAC_FUNCTION(rv64_read_mie)
 /** 
     Machine interrupt enableレジスタの内容を設定
     @param[in] new 設定するレジスタ値
-    @retval 更新前のMachine statusレジスタの内容
+    @return 更新前のMachine statusレジスタの内容
     @note  uint64_t rv64_write_mie(uint64_t new) 相当
 */
 ASMMAC_FUNCTION(rv64_write_mie)

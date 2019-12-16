@@ -17,7 +17,7 @@ ASMMAC_DECLARE_NAME(rv64_write_sip)
 	
 /** 
     Supervisor interrupt pendingレジスタの内容を返却
-    @retval Supervisor interrupt pendingレジスタの内容
+    @return Supervisor interrupt pendingレジスタの内容
     @note  uint64_t rv64_read_sip(void) 相当
 */
 rv64_read_sip:
@@ -36,7 +36,7 @@ rv64_read_sip:
 /** 
     Supervisor interrupt pendingレジスタの内容を設定
     @param[in] new 設定するレジスタ値
-    @retval 更新前のSupervisor interrupt pendingレジスタの内容
+    @return 更新前のSupervisor interrupt pendingレジスタの内容
     @note  uint64_t rv64_write_sip(uint64_t new) 相当
 */
 rv64_write_sip:

@@ -17,7 +17,7 @@ ASMMAC_DECLARE_NAME(rv64_write_tp)
 	
 /** 
     tpレジスタの内容を返却
-    @retval tpレジスタの内容
+    @return tpレジスタの内容
     @note  uint64_t rv64_read_tp(void) 相当
 */
 rv64_read_tp:
@@ -36,7 +36,7 @@ rv64_read_tp:
 /** 
     tpレジスタの内容を設定
     @param[in] new 設定するレジスタ値
-    @retval 更新前のtpレジスタの内容
+    @return 更新前のtpレジスタの内容
     @note  uint64_t rv64_write_tp(uint64_t new) 相当
 */
 rv64_write_tp:

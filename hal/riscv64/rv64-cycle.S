@@ -19,7 +19,7 @@ ASMMAC_DECLARE_NAME(rv64_read_scounteren)
 
 /** 
     timeレジスタの値を読取る
-    @retval timeレジスタの内容 (自hartのwall timeタイマ)
+    @return timeレジスタの内容 (自hartのwall timeタイマ)
     @note  uint64_t rv64_read_time(void) 相当
     @note  カウンタ取得用リーフ関数なのでra/fpレジスタの退避・復元を行わないよう最適化
 */
@@ -29,7 +29,7 @@ rv64_read_time:
 
 /** 
     cycleレジスタの値を読取る
-    @retval cycleレジスタの内容 (hartが実行したマシン・サイクル)
+    @return cycleレジスタの内容 (hartが実行したマシン・サイクル)
     @note  uint64_t rv64_read_cycle(void) 相当
     @note  カウンタ取得用リーフ関数なのでra/fpレジスタの退避・復元を行わないよう最適化
 */
@@ -39,7 +39,7 @@ rv64_read_cycle:
 
 /** 
     instretレジスタの値を読取る
-    @retval instretレジスタの内容 (out of orderを含む自hartで実行完了した命令数)
+    @return instretレジスタの内容 (out of orderを含む自hartで実行完了した命令数)
     @note  uint64_t rv64_read_instret(void) 相当
     @note  カウンタ取得用リーフ関数なのでra/fpレジスタの退避・復元を行わないよう最適化
 */
@@ -49,7 +49,7 @@ rv64_read_instret:
 	
 /** 
     scounterenレジスタの値を読取る
-    @retval scounterenレジスタの内容 (out of orderを含む自hartで実行完了した命令数)
+    @return scounterenレジスタの内容 (out of orderを含む自hartで実行完了した命令数)
     @note  uint64_t rv64_read_scounteren(void) 相当
 */
 rv64_read_scounteren:

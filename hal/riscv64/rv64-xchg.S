@@ -18,7 +18,7 @@ ASMMAC_DECLARE_NAME(rv64_xchg64)
 /** 指定された32ビット値で所定のアドレスの内容をアトミックに交換する
     @param[in] addr ロック変数のアドレス
     @param[in] newval 更新する値
-    @retval 交換前の値
+    @return 交換前の値
     @note  uint32_t rv64_xchg(volatile uint32_t *addr, uint32_t newval) 相当
 */
 ASMMAC_FUNCTION(rv64_xchg)
@@ -41,7 +41,7 @@ ASMMAC_FUNCTION(rv64_xchg)
 /** 指定された64ビット値で所定のアドレスの内容をアトミックに交換する
     @param[in] addr ロック変数のアドレス
     @param[in] newval 更新する値
-    @retval 交換前の値
+    @return 交換前の値
     @note  uint64_t rv64_xchg64(volatile uint64_t *addr, uint64_t newval) 相当
 */
 ASMMAC_FUNCTION(rv64_xchg64)

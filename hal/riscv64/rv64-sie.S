@@ -17,7 +17,7 @@ ASMMAC_DECLARE_NAME(rv64_write_sie)
 	
 /** 
     Supervisor interrupt enableレジスタの内容を返却
-    @retval Supervisor interrupt enableレジスタの内容
+    @return Supervisor interrupt enableレジスタの内容
     @note  uint64_t rv64_read_sie(void) 相当
 */
 ASMMAC_FUNCTION(rv64_read_sie)
@@ -36,7 +36,7 @@ ASMMAC_FUNCTION(rv64_read_sie)
 /** 
     Supervisor interrupt enableレジスタの内容を設定
     @param[in] new 設定するレジスタ値
-    @retval 更新前のSupervisor interrupt enableレジスタの内容
+    @return 更新前のSupervisor interrupt enableレジスタの内容
     @note  uint64_t rv64_write_sie(uint64_t new) 相当
 */
 ASMMAC_FUNCTION(rv64_write_sie)
