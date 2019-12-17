@@ -10,30 +10,31 @@
 #define  _KERN_SCHED_QUEUE_H 
 
 /*
- * 優先度定義
+ * 優先度定義 (小さい数値ほど優先度が高い)
  */
+
 /**< 各スケジューリング方針毎の優先度数 */
 #define SCHED_PRIO_PER_POLICY   (64)
 
-/**< ラウンドロビンクラスの最低優先度   */
-#define SCHED_MIN_RR_PRIO       (0)
-/**< ラウンドロビンクラスの最高優先度   */
-#define SCHED_MAX_RR_PRIO       (SCHED_MIN_RR_PRIO + SCHED_PRIO_PER_POLICY) 
-
-/**< First Come First Servedクラスの最低優先度   */
-#define SCHED_MIN_FCFS_PRIO     (SCHED_MAX_RR_PRIO) 
-/**< First Come First Servedクラスの最高優先度   */
-#define SCHED_MAX_FCFS_PRIO     (SCHED_MIN_FCFS_PRIO + SCHED_PRIO_PER_POLICY)
-
-/**< 割込みスレッドクラスの最低優先度   */
-#define SCHED_MIN_ITHR_PRIO     (SCHED_MAX_FCFS_PRIO)
 /**< 割込みスレッドクラスの最高優先度   */
-#define SCHED_MAX_ITHR_PRIO     (SCHED_MIN_FCFS_PRIO + SCHED_PRIO_PER_POLICY)
+#define SCHED_MAX_ITHR_PRIO     (0)
+/**< 割込みスレッドクラスの最低優先度   */
+#define SCHED_MIN_ITHR_PRIO     ( SCHED_MIN_ITHR_PRIO + SCHED_PRIO_PER_POLICY )
 
-/**< システムスレッドの最低優先度 */
-#define SCHED_MIN_SYS_PRIO      (SCHED_MAX_ITHR_PRIO)
 /**< システムスレッドの最高優先度 */
-#define SCHED_MAX_SYS_PRIO      (SCHED_MIN_SYS_PRIO + SCHED_PRIO_PER_POLICY)
+#define SCHED_MAX_SYS_PRIO      ( SCHED_MIN_ITHR_PRIO )
+/**< システムスレッドの最低優先度 */
+#define SCHED_MIN_SYS_PRIO      ( SCHED_MAX_SYS_PRIO + SCHED_PRIO_PER_POLICY )
+
+/**< First Come First Servedクラスの最高優先度   */
+#define SCHED_MAX_FCFS_PRIO     ( SCHED_MIN_SYS_PRIO )
+/**< First Come First Servedクラスの最低優先度   */
+#define SCHED_MIN_FCFS_PRIO     ( SCHED_MAX_FCFS_PRIO + SCHED_PRIO_PER_POLICY )
+
+/**< ラウンドロビンクラスの最低優先度   */
+#define SCHED_MAX_RR_PRIO       ( SCHED_MIN_FCFS_PRIO )
+/**< ラウンドロビンクラスの最高優先度   */
+#define SCHED_MIN_RR_PRIO       ( SCHED_MAX_RR_PRIO + SCHED_PRIO_PER_POLICY )
 
 /* ユーザスレッドが動作しうる最低優先度 */
 #define SCHED_MIN_USER_PRIO     (SCHED_MIN_RR_PRIO)
@@ -43,7 +44,7 @@
 /* スレッドの最低優先度 */
 #define SCHED_MIN_PRIO          (SCHED_MIN_USER_PRIO)
 /* スレッドの最高優先度 */
-#define SCHED_MAX_PRIO          (SCHED_MAX_SYS_PRIO)
+#define SCHED_MAX_PRIO          (SCHED_MAX_ITHR_PRIO)
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
