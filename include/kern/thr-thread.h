@@ -28,9 +28,10 @@ struct _thread_info;
  */
 typedef enum _thr_state{
 	THR_TSTATE_RUN  = 0,  /**<  実行中     */
-	THR_TSTATE_WAIT = 1,  /**<  待ち合せ中 */
-	THR_TSTATE_EXIT = 2,  /**<  終了処理中 */
-	THR_TSTATE_DEAD = 3,  /**<  回収待ち中 */
+	THR_TSTATE_RUNABLE  = 1,  /**<  実行中     */
+	THR_TSTATE_WAIT = 2,  /**<  待ち合せ中 */
+	THR_TSTATE_EXIT = 3,  /**<  終了処理中 */
+	THR_TSTATE_DEAD = 4,  /**<  回収待ち中 */
 }thr_state;
 
 /**
@@ -69,6 +70,5 @@ typedef struct _thread_db{
 	spinlock                         lock;  /**< スレッドDBのロック     */
 	RB_HEAD(_threaddb_tree, _thread) root;  /**< スレッドDB             */
 }thread_db;
-
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */
