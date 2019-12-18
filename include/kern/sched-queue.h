@@ -54,16 +54,6 @@
 #include <klib/list.h>
 #include <klib/bitops.h>
 
-struct _thread;
-
-/**
-   スケジューラのレディキューへのエントリ
- */
-typedef struct _sched_readyqueue_ent{
-	struct _list   link;  /**< スケジューラキューへのリンク */
-	struct _thread *thr;  /**< スレッドへのポインタ         */
-}sched_queue_ent;
-
 /**
    スケジューラレディーキュー
    @note キュー間での移動があるのでスケジューラキューのロックを獲得して操作する

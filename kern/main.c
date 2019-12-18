@@ -24,6 +24,7 @@ void
 kern_common_tests(void){
 
 	tst_memset();
+	tst_fixedpoint();
 	tst_spinlock();
 	tst_atomic();
 	tst_atomic64();

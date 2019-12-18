@@ -6,8 +6,8 @@
 /*  Fixed point arithmetic operations                                 */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KLIB_KLIB_FIXED_POINT_H)
-#define  _KLIB_KLIB_FIXED_POINT_H
+#if !defined(_KLIB_FIXED_POINT_H)
+#define  _KLIB_FIXED_POINT_H
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
@@ -22,11 +22,19 @@ typedef int32_t fpa32;  /* 固定小数点型 */
 
 /**
    整数を固定小数点に変換
-   @param[in] _n 固定小数点数
+   @param[in] _x 固定小数点数
    @return 固定小数点
  */
 #define fixed_point_from_int(_x) \
 	( (_x) * FIXED_POINT_FRACTION )
+/**
+   小数部取り出し
+   @param[in] _x 固定小数点数
+   @return 小数部
+*/
+#define fixed_point_to_frac(_x) \
+	( (_x) & ( FIXED_POINT_FRACTION - 1 ) )
+
 /**
    0近似での整数変換
    @param[in] _x 固定小数点数
@@ -34,6 +42,7 @@ typedef int32_t fpa32;  /* 固定小数点型 */
  */
 #define fixed_point_to_int_zero(_x) \
 	( (_x) / FIXED_POINT_FRACTION )
+
 /**
    近似整数変換
    @param[in] _x 固定小数点数
@@ -80,5 +89,6 @@ typedef int32_t fpa32;  /* 固定小数点型 */
 	( ((int64_t)(_x)) * FIXED_POINT_FRACTION / ((int64_t)(_y))   )
 
 
+int fixed_point_cmp_near(fpa32 _x, fpa32 _y);
 #endif  /* !ASM_FILE */
-#endif  /*  _KLIB_KLIB_FIXED_POINT_H  */
+#endif  /*  _KLIB_FIXED_POINT_H  */

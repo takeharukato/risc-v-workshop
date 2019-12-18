@@ -10,28 +10,44 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
-#include <kern/page-if.h>
-#include <kern/sched-queue.h>
+#include <kern/thr-if.h>
+#include <kern/sched-if.h>
 
+/** レディキュー */
 static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,};
 
 /**
+   実行可能なスレッドを返却する
+   @return 実行可能なスレッド
+   @return NULL 実行可能なスレッドがない
+   @note TODO: unusedを落とす
  */
-struct _thread *
-sched_find_next(void){
+static __unused thread * 
+find_next_thread(void){
 	struct _thread  *thr;
 	singned_cnt_type idx;
 	intrflags     iflags;
 
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);   /* レディキューをロック */
+	/* レディキューをロック */
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); 
 
 	/* ビットマップの最初に立っているビットの位置を確認  */
-	idx = bitops_ffs(&ready_queue.bitmap);  
+	idx = bitops_ffs(&ready_queue.bitmap);
 	if ( idx == 0 )
 		goto unlock_out;  /* 実行可能なスレッドがない  */
 
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック */
+	--idx;  /* レディキュー配列のインデックスに変換 */
+
+	/* キューの最初のスレッドを取り出す */
+	thr = container_of(queue_get_top(&ready_queue.que[idx].que), thread, link);
+	if ( queue_is_empty(&ready_queue.que[idx].que) )   /*  キューが空になった  */
+		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
+
+	 /* レディキューをアンロック */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
+
 	return thr;
+
 unlock_out:
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック */
 	return NULL;
