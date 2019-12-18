@@ -10,16 +10,15 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <page/page-if.h>
+#include <kern/page-if.h>
 #include <kern/kern-if.h>
 #include <kern/thr-if.h>
 #include <kern/sched-if.h>
 
 /**
    現在のスタックポインタからカレントスレッドを返却する
-   TODO: スレッド部実装後に返り値の型をstruct _thread *からthread *に変更すること
  */
-struct _thread *
+thread *
 ti_get_current_thread(void){
 	thread_info *ti;
 
@@ -73,9 +72,10 @@ ti_update_current_cpu(void) {
 	thread_info *ti;
 
 	ti = ti_get_current_thread_info();  /* カレントスタックからスレッド情報を得る */
-	/* プラットフォーム管理からカレントCPUの論理CPUIDを得てCPUIDを更新する           */
-	ti->cpu = krn_platform_current_cpu_get();   
+	/* カレントCPUの論理CPUIDを得てCPUIDを更新する */
+	ti->cpu = krn_current_cpu_get();
 }
+
 /**
    スレッド情報を初期化する
    @param[in] ti      スレッド情報
@@ -92,7 +92,7 @@ ti_thread_info_init(thread_info *ti){
 	ti->mdflags = 0;     /* アーキ固有例外出口制御フラグを初期化                     */
 	ti->kstack = (void *)truncate_align(ti, TI_KSTACK_SIZE); /* カーネルスタック設定 */
 	ti->thr  = NULL;     /* TODO: カレントCPUのアイドルスレッドを指すように修正      */
-	ti->cpu = KRN_PLATFORM_INVCPUID;  /*  スレッドスイッチ時にCPUIDを設定            */
+	ti->cpu = krn_current_cpu_get();  /*  現在のCPUIDを設定 */
 }
 
 /**

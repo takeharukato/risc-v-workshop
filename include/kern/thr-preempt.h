@@ -23,10 +23,8 @@
  * スレッド情報
  */
 #define TI_MAGIC     (UINT32_C(0xabcdfeed))  /**< スレッド情報マジック番号          */
-
-#define TI_KSTACK_ORDER                 (1)  /**< カーネルスタックに2ページ割当てる */
 #define TI_KSTACK_SIZE       \
-	( PAGE_SIZE << TI_KSTACK_ORDER ) /** カーネルスタックサイズ(単位:バイト  */
+	( PAGE_SIZE << KC_KSTACK_ORDER ) /** カーネルスタックサイズ(単位:バイト  */
 
 #if !defined(ASM_FILE)
 
