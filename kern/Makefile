@@ -6,7 +6,8 @@ top=..
 include ${top}/Makefile.inc
 
 objects=main.o spinlock.o cpuintr.o page-pfdb.o page-alloc.o page-slab.o vm-pgtbl.o \
-	vm-copy.o vm-map.o wqueue.o mutex.o irq.o cpuinfo.o dev-pcache.o timer.o
+	vm-copy.o vm-map.o wqueue.o mutex.o irq.o cpuinfo.o dev-pcache.o timer.o \
+	sched-queue.o
 ifneq ($(CONFIG_HAL),y)
 objects += ulandpmem.o
 endif

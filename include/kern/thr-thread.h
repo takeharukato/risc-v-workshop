@@ -57,7 +57,8 @@ typedef struct _thread{
 	struct _list               link;  /**< スレッドキューへのリンク     */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ     */
 	struct _thread_attr        attr;  /**< スレッド属性                 */
-	struct _wque_waitqueue chldwque;  /**< wait待ち合せウエイトキュー   */
+	struct _thread          *parent;  /**< 親スレッド                   */
+	struct _wque_waitqueue chldwque;  /**< wait待ち合せ中子スレッド     */
 	exit_code_t            exitcode;  /**< 終了コード                   */
 }thread;
 

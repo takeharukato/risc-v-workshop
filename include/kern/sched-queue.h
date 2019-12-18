@@ -54,14 +54,14 @@
 #include <klib/list.h>
 #include <klib/bitops.h>
 
-sturct _thread;
+struct _thread;
 
 /**
    スケジューラのレディキューへのエントリ
  */
 typedef struct _sched_readyqueue_ent{
 	struct _list   link;  /**< スケジューラキューへのリンク */
-	sturct _thread *thr;  /**< スレッドへのポインタ         */
+	struct _thread *thr;  /**< スレッドへのポインタ         */
 }sched_queue_ent;
 
 /**
