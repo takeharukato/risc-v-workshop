@@ -59,7 +59,7 @@ typedef struct _thread{
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ     */
 	struct _thread_attr        attr;  /**< スレッド属性                 */
 	struct _thread          *parent;  /**< 親スレッド                   */
-	struct _wque_waitqueue chldwque;  /**< wait待ち合せ中子スレッド     */
+	struct _wque_waitqueue     wque;  /**< wait待ち合せ中子スレッド     */
 	exit_code              exitcode;  /**< 終了コード                   */
 }thread;
 
@@ -68,7 +68,7 @@ typedef struct _thread{
  */
 typedef struct _thread_db{
 	spinlock                         lock;  /**< スレッドDBのロック     */
-	RB_HEAD(_threaddb_tree, _thread) head;  /**< スレッドDB             */
+	RB_HEAD(_thrdb_tree, _thread) head;  /**< スレッドDB             */
 }thread_db;
 /**
    スレッド管理DB初期化子

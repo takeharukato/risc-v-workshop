@@ -13,6 +13,7 @@
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
 #include <kern/thr-if.h>
+#include <kern/sched-if.h>
 #include <kern/fs-fsimg.h>
 #include <kern/dev-pcache.h>
 #include <kern/irq-if.h>

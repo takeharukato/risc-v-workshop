@@ -21,7 +21,7 @@ static thread_db g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< Thread DB */
 /** スレッド管理情報比較関数
  */
 static int _thread_cmp(struct _thread *_key, struct _thread *_ent);
-RB_GENERATE_STATIC(_threaddb_tree, _thread, ent, _thread_cmp);
+RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
 
 /** 
     スレッド管理情報比較関数
@@ -51,8 +51,10 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 */
 static int
 create_thread(thread_attr *attr, thread **thrp){
-	int      rc;
-	thread *thr;
+	int            rc;
+	thread       *thr;
+	thread       *res;
+	intrflags  iflags;
 
 	rc = slab_kmem_cache_alloc(&thr_cache, KMALLOC_NORMAL, (void **)&thr);
 	if ( rc != 0 )
@@ -65,11 +67,23 @@ create_thread(thread_attr *attr, thread **thrp){
 	thr->state = THR_TSTATE_RUNABLE;
 	refcnt_init(&thr->refs);
 	list_init(&thr->link);
+	thr->parent = ti_get_current_thread();
+	wque_init_wait_queue(&thr->wque);
+	thr->exitcode = 0;
+	if ( thr->attr.kstack == NULL ) {
 
-	rc = pgif_get_free_page_cluster(&thr->attr.kstack, KMALLOC_NORMAL, PAGE_USAGE_KSTACK);
-	if ( rc != 0 )
-		return -ENOMEM;
-	
+		rc = pgif_get_free_page_cluster(&thr->attr.kstack, KC_KSTACK_ORDER, 
+		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);
+		if ( rc != 0 )
+			return -ENOMEM;
+	}
+	thr->attr.cur_prio = thr->attr.base_prio = thr->attr.ini_prio; /* 優先度を初期化 */
+
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	kassert( res == NULL );
+
 	return 0;
 }
 /**
@@ -78,7 +92,6 @@ create_thread(thread_attr *attr, thread **thrp){
 */
 int
 create_kernel_thread(thread_attr *attr){
-	int      rc;
 	thread *thr;
 
 	create_thread(attr, &thr);
