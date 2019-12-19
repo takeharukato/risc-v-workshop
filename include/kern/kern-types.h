@@ -35,20 +35,6 @@ typedef uint32_t thread_info_flags;  /*< 例外出口関連フラグ            
 typedef uint32_t     preempt_count;  /*< スレッドディスパッチ許可状態  */
 
 /*
- * スレッド管理
- */
-typedef obj_id                 tid;  /*< スレッドID                    */
-typedef uint32_t          thr_prio;  /*< スレッドの優先度              */
-typedef uint32_t   proc_wait_flags;  /*< スレッド待ち合わせフラグ      */
-typedef uint64_t         exit_code;  /*< スレッド終了コード            */
-typedef uint32_t       mutex_flags;  /*< mutexの属性                   */
-
-/*
- * プロセス管理
- */
-typedef obj_id                 pid;  /*< プロセスID                    */
-
-/*
  * 割り込み管理
  */
 typedef uint64_t         intrflags;  /*< 割り込み禁止フラグ            */
@@ -77,6 +63,20 @@ typedef uint32_t          vm_flags;  /*< メモリ領域属性                  
 typedef uintptr_t         vm_vaddr;  /*< 仮想アドレスの整数表現           */
 typedef uintptr_t         vm_paddr;  /*< 物理アドレスの整数表現           */
 typedef ptrdiff_t          vm_size;  /*< アドレスのサイズ表現 (符号付き)  */
+
+/*
+ * スレッド管理
+ */
+typedef obj_id                 tid;  /*< スレッドID                    */
+typedef uint32_t          thr_prio;  /*< スレッドの優先度              */
+typedef uint32_t   proc_wait_flags;  /*< スレッド待ち合わせフラグ      */
+typedef uint64_t         exit_code;  /*< スレッド終了コード            */
+typedef uint32_t       mutex_flags;  /*< mutexの属性                   */
+typedef vm_paddr        entry_addr;  /*< エントリアドレス              */
+/*
+ * プロセス管理
+ */
+typedef obj_id                 pid;  /*< プロセスID                    */
 
 /*
  * 時間/時刻管理

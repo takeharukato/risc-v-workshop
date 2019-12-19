@@ -50,6 +50,7 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
+	sched_init(); /* スケジューラを初期化する */
 	thr_init(); /* スレッド管理機構を初期化する */
 	irq_init(); /* 割込み管理を初期化する */
 	tim_callout_init();  /* コールアウト機構を初期化する */

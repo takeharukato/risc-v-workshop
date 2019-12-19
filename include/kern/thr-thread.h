@@ -40,7 +40,7 @@ typedef enum _thr_state{
 typedef struct _thread_attr{
 	void         *kstack_top;  /**< カーネルスタック開始アドレス                 */
 	void             *kstack;  /**< ディスパッチ後のカーネルスタック値           */
-	size_t       kstack_size;  /**< カーネルスタックサイズ (単位:バイト)         */
+	entry_addr         entry;  /**< スレッドエントリアドレス                     */
 	thr_prio        ini_prio;  /**< 初期化時スレッド優先度                       */
 	thr_prio       base_prio;  /**< ベーススレッド優先度                         */
 	thr_prio        cur_prio;  /**< 現在のスレッド優先度                         */
@@ -68,7 +68,15 @@ typedef struct _thread{
  */
 typedef struct _thread_db{
 	spinlock                         lock;  /**< スレッドDBのロック     */
-	RB_HEAD(_threaddb_tree, _thread) root;  /**< スレッドDB             */
+	RB_HEAD(_threaddb_tree, _thread) head;  /**< スレッドDB             */
 }thread_db;
+/**
+   スレッド管理DB初期化子
+ */
+#define __THRDB_INITIALIZER(thrdb) {		                \
+		.lock = __SPINLOCK_INITIALIZER,		        \
+		.head  = RB_INITIALIZER(&(thrdb)->head),	\
+	}
+
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */
