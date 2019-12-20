@@ -50,7 +50,7 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
    @note staticにする
 */
 static int
-create_thread(thread_attr *attr, thread **thrp){
+create_thread_common(thread_attr *attr, thread **thrp){
 	int            rc;
 	thread       *thr;
 	thread       *res;
@@ -70,14 +70,23 @@ create_thread(thread_attr *attr, thread **thrp){
 	thr->parent = ti_get_current_thread();
 	wque_init_wait_queue(&thr->wque);
 	thr->exitcode = 0;
-	if ( thr->attr.kstack == NULL ) {
 
-		rc = pgif_get_free_page_cluster(&thr->attr.kstack, KC_KSTACK_ORDER, 
-		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);
-		if ( rc != 0 )
-			return -ENOMEM;
-	}
+	thr->attr.entry = attr->entry;
 	thr->attr.cur_prio = thr->attr.base_prio = thr->attr.ini_prio; /* 優先度を初期化 */
+
+	if ( thr->attr.kstack_top == NULL ) {
+
+		rc = pgif_get_free_page_cluster(&thr->attr.kstack_top, KC_KSTACK_ORDER, 
+		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);
+		if ( rc != 0 ) {
+
+			rc = -ENOMEM;
+			goto error_out;
+		}
+	}
+
+	thr->attr.kstack =  thr->attr.kstack_top + TI_KSTACK_SIZE - sizeof(thread_info);
+	ti_thread_info_init((thread_info *)thr->attr.kstack);
 
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
 	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);
@@ -85,6 +94,10 @@ create_thread(thread_attr *attr, thread **thrp){
 	kassert( res == NULL );
 
 	return 0;
+
+error_out:
+	slab_kmem_cache_free((void *)thr->attr.kstack);
+	return rc;
 }
 /**
    スレッド生成共通処理 (内部関数)
@@ -95,6 +108,7 @@ create_kernel_thread(thread_attr *attr){
 	thread *thr;
 
 	create_thread(attr, &thr);
+	thr->attr.kstack
 	return 0;
 }
 

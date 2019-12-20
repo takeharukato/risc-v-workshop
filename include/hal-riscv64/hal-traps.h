@@ -141,5 +141,6 @@ typedef struct _trap_context{
 	reg_type  estatus;  /* mstatus/status             */
 	reg_type      epc;  /* saved user program counter */
 }trap_context;
+void rv64_return_from_trap(void);
 #endif  /*  ASM_FILE  */
 #endif  /* _HAL_HAL_TRAPS_H  */

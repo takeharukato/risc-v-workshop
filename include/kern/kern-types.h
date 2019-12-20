@@ -69,6 +69,7 @@ typedef ptrdiff_t          vm_size;  /*< アドレスのサイズ表現 (符号�
  */
 typedef obj_id                 tid;  /*< スレッドID                    */
 typedef uint32_t          thr_prio;  /*< スレッドの優先度              */
+typedef uint32_t         thr_flags;  /*< スレッドの属性                */
 typedef uint32_t   proc_wait_flags;  /*< スレッド待ち合わせフラグ      */
 typedef uint64_t         exit_code;  /*< スレッド終了コード            */
 typedef uint32_t       mutex_flags;  /*< mutexの属性                   */

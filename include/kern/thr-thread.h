@@ -21,6 +21,13 @@
 #include <klib/list.h>
 #include <klib/rbtree.h>
 
+/**
+   スレッドの属性
+ */
+#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド */
+#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド   */
+
+
 struct _thread_info;
 
 /**
@@ -38,6 +45,7 @@ typedef enum _thr_state{
    スレッドの属性情報
  */
 typedef struct _thread_attr{
+	thr_flags          flags;  /**< スレッドの属性                               */
 	void         *kstack_top;  /**< カーネルスタック開始アドレス                 */
 	void             *kstack;  /**< ディスパッチ後のカーネルスタック値           */
 	entry_addr         entry;  /**< スレッドエントリアドレス                     */
