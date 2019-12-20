@@ -50,7 +50,7 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
    @note staticにする
 */
 static int
-create_thread_common(thread_attr *attr, thread **thrp){
+create_thread_common(entry_addr entry, void *ustack, thread_attr *attr, thread **thrp){
 	int            rc;
 	thread       *thr;
 	thread       *res;
@@ -71,7 +71,6 @@ create_thread_common(thread_attr *attr, thread **thrp){
 	wque_init_wait_queue(&thr->wque);
 	thr->exitcode = 0;
 
-	thr->attr.entry = attr->entry;
 	thr->attr.cur_prio = thr->attr.base_prio = thr->attr.ini_prio; /* 優先度を初期化 */
 
 	if ( thr->attr.kstack_top == NULL ) {
@@ -87,6 +86,8 @@ create_thread_common(thread_attr *attr, thread **thrp){
 
 	thr->attr.kstack =  thr->attr.kstack_top + TI_KSTACK_SIZE - sizeof(thread_info);
 	ti_thread_info_init((thread_info *)thr->attr.kstack);
+
+	hal_setup_thread_context(entry, ustack, thr->flags, &thr->attr.kstack);
 
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
 	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);

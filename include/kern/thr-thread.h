@@ -48,7 +48,6 @@ typedef struct _thread_attr{
 	thr_flags          flags;  /**< スレッドの属性                               */
 	void         *kstack_top;  /**< カーネルスタック開始アドレス                 */
 	void             *kstack;  /**< ディスパッチ後のカーネルスタック値           */
-	entry_addr         entry;  /**< スレッドエントリアドレス                     */
 	thr_prio        ini_prio;  /**< 初期化時スレッド優先度                       */
 	thr_prio       base_prio;  /**< ベーススレッド優先度                         */
 	thr_prio        cur_prio;  /**< 現在のスレッド優先度                         */
