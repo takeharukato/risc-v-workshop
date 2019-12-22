@@ -16,7 +16,7 @@
 #include <kern/sched-if.h>
 
 static kmem_cache thr_cache;  /**< スレッド管理情報のSLABキャッシュ */
-static thread_db g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< Thread DB */
+static thread_db g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< スレッド管理ツリー */
 
 /** スレッド管理情報比較関数
  */
@@ -45,72 +45,131 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 
 /**
    スレッド生成共通処理 (内部関数)
-   @param[in]  attr スレッド属性
-   @param[out] thrp スレッドを指し示すポインタのアドレス
-   @note staticにする
+   @param[in]  id     スレッドID
+   @param[in]  entry  スレッドエントリアドレス
+   @param[in]  usp    ユーザスタックポインタ初期値
+   @param[in]  prio   初期化時のスレッド優先度
+   @param[in]  kstack カーネルスタック
+   @retval     0      正常終了
+   @retval    -ENOMEM メモリ不足
 */
 static int
-create_thread_common(entry_addr entry, void *ustack, thread_attr *attr, thread **thrp){
+create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_flags flags){
 	int            rc;
+	tid         newid;
+	void      *newstk;
 	thread       *thr;
 	thread       *res;
 	intrflags  iflags;
 
-	rc = slab_kmem_cache_alloc(&thr_cache, KMALLOC_NORMAL, (void **)&thr);
-	if ( rc != 0 )
-		return -ENOMEM;
+	if ( ( prio < SCHED_MIN_PRIO ) || ( prio >= SCHED_MAX_PRIO ) )
+		return -EINVAL;
 
-	/*
-	 * パラメタ
+	if ( ( flags & THR_THRFLAGS_USER ) 
+	    && ( ( prio < SCHED_MIN_USER_PRIO ) || ( prio >= SCHED_MAX_USER_PRIO ) ) )
+		return -EINVAL;
+
+	/* スレッド管理情報を割り当てる
 	 */
-	spinlock_init(&thr->lock);
-	thr->state = THR_TSTATE_RUNABLE;
-	refcnt_init(&thr->refs);
-	list_init(&thr->link);
-	thr->parent = ti_get_current_thread();
-	wque_init_wait_queue(&thr->wque);
-	thr->exitcode = 0;
+	rc = slab_kmem_cache_alloc(&thr_cache, KMALLOC_NORMAL, (void **)&thr);
+	if ( rc != 0 ) {
 
-	thr->attr.cur_prio = thr->attr.base_prio = thr->attr.ini_prio; /* 優先度を初期化 */
-
-	if ( thr->attr.kstack_top == NULL ) {
-
-		rc = pgif_get_free_page_cluster(&thr->attr.kstack_top, KC_KSTACK_ORDER, 
-		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);
-		if ( rc != 0 ) {
-
-			rc = -ENOMEM;
-			goto error_out;
-		}
+		rc = -ENOMEM;
+		goto error_out;  /* メモリ不足 */
 	}
 
-	thr->attr.kstack =  thr->attr.kstack_top + TI_KSTACK_SIZE - sizeof(thread_info);
-	ti_thread_info_init((thread_info *)thr->attr.kstack);
 
-	hal_setup_thread_context(entry, ustack, thr->flags, &thr->attr.kstack);
+	/* スレッド管理情報の初期化
+	 */
+	spinlock_init(&thr->lock);  /* スレッド管理情報のロックを初期化 */
+	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
+	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化  */
+	thr->flags = flags;
+	/* スレッドを生成したスレッドを親スレッドに設定 */
+	thr->parent = ti_get_current_thread(); 
+	wque_init_wait_queue(&thr->wque);  /* wait待ちスレッドの待ちキューを初期化  */
+	thr->exitcode = 0;                 /* 終了コードを初期化 */
+	thr->state = THR_TSTATE_RUNABLE;   /* スレッドを実行可能状態に遷移  */
 
+	thr->attr.ini_prio = prio;   /* 初期化時優先度を初期化 */
+	thr->attr.base_prio = prio;  /* ベース優先度を初期化   */
+	thr->attr.cur_prio = prio;   /* 現在の優先度を初期化   */
+
+	newstk = thr->attr.kstack_top;
+	if ( newstk == NULL ) {  /* スタックを動的に割り当てる場合 */
+
+		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER, 
+		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);  /* カーネルスタックページの割当て */
+		if ( rc != 0 ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto free_thr_out;
+		}
+	}
+	
+	
+	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
+	 */
+	thr->attr.kstack = newstk; /* スタック位置をスタックの先頭に初期化 */
+	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化 */	   
+	hal_setup_thread_context(entry, usp, thr->flags, &thr->attr.kstack);
+
+
+	/* スレッドIDの割当て, スレッド管理ツリーへの登録
+	 */
+	/* スレッド管理ツリーのロックを獲得 */
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
-	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);
+
+	/* スレッドIDを設定
+	 */
+	if ( THR_TID_RSV_ID_NR > id )
+		thr->id = id;
+	else {
+
+		newid = bitops_ffc(&g_thrdb.idmap);
+		if ( newid == 0 ) {
+
+			/* スレッド管理ツリーのロックを解放 */
+			spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+			rc = -ENOSPC;  /* 空IDがない */
+			goto free_stk_out;
+		}
+		thr->id = newid - 1;  /* IDを初期化 */
+	}
+
+	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
+
+	/* スレッド管理ツリーのロックを解放 */
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 	kassert( res == NULL );
 
+	/* @note thr->attr.kstack_topはスタック解放要否判定に使用するのでID割当て後に設定 */
+	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
+
 	return 0;
 
+free_stk_out:
+	if ( thr->attr.kstack_top == NULL )
+		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
+
+free_thr_out:
+	/* スレッド管理情報を解放 */
+	slab_kmem_cache_free((void *)thr);
+
 error_out:
-	slab_kmem_cache_free((void *)thr->attr.kstack);
 	return rc;
 }
 /**
    スレッド生成共通処理 (内部関数)
-   @param[in]  attr スレッド属性
+   @param[in]  id      スレッドID
+   @param[in]  entry   スレッド開始アドレス
+   @param[in]  prio    初期化時のスレッド優先度
+   @param[in]  attr    スレッド属性
 */
 int
-create_kernel_thread(thread_attr *attr){
-	thread *thr;
+thr_kernel_thread_create(tid id, entry_addr entry, thr_prio prio, thread_attr *attr){
 
-	create_thread(attr, &thr);
-	thr->attr.kstack
-	return 0;
+	return create_thread_common(id, entry, NULL,  prio, THR_THRFLAGS_KERNEL);
 }
 
 /**
@@ -119,9 +178,19 @@ create_kernel_thread(thread_attr *attr){
 void
 thr_init(void){
 	int rc;
+	int  i;
 
 	/* スレッド管理情報のキャッシュを初期化する */
 	rc = slab_kmem_cache_create(&thr_cache, "thread cache", sizeof(thread),
 	    SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
+
+	/* スレッドIDビットマップを初期化
+	 */
+	bitops_zero(&g_thrdb.idmap);
+	for(i = 0; THR_TID_RSV_ID_NR > i; ++i) {
+
+		bitops_set(i, &g_thrdb.idmap);  /* 予約IDを使用済みIDに設定 */
+	}
+
 }

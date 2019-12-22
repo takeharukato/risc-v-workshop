@@ -20,13 +20,19 @@
 #include <klib/refcount.h>
 #include <klib/list.h>
 #include <klib/rbtree.h>
+#include <klib/bitops.h>
 
 /**
    スレッドの属性
  */
 #define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド */
 #define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド   */
-
+/**
+   スレッドID
+ */
+#define THR_TID_MAX               (~(UINT64_C(0)))   /**< スレッドID総数   */
+#define THR_TID_RSV_ID_NR         (32)               /**< 予約ID数         */
+#define THR_TID_INVALID           (THR_TID_MAX)      /**< 不正スレッドID   */
 
 struct _thread_info;
 
@@ -45,7 +51,6 @@ typedef enum _thr_state{
    スレッドの属性情報
  */
 typedef struct _thread_attr{
-	thr_flags          flags;  /**< スレッドの属性                               */
 	void         *kstack_top;  /**< カーネルスタック開始アドレス                 */
 	void             *kstack;  /**< ディスパッチ後のカーネルスタック値           */
 	thr_prio        ini_prio;  /**< 初期化時スレッド優先度                       */
@@ -58,8 +63,9 @@ typedef struct _thread_attr{
  */
 typedef struct _thread{
 	spinlock                   lock;  /**< スレッド管理情報のロック     */
+	thr_flags                 flags;  /**< スレッドの属性               */
 	thr_state                 state;  /**< スレッドの状態               */
-	tid                         tid;  /**< Thread ID                    */
+	tid                          id;  /**< Thread ID                    */
 	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ */
 	refcounter                 refs;  /**< 参照カウンタ                 */
 	struct _list               link;  /**< スレッドキューへのリンク     */
@@ -74,8 +80,9 @@ typedef struct _thread{
    スレッド管理DB
  */
 typedef struct _thread_db{
-	spinlock                         lock;  /**< スレッドDBのロック     */
-	RB_HEAD(_thrdb_tree, _thread) head;  /**< スレッドDB             */
+	spinlock                               lock;  /**< スレッドDBのロック             */
+	BITMAP_TYPE(, uint64_t, THR_TID_MAX)  idmap;  /**< 利用可能スレッドIDビットマップ */
+	RB_HEAD(_thrdb_tree, _thread)          head;  /**< スレッドDB                     */
 }thread_db;
 /**
    スレッド管理DB初期化子
@@ -85,5 +92,6 @@ typedef struct _thread_db{
 		.head  = RB_INITIALIZER(&(thrdb)->head),	\
 	}
 
+int thr_kernel_thread_create(tid _id, entry_addr _entry, thr_prio _prio, thread_attr *_attr);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */
