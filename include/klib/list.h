@@ -22,5 +22,5 @@ typedef struct _list{
 
 void list_del(struct _list *_node);
 void list_init(struct _list *_node);
-int  list_not_linked(struct _list *_node);
+bool list_not_linked(struct _list *_node);
 #endif  /*  _KERN_LIST_H  */

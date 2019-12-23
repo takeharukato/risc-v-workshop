@@ -24,7 +24,7 @@ static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,};
  */
 static __unused thread * 
 find_next_thread(void){
-	struct _thread  *thr;
+	thread          *thr;
 	singned_cnt_type idx;
 	intrflags     iflags;
 
@@ -51,6 +51,49 @@ find_next_thread(void){
 unlock_out:
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック */
 	return NULL;
+}
+
+/**
+   TODO: コメントを入れる
+ */
+void
+sched_set_ready(thread *thr){
+	thr_prio        prio;
+	intrflags     iflags;
+
+	kassert(list_not_linked(&thr->link));
+
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+
+	prio = thr->attr.cur_prio;
+
+	if ( queue_is_empty(&ready_queue.que[prio].que) )   /*  キューが空だった場合            */
+		bitops_set(prio, &ready_queue.bitmap);      /*  ビットマップ中のビットをセット  */
+
+	queue_add(&ready_queue.que[prio].que, &thr->link);  /*  キューにスレッドを追加          */
+
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
+}
+
+/**
+   TODO: コメントを入れる
+ */
+void
+sched_set_run(void){
+	intrflags     iflags;
+	thread          *cur;
+
+	cur = ti_get_current_thread();
+
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+
+	/*  キューからスレッドを削除 */
+	queue_del(&ready_queue.que[cur->attr.cur_prio].que, &cur->link);  
+	/*  キューが空になった場合   */
+	if ( queue_is_empty(&ready_queue.que[cur->attr.cur_prio].que) )   
+		bitops_clr(prio, &ready_queue.bitmap); /*  ビットマップ中のビットをクリア */
+
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
 }
 
 /**

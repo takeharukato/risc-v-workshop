@@ -70,6 +70,8 @@ typedef struct _sched_queue{
 	struct _sched_readyqueue    que[SCHED_MAX_PRIO];  /**< スケジューラキュー         */
 	BITMAP_TYPE(, uint64_t, SCHED_MAX_PRIO)  bitmap;  /**< スケジューラビットマップ   */
 }sched_queue;
+
+
 void sched_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_SCHED_IF_H   */

@@ -43,7 +43,7 @@ list_del(list *node) {
    ノードがどのキューにも接続されていないことを確認する
     @param[in] node 操作対象のリストノード
  */
-int
+bool
 list_not_linked(list *node) {
 	
 	return ( ( node->prev == node ) && ( node->next == node ) );
