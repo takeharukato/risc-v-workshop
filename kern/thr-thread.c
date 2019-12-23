@@ -44,17 +44,20 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 }
 
 /**
-   スレッド生成共通処理 (内部関数)
-   @param[in]  id     スレッドID
-   @param[in]  entry  スレッドエントリアドレス
-   @param[in]  usp    ユーザスタックポインタ初期値
-   @param[in]  prio   初期化時のスレッド優先度
-   @param[in]  kstack カーネルスタック
+   スレッド生成処理
+   @param[in]  id      スレッドID
+   @param[in]  entry   スレッドエントリアドレス
+   @param[in]  usp     ユーザスタックポインタ初期値
+   @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
+   @param[in]  prio    初期化時のスレッド優先度
+   @param[in]  kstack  カーネルスタック
+   @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
    @retval     0      正常終了
    @retval    -ENOMEM メモリ不足
 */
-static int
-create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_flags flags){
+int
+thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
+		  thr_flags flags, thread **thrp){
 	int            rc;
 	tid         newid;
 	void      *newstk;
@@ -84,7 +87,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_fla
 	spinlock_init(&thr->lock);  /* スレッド管理情報のロックを初期化 */
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
 	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化  */
-	thr->flags = flags;
+	thr->flags = flags;         /* スレッドの属性値を設定 */
 	/* スレッドを生成したスレッドを親スレッドに設定 */
 	thr->parent = ti_get_current_thread(); 
 	wque_init_wait_queue(&thr->wque);  /* wait待ちスレッドの待ちキューを初期化  */
@@ -95,7 +98,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_fla
 	thr->attr.base_prio = prio;  /* ベース優先度を初期化   */
 	thr->attr.cur_prio = prio;   /* 現在の優先度を初期化   */
 
-	newstk = thr->attr.kstack_top;
+	newstk = kstktop;        /* 指定されたカーネルスタックの先頭アドレスをセットする */
 	if ( newstk == NULL ) {  /* スタックを動的に割り当てる場合 */
 
 		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER, 
@@ -106,12 +109,12 @@ create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_fla
 			goto free_thr_out;
 		}
 	}
-	
+	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
+	thr->attr.kstack = newstk;      /* スタック位置をスタックの先頭に初期化 */
+
 	
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
-	thr->attr.kstack = newstk; /* スタック位置をスタックの先頭に初期化 */
-	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化 */	   
 	hal_setup_thread_context(entry, usp, thr->flags, &thr->attr.kstack);
 
 
@@ -143,33 +146,20 @@ create_thread_common(tid id, entry_addr entry, void *usp, thr_prio prio, thr_fla
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 	kassert( res == NULL );
 
-	/* @note thr->attr.kstack_topはスタック解放要否判定に使用するのでID割当て後に設定 */
-	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
+	if ( thrp != NULL )
+		*thrp = thr;  /* スレッド情報を返却 */
 
 	return 0;
 
 free_stk_out:
-	if ( thr->attr.kstack_top == NULL )
+	if ( kstktop == NULL )
 		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
 
 free_thr_out:
-	/* スレッド管理情報を解放 */
-	slab_kmem_cache_free((void *)thr);
+	slab_kmem_cache_free((void *)thr);  /* スレッド管理情報を解放 */
 
 error_out:
 	return rc;
-}
-/**
-   スレッド生成共通処理 (内部関数)
-   @param[in]  id      スレッドID
-   @param[in]  entry   スレッド開始アドレス
-   @param[in]  prio    初期化時のスレッド優先度
-   @param[in]  attr    スレッド属性
-*/
-int
-thr_kernel_thread_create(tid id, entry_addr entry, thr_prio prio, thread_attr *attr){
-
-	return create_thread_common(id, entry, NULL,  prio, THR_THRFLAGS_KERNEL);
 }
 
 /**

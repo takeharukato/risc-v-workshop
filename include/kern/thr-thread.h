@@ -92,6 +92,8 @@ typedef struct _thread_db{
 		.head  = RB_INITIALIZER(&(thrdb)->head),	\
 	}
 
-int thr_kernel_thread_create(tid _id, entry_addr _entry, thr_prio _prio, thread_attr *_attr);
+int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio,
+		      thr_flags _flags, struct _thread *_thrp);
+void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */
