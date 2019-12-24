@@ -376,3 +376,34 @@ ti_clr_events(void) {
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得                */
 	ti->flags &= ~TI_EVENT_PENDING;     /* 遅延ディスパッチ要求をクリアする  */
 }
+
+/**
+   CPUの横取り(プリエンプション)実施中に設定する
+   @note 他プロセッサからの非同期イベント通知がありうるので
+         tiに紐付けられたスレッド参照を事前に獲得していることを確認する
+	 (実際はディスパッチしたときにCPUからの参照を入れ, CPUを失った時点で参照を落とす)
+	 スレッド内部のデータ構造を更新するのでスレッドのロックも必要。
+	 (TODO: スレッド機構実装時)
+ */
+void
+ti_set_preempt_active(void) {
+	thread_info    *ti;
+
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得                */
+	ti->preempt |= TI_PREEMPT_ACTIVE; /*  プリエンプション実施中に設定  */
+}
+
+/**
+   CPUの横取り(プリエンプション)を終了する
+   @note イベント通知確認からイベント配送クリアは自スレッドのコンテキスト
+         のみで行うのでスレッドの参照獲得は不要
+	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
+	 (TODO: スレッド機構実装時)
+ */
+void
+ti_clr_preempt_active(void) {
+	thread_info    *ti;
+
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得                 */
+	ti->preempt &= ~TI_PREEMPT_ACTIVE; /*  プリエンプション実施フラグをクリア */
+}

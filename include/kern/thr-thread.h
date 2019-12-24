@@ -94,8 +94,7 @@ typedef struct _thread_db{
 
 int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio,
 		      thr_flags _flags, struct _thread *_thrp);
-void sched_set_ready(struct _thread *_thr);
-void sched_set_run(struct _thread *_thr);
+void sched_thread_add(struct _thread *_thr);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

@@ -22,8 +22,8 @@ static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,};
    @return NULL 実行可能なスレッドがない
    @note TODO: unusedを落とす
  */
-static __unused thread * 
-find_next_thread(void){
+static thread * 
+get_next_thread(void){
 	thread          *thr;
 	singned_cnt_type idx;
 	intrflags     iflags;
@@ -42,6 +42,7 @@ find_next_thread(void){
 	thr = container_of(queue_get_top(&ready_queue.que[idx].que), thread, link);
 	if ( queue_is_empty(&ready_queue.que[idx].que) )   /*  キューが空になった  */
 		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
+	kassert( thr->state == THR_TSTATE_RUNABLE );   /* 実行可能スレッドである事を確認する */
 
 	 /* レディキューをアンロック */
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
@@ -54,14 +55,17 @@ unlock_out:
 }
 
 /**
-   TODO: コメントを入れる
+   スレッドをレディキューに追加する
+   @param[in] thr 追加するスレッド
  */
 void
-sched_set_ready(thread *thr){
+sched_thread_add(thread *thr){
 	thr_prio        prio;
 	intrflags     iflags;
 
-	kassert(list_not_linked(&thr->link));
+	/* スレッドがどこにもリンクされていないことを確認する */
+	kassert(list_not_linked(&thr->link));  
+	kassert( thr->state == THR_TSTATE_RUNABLE );   /* 実行可能スレッドである事を確認する */
 
 	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
 
@@ -76,24 +80,41 @@ sched_set_ready(thread *thr){
 }
 
 /**
-   TODO: コメントを入れる
+   スケジューラ本体
  */
 void
-sched_set_run(void){
-	intrflags     iflags;
+sched_schedule(void) {
+	thread  *prev, *next;
 	thread          *cur;
+	thread_info      *ti;
+	intrflags     iflags;
+
+	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
+	ti_set_preempt_active();                     /* プリエンプションの抑止 */
+	if ( ti_dispatch_disabled() ) {
+
+		/* プリエンプション不可能な区間から呼ばれた場合は, 
+		 * 遅延ディスパッチ要求をセットして呼び出し元へ復帰し,
+		 * 例外出口処理でディスパッチを実施
+		 */
+		ti_set_delay_dispatch();  
+		goto schedule_out;
+	}
+
+	prev = ti_get_current_thread();
+	next = get_next_thread(); 
+	if ( prev == next ) /* ディスパッチする必要なし  */
+		goto schedule_out;
+
+	/* TODO: thr_thread_switchの実装 */
+	//thr_thread_switch(prev, next);  /* スレッド切り替え */
 
 	cur = ti_get_current_thread();
+	cur->status = THR_TSTATE_RUN;
 
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
-
-	/*  キューからスレッドを削除 */
-	queue_del(&ready_queue.que[cur->attr.cur_prio].que, &cur->link);  
-	/*  キューが空になった場合   */
-	if ( queue_is_empty(&ready_queue.que[cur->attr.cur_prio].que) )   
-		bitops_clr(prio, &ready_queue.bitmap); /*  ビットマップ中のビットをクリア */
-
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
+schedule_out:
+	ti_clr_preempt_active(); /* プリエンプションの許可 */
+	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
 }
 
 /**

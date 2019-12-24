@@ -82,6 +82,8 @@ bool ti_has_events(void);
 void ti_set_events(struct _thread_info *_ti);
 void ti_clr_events(void);
 
+void ti_set_preempt_active(void);
+void ti_clr_preempt_active(void);
 #endif  /*  !_IN_ASM_OFFSET  */
 #endif  /*  !ASM_FILE  */
 
