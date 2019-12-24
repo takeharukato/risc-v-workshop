@@ -40,11 +40,11 @@ struct _thread_info;
    スレッドの状態
  */
 typedef enum _thr_state{
-	THR_TSTATE_RUN  = 0,  /**<  実行中     */
-	THR_TSTATE_RUNABLE  = 1,  /**<  実行中     */
-	THR_TSTATE_WAIT = 2,  /**<  待ち合せ中 */
-	THR_TSTATE_EXIT = 3,  /**<  終了処理中 */
-	THR_TSTATE_DEAD = 4,  /**<  回収待ち中 */
+	THR_TSTATE_RUN  = 0,      /**<  実行中     */
+	THR_TSTATE_RUNABLE  = 1,  /**<  実行可能   */
+	THR_TSTATE_WAIT = 2,      /**<  待ち合せ中 */
+	THR_TSTATE_EXIT = 3,      /**<  終了処理中 */
+	THR_TSTATE_DEAD = 4,      /**<  回収待ち中 */
 }thr_state;
 
 /**
@@ -92,9 +92,19 @@ typedef struct _thread_db{
 		.head  = RB_INITIALIZER(&(thrdb)->head),	\
 	}
 
+/**
+   有効なスレッドであることを確認する
+   @param[in] _thr スレッド管理情報
+   @retval    真   有効なスレッドである
+   @retval    偽   終了しようとしているスレッドである
+ */
+#define thr_thread_is_active(_thr)			\
+	( ( ( (_thr)->state ) != THR_TSTATE_EXIT ) &&	\
+	  ( ( (_thr)->state ) != THR_TSTATE_DEAD ) )
+
 int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio,
 		      thr_flags _flags, struct _thread *_thrp);
-void sched_thread_add(struct _thread *_thr);
+void thr_thread_switch(struct _thread *prev, struct _thread *next);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

@@ -163,6 +163,16 @@ error_out:
 }
 
 /**
+   スレッドスイッチ処理
+   @param[in] prev CPUを解放するスレッド
+   @param[in] next CPUを得るスレッド
+ */
+void
+thr_thread_switch(thread *prev, thread *next){
+
+	hal_thread_switch(&prev->attr.kstack, &next->attr.kstack);
+}
+/**
    スレッド情報管理機構を初期化する
  */
 void

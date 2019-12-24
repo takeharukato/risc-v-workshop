@@ -90,7 +90,6 @@ sched_schedule(void) {
 	intrflags     iflags;
 
 	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
-	ti_set_preempt_active();                     /* プリエンプションの抑止 */
 	if ( ti_dispatch_disabled() ) {
 
 		/* プリエンプション不可能な区間から呼ばれた場合は, 
@@ -101,22 +100,40 @@ sched_schedule(void) {
 		goto schedule_out;
 	}
 
-	prev = ti_get_current_thread();
-	next = get_next_thread(); 
-	if ( prev == next ) /* ディスパッチする必要なし  */
-		goto schedule_out;
+	ti_set_preempt_active();                     /* プリエンプションの抑止 */
 
-	/* TODO: thr_thread_switchの実装 */
-	//thr_thread_switch(prev, next);  /* スレッド切り替え */
+	prev = ti_get_current_thread();               /* 実行中のスレッドの管理情報を取得     */
+	next = get_next_thread();                     /* 次に実行するスレッドの管理情報を取得 */
+	if ( prev == next ) /* ディスパッチする必要なし  */
+		goto ena_preempt_out;
+
+	if ( prev->state == THR_TSTATE_RUN ) {
+
+		/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
+		 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから
+		 *  参照されている状態にあるので, キュー操作を行わずスイッチする
+		 */
+		prev->state = THR_TSTATE_RUNABLE;  /* 実行中の場合は, 実行可能に遷移 */
+		sched_thread_add(prev);            /* レディキューに戻す             */
+	}
+
+	thr_thread_switch(prev, next);  /* スレッド切り替え */
 
 	cur = ti_get_current_thread();
-	cur->status = THR_TSTATE_RUN;
+	cur->status = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
+
+ena_preempt_out:
+	ti_clr_preempt_active(); /* プリエンプションの許可 */
 
 schedule_out:
-	ti_clr_preempt_active(); /* プリエンプションの許可 */
 	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
 }
 
+void
+sched_delay_disptach(void) {
+
+	if ( ti_dispatch_disabled() )
+}
 /**
    スケジューラの初期化
  */

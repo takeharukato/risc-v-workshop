@@ -54,6 +54,8 @@
 #include <klib/list.h>
 #include <klib/bitops.h>
 
+struct _thread;
+
 /**
    スケジューラレディーキュー
    @note キュー間での移動があるのでスケジューラキューのロックを獲得して操作する
@@ -71,7 +73,7 @@ typedef struct _sched_queue{
 	BITMAP_TYPE(, uint64_t, SCHED_MAX_PRIO)  bitmap;  /**< スケジューラビットマップ   */
 }sched_queue;
 
-
+void sched_thread_add(struct _thread *_thr);
 void sched_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_SCHED_IF_H   */
