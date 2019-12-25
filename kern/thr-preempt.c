@@ -120,21 +120,15 @@ preempt_dispatch(void){
 		goto error_out;  /*  プリエンプション不要  */
 
 #if defined(CONFIG_PREEMPT)
+
 	/*
 	 * CPUをカレントスレッドから横取りする
 	 */
-
-	/* TODO: 通常のスケジューラ呼び出し時もプリエンプション実施中に設定する必要は
-	 * あるので, スケジューラ実装時にプリエンプション実施中フラグ操作をスケジューラ
-	 * 側に移動する
-	 */
-	ti->preempt |= TI_PREEMPT_ACTIVE; /*  プリエンプション実施中に設定  */
 	krn_cpu_restore_interrupt(&iflags);    /* 割り込み復元 */
 	
 	sched_schedule();  /*  プリエンプションによるスケジュール実施  */
 	
 	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込み禁止 */
-	ti->preempt &= ~TI_PREEMPT_ACTIVE; /*  プリエンプション実施状態をクリア  */
 #endif  /*  CONFIG_PREEMPT  */
 
 error_out:	
@@ -275,58 +269,82 @@ ti_in_intr(void) {
    @retval 偽 遅延ディスパッチ要求がない
    @note ディスパッチ要求確認からディスパッチの実施は自スレッドのコンテキスト
          のみで行うのでスレッドの参照獲得は不要
-	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
-	 (TODO: スレッド機構実装時)
  */
 bool
 ti_dispatch_delayed(void){
-	thread_info    *ti;
+	thread_info      *ti;
+	thread          *cur;
+	bool             res;
+	intrflags     iflags;
 
 #if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /* CONFIG_HAL */
 
-	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
 
-	return ( ti->flags & TI_DISPATCH_DELAYED );  /*  遅延ディスパッチ要求有無を返却  */
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
+	res = ( ti->flags & TI_DISPATCH_DELAYED ); /* 遅延ディスパッチ要求を確認 */
+
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
+
+	return res;  /*  遅延ディスパッチ要求有無を返却  */
 }
 
 /**
    遅延ディスパッチ要求を設定する
    @note 他プロセッサからのディスパッチがありうるので
          tiに紐付けられたスレッド参照を事前に獲得していることを確認する
-	 スレッド内部のデータ構造を更新するのでスレッドのロックも必要。
 	 (TODO: スレッド機構実装時)
  */
 void
 ti_set_delay_dispatch(void) {
-	thread_info    *ti;
+	thread_info      *ti;
+	thread          *cur;
+	intrflags     iflags;
 
 #if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags |= TI_DISPATCH_DELAYED;   /* 遅延ディスパッチ要求を設定する  */
+
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
 }
 
 /**
    遅延ディスパッチ要求をクリアする
    @note ディスパッチ要求確認からディスパッチの実施は自スレッドのコンテキスト
          のみで行うのでスレッドの参照獲得は不要
-	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
-	 (TODO: スレッド機構実装時)
  */
 void
 ti_clr_delay_dispatch(void) {
-	thread_info    *ti;
+	thread_info      *ti;
+	thread          *cur;
+	intrflags     iflags;
 
 #if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags &= ~TI_DISPATCH_DELAYED;  /* 遅延ディスパッチ要求をクリアする  */
+
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
 }
 
 /**
@@ -335,16 +353,25 @@ ti_clr_delay_dispatch(void) {
    @retval 偽 非同期イベント通知要求がない
    @note イベント通知確認は自スレッドのコンテキストのみで行うので
          参照獲得は不要
-	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
-	 (TODO: スレッド機構実装時)
  */
 bool
 ti_has_events(void){
-	thread_info    *ti;
+	thread_info      *ti;
+	thread          *cur;
+	bool             res;
+	intrflags     iflags;
+
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
+	res = ( ti->flags & TI_EVENT_PENDING );  /*  非同期イベント通知要求有無を返却  */
 
-	return ( ti->flags & TI_EVENT_PENDING );  /*  非同期イベント通知要求有無を返却  */
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
+
+	return res;
 }
 
 /**
@@ -352,57 +379,66 @@ ti_has_events(void){
    @param[in] ti 配送先スレッドのスレッド情報
    @note 他プロセッサからの非同期イベント通知がありうるので
          tiに紐付けられたスレッド参照を事前に獲得していることを確認する
-	 スレッド内部のデータ構造を更新するのでスレッドのロックも必要。
 	 (TODO: スレッド機構実装時)
  */
 void
 ti_set_events(thread_info *ti) {
+	thread          *cur;
+	intrflags     iflags;
 
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	/* TODO: tiに紐付けられたスレッド参照を事前に獲得済みであることを確認 */
-	ti->flags |= TI_EVENT_PENDING;   /* 遅延ディスパッチ要求を設定する  */
+	ti->flags |= TI_EVENT_PENDING;   /* イベント通知を設定する  */
+
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
 }
 
 /**
    自スレッドの非同期イベント配送をクリアする
    @note イベント通知確認からイベント配送クリアは自スレッドのコンテキスト
          のみで行うのでスレッドの参照獲得は不要
-	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
-	 (TODO: スレッド機構実装時)
  */
 void
 ti_clr_events(void) {
-	thread_info    *ti;
+	thread_info      *ti;
+	thread          *cur;
+	intrflags     iflags;
 
-	ti = ti_get_current_thread_info();  /* スレッド情報を取得                */
-	ti->flags &= ~TI_EVENT_PENDING;     /* 遅延ディスパッチ要求をクリアする  */
+	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* スレッドをロック */
+	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
+	ti->flags &= ~TI_EVENT_PENDING;     /* イベント通知をクリアする  */
+
+	/* スレッドをアンロック */
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);
 }
 
 /**
    CPUの横取り(プリエンプション)実施中に設定する
-   @note 他プロセッサからの非同期イベント通知がありうるので
-         tiに紐付けられたスレッド参照を事前に獲得していることを確認する
-	 (実際はディスパッチしたときにCPUからの参照を入れ, CPUを失った時点で参照を落とす)
-	 スレッド内部のデータ構造を更新するのでスレッドのロックも必要。
-	 (TODO: スレッド機構実装時)
+   @note 自スレッドでのみ操作するのでスレッド参照獲得不要
  */
 void
 ti_set_preempt_active(void) {
-	thread_info    *ti;
+	thread_info      *ti;
 
-	ti = ti_get_current_thread_info();  /* スレッド情報を取得                */
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->preempt |= TI_PREEMPT_ACTIVE; /*  プリエンプション実施中に設定  */
 }
 
 /**
    CPUの横取り(プリエンプション)を終了する
-   @note イベント通知確認からイベント配送クリアは自スレッドのコンテキスト
-         のみで行うのでスレッドの参照獲得は不要
-	 スレッド内部のデータ構造を更新するのでスレッドのロックは必要。
-	 (TODO: スレッド機構実装時)
+   @note 自スレッドでのみ操作するのでスレッド参照獲得不要
  */
 void
 ti_clr_preempt_active(void) {
-	thread_info    *ti;
+	thread_info      *ti;
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得                 */
 	ti->preempt &= ~TI_PREEMPT_ACTIVE; /*  プリエンプション実施フラグをクリア */

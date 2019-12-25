@@ -88,7 +88,7 @@ typedef struct _rv64_thrsw_context{
 	reg_type      s11;  /* x27 */
 }rv64_thrsw_context;
 
+void hal_setup_thread_context(entry_addr _entry, void *_thr_sp, thr_flags _flags, void **_stkp);
 void hal_thread_switch(void **_prev, void **_next);
-
 #endif  /*  ASM_FILE  */
 #endif  /* _HAL_HAL_THREAD_H  */

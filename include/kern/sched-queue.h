@@ -19,7 +19,7 @@
 /**< 割込みスレッドクラスの最高優先度   */
 #define SCHED_MAX_ITHR_PRIO     (0)
 /**< 割込みスレッドクラスの最低優先度   */
-#define SCHED_MIN_ITHR_PRIO     ( SCHED_MIN_ITHR_PRIO + SCHED_PRIO_PER_POLICY )
+#define SCHED_MIN_ITHR_PRIO     ( SCHED_MAX_ITHR_PRIO + SCHED_PRIO_PER_POLICY )
 
 /**< システムスレッドの最高優先度 */
 #define SCHED_MAX_SYS_PRIO      ( SCHED_MIN_ITHR_PRIO )
@@ -74,6 +74,8 @@ typedef struct _sched_queue{
 }sched_queue;
 
 void sched_thread_add(struct _thread *_thr);
+void sched_schedule(void);
+bool sched_delay_disptach(void);
 void sched_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_SCHED_IF_H   */

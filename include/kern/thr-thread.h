@@ -22,6 +22,8 @@
 #include <klib/rbtree.h>
 #include <klib/bitops.h>
 
+#include <hal/hal-thread.h>
+
 /**
    スレッドの属性
  */
@@ -102,8 +104,8 @@ typedef struct _thread_db{
 	( ( ( (_thr)->state ) != THR_TSTATE_EXIT ) &&	\
 	  ( ( (_thr)->state ) != THR_TSTATE_DEAD ) )
 
-int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio,
-		      thr_flags _flags, struct _thread *_thrp);
+int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio, 
+		      thr_flags _flags, struct _thread **_thrp);
 void thr_thread_switch(struct _thread *prev, struct _thread *next);
 void thr_init(void);
 #endif  /*  !ASM_FILE */

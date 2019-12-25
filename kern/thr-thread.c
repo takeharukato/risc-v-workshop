@@ -34,10 +34,10 @@ RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
 static int 
 _thread_cmp(struct _thread *key, struct _thread *ent){
 	
-	if ( key->tid < ent->tid )
+	if ( key->id < ent->id )
 		return 1;
 
-	if ( key->tid > ent->tid  )
+	if ( key->id > ent->id  )
 		return -1;
 
 	return 0;	
@@ -170,8 +170,11 @@ error_out:
 void
 thr_thread_switch(thread *prev, thread *next){
 
+	/* TODO: ページテーブルを不活性化 (プロセス管理実装後) */
 	hal_thread_switch(&prev->attr.kstack, &next->attr.kstack);
+	/* TODO: ページテーブルを活性化 (プロセス管理実装後) */
 }
+
 /**
    スレッド情報管理機構を初期化する
  */

@@ -86,7 +86,6 @@ void
 sched_schedule(void) {
 	thread  *prev, *next;
 	thread          *cur;
-	thread_info      *ti;
 	intrflags     iflags;
 
 	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
@@ -120,7 +119,7 @@ sched_schedule(void) {
 	thr_thread_switch(prev, next);  /* スレッド切り替え */
 
 	cur = ti_get_current_thread();
-	cur->status = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
+	cur->state = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
 
 ena_preempt_out:
 	ti_clr_preempt_active(); /* プリエンプションの許可 */
@@ -129,11 +128,33 @@ schedule_out:
 	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
 }
 
-void
+/**
+   遅延ディスパッチを処理する
+   @retval 真 イベント到着
+   @retval 偽 遅延ディスパッチ処理を実施 
+ */
+bool
 sched_delay_disptach(void) {
 
-	if ( ti_dispatch_disabled() )
+	do{
+
+		if ( ti_has_events() )
+			return true;  /* イベント到着 */
+
+		/* 以下の条件の時はスケジューラを呼ばずに抜ける
+		 * ディパッチ不可能区間内にいる
+		 * 遅延ディスパッチ要求がない
+		 */
+		if ( ( ti_dispatch_disabled() ) || 
+		     ( !ti_dispatch_delayed() ) )
+			break;  
+
+		sched_schedule();  /*  ディスパッチ処理実施 */
+	}while(1);
+
+	return false;  /* 遅延ディスパッチ要求処理済み */
 }
+
 /**
    スケジューラの初期化
  */
