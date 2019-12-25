@@ -173,6 +173,7 @@ thr_thread_switch(thread *prev, thread *next){
 	/* TODO: ページテーブルを不活性化 (プロセス管理実装後) */
 	hal_thread_switch(&prev->attr.kstack, &next->attr.kstack);
 	/* TODO: ページテーブルを活性化 (プロセス管理実装後) */
+	krn_cpuinfo_update();  /* CPU情報を更新 */
 }
 
 /**

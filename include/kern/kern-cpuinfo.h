@@ -77,7 +77,7 @@ void krn_cpuinfo_init(void);
 cpu_id hal_get_physical_cpunum(void);
 cpu_info *krn_cpuinfo_get(cpu_id _cpu_num);
 void hal_cpuinfo_fill(struct _cpu_info *_cinf);
-
+void hal_cpuinfo_update(struct _cpu_info *_cinf);
 size_t krn_get_cpu_l1_dcache_linesize(void);
 obj_cnt_type krn_get_cpu_l1_dcache_color_num(void);
 size_t krn_get_cpu_dcache_size(void);

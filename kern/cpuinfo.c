@@ -10,7 +10,8 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
-#include <kern/kern-cpuinfo.h>
+#include <kern/kern-if.h>
+#include <kern/thr-if.h>
 
 static cpu_map  cpumap; /* CPUマップ */
 
@@ -82,8 +83,14 @@ krn_get_cpu_dcache_size(void){
  */
 void
 krn_cpuinfo_update(void){
+	cpu_info *cinf;
 
-	/* TODO: スレッド管理実装後に実装 */
+	cinf = krn_cpuinfo_get(krn_current_cpu_get());  /* 自CPU情報を参照 */
+
+	/** スレッド情報を初期化 */
+	cinf->cur_ti = ti_get_current_thread_info();
+	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
+	cinf->cur_proc = NULL;
 }
 
 /**

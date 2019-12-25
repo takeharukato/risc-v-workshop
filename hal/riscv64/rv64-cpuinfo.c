@@ -49,6 +49,15 @@ hal_get_physical_cpunum(void){
 
 	return rv64_read_tp(); /* 物理プロセッサIDを返却 */
 }
+/**
+   アーキ固有のCPU情報を更新する
+   @param[in] cinf CPU情報
+ */
+void
+hal_cpuinfo_update(cpu_info __unused *cinf){
+
+	return ;
+}
 
 /**
    アーキ固有のCPU情報を初期化する
@@ -64,8 +73,8 @@ hal_cpuinfo_fill(cpu_info *cinf){
 	cinf->l1_dcache_colornum = RV64_L1_DCACHE_COLOR_NUM;  
 	/** キャッシュサイズを初期化 */
 	cinf->l1_dcache_size = RV64_L1_DCACHE_SIZE;
-	/* TODO: スレッド管理実装後に以下をコメントアウト */
-	//cinf->cur_ti = ti_get_current_thread_info();
+	/** スレッド情報を初期化 */
+	cinf->cur_ti = ti_get_current_thread_info();
 	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
 	cinf->cur_proc = NULL;
 
