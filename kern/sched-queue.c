@@ -80,6 +80,26 @@ sched_thread_add(thread *thr){
 }
 
 /**
+   スレッドをレディキューから外す
+   @param[in] thr 操作対象スレッド
+ */
+void
+sched_thread_del(thread *thr){
+	thr_prio        prio;
+	intrflags     iflags;
+
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+
+	prio = thr->attr.cur_prio;
+
+	queue_del(&ready_queue.que[prio].que, &thr->link);  /*  キューにスレッドを追加          */
+	if ( queue_is_empty(&ready_queue.que[prio].que) )   /*  キューが空だった場合            */
+		bitops_clr(prio, &ready_queue.bitmap);      /*  ビットマップ中のビットをクリア  */
+
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
+}
+
+/**
    スケジューラ本体
  */
 void

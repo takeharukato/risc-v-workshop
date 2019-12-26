@@ -296,29 +296,28 @@ ti_dispatch_delayed(void){
 
 /**
    遅延ディスパッチ要求を設定する
+   @param[in] ti      スレッド情報
    @note 他プロセッサからのディスパッチがありうるので
          tiに紐付けられたスレッド参照を事前に獲得していることを確認する
 	 (TODO: スレッド機構実装時)
  */
 void
-ti_set_delay_dispatch(void) {
-	thread_info      *ti;
-	thread          *cur;
+ti_set_delay_dispatch(thread_info *ti) {
+	thread          *thr;
 	intrflags     iflags;
 
 #if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
-	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	thr = ti->thr;  /* スレッドを参照 */
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&thr->lock, &iflags); 
 
-	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags |= TI_DISPATCH_DELAYED;   /* 遅延ディスパッチ要求を設定する  */
 
 	/* スレッドをアンロック */
-	spinlock_unlock_restore_intr(&cur->lock, &iflags);
+	spinlock_unlock_restore_intr(&thr->lock, &iflags);
 }
 
 /**

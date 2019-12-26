@@ -75,7 +75,7 @@ void ti_inc_intr(void);
 bool ti_dec_intr(void);
 
 bool ti_dispatch_delayed(void);
-void ti_set_delay_dispatch(void);
+void ti_set_delay_dispatch(struct _thread_info *_ti);
 void ti_clr_delay_dispatch(void);
 
 bool ti_has_events(void);

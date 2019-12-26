@@ -74,6 +74,7 @@ typedef struct _sched_queue{
 }sched_queue;
 
 void sched_thread_add(struct _thread *_thr);
+void sched_thread_del(struct _thread *_thr);
 void sched_schedule(void);
 bool sched_delay_disptach(void);
 void sched_init(void);

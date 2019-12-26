@@ -27,8 +27,9 @@
 /**
    スレッドの属性
  */
-#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド */
-#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド   */
+#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド                            */
+#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド                              */
+#define THR_THRFLAGS_MANAGED_STK  (2)  /**< カーネルスタックからページプールから割当て  */
 /**
    スレッドID
  */
@@ -86,6 +87,7 @@ typedef struct _thread_db{
 	BITMAP_TYPE(, uint64_t, THR_TID_MAX)  idmap;  /**< 利用可能スレッドIDビットマップ */
 	RB_HEAD(_thrdb_tree, _thread)          head;  /**< スレッドDB                     */
 }thread_db;
+
 /**
    スレッド管理DB初期化子
  */

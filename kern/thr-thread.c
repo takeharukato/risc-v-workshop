@@ -108,6 +108,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 			rc = -ENOMEM;  /* メモリ不足 */
 			goto free_thr_out;
 		}
+		thr->flags |= THR_THRFLAGS_MANAGED_STK;  /*  ページプールからスタックを割当て */
 	}
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 	thr->attr.kstack = newstk;      /* スタック位置をスタックの先頭に初期化 */
@@ -138,6 +139,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 			goto free_stk_out;
 		}
 		thr->id = newid - 1;  /* IDを初期化 */
+		bitops_set(thr->id, &g_thrdb.idmap);  /* ビットマップ中のビットを使用中にセット */
 	}
 
 	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
@@ -174,6 +176,65 @@ thr_thread_switch(thread *prev, thread *next){
 	hal_thread_switch(&prev->attr.kstack, &next->attr.kstack);
 	/* TODO: ページテーブルを活性化 (プロセス管理実装後) */
 	krn_cpuinfo_update();  /* CPU情報を更新 */
+}
+
+/**
+   スレッドへの参照を得る
+   @param[in] thr スレッド管理情報
+   @retval 真 スレッドへの参照を獲得できた
+   @retval 偽 スレッドへの参照を獲得できなかった
+ */
+bool
+thr_ref_inc(thread *thr){
+
+	/*  スレッド終了中(スレッド管理ツリーから外れているスレッドの最終参照解放中)でなければ, 
+	 *  利用カウンタを加算し, 加算前の値を返す  
+	 */
+	return ( refcnt_inc_if_valid(&thr->refs) != 0 );  /* 以前の値が0の場合加算できない */
+}
+
+/**
+   スレッドへの参照を解放する
+   @param[in] thr スレッド管理情報
+   @retval 真 スレッドの最終参照者だった
+   @retval 偽 スレッドの最終参照者でなかった
+ */
+bool
+thr_ref_dec(thread *thr){
+	bool           res;
+	bool      tree_res;
+	cpu_id         cpu;
+	cpu_info     *cinf;
+	intrflags   iflags;
+
+	/*  スレッドの最終参照者であればスレッドを解放する
+	 */
+	res = refcnt_dec_and_lock_disable_intr(&thr->refs, &g_thrdb.lock, &iflags);
+	if ( res ) {  /* 最終参照者だった場合  */
+
+		/* スレッドをツリーから削除 */
+		tree_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
+		kassert( tree_res != NULL );
+
+		bitops_clr(thr->id, &g_thrdb.idmap);      /* IDを返却 */
+
+		/* スレッド管理ツリーのロックを解放 */
+		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+
+		sched_thread_del(thr);  /* レディキューから外す */
+		wque_wakeup(&thr->wque, WQUE_DESTROYED);  /* wait待ち中の子スレッドを起こす */
+
+		cpu = krn_current_cpu_get();
+		cinf = krn_cpuinfo_get(cpu);
+
+		thr->state = THR_TSTATE_EXIT;  /*  終了処理待ちに遷移 */
+		ti_set_delay_dispatch(thr->tinfo);  /* ディスパッチ要求をセットする */
+		/* TODO: 回収処理を追加する */
+		if ( cinf->cur_ti == thr->tinfo ) {
+			
+			sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
+		}
+	}
 }
 
 /**
