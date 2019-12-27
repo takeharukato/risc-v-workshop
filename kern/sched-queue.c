@@ -109,19 +109,20 @@ sched_schedule(void) {
 	intrflags     iflags;
 
 	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
+	prev = ti_get_current_thread();               /* 実行中のスレッドの管理情報を取得     */
+
 	if ( ti_dispatch_disabled() ) {
 
 		/* プリエンプション不可能な区間から呼ばれた場合は, 
 		 * 遅延ディスパッチ要求をセットして呼び出し元へ復帰し,
 		 * 例外出口処理でディスパッチを実施
 		 */
-		ti_set_delay_dispatch();  
+		ti_set_delay_dispatch(prev->tinfo);  
 		goto schedule_out;
 	}
 
 	ti_set_preempt_active();                     /* プリエンプションの抑止 */
 
-	prev = ti_get_current_thread();               /* 実行中のスレッドの管理情報を取得     */
 	next = get_next_thread();                     /* 次に実行するスレッドの管理情報を取得 */
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;

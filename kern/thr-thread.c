@@ -44,6 +44,32 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 }
 
 /**
+   スレッドの資源を解放する
+   @param[in] thr スレッド管理情報
+ */
+static void
+release_thread(thread *thr){
+	cpu_id         cpu;
+	cpu_info     *cinf;
+
+	kassert( list_not_linked(&thr->link) );  /* レディキューに繋がっていないことを確認 */
+
+	sched_thread_del(thr);  /* レディキューから外す */
+	wque_wakeup(&thr->wque, WQUE_DESTROYED);  /* wait待ち中の子スレッドを起こす */
+	
+	cpu = krn_current_cpu_get();
+	cinf = krn_cpuinfo_get(cpu);
+
+	thr->state = THR_TSTATE_EXIT;  /*  終了処理待ちに遷移 */
+	ti_set_delay_dispatch(thr->tinfo);  /* ディスパッチ要求をセットする */
+	/* TODO: 回収処理を追加する */
+	if ( cinf->cur_ti == thr->tinfo ) {
+		
+		sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
+	}
+}
+
+/**
    スレッド生成処理
    @param[in]  id      スレッドID
    @param[in]  entry   スレッドエントリアドレス
@@ -175,7 +201,8 @@ thr_thread_switch(thread *prev, thread *next){
 	/* TODO: ページテーブルを不活性化 (プロセス管理実装後) */
 	hal_thread_switch(&prev->attr.kstack, &next->attr.kstack);
 	/* TODO: ページテーブルを活性化 (プロセス管理実装後) */
-	krn_cpuinfo_update();  /* CPU情報を更新 */
+	krn_cpuinfo_update();     /* CPU情報を更新      */
+	ti_update_current_cpu();  /* スレッド情報を更新 */
 }
 
 /**
@@ -202,9 +229,7 @@ thr_ref_inc(thread *thr){
 bool
 thr_ref_dec(thread *thr){
 	bool           res;
-	bool      tree_res;
-	cpu_id         cpu;
-	cpu_info     *cinf;
+	thread    *thr_res;
 	intrflags   iflags;
 
 	/*  スレッドの最終参照者であればスレッドを解放する
@@ -213,28 +238,17 @@ thr_ref_dec(thread *thr){
 	if ( res ) {  /* 最終参照者だった場合  */
 
 		/* スレッドをツリーから削除 */
-		tree_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
-		kassert( tree_res != NULL );
+		thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
+		kassert( thr_res != NULL );
 
 		bitops_clr(thr->id, &g_thrdb.idmap);      /* IDを返却 */
 
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-
-		sched_thread_del(thr);  /* レディキューから外す */
-		wque_wakeup(&thr->wque, WQUE_DESTROYED);  /* wait待ち中の子スレッドを起こす */
-
-		cpu = krn_current_cpu_get();
-		cinf = krn_cpuinfo_get(cpu);
-
-		thr->state = THR_TSTATE_EXIT;  /*  終了処理待ちに遷移 */
-		ti_set_delay_dispatch(thr->tinfo);  /* ディスパッチ要求をセットする */
-		/* TODO: 回収処理を追加する */
-		if ( cinf->cur_ti == thr->tinfo ) {
-			
-			sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
-		}
+		release_thread(thr);  /* スレッドの資源を解放する  */
 	}
+
+	return res;
 }
 
 /**

@@ -93,8 +93,6 @@ krn_cpuinfo_update(void){
 	cinf->cur_ti = ti_get_current_thread_info();
 	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
 	cinf->cur_proc = NULL;
-
-	cinf->cur_ti->cpu = cpu;  /* 論理CPU番号を更新 */
 }
 
 /**
