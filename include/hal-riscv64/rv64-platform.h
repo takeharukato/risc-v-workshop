@@ -38,15 +38,16 @@
 #define HAL_KERN_VMA_BASE     (CONFIG_HAL_KERN_VMA_BASE) 
 /** カーネルメモリマップI/Oレジスタベースアドレス */
 #if defined(CONFIG_UPPERHALF_KERNEL)
-#define HAL_KERN_IO_BASE      (0xFFFFFFC000000000)
+#define HAL_KERN_IO_BASE      (ULONGLONG_C(0xFFFFFFC000000000))
 #else
-#define HAL_KERN_IO_BASE      (0x0000000000000000)
+#define HAL_KERN_IO_BASE      (ULONGLONG_C(0x0000000000000000))
 #endif  /*  CONFIG_UPPERHALF_KERNEL */
 /** 開始物理メモリアドレス */
 #define HAL_KERN_PHY_BASE     (ULONGLONG_C(0x80000000))
 /** ストレートマップ長 */                  
 #define RV64_STRAIGHT_MAPSIZE ( GIB_TO_BYTE(4) )  /**< 4GiBをマップする  */
-
+/** ユーザ空間終了アドレス */
+#define HAL_USER_END_ADDR     (ULONGLONG_C(0x0000003FFFFFFFFF))
 /*
  * U54 RISC-V コアのキャッシュ情報
  */

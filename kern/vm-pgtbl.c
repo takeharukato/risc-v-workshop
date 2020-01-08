@@ -98,9 +98,13 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 
 	return 0;
 }
+
 /**
    ユーザ用ページテーブルを割り当てる
    @param[out] pgtp 割り当てたページテーブル情報を指し示すポインタのアドレス
+   @retval     0    正常終了
+   @retval    -ENODEV ミューテックスが破棄された
+   @retval    -EINTR  非同期イベントを受信した
  */
 int
 pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){

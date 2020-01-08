@@ -27,15 +27,16 @@
 /**
    スレッドの属性
  */
-#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド                            */
-#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド                              */
-#define THR_THRFLAGS_MANAGED_STK  (2)  /**< カーネルスタックからページプールから割当て  */
+#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド                          */
+#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド                            */
+#define THR_THRFLAGS_MANAGED_STK  (2)  /**< カーネルスタックをページプールから割当て  */
 /**
    スレッドID
  */
 #define THR_TID_MAX               (~(UINT64_C(0)))   /**< スレッドID総数   */
 #define THR_TID_RSV_ID_NR         (32)               /**< 予約ID数         */
 #define THR_TID_INVALID           (THR_TID_MAX)      /**< 不正スレッドID   */
+#define THR_TID_AUTO              THR_TID_INVALID    /**< ID自動割り当て   */
 
 struct _thread_info;
 

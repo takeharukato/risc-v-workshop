@@ -79,7 +79,9 @@ release_thread(thread *thr){
    @param[in]  kstack  カーネルスタック
    @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
    @retval     0      正常終了
+   @retval    -EINVAL 不正な優先度を指定した
    @retval    -ENOMEM メモリ不足
+   @retval    -ENOSPC スレッドIDに空きがない
 */
 int
 thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
@@ -134,16 +136,15 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 			rc = -ENOMEM;  /* メモリ不足 */
 			goto free_thr_out;
 		}
-		thr->flags |= THR_THRFLAGS_MANAGED_STK;  /*  ページプールからスタックを割当て */
+		thr->flags |= THR_THRFLAGS_MANAGED_STK; /* ページプールからスタックを割当て */
 	}
+
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 	thr->attr.kstack = newstk;      /* スタック位置をスタックの先頭に初期化 */
 
-	
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
 	hal_setup_thread_context(entry, usp, thr->flags, &thr->attr.kstack);
-
 
 	/* スレッドIDの割当て, スレッド管理ツリーへの登録
 	 */
@@ -156,7 +157,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 		thr->id = id;
 	else {
 
-		newid = bitops_ffc(&g_thrdb.idmap);
+		newid = bitops_ffc(&g_thrdb.idmap);  /* 空きIDを取得 */
 		if ( newid == 0 ) {
 
 			/* スレッド管理ツリーのロックを解放 */
@@ -165,7 +166,8 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 			goto free_stk_out;
 		}
 		thr->id = newid - 1;  /* IDを初期化 */
-		bitops_set(thr->id, &g_thrdb.idmap);  /* ビットマップ中のビットを使用中にセット */
+		/* ビットマップ中のビットを使用中にセット */
+		bitops_set(thr->id, &g_thrdb.idmap); 
 	}
 
 	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
