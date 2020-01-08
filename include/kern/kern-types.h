@@ -77,7 +77,7 @@ typedef vm_paddr        entry_addr;  /*< エントリアドレス              *
 /*
  * プロセス管理
  */
-typedef obj_id                 pid;  /*< プロセスID                    */
+typedef tid                    pid;  /*< プロセスID                    */
 
 /*
  * 時間/時刻管理
