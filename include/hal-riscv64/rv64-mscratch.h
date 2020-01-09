@@ -20,6 +20,7 @@
 typedef struct _mscratch_info{
 	uintptr_t         mstack_sp;  /* マシンモードエントリ時に設定するスタックポインタ値 */
 	uintptr_t          saved_sp;  /* マシンモードエントリ時のスタックポインタ保存領域   */
+	uintptr_t        msip_paddr;  /* CLINT MSIPレジスタの物理アドレス                   */
 	uintptr_t    mtimecmp_paddr;  /* CLINT MTIMECMPレジスタの物理アドレス               */
 	uintptr_t       mtime_paddr;  /* CLINT MTIMEレジスタの物理アドレス                  */
 	uint64_t      boot_time_val;  /* 起動時のCLINT MTIMEレジスタの値                    */

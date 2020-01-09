@@ -20,6 +20,9 @@ ASMMAC_BOOT_TEXT_SECTION
 ASMMAC_TEXT_SECTION
 #endif  /* CONFIG_HAL */
 
+ASMMAC_DECLARE_NAME(ksbi_handle_sbicall)
+ASMMAC_DECLARE_NAME(ksbi_handle_ipi)
+	
 /**
     マシンモード割込みベクタ
     void machine_mode_vector相当のサブルーチン
@@ -53,21 +56,53 @@ ASMMAC_FUNCTION(machine_mode_vector)
 
 	mv   s1, t0                        /* mscratch情報           */
 	
+	/* これ以降s1はmscratch情報物理アドレスを保持する用途で使用
+	 */
         csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
 
 	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
-	
+
+	/* これ以降s7はスーパーバイザモードソフトウエア割込み発生ビットを保持する用途で使用
+	 */
+	csrr  s2, mcause
+	li    s3, MCAUSE_INTR
+	and   s4, s2, s3        /* MCAUSE_INTR_BITが立っているか?     */
+	bnez  s4, handle_mintr  /* ビットが立っていればIPI/タイマ更新処理へ */
+	li    s3, MCAUSE_ENVCALL_SMODE
+	and   s4, s2, s3        /* MCAUSE_ENVCALL_SMODE_BITが立っているか?     */
+	bnez  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
+	/* Supervisor environment call ハンドラを呼び出し
+	 */
+	call ksbi_handle_sbicall
+	/* ecall命令の次の命令に復帰
+	 */
+	ld    s2, RV64_TRAP_CONTEXT_EPC(sp) /* コンテキスト内の割込み元アドレス取得     */
+	add   s2, s2, 4                     /* ecall命令の次の命令を指す                */
+	sd    s2, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを更新                   */
+	j     skip_mtimer                   /* 例外出口処理へ移行                       */
+handle_mintr:
+	ld    s2, MSCRATCH_MSIP_PADDR(s1)    /* 自hart MIPレジスタ                       */
+	lw    s3, (s2)                       /* MIPレジスタを読み込み                    */
+	and   s3, s3, 0x1                    /* プロセッサ間割込みが上がっているか?      */
+	beqz  s3, handle_mtimer              /* ビットが立っていなければタイマ更新処理へ */
+	/* プロセッサ間割込み処理ハンドラ呼び出し
+	 */
+	call  ksbi_handle_ipi
+	li    s3, 0x0
+	sw    s3, (s2)                       /* 割込み受け付け通知 */
+handle_mtimer:
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
 	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
-	and   s4, s2, s3   /* mip & MIP_MTIPを計算     */
-	beqz  s4, skip_mtimer /* ビットが立っていなければタイマ更新処理をスキップする */
+	and   s2, s2, s3   /* mip & MIP_MTIPを計算     */
+	beqz  s2, skip_mtimer /* ビットが立っていなければタイマ更新処理をスキップする */
 	
 	/* これ以降以下のようにレジスタを使用する
 	   s1  mscratch情報物理アドレス
 	   s2  自hart MTIME_CMPレジスタ
 	   s3  MTIMEレジスタ
 	   s4  タイマインターバル
+	   s7  スーパーバイザモードソフトウエア割込み発生ビットを保持
 	 */
 	ld   s2, MSCRATCH_MTIMECMP_PADDR(s1)
 	ld   s3, MSCRATCH_MTIME_PADDR(s1)
@@ -139,6 +174,13 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	add a3, a2, a4                       /* MTIME_CMPレジスタアドレス                */
 	add a3, a3, a5                       /* 自hart MTIME_CMPレジスタアドレス         */
 	sd  a3, MSCRATCH_MTIMECMP_PADDR(t2)  /* 自hart MTIME_CMPレジスタアドレスをセット */
+
+	li  a4, RV64_CLINT_MSIP_OFFSET       /* MSIPレジスタオフセットアドレス      */
+	li  a5, RV64_CLINT_MSIP_SIZE         /* MSIPレジスタサイズ                  */
+	mul a5, a5, a0                       /* 自hart MSIPレジスタオフセット       */
+	add a3, a2, a4                       /* MSIPレジスタアドレス                */
+	add a3, a3, a5                       /* 自hart MSIPレジスタアドレス         */
+	sd  a3, MSCRATCH_MSIP_PADDR(t2)      /* 自hart MSIPレジスタアドレスをセット */
 
 	li  a4, RV64_CLINT_MTIME_OFFSET      /* MTIMEレジスタオフセットアドレス */
 	add a3, a2, a4                       /* MTIMEレジスタアドレス           */

@@ -264,7 +264,6 @@
 	    MCAUSE_STMISALIGN    |			\
 	    MCAUSE_STACSFAULT    |			\
 	    MCAUSE_ENVCALL_UMODE |			\
-	    MCAUSE_ENVCALL_SMODE |			\
 	    MCAUSE_ENVCALL_MMODE |			\
 	    MCAUSE_I_PGFAULT     |			\
 	    MCAUSE_LD_PGFAULT    |			\

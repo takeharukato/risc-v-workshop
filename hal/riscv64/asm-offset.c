@@ -40,6 +40,7 @@ main(int __unused argc, char __unused *argv[]) {
 	DEFINE_VAL(MSCRATCH_MSCRATCH_INFO_SIZE, sizeof(struct _mscratch_info));
 	OFFSET(MSCRATCH_MSTACK_SP, _mscratch_info, mstack_sp);
 	OFFSET(MSCRATCH_SAVED_SP, _mscratch_info, saved_sp);
+	OFFSET(MSCRATCH_MSIP_PADDR, _mscratch_info, msip_paddr);
 	OFFSET(MSCRATCH_MTIMECMP_PADDR, _mscratch_info, mtimecmp_paddr);
 	OFFSET(MSCRATCH_MTIME_PADDR, _mscratch_info, mtime_paddr);
 	OFFSET(MSCRATCH_BOOT_TIME_VAL, _mscratch_info, boot_time_val);
