@@ -30,6 +30,7 @@
 #define	SBI_REMOTE_SFENCE_VMA_ASID	(7)  /**< ASID付きメモリストア完了待ち合せ */
 #define	SBI_SHUTDOWN			(8)  /**< シャットダウン                   */
 
+#define SBI_VENDOR_GET_TIMER            (0x09000000)
 /**
    エラーコード
  */

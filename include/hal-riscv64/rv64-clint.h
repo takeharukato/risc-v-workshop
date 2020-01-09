@@ -14,6 +14,8 @@
 #define CLINT_IRQ_MAX         (CLINT_IRQ_MIN + CLINT_IRQ_NR) /**< 最大割込み番号+1 */
 #define CLINT_TIMER_IRQ       (32) /* タイマ割込み番号   */
 #define CLINT_TIMER_PRIO      (8)  /* タイマ割込み優先度 */
+#define CLINT_IPI_IRQ         (33) /* プロセッサ間割込み番号   */
+#define CLINT_IPI_PRIO        (8)  /* プロセッサ間割込み優先度 */
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>

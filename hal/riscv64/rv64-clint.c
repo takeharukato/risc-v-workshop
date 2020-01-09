@@ -73,8 +73,16 @@ clint_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 
-	/* スーパーバイザタイマ割込み, ソフトウエア割込みのいずれかが上がっていることを確認 */
-	return ( ( sip & (SIP_STIP | SIP_SSIP) ) != 0 );
+	/* スーパーバイザタイマ割込みが上がっていることを確認 */
+	if ( ( irq == CLINT_TIMER_IRQ ) 
+	     && ( ( sip & (SIP_STIP | SIP_SSIP) ) == (SIP_STIP | SIP_SSIP) ) )
+		return true;
+	/* スーパバイザソフト割込みだけが上がっていることを確認 */
+	if ( ( irq == CLINT_IPI_IRQ ) 
+	     && ( ( sip & (SIP_STIP | SIP_SSIP) ) == SIP_SSIP ) )
+		return true;
+	
+	return false;
 }
 
 /**
