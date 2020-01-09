@@ -75,6 +75,7 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	proc->stack_end = HAL_USER_END_ADDR;                  /* スタック終了アドレス */
 	proc->name[0] = '\0';  /* プロセス名を空文字列に初期化する */
 
+        /* TODO: プロセス管理情報をプロセスツリーに登録 */
 	*procp = proc;  /* プロセス管理情報を返却 */
 	
 	return 0;

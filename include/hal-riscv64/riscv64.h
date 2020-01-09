@@ -295,5 +295,7 @@ uint64_t rv64_read_instret(void);
 uint64_t rv64_read_scounteren(void);
 void rv64_write_satp(uint64_t _stap);
 void rv64_flush_tlb_local(void);
+void rv64_flush_tlb_vaddr(uint64_t _vaddr, uint64_t _asid);
+void rv64_fence_i(void);
 #endif  /* !ASM_FILE */
 #endif  /*  _HAL_RISCV64_H  */

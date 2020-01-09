@@ -10,10 +10,11 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
+#include <kern/page-if.h>
 #include <kern/kern-if.h>
 #include <kern/thr-if.h>
 
-static cpu_map  cpumap; /* CPUマップ */
+static cpu_map             cpumap; /**< CPUマップ */
 
 /** 物理CPUID検索インデクス
  */
@@ -310,5 +311,6 @@ krn_cpuinfo_init(void){
 		cinf->l1_dcache_size = 0;      /* キャッシュサイズを初期化 */
 		cinf->cur_ti = NULL;           /* スレッド情報ポインタを初期化 */
 		cinf->cur_proc = NULL;         /* ページテーブルを初期化 */
+		queue_init(&cinf->ipi_que);    /* IPIキューを初期化          */
 	}
 }

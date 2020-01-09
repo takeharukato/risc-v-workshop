@@ -13,6 +13,7 @@
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
+#include <kern/spinlock.h>
 
 struct _cpu_info;
 struct _mscratch_info;
