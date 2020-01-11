@@ -10,6 +10,7 @@
 #define  _KERN_PROC_PROC_H 
 
 #define PROC_NAME_LEN      (32)  /* プロセス名(ヌルターミネート含む) */
+#define PROC_KERN_PID      (0)   /* カーネルプロセスID */
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
@@ -20,8 +21,6 @@
 #include <kern/vm-if.h>
 #include <hal/rv64-platform.h>
 
-#define USER_STACK_START   
-
 struct _thread;
 
 /**
@@ -29,9 +28,11 @@ struct _thread;
  */
 typedef struct _proc{
 	spinlock                  lock; /**< ロック                   */
+	RB_ENTRY(_proc)            ent; /**< プロセス管理DBのリンク   */
 	vm_pgtbl                   pgt; /**< ページテーブル           */
 	struct _refcounter        refs; /**< 参照カウンタ             */
-	struct _queue          thr_que; /**< スレッドキュー           */
+	struct _queue           thrque; /**< スレッドキュー           */
+	pid                         id; /**< プロセスID               */
 	vm_vaddr            text_start; /**< テキスト領域開始アドレス */
 	vm_vaddr              text_end; /**< テキスト領域終了アドレス */
 	vm_vaddr            data_start; /**< データ領域開始アドレス   */
@@ -44,6 +45,7 @@ typedef struct _proc{
 	vm_vaddr             stack_end; /**< スタック領域終了アドレス */
 	char       name[PROC_NAME_LEN]; /**< プロセス名               */
 }proc;
+
 /**
    プロセスDB
  */
@@ -54,11 +56,13 @@ typedef struct _proc_db{
 
 /** プロセスDB初期化子
  */
-#define __PROC_INITIALIZER(procdb) {		        \
+#define __PROCDB_INITIALIZER(procdb) {		        \
 	.lock = __SPINLOCK_INITIALIZER,		        \
 	.head  = RB_INITIALIZER(&(procdb)->head),	\
-	}
+}
 
+struct _proc *proc_kproc_refer(void);
+int proc_user_allocate(entry_addr _entry, struct _proc **_procp);
 void proc_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_PROC_PROC_H   */

@@ -669,7 +669,8 @@ hal_pgtbl_enter(vm_pgtbl pgt, vm_vaddr vaddr, vm_paddr paddr, vm_prot prot,
 /**
    カーネルのページテーブル情報を返却する
    @return  カーネルのページテーブル情報
-   @note    TODO: プロセス管理実装後にrefer_kernel_proc()に置き換える
+   @note    プロセス管理のカーネルプロセス生成処理から使用
+            他の箇所からはカーネルプロセスを参照する.
  */
 vm_pgtbl
 hal_refer_kernel_pagetable(void){

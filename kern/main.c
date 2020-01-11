@@ -12,6 +12,7 @@
 #include <kern/kern-if.h>
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
+#include <kern/proc-if.h>
 #include <kern/thr-if.h>
 #include <kern/sched-if.h>
 #include <kern/fs-fsimg.h>
@@ -51,6 +52,7 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
+	proc_init();  /* プロセス管理情報を初期化する */
 	sched_init(); /* スケジューラを初期化する */
 	thr_init(); /* スレッド管理機構を初期化する */
 	irq_init(); /* 割込み管理を初期化する */
