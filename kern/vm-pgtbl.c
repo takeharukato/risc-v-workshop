@@ -78,6 +78,8 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
 	/* テーブル以外の要素を初期化
 	 * @note pgtbl_alloc_pgtbl_pageで統計情報を操作する前に初期化する必要がある
 	 */
+	spinlock_init(&pgt->lock);      /* ロックの初期化                      */
+	bitops_zero(&pgt->active);      /* ビットマップを初期化                */
 	mutex_init(&pgt->mtx);          /* ミューテックスの初期化              */
 	statcnt_set(&pgt->nr_pages, 0); /* ページテーブルのページ数を0に初期化 */
 

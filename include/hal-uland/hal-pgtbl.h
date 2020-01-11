@@ -10,14 +10,14 @@
 #define  _HAL_PGTBL_H 
 
 #include <klib/freestanding.h>
-#include <kern/mutex.h>
 #include <hal/hal-types.h>
 
 /**
    RISC-V64 ページテーブル アーキテクチャ依存部
  */
 typedef struct _hal_pgtbl_md{
-	reg_type       satp;        /*< SATPレジスタ値                   */
+	cpu_bitmap   active;  /*< アクティブCPUビットマップ        */
+	reg_type       satp;  /*< SATPレジスタ値                   */
 }hal_pgtbl_md;
 
 typedef uint64_t                hal_pte;  /*< ページテーブルエントリ */

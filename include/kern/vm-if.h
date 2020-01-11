@@ -46,19 +46,25 @@
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
+#include <kern/kern-cpuinfo.h>
+#include <kern/spinlock.h>
+#include <kern/mutex.h>
 #include <klib/statcnt.h>
 #include <hal/hal-pgtbl.h>
 
 struct _proc;
 
 typedef struct _vm_pgtbl_type{
-	struct _mutex       mtx;   /*< ページテーブル操作用mutex                  */
-	hal_pte     *pgtbl_base;   /*< ページテーブルベース(カーネル仮想アドレス) */
-	vm_paddr  tblbase_paddr;   /*< ページテーブルベース(物理アドレス)         */
-	struct _proc         *p;   /*< procへの逆リンク                           */
-	stat_cnt       nr_pages;   /*< ページテーブルを構成するページ数           */
-	struct _hal_pgtbl_md md;   /*< アーキテクチャ依存部                       */
+	spinlock           lock;  /*< ビットマップ操作用lock                     */
+	cpu_bitmap       active;  /*< アクティブCPUビットマップ                  */
+	struct _mutex       mtx;  /*< ページテーブル操作用mutex                  */
+	hal_pte     *pgtbl_base;  /*< ページテーブルベース(カーネル仮想アドレス) */
+	vm_paddr  tblbase_paddr;  /*< ページテーブルベース(物理アドレス)         */
+	struct _proc         *p;  /*< procへの逆リンク                           */
+	stat_cnt       nr_pages;  /*< ページテーブルを構成するページ数           */
+	struct _hal_pgtbl_md md;  /*< アーキテクチャ依存部                       */
 }vm_pgtbl_type;
+
 typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
 
 void vm_pgtbl_cache_init(void);
