@@ -242,8 +242,10 @@ thr_ref_dec(thread *thr){
 		/* スレッドをツリーから削除 */
 		thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
 		kassert( thr_res != NULL );
-
+		/* TODO: プロセスIDと一致しない場合にのみ返却する */
 		bitops_clr(thr->id, &g_thrdb.idmap);      /* IDを返却 */
+
+		/* TODO: プロセスキューが空だったらプロセスIDのTIDを返却 */
 
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);

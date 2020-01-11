@@ -23,7 +23,7 @@ static proc   *kern_proc;    /**< カーネルプロセスのプロセス管理�
 /** プロセス管理木
  */
 static int _procdb_cmp(struct _proc *_key, struct _proc *_ent);
-RB_GENERATE_STATIC(_proc_tree, _proc, ent, _procdb_cmp);
+RB_GENERATE_STATIC(_procdb_tree, _proc, ent, _procdb_cmp);
 
 /** 
     プロセス管理データベースエントリ比較関数
@@ -52,7 +52,7 @@ _procdb_cmp(struct _proc *key, struct _proc *ent){
    @retval    -ENOMEM メモリ不足
  */
 static int
-proc_allocate_common(proc **procp){
+allocate_process_common(proc **procp){
 	int          rc;
 	proc  *new_proc;
 
@@ -99,7 +99,7 @@ init_kernel_process(void){
 
 	/* プロセス管理情報を割り当てる
 	 */
-	rc = proc_allocate_common(&kern_proc);
+	rc = allocate_process_common(&kern_proc);
 	kassert( rc == 0 );
 
 	kern_proc->pgt = hal_refer_kernel_pagetable(); /* カーネルページテーブルを設定 */
@@ -109,7 +109,41 @@ init_kernel_process(void){
 }
 
 /**
-   カーネルプロセスへの参照を返却する
+   ユーザプロセス管理情報を解放する(内部関数)
+   @param[in] p プロセス管理情報
+ */
+static void
+free_user_process(proc *p){
+	int          rc;
+
+	kassert( p != kern_proc );  /* カーネルプロセスでないことを確認 */
+
+	/* テキスト領域を開放 */
+	rc = vm_unmap(p->pgt, p->text_start, p->text_flags, p->text_end - p->text_start);
+	kassert( rc == 0 );
+
+	/* データ領域を開放 */
+	rc = vm_unmap(p->pgt, p->data_start, p->data_flags, p->bss_end - p->data_start);
+	kassert( rc == 0 );
+
+	/* ヒープ領域を開放 */
+	rc = vm_unmap(p->pgt, p->heap_start, p->heap_flags, p->heap_end - p->heap_start);
+	kassert( rc == 0 );
+
+	/* スタック領域を開放 */
+	rc = vm_unmap(p->pgt, p->stack_start, p->stack_flags, p->stack_end - p->stack_start);
+	kassert( rc == 0 );
+
+	/* ページテーブルを解放 */
+	pgtbl_free_user_pgtbl(p->pgt);
+
+	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
+
+	return ;
+}
+
+/**
+   カーネルプロセスを参照する
  */
 proc *
 proc_kproc_refer(void){
@@ -138,7 +172,7 @@ proc_user_allocate(entry_addr entry, proc **procp){
 
 	/* プロセス管理情報を割り当てる
 	 */
-	rc = proc_allocate_common(&new_proc);
+	rc = allocate_process_common(&new_proc);
 	if ( rc != 0 ) {
 
 		rc = -ENOMEM;
@@ -165,7 +199,7 @@ proc_user_allocate(entry_addr entry, proc **procp){
 
         /* プロセス管理情報をプロセスツリーに登録 */
 	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
-	res = RB_INSERT(_proc_tree, &g_procdb.head, new_proc);
+	res = RB_INSERT(_procdb_tree, &g_procdb.head, new_proc);
 	spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
 	kassert( res == NULL );
 
@@ -181,6 +215,60 @@ free_proc_out:
 
 error_out:
 	return rc;
+}
+
+/**
+   プロセスへの参照を得る
+   @param[in] p  プロセス管理情報
+   @retval    真 プロセスへの参照を獲得できた
+   @retval    偽 プロセスへの参照を獲得できなかった
+ */
+bool
+proc_ref_inc(proc *p){
+
+	/* プロセス終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
+	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	 */
+	return ( refcnt_inc_if_valid(&p->refs) != 0 );  /* 以前の値が0の場合加算できない */
+}
+
+/**
+   プロセスへの参照を解放する
+   @param[in] p  プロセス管理情報
+   @retval 真 プロセスの最終参照者だった
+   @retval 偽 プロセスの最終参照者でなかった
+   @note LO プロセスDBロック, プロセスのロックの順にロックする
+ */
+bool
+proc_ref_dec(proc *p){
+	bool           res;
+	proc     *proc_res;
+	intrflags   iflags;
+
+	/*  スレッドの最終参照者であればスレッドを解放する
+	 */
+	res = refcnt_dec_and_lock_disable_intr(&p->refs, &g_procdb.lock, &iflags);
+	if ( res ) {  /* 最終参照者だった場合  */
+
+		/* スレッドキューが空であることを確認する
+		 */
+		spinlock_lock(&p->lock);	
+		kassert( queue_is_empty(&p->thrque) ); 
+		spinlock_unlock(&p->lock);
+
+		/* プロセスをツリーから削除 */
+		proc_res = RB_REMOVE(_procdb_tree, &g_procdb.head, p);
+		kassert( proc_res != NULL );
+
+		/* TODO: プロセスキューが空だったらプロセスIDのTIDを返却 */
+
+		/* プロセス管理ツリーのロックを解放 */
+		spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
+
+		free_user_process(p);  /* プロセスの資源を解放する  */
+	}
+
+	return res;
 }
 
 /**
