@@ -60,16 +60,14 @@ typedef struct _cpu_info{
 	struct _hal_cpuinfo      cinf_md;  /*< アーキテクチャ依存CPU情報               */
 }cpu_info;
 
-typedef BITMAP_TYPE(, uint64_t, KC_CPUS_NR) cpu_bitmap;  /**< CPUビットマップ型 */
-
 /**
    CPUマップ
  */
 typedef struct _cpu_map{
 	spinlock                                  lock;  /**< CPUマップのロック         */
 	RB_HEAD(_cpu_map_tree, _cpu_info)         head;  /**< 物理CPUID検索インデクス   */
-	cpu_bitmap                           available;  /**< 利用可能CPUビットマップ   */
-	cpu_bitmap                              online;  /**< オンラインCPUビットマップ */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)  available;  /**< 利用可能CPUビットマップ   */
+	BITMAP_TYPE(, uint64_t, KC_CPUS_NR)     online;  /**< オンラインCPUビットマップ */
 	cpu_info                   cpuinfo[KC_CPUS_NR];  /**< CPU情報                   */
 }cpu_map;
 

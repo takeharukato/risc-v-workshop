@@ -11,8 +11,6 @@
 
 #include <klib/freestanding.h>
 #include <kern/mutex.h>
-#include <kern/kern-cpuinfo.h>
-
 #include <hal/hal-types.h>
 #include <hal/rv64-pgtbl.h>
 
