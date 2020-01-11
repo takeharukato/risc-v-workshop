@@ -17,31 +17,12 @@
 #include <kern/kern-types.h>
 #include <kern/spinlock.h>
 
-#include <klib/queue.h>
 #include <klib/rbtree.h>
 
 #include <hal/hal-cpuinfo.h>
 
 struct _thread_info;
 struct _proc;
-
-/**
-   IPI種別
- */
-#define IPI_TYPE_IFLUSH      (1)  /**< 命令実行待ち合わせ */
-#define IPI_TYPE_TLBFLUSH    (2)  /**< TLBフラッシュ      */
-#define IPI_TYPE_RESCHED     (3)  /**< 再スケジュール     */
-
-/**
-   CPU間割り込み情報
- */
-typedef struct _ipi_entry{
-	struct _list  ent;  /**< リストエントリ          */
-	int          type;  /**< 割込み種別              */
-	uint32_t     asid;  /**< アドレス空間ID          */
-	vm_vaddr    vaddr;  /**< TLBフラッシュ先アドレス */
-	vm_size      size;  /**< TLBフラッシュサイズ     */
-}ipi_entry;
 
 /**
    CPU情報
@@ -56,7 +37,6 @@ typedef struct _cpu_info{
 	size_t            l1_dcache_size;  /*< L1データキャッシュサイズ (単位:バイト)       */
 	struct _thread_info      *cur_ti;  /*< 対象のプロセッサで動作中のスレッド情報  */
 	struct _proc           *cur_proc;  /*< カレントプロセス                        */
-	struct _queue            ipi_que;  /*< プロセッサ間割り込みキュー              */
 	struct _hal_cpuinfo      cinf_md;  /*< アーキテクチャ依存CPU情報               */
 }cpu_info;
 

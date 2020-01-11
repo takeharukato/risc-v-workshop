@@ -21,22 +21,20 @@
  */
 void 
 ksbi_send_ipi(const unsigned long *hart_mask){
-	int   i;
+	int i;
 	int idx;
 	int off;
+	volatile uint32_t *reg;  /* TODO:レジスタアクセスマクロを統一 */
 
-	/* ビットマスク中のビットを調査し, 発行先のプロセッサに
-	 *  割り込みをかける
-	 */
 	for(i = 0; KC_CPUS_NR > i; ++i) {
 
-		/* 配列のインデクスを算出 */
 		idx = i / ( sizeof(unsigned long)*BITS_PER_BYTE );
-		/* ビットマップチャンク内でのオフセットを算出 */
 		off = i % ( sizeof(unsigned long)*BITS_PER_BYTE );
-		/* MSIPに1をセットして割込みをかける */
-		if ( hart_mask[idx] & (1 << off ) ) 
-			*(volatile uint32_t *)RV64_CLINT_MSIP(i) = 1;
+		if ( hart_mask[idx] & (1 << off ) ) {
+
+			reg = (volatile uint32_t *)RV64_CLINT_MSIP(i);
+			*reg = 1;  /* TODO: アクセスマクロ作成 */
+		}
 	}
 }
 

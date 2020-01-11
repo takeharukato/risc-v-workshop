@@ -60,7 +60,6 @@ hal_platform_init(void){
 	rv64_clint_init();  /* CLINTを初期化する  */
 	rv64_plic_init();   /* PLICを初期化する   */
 	rv64_timer_init();  /* タイマを初期化する */
-	rv64_ipi_init();    /* プロセッサ間割り込みを初期化する */
 	uart_rxintr_enable();  /* TODO: ドライバ作成後に削除 */
 }
 

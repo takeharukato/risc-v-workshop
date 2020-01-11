@@ -160,8 +160,6 @@ queue_reverse_rotate(queue *head){
 /**
    キューが空であることを確認する
     @param[in] head 調査対象キュー
-    @retval    真   キューが空である
-    @retval    偽   キューが空でない
  */
 bool
 queue_is_empty(queue *head) {
