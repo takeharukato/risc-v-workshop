@@ -21,6 +21,7 @@ ASMMAC_TEXT_SECTION
 #endif  /* CONFIG_HAL */
 
 ASMMAC_DECLARE_NAME(ksbi_handle_sbicall)
+ASMMAC_DECLARE_NAME(ksbi_handle_ipi)
 	
 /**
     マシンモード割込みベクタ
@@ -60,6 +61,10 @@ ASMMAC_FUNCTION(machine_mode_vector)
         csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
 
+	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
+
+	/* これ以降s7はスーパーバイザモードソフトウエア割込み発生ビットを保持する用途で使用
+	 */
 	csrr  s2, mcause
 	li    s3, MCAUSE_INTR
 	and   s4, s2, s3        /* MCAUSE_INTR_BITが立っているか?     */
@@ -69,7 +74,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	bnez  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
 	/* Supervisor environment call ハンドラを呼び出し
 	 */
-	//call ksbi_handle_sbicall
+	call ksbi_handle_sbicall
 	/* ecall命令の次の命令に復帰
 	 */
 	ld    s2, RV64_TRAP_CONTEXT_EPC(sp) /* コンテキスト内の割込み元アドレス取得     */
@@ -77,17 +82,15 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	sd    s2, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを更新                   */
 	j     skip_mtimer                   /* 例外出口処理へ移行                       */
 handle_mintr:
-	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
-	/* これ以降s7はスーパーバイザモードソフトウエア割込み発生ビットを保持する用途で使用
-	 */
-
 	ld    s2, MSCRATCH_MSIP_PADDR(s1)    /* 自hart MIPレジスタ                       */
 	lw    s3, (s2)                       /* MIPレジスタを読み込み                    */
 	and   s3, s3, 0x1                    /* プロセッサ間割込みが上がっているか?      */
 	beqz  s3, handle_mtimer              /* ビットが立っていなければタイマ更新処理へ */
+	/* プロセッサ間割込み処理ハンドラ呼び出し
+	 */
+	call  ksbi_handle_ipi
 	li    s3, 0x0
 	sw    s3, (s2)                       /* 割込み受け付け通知 */
-
 handle_mtimer:
 	csrr  s2, mip      /* MIPレジスタを読み込む    */
 	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
