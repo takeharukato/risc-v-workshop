@@ -24,30 +24,36 @@
 struct _thread;
 
 /**
+   プロセスのセグメント種別
+ */
+#define PROC_TEXT_SEG         (0)  /**< テキストセグメント */
+#define PROC_DATA_SEG         (1)  /**< データセグメント   */
+#define PROC_BSS_SEG          (2)  /**< BSSセグメント      */
+#define PROC_HEAP_SEG         (3)  /**< ヒープセグメント   */
+#define PROC_STACK_SEG        (4)  /**< スタックセグメント */
+#define PROC_SEG_NR           (5)  /**< セグメントの数     */
+
+/**
+   プロセスのセグメント
+ */
+typedef struct _proc_segment{
+	vm_vaddr            start; /**< 領域開始アドレス */
+	vm_vaddr              end; /**< 領域終了アドレス */
+	vm_prot              prot; /**< 保護属性         */
+	vm_flags            flags; /**< マップ属性       */
+}proc_segment;
+/**
    プロセス定義
  */
 typedef struct _proc{
-	spinlock                  lock; /**< ロック                   */
-	RB_ENTRY(_proc)            ent; /**< プロセス管理DBのリンク   */
-	vm_pgtbl                   pgt; /**< ページテーブル           */
-	struct _refcounter        refs; /**< 参照カウンタ             */
-	struct _queue           thrque; /**< スレッドキュー           */
-	pid                         id; /**< プロセスID               */
-	vm_vaddr            text_start; /**< テキスト領域開始アドレス */
-	vm_vaddr              text_end; /**< テキスト領域終了アドレス */
-	vm_flags            text_flags; /**< テキスト領域の保護属性   */
-	vm_vaddr            data_start; /**< データ領域開始アドレス   */
-	vm_vaddr              data_end; /**< データ領域終了アドレス   */
-	vm_flags            data_flags; /**< データ領域の保護属性     */
-	vm_vaddr             bss_start; /**< BSS領域開始アドレス      */
-	vm_vaddr               bss_end; /**< BSS領域終了アドレス      */
-	vm_vaddr            heap_start; /**< heap領域開始アドレス     */
-	vm_vaddr              heap_end; /**< heap領域終了アドレス     */
-	vm_flags            heap_flags; /**< heap領域の保護属性       */
-	vm_vaddr           stack_start; /**< スタック領域開始アドレス */
-	vm_vaddr             stack_end; /**< スタック領域終了アドレス */
-	vm_flags           stack_flags; /**< スタック領域の保護属性   */
-	char       name[PROC_NAME_LEN]; /**< プロセス名               */
+	spinlock                      lock; /**< ロック                   */
+	RB_ENTRY(_proc)                ent; /**< プロセス管理DBのリンク   */
+	vm_pgtbl                       pgt; /**< ページテーブル           */
+	struct _refcounter            refs; /**< 参照カウンタ             */
+	struct _queue               thrque; /**< スレッドキュー           */
+	pid                             id; /**< プロセスID               */
+	proc_segment segments[PROC_SEG_NR]; /**< セグメント               */
+	char           name[PROC_NAME_LEN]; /**< プロセス名               */
 }proc;
 
 /**
@@ -69,6 +75,8 @@ struct _proc *proc_kproc_refer(void);
 int proc_user_allocate(entry_addr _entry, struct _proc **_procp);
 bool proc_ref_inc(struct _proc *_p);
 bool proc_ref_dec(struct _proc *_p);
+struct _proc *proc_find_by_pid(pid _target);
+int proc_add_thread(struct _proc *_p, struct _thread *_thr);
 void proc_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_PROC_PROC_H   */

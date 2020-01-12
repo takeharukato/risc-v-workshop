@@ -278,7 +278,7 @@ error_out:
    @param[in]  pgt        アドレス空間のページテーブル情報
    @param[in]  vaddr      アンマップする仮想アドレス
    @param[in]  flags      ページ割り当て要否の判断に使用するマップ属性
-   @param[in]  size       コピーする領域長(単位:バイト)
+   @param[in]  size       アンマップする領域長(単位:バイト)
    @retval     0          正常終了
    @retval    -ENOENT     ページテーブルまたはラージページがマップされていない
    @retval    -ESRCH      ページがマップされていない
@@ -296,7 +296,7 @@ vm_unmap(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size size){
 	vm_vaddr    sta_vaddr;
 	vm_vaddr    end_vaddr;
 
-	/* 転送元アドレスと転送先アドレスをページ境界にそろえる
+	/* アドレスをページ境界にそろえる
 	 */
 	sta_vaddr = PAGE_TRUNCATE(vaddr);         /* 開始仮想アドレス */
 	end_vaddr = PAGE_ROUNDUP(vaddr + size);   /* 終了仮想アドレス */

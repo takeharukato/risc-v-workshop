@@ -33,10 +33,10 @@
 /**
    スレッドID
  */
-#define THR_TID_MAX               (~(UINT64_C(0)))   /**< スレッドID総数   */
-#define THR_TID_RSV_ID_NR         (32)               /**< 予約ID数         */
-#define THR_TID_INVALID           (THR_TID_MAX)      /**< 不正スレッドID   */
-#define THR_TID_AUTO              THR_TID_INVALID    /**< ID自動割り当て   */
+#define THR_TID_MAX               (KC_THR_MAX)        /**< スレッドID総数   */
+#define THR_TID_RSV_ID_NR         (32)                /**< 予約ID数         */
+#define THR_TID_INVALID           (~(ULONGLONG_C(0))) /**< 不正スレッドID   */
+#define THR_TID_AUTO              THR_TID_INVALID     /**< ID自動割り当て   */
 
 struct _thread_info;
 
@@ -72,7 +72,8 @@ typedef struct _thread{
 	tid                          id;  /**< Thread ID                    */
 	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ */
 	refcounter                 refs;  /**< 参照カウンタ                 */
-	struct _list               link;  /**< スレッドキューへのリンク     */
+	struct _list               link;  /**< スケジューラキューへのリンク */
+	struct _list          proc_link;  /**< プロセス管理情報のリンク     */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ     */
 	struct _thread_attr        attr;  /**< スレッド属性                 */
 	struct _thread          *parent;  /**< 親スレッド                   */

@@ -93,11 +93,10 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	thread       *res;
 	intrflags  iflags;
 
-	if ( ( prio < SCHED_MIN_PRIO ) || ( prio >= SCHED_MAX_PRIO ) )
+	if ( !SCHED_VALID_PRIO(prio) )
 		return -EINVAL;
 
-	if ( ( flags & THR_THRFLAGS_USER ) 
-	    && ( ( prio < SCHED_MIN_USER_PRIO ) || ( prio >= SCHED_MAX_USER_PRIO ) ) )
+	if ( ( flags & THR_THRFLAGS_USER ) && ( !SCHED_VALID_USER_PRIO(prio) ) )
 		return -EINVAL;
 
 	/* スレッド管理情報を割り当てる
@@ -115,6 +114,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	spinlock_init(&thr->lock);  /* スレッド管理情報のロックを初期化 */
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
 	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化  */
+	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化  */
 	thr->flags = flags;         /* スレッドの属性値を設定 */
 	/* スレッドを生成したスレッドを親スレッドに設定 */
 	thr->parent = ti_get_current_thread(); 

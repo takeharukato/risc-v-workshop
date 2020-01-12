@@ -36,10 +36,10 @@ RB_GENERATE_STATIC(_procdb_tree, _proc, ent, _procdb_cmp);
 static int 
 _procdb_cmp(struct _proc *key, struct _proc *ent){
 	
-	if ( key->id <= ent->id )
+	if ( key->id < ent->id )
 		return 1;
 
-	if ( ent->id <= key->id )
+	if ( key->id > ent->id )
 		return -1;
 
 	return 0;	
@@ -53,8 +53,10 @@ _procdb_cmp(struct _proc *key, struct _proc *ent){
  */
 static int
 allocate_process_common(proc **procp){
-	int          rc;
-	proc  *new_proc;
+	int            rc;
+	int             i;
+	proc_segment *seg;
+	proc    *new_proc;
 
 	/* プロセス管理情報を割り当てる
 	 */
@@ -66,20 +68,21 @@ allocate_process_common(proc **procp){
 	}
 
 	spinlock_init(&new_proc->lock); /* プロセス管理情報のロックを初期化  */
-	/* 参照カウンタを初期化(プロセス管理ツリーからの参照分) */
+	/* 参照カウンタを初期化(プロセスの最初のスレッドからの参照分) */
 	refcnt_init(&new_proc->refs); 
 	queue_init(&new_proc->thrque);  /* スレッドキューの初期化      */
 	new_proc->id = 0;          /* PID                              */
-	new_proc->text_start = 0;  /* テキスト領域の開始アドレス       */
-	new_proc->text_end = 0;    /* テキスト領域の終了アドレス       */
-	new_proc->data_start = 0;  /* データ領域の開始アドレス         */
-	new_proc->data_end = 0;    /* データ領域の終了アドレス         */
-	new_proc->bss_start = 0;   /* BSS領域の開始アドレス            */
-	new_proc->bss_end = 0;     /* BSS領域の終了アドレス            */
-	new_proc->heap_start = 0;  /* heap領域開始アドレス             */
-	new_proc->heap_end = 0;    /* heap領域終了アドレス             */
-	new_proc->stack_start = 0; /* スタック開始ページ               */
-	new_proc->stack_end = 0;   /* スタック終了アドレス             */
+
+	/** セグメントの初期化
+	 */
+	for( i = 0; PROC_SEG_NR > i; ++i) {
+
+		seg = &new_proc->segments[i];         /* セグメント情報参照     */
+		seg->start = 0;             /* セグメント開始アドレス */
+		seg->end = 0;               /* セグメント終了アドレス */
+		seg->prot = VM_PROT_NONE;   /* 保護属性               */
+		seg->flags = VM_FLAGS_NONE; /* マップ属性             */
+	}
 	new_proc->name[0] = '\0';  /* プロセス名を空文字列に初期化する */
 
 	*procp = new_proc;  /* プロセス管理情報を返却 */
@@ -107,32 +110,67 @@ init_kernel_process(void){
 
 	return ;
 }
+/**
+   ユーザプロセスのセグメントを解放する(内部関数)
+   @param[in]  p          プロセス管理情報
+   @param[in]  vaddr      アンマップする仮想アドレス
+   @param[in]  flags      ページ割り当て要否の判断に使用するマップ属性
+   @param[in]  size       アンマップする領域長(単位:バイト)
+ */
+static void
+release_process_segment(proc *p, vm_vaddr start, vm_vaddr end, vm_flags flags){
+	int                rc;
+	vm_vaddr     rm_vaddr;
+	vm_paddr     rm_paddr;
+	vm_prot       rm_prot;
+	vm_flags     rm_flags;
+	vm_size     rm_pgsize;
+	vm_vaddr    sta_vaddr;
+	vm_vaddr    end_vaddr;
 
+	/* アドレスをページ境界にそろえる
+	 */
+	sta_vaddr = PAGE_TRUNCATE(start); /* 開始仮想アドレス */
+	end_vaddr = PAGE_ROUNDUP(end);    /* 終了仮想アドレス */
+
+	/* 領域に割り当てられたマッピングを解放する
+	 */
+	for( rm_vaddr = sta_vaddr; end_vaddr > rm_vaddr; ) {
+
+		/* 領域のマップ情報を得る
+		 */
+		rc = hal_pgtbl_extract(p->pgt, rm_vaddr, &rm_paddr, &rm_prot, &rm_flags,
+		    &rm_pgsize);
+		if ( rc == 0 ) { /* メモリがマップされている場合はマッピングを解放する */
+			
+			rc = vm_unmap(p->pgt, rm_vaddr, flags, rm_pgsize);
+			kassert( rc == 0 );
+		}
+
+		rm_vaddr += rm_pgsize; /* 次のページ */
+	}
+
+	return ;
+}
 /**
    ユーザプロセス管理情報を解放する(内部関数)
    @param[in] p プロセス管理情報
  */
 static void
 free_user_process(proc *p){
-	int          rc;
+	int             i;
+	proc_segment *seg;
 
 	kassert( p != kern_proc );  /* カーネルプロセスでないことを確認 */
 
-	/* テキスト領域を開放 */
-	rc = vm_unmap(p->pgt, p->text_start, p->text_flags, p->text_end - p->text_start);
-	kassert( rc == 0 );
+	/** プロセスのセグメントを解放する
+	 */
+	for(i = PROC_TEXT_SEG; PROC_SEG_NR > i; ++i) {
 
-	/* データ領域を開放 */
-	rc = vm_unmap(p->pgt, p->data_start, p->data_flags, p->bss_end - p->data_start);
-	kassert( rc == 0 );
-
-	/* ヒープ領域を開放 */
-	rc = vm_unmap(p->pgt, p->heap_start, p->heap_flags, p->heap_end - p->heap_start);
-	kassert( rc == 0 );
-
-	/* スタック領域を開放 */
-	rc = vm_unmap(p->pgt, p->stack_start, p->stack_flags, p->stack_end - p->stack_start);
-	kassert( rc == 0 );
+		seg = &p->segments[i];         /* セグメント情報参照     */
+		/* 領域を開放 */
+		release_process_segment(p, seg->start, seg->end, seg->flags);
+	}
 
 	/* ページテーブルを解放 */
 	pgtbl_free_user_pgtbl(p->pgt);
@@ -140,6 +178,90 @@ free_user_process(proc *p){
 	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
 
 	return ;
+}
+
+/**
+   pidをキーにプロセス管理情報への参照を得る
+   @param[in] target 検索対象プロセスのpid
+   @return NULL 指定されたpidのプロセスが見つからなかった
+   @return 見つかったプロセスのプロセス管理情報
+ */
+proc *
+proc_find_by_pid(pid target){
+	proc          *p;
+	proc         key;
+	intrflags iflags;
+	
+	key.id = target; /* キーとなるpidを設定 */
+
+	/* プロセスDBのロックを獲得 */
+	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
+
+	p = RB_FIND(_procdb_tree, &g_procdb.head, &key); /* プロセス管理情報を検索 */
+	if ( p != NULL )
+		proc_ref_inc(p);  /* プロセス管理構造への参照をインクリメント */
+
+	/* プロセスDBのロックを解放 */
+	spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
+
+	return p;  /* プロセス管理情報を返却 */
+}
+
+/**
+   プロセスにスレッドを追加する
+   @param[in] p   プロセス管理情報
+   @param[in] thr スレッド管理情報
+   @retval  0        正常終了
+   @retval -ENOENT   プロセス削除中
+ */
+int
+proc_add_thread(proc *p, thread *thr){
+	intrflags iflags;
+
+	if ( !proc_ref_inc(p) )  /* スレッドからの参照をインクリメント */
+		return -ENOENT;  /* 削除中のプロセスにスレッドを追加しようとした */
+
+	/* プロセス管理情報のロックを獲得 */
+	spinlock_lock_disable_intr(&p->lock, &iflags);
+
+	queue_add(&p->thrque, &thr->proc_link);  /* スレッドキューに追加      */	
+
+	/* プロセス管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&p->lock, &iflags);
+
+	return  0;
+}
+
+/**
+   プロセスからスレッドを削除する
+   @param[in] p   プロセス管理情報
+   @param[in] thr スレッド管理情報
+   @retval  真    プロセスの最終スレッドを削除した
+   @retval  偽    プロセスにスレッドが残存している
+ */
+bool
+proc_del_thread(proc *p, thread *thr){
+	bool          rc;
+	bool         res;
+	intrflags iflags;
+
+	res = proc_ref_inc(p);  /* スレッド削除処理用の参照を獲得 */
+	kassert( res );  /* 削除対象のスレッドが含まれるはずなので参照を獲得できる */
+
+	/* プロセス管理情報のロックを獲得 */
+	spinlock_lock_disable_intr(&p->lock, &iflags);
+
+	queue_del(&p->thrque, &thr->proc_link);  /* スレッドキューから削除  */	
+
+	rc = proc_ref_dec(p);  /* スレッド削除に伴う参照のデクリメント */
+	kassert( !rc );  /* 上記で参照を得ているので最終参照ではないはず */
+
+	/* プロセス管理情報のロックを解放 */
+	spinlock_unlock_restore_intr(&p->lock, &iflags);
+
+	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を獲得 */
+
+	return  rc;
 }
 
 /**
@@ -167,6 +289,7 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	int             rc;
 	proc     *new_proc;
 	proc          *res;
+	proc_segment  *seg;
 	thread        *thr;
 	intrflags   iflags;
 
@@ -185,16 +308,29 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	if ( rc != 0 ) 
 		goto free_proc_out;  
 	
+	/* ユーザスタックを割り当てる
+	 */
+	seg = &new_proc->segments[PROC_STACK_SEG];              /* スタックセグメント参照 */
+	seg->start = PAGE_TRUNCATE(HAL_USER_END_ADDR);          /* スタック開始ページ */
+	seg->end = PAGE_ROUNDUP(HAL_USER_END_ADDR);             /* スタック終了ページ */
+	seg->prot = VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE; /* スタック保護属性   */
+	seg->flags = VM_FLAGS_USER;                             /* マップ属性         */
+	/* スタックを割り当てる */
+	rc = vm_map_userpage(new_proc->pgt, seg->start, seg->prot, seg->flags, 
+	    PAGE_SIZE, seg->end - seg->start);
+	if ( rc != 0 )
+		goto free_pgtbl_out;  /* スタックの割当てに失敗した */
+
 	/* ユーザスレッドを生成する
 	 */
 	rc = thr_thread_create(THR_TID_AUTO, entry, 
 	    (void *)truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE), 
 	    NULL, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &thr);
 	if ( rc != 0 ) 
-		goto free_pgtbl_out;  
-	
-	new_proc->stack_start = PAGE_TRUNCATE(HAL_USER_END_ADDR); /* スタック開始ページ   */
-	new_proc->stack_end = HAL_USER_END_ADDR;                  /* スタック終了アドレス */
+		goto free_stk_out;  /*  スレッドの生成に失敗した */
+	/* TODO: スレッド管理作成後にコメントを外す */
+	//queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
+
 	new_proc->id = thr->id;                                   /* プロセスIDを設定 */
 
         /* プロセス管理情報をプロセスツリーに登録 */
@@ -206,6 +342,12 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	*procp = new_proc;  /* プロセス管理情報を返却 */
 	
 	return 0;
+
+free_stk_out:
+	release_process_segment(new_proc, 
+	    new_proc->segments[PROC_STACK_SEG].start, 
+	    new_proc->segments[PROC_STACK_SEG].end,
+	    new_proc->segments[PROC_STACK_SEG].flags);  /* スタックセグメントを解放する */
 
 free_pgtbl_out:
 	pgtbl_free_user_pgtbl(new_proc->pgt);  /* ページテーブルを解放する */

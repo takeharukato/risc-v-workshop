@@ -26,4 +26,5 @@
 #else
 #define KC_PHYSMEM_MB (64)
 #endif  /*  CONFIG_HAL_MEMORY_SIZE_MB  */
+#define KC_THR_MAX    (CONFIG_THR_MAX)
 #endif  /* KERN_KERN_CONSTS_H */

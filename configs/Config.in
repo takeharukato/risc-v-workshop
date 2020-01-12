@@ -48,6 +48,13 @@ config CONFIG_ISTACK_PAGE_ORDER
 	help
 	  This sets the value of interrupt stack size
 
+config CONFIG_THR_MAX
+       int "The number of threads (UNIT: threads)"
+       default 1024
+       range 256 4096
+       help
+	  This sets the value of the timer slice for each thread in the round robin scheduling class by tick counts.
+
 config CONFIG_TIMER_TIME_SLICE
        int "Timer slice of threads (UNIT: ticks)"
        default 10
