@@ -14,7 +14,7 @@
 #define X64_RFLAGS_CF    (0) /*< キャリーフラグ */
 #define X64_RFLAGS_RESV1 (1) /*< 予約フラグ1 (常に1でなければならない) */
 #define X64_RFLAGS_PF    (2) /*< パリティフラグ (演算結果の下位8ビット) */
-#define X64_RFLAGS_RESV2 (1) /*< 予約フラグ2 (常に1でなければならない) */
+#define X64_RFLAGS_RESV2 (3) /*< 予約フラグ2 (常に1でなければならない) */
 #define X64_RFLAGS_AF    (4) /*< 補助キャリーフラグ(BCD演算用) */
 #define X64_RFLAGS_RESV3 (5) /*< 予約フラグ2 (常に1でなければならない) */
 #define X64_RFLAGS_ZF    (6) /*< ゼロフラグ */

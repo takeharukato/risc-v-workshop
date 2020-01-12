@@ -19,7 +19,7 @@
 #include <klib/queue.h>
 #include <kern/kern-types.h>
 #include <kern/vm-if.h>
-#include <hal/rv64-platform.h>
+#include <hal/hal-memlayout.h>
 
 struct _thread;
 

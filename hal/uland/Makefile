@@ -5,7 +5,7 @@ include ${top}/Makefile.inc
 ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 klib_objs = x64-atomic.o x64-atomic64.o x64-xchg.o x64-backtrace.o
 objects = ${klib_objs} x64-cpucache.o x64-cpuintr.o x64-spinlock.o x64-rflags.o \
-	x64-cpuinfo.o x64-prepare.o x64-ctxsw.o
+	x64-cpuinfo.o x64-prepare.o x64-ctxsw.o x64-thread.o
 
 ifeq ($(CONFIG_HAL),y)
 objects += 
