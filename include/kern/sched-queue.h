@@ -75,19 +75,11 @@
 struct _thread;
 
 /**
-   スケジューラレディーキュー
-   @note キュー間での移動があるのでスケジューラキューのロックを獲得して操作する
- */
-typedef struct _sched_readyqueue{
-	struct _queue  que;  /**< スケジューラエントリキュー */
-}sched_readyqueue;
-
-/**
    スケジューラキュー
  */
 typedef struct _sched_queue{
 	spinlock                                   lock;  /**< スケジューラキューのロック */
-	struct _sched_readyqueue    que[SCHED_MAX_PRIO];  /**< スケジューラキュー         */
+	struct _queue               que[SCHED_MAX_PRIO];  /**< スケジューラキュー         */
 	BITMAP_TYPE(, uint64_t, SCHED_MAX_PRIO)  bitmap;  /**< スケジューラビットマップ   */
 }sched_queue;
 

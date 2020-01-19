@@ -10,7 +10,7 @@ objects = ${klib_objs} x64-cpucache.o x64-cpuintr.o x64-spinlock.o x64-rflags.o 
 ifeq ($(CONFIG_HAL),y)
 objects += 
 else
-objects += x64-pframe.o
+objects += x64-pframe.o x64-stack.o
 endif
 
 depends = $(patsubst %.o,%.d,${objects})

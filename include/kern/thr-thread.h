@@ -44,19 +44,34 @@ struct _thread_info;
    スレッドの状態
  */
 typedef enum _thr_state{
-	THR_TSTATE_RUN  = 0,      /**<  実行中     */
-	THR_TSTATE_RUNABLE  = 1,  /**<  実行可能   */
-	THR_TSTATE_WAIT = 2,      /**<  待ち合せ中 */
-	THR_TSTATE_EXIT = 3,      /**<  終了処理中 */
-	THR_TSTATE_DEAD = 4,      /**<  回収待ち中 */
+	THR_TSTATE_DORMANT = 0,   /**<  生成済み   */
+	THR_TSTATE_RUN  = 1,      /**<  実行中     */
+	THR_TSTATE_RUNABLE  = 2,  /**<  実行可能   */
+	THR_TSTATE_WAIT = 3,      /**<  待ち合せ中 */
+	THR_TSTATE_EXIT = 4,      /**<  終了処理中 */
+	THR_TSTATE_DEAD = 5,      /**<  回収待ち中 */
 }thr_state;
+
+/**
+   thr_thread_wait処理返却情報
+ */
+typedef struct _thr_wait_res{
+	tid             id;  /**< スレッドID  */
+	exit_code exitcode;  /**< 終了コード  */
+}thr_wait_res;
+
+/** wait待ちスレッドキューのエントリ
+ */
+typedef struct _thr_wait_entry{
+	struct _list    link;   /*< キューへのリンク         */
+	struct _thread  *thr;   /*< 待ち合わせ中の子スレッド */
+}thr_wait_entry;
 
 /**
    スレッドの属性情報
  */
 typedef struct _thread_attr{
 	void         *kstack_top;  /**< カーネルスタック開始アドレス                 */
-	void             *kstack;  /**< ディスパッチ後のカーネルスタック値           */
 	thr_prio        ini_prio;  /**< 初期化時スレッド優先度                       */
 	thr_prio       base_prio;  /**< ベーススレッド優先度                         */
 	thr_prio        cur_prio;  /**< 現在のスレッド優先度                         */
@@ -67,17 +82,20 @@ typedef struct _thread_attr{
  */
 typedef struct _thread{
 	spinlock                   lock;  /**< スレッド管理情報のロック     */
+	refcounter                 refs;  /**< 参照カウンタ                 */
+	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ */
 	thr_flags                 flags;  /**< スレッドの属性               */
 	thr_state                 state;  /**< スレッドの状態               */
 	tid                          id;  /**< Thread ID                    */
-	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ */
-	refcounter                 refs;  /**< 参照カウンタ                 */
+	void                       *ksp;  /**< スレッドスイッチコンテキスト */
 	struct _list               link;  /**< スケジューラキューへのリンク */
 	struct _list          proc_link;  /**< プロセス管理情報のリンク     */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ     */
 	struct _thread_attr        attr;  /**< スレッド属性                 */
 	struct _thread          *parent;  /**< 親スレッド                   */
-	struct _wque_waitqueue     wque;  /**< wait待ち合せ中子スレッド     */
+	struct _queue           waiters;  /**< wait待ち合わせ中の子スレッド */
+	struct _wque_waitqueue     pque;  /**< wait待ち合せ中親スレッド     */
+	struct _wque_waitqueue     cque;  /**< wait待ち合せ中子スレッド     */
 	exit_code              exitcode;  /**< 終了コード                   */
 }thread;
 
@@ -108,9 +126,13 @@ typedef struct _thread_db{
 	( ( ( (_thr)->state ) != THR_TSTATE_EXIT ) &&	\
 	  ( ( (_thr)->state ) != THR_TSTATE_DEAD ) )
 
+int thr_thread_wait(struct _thr_wait_res *_resp);
+void thr_thread_exit(exit_code _ec);
 int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio, 
 		      thr_flags _flags, struct _thread **_thrp);
-void thr_thread_switch(struct _thread *prev, struct _thread *next);
+void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
+bool thr_ref_dec(struct _thread *_thr);
+bool thr_ref_inc(struct _thread *_thr);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

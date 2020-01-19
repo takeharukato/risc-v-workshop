@@ -4,7 +4,7 @@ include ${top}/Makefile.inc
 objects=tst-spinlock.o tst-atomic.o tst-atomic64.o tst-memset.o tst-vmmap.o tst-pcache.o \
 	tst-cpuinfo.o tst-fixed-point.o tst-proc.o
 ifneq ($(CONFIG_HAL),y)
-objects += tst-rv64-pgtbl.o tst-irqctrlr.o
+objects += tst-rv64-pgtbl.o tst-irqctrlr.o tst-bsp-stack.o
 endif
 
 ifeq ($(CONFIG_HAL),y)

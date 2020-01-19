@@ -41,7 +41,6 @@ hal_set_stack_pointer(void *new_sp){
 	__asm__ __volatile__("mov %0, %%rsp" : "=r" (new_sp));
 }
 
-void hal_call_with_newstack(void (*_func)(void *_argp), void *_argp, void *_new_sp,
-    void **old_sp);
+void hal_call_with_newstack(void (*_func)(), void *_argp, void *_new_sp);
 #endif  /* !ASM_FILE */
 #endif  /*  _HAL_STACK_H   */

@@ -39,8 +39,8 @@ get_next_thread(void){
 	--idx;  /* レディキュー配列のインデックスに変換 */
 
 	/* キューの最初のスレッドを取り出す */
-	thr = container_of(queue_get_top(&ready_queue.que[idx].que), thread, link);
-	if ( queue_is_empty(&ready_queue.que[idx].que) )   /*  キューが空になった  */
+	thr = container_of(queue_get_top(&ready_queue.que[idx]), thread, link);
+	if ( queue_is_empty(&ready_queue.que[idx]) )   /*  キューが空になった  */
 		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
 	kassert( thr->state == THR_TSTATE_RUNABLE );   /* 実行可能スレッドである事を確認する */
 
@@ -65,18 +65,19 @@ sched_thread_add(thread *thr){
 
 	/* スレッドがどこにもリンクされていないことを確認する */
 	kassert(list_not_linked(&thr->link));  
-	kassert( thr->state == THR_TSTATE_RUNABLE );   /* 実行可能スレッドである事を確認する */
+	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
 
 	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
 
 	prio = thr->attr.cur_prio;
 
-	if ( queue_is_empty(&ready_queue.que[prio].que) )   /*  キューが空だった場合            */
-		bitops_set(prio, &ready_queue.bitmap);      /*  ビットマップ中のビットをセット  */
+	if ( queue_is_empty(&ready_queue.que[prio]) )   /*  キューが空だった場合     */
+		bitops_set(prio, &ready_queue.bitmap);  /* ビットマップ中のビットをセット */
+	/* キューにスレッドを追加          */
+	queue_add(&ready_queue.que[prio], &thr->link);
+	/* レディキューをアンロック   */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 
-	queue_add(&ready_queue.que[prio].que, &thr->link);  /*  キューにスレッドを追加          */
-
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
 }
 
 /**
@@ -92,11 +93,12 @@ sched_thread_del(thread *thr){
 
 	prio = thr->attr.cur_prio;
 
-	queue_del(&ready_queue.que[prio].que, &thr->link);  /*  キューにスレッドを追加          */
-	if ( queue_is_empty(&ready_queue.que[prio].que) )   /*  キューが空だった場合            */
-		bitops_clr(prio, &ready_queue.bitmap);      /*  ビットマップ中のビットをクリア  */
+	queue_del(&ready_queue.que[prio], &thr->link);  /*  キューからスレッドを削除 */
+	if ( queue_is_empty(&ready_queue.que[prio]) )   /*  キューが空になった場合   */
+		bitops_clr(prio, &ready_queue.bitmap);  /*  ビットマップ中のビットをクリア  */
 
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック   */
+	/* レディキューをアンロック   */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 }
 
 /**
@@ -109,7 +111,7 @@ sched_schedule(void) {
 	intrflags     iflags;
 
 	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
-	prev = ti_get_current_thread();               /* 実行中のスレッドの管理情報を取得     */
+	prev = ti_get_current_thread();  /* 実行中のスレッドの管理情報を取得 */
 
 	if ( ti_dispatch_disabled() ) {
 
@@ -121,9 +123,9 @@ sched_schedule(void) {
 		goto schedule_out;
 	}
 
-	ti_set_preempt_active();                     /* プリエンプションの抑止 */
+	ti_set_preempt_active();         /* プリエンプションの抑止 */
 
-	next = get_next_thread();                     /* 次に実行するスレッドの管理情報を取得 */
+	next = get_next_thread();        /* 次に実行するスレッドの管理情報を取得 */
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;
 
@@ -139,7 +141,7 @@ sched_schedule(void) {
 
 	thr_thread_switch(prev, next);  /* スレッド切り替え */
 
-	cur = ti_get_current_thread();
+	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
 	cur->state = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
 
 ena_preempt_out:
@@ -183,10 +185,10 @@ void
 sched_init(void){
 	int i;
 
-	spinlock_init(&ready_queue.lock);
-	bitops_zero(&ready_queue.bitmap);
+	spinlock_init(&ready_queue.lock);  /* ロックを初期化       */
+	bitops_zero(&ready_queue.bitmap);  /* ビットマップを初期化 */
 	for( i = 0; SCHED_MAX_PRIO > i; ++i) {
 
-		queue_init(&ready_queue.que[i].que);
+		queue_init(&ready_queue.que[i]);  /* レディキューを初期化 */
 	}
 }

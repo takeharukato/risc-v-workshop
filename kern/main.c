@@ -34,7 +34,7 @@ kern_common_tests(void){
 	tst_cpuinfo();
 	tst_vmmap();
 	tst_pcache();
-	tst_proc();
+//	tst_proc();
 #if defined(CONFIG_HAL)
 	tst_vmcopy();
 	tst_vmstrlen();
@@ -69,8 +69,11 @@ kern_init(void) {
 int 
 main(int argc, char *argv[]) {
 	cpu_id log_id;
+	void *new_sp;
 
 	kprintf("Kernel\n");
+
+	new_sp = ( (void *)&_tflib_bsp_stack ) + TI_KSTACK_SIZE - sizeof(thread_info);
 
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();
@@ -79,8 +82,7 @@ main(int argc, char *argv[]) {
 	krn_cpuinfo_init();  /* CPU情報を初期化する */
 	krn_cpuinfo_cpu_register(0, &log_id); /* BSPを登録する */
 	krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
-
-	kern_init();
+	hal_call_with_newstack(kern_init, NULL, new_sp);
 
 	tflib_kernlayout_finalize();
 	return 0;

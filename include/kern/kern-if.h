@@ -12,10 +12,10 @@
 #include <klib/freestanding.h>
 #include <kern/kern-cpuinfo.h>
 
-/* BSS領域, カーネル領域算出用シンボル */
+/* BSS領域, カーネル領域, テスト用スタック算出用シンボル */
 extern uint64_t __bss_start, __bss_end;
 extern uint64_t _kernel_start, _kheap_end;
-
+extern uint64_t _tflib_bsp_stack;
 
 void kern_init(void);
 void hal_platform_init(void);
