@@ -93,7 +93,6 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	void      *newstk;
 	thread       *thr;
 	thread       *res;
-	bool      ref_res;
 	intrflags  iflags;
 
 	if ( !SCHED_VALID_PRIO(prio) )
@@ -120,10 +119,11 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
 	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化         */
 	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化   */
+	list_init(&thr->children_link);    /* 子スレッド一覧へのリンクを初期化              */
+	queue_init(&thr->children);        /* 子スレッド一覧を初期化                    */
 	queue_init(&thr->waiters);         /* wait待ちスレッドのキューを初期化          */
 	wque_init_wait_queue(&thr->pque);  /* wait待ちスレッドの待ちキューを初期化(親)  */
 	wque_init_wait_queue(&thr->cque);  /* wait待ちスレッドの待ちキューを初期化(子)  */
-	thr->tinfo = NULL;                 /* スレッド情報を初期化                      */
 
 	thr->exitcode = 0;           /* 終了コードを初期化     */
 
@@ -147,7 +147,9 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	}
 
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
-	thr->ksp = newstk;      /* スタック位置をスタックの先頭に初期化 */
+	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
+	ti_thread_info_init(thr->tinfo); /* スレッド情報初期化                   */
+	thr->ksp = newstk;               /* スタック位置をスタックの先頭に初期化 */
 
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
@@ -191,8 +193,6 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	return 0;
 
 free_stk_out:
-	thr_ref_dec(thr->parent);        /* 親スレッドの参照を解放 */
-
 	if ( kstktop == NULL )
 		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
 
@@ -294,9 +294,9 @@ thr_thread_exit(exit_code ec){
 
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
 
-	/**
-	   @note 親スレッドの参照は, スレッド生成時に得ている
-	 */
+	res = thr_ref_inc(cur->parent);        /* 親スレッドの参照を獲得 */
+	kassert( !res );  /* 親スレッドは存在するはず */
+
 	/* 親スレッドをロック */
 	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
 
@@ -310,6 +310,8 @@ thr_thread_exit(exit_code ec){
 
 	/* 親スレッドのロックを解放 */
 	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
+
+	thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
 	
 	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放  */
 
@@ -329,6 +331,7 @@ error_out:
    @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
    @param[in]  prio    初期化時のスレッド優先度
    @param[in]  kstack  カーネルスタック
+   @param[in]  flags  スレッド属性フラグ
    @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
    @retval     0      正常終了
    @retval    -EINVAL 不正な優先度を指定した
@@ -356,8 +359,6 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 
 	/* スレッドを生成したスレッドを親スレッドに設定 */
 	thr->parent = ti_get_current_thread(); 
-	ref_res = thr_ref_inc(thr->parent);  /* スレッドの参照を取得 */
-	kassert( ref_res );  /* 親スレッドは存在するはず */
 	
 	return 0;
 
@@ -427,14 +428,27 @@ thr_ref_dec(thread *thr){
 
 	return res;
 }
+/**
+   アイドルスレッド
+   @param[in] arg 引数へのポインタ
+ */
+static void
+do_idle(void __unused *arg){
 
+	for( ; ; ){
+
+		sched_schedule();
+	}
+}
 /**
    スレッド情報管理機構を初期化する
  */
 void
 thr_init(void){
-	int rc;
-	int  i;
+	int          rc;
+	thread_info *ti;
+	thread     *thr;
+	int           i;
 
 	/* スレッド管理情報のキャッシュを初期化する */
 	rc = slab_kmem_cache_create(&thr_cache, "thread cache", sizeof(thread),
@@ -449,4 +463,12 @@ thr_init(void){
 		bitops_set(i, &g_thrdb.idmap);  /* 予約IDを使用済みIDに設定 */
 	}
 
+	/** アイドルスレッド
+	    TODO: idを即値で書かないこと
+	 */
+	ti = ti_get_current_thread_info();
+	rc = create_thread_common(0, (vm_vaddr)do_idle, NULL, ti->kstack, SCHED_MIN_RR_PRIO, 
+				  THR_THRFLAGS_KERNEL, &thr);
+	kassert( rc == 0 );
+	thr->parent = thr;  /* 自分自身を参照 */
 }

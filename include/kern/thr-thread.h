@@ -81,22 +81,24 @@ typedef struct _thread_attr{
    スレッド管理情報
  */
 typedef struct _thread{
-	spinlock                   lock;  /**< スレッド管理情報のロック     */
-	refcounter                 refs;  /**< 参照カウンタ                 */
-	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ */
-	thr_flags                 flags;  /**< スレッドの属性               */
-	thr_state                 state;  /**< スレッドの状態               */
-	tid                          id;  /**< Thread ID                    */
-	void                       *ksp;  /**< スレッドスイッチコンテキスト */
-	struct _list               link;  /**< スケジューラキューへのリンク */
-	struct _list          proc_link;  /**< プロセス管理情報のリンク     */
-	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ     */
-	struct _thread_attr        attr;  /**< スレッド属性                 */
-	struct _thread          *parent;  /**< 親スレッド                   */
-	struct _queue           waiters;  /**< wait待ち合わせ中の子スレッド */
-	struct _wque_waitqueue     pque;  /**< wait待ち合せ中親スレッド     */
-	struct _wque_waitqueue     cque;  /**< wait待ち合せ中子スレッド     */
-	exit_code              exitcode;  /**< 終了コード                   */
+	spinlock                   lock;  /**< スレッド管理情報のロック           */
+	refcounter                 refs;  /**< 参照カウンタ                       */
+	RB_ENTRY(_thread)           ent;  /**< スレッド管理ツリーのエントリ       */
+	thr_flags                 flags;  /**< スレッドの属性                     */
+	thr_state                 state;  /**< スレッドの状態                     */
+	tid                          id;  /**< Thread ID                          */
+	void                       *ksp;  /**< スレッドスイッチコンテキスト       */
+	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ           */
+	struct _list               link;  /**< スケジューラキューへのリンク       */
+	struct _list          proc_link;  /**< プロセス管理情報のリンク           */
+	struct _list      children_link;  /**< 親スレッドのchildrenキューのリンク */
+	struct _thread_attr        attr;  /**< スレッド属性                       */
+	struct _thread          *parent;  /**< 親スレッド                         */
+	struct _queue          children;  /**< 子スレッド                         */
+	struct _queue           waiters;  /**< wait待ち合わせ中の子スレッド       */
+	struct _wque_waitqueue     pque;  /**< wait待ち合せ中親スレッド           */
+	struct _wque_waitqueue     cque;  /**< wait待ち合せ中子スレッド           */
+	exit_code              exitcode;  /**< 終了コード                         */
 }thread;
 
 /**

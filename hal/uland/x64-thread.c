@@ -17,21 +17,18 @@
 
 /**
    スレッドコンテキストを作成
+   @param[in]  entry  スレッドの開始アドレス
+   @param[in]  thr_sp スレッド開始時のユーザランドスタックポインタ
+   @param[in]  flags  スレッド属性フラグ
    @param[out] stkp コンテキスト保存先を確保するスタックアドレスを指し示すポインタのアドレス
  */
 void
 hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void **stkp) {
-	thread_info            *ti;
 	trap_context         *trap;
-	x64_thrsw_context *thrctx;
-
-	/* カーネルスタックポインタをスレッド情報アドレスに設定
-	 */
-	ti = (thread_info *)( ( (void *)*stkp ) + TI_KSTACK_SIZE - sizeof(thread_info) );
-	ti_thread_info_init(ti); /* スレッド情報初期化 */
+	x64_thrsw_context  *thrctx;
 
 	/* 例外コンテキスト位置 */
-	trap = (trap_context *)((void *)ti - sizeof(trap_context)); 
+	trap = (trap_context *)((void *)*stkp - sizeof(trap_context)); 
 	/* スレッドスイッチコンテキスト位置 */
 	thrctx = (x64_thrsw_context *)((void *)trap - sizeof(x64_thrsw_context)); 
 

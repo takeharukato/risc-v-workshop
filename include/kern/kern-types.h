@@ -73,7 +73,7 @@ typedef uint32_t         thr_flags;  /*< スレッドの属性                */
 typedef uint32_t   proc_wait_flags;  /*< スレッド待ち合わせフラグ      */
 typedef uint64_t         exit_code;  /*< スレッド終了コード            */
 typedef uint32_t       mutex_flags;  /*< mutexの属性                   */
-typedef vm_paddr        entry_addr;  /*< エントリアドレス              */
+typedef vm_vaddr        entry_addr;  /*< エントリアドレス              */
 /*
  * プロセス管理
  */
