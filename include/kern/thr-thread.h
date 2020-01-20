@@ -34,9 +34,12 @@
    スレッドID
  */
 #define THR_TID_MAX               (KC_THR_MAX)        /**< スレッドID総数   */
-#define THR_TID_RSV_ID_NR         (32)                /**< 予約ID数         */
+#define THR_TID_RSV_ID_NR         (ULONGLONG_C(32))   /**< 予約ID数         */
 #define THR_TID_INVALID           (~(ULONGLONG_C(0))) /**< 不正スレッドID   */
 #define THR_TID_AUTO              THR_TID_INVALID     /**< ID自動割り当て   */
+
+#define THR_TID_IDLE              (ULONGLONG_C(0))    /**< アイドルスレッドのスレッドID */
+#define THR_TID_REAPER            (ULONGLONG_C(1))    /**< 刈り取りスレッドのスレッドID */
 
 struct _thread_info;
 

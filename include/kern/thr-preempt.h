@@ -64,7 +64,7 @@ struct _thread_info *ti_get_current_thread_info(void);
 cpu_id ti_current_cpu_get(void);
 void ti_bind_thread(struct _thread *_thr, struct _thread_info *_ti);
 void ti_update_current_cpu(void);
-void ti_thread_info_init(struct _thread_info *_ti);
+void ti_thread_info_init(struct _thread *thr);
 
 bool ti_dispatch_disabled(void);
 void ti_inc_preempt(void);

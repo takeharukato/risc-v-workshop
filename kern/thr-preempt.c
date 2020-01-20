@@ -78,11 +78,12 @@ ti_update_current_cpu(void) {
 
 /**
    スレッド情報を初期化する
-   @param[in] ti      スレッド情報
+   @param[in] thr      スレッド管理情報
    @note テストプログラムから使用するためにthread-kstack.cから独立して定義
  */
 void
-ti_thread_info_init(thread_info *ti){
+ti_thread_info_init(thread *thr){
+	thread_info *ti = thr->tinfo;  /* スレッド情報 */
 
 	ti->magic = TI_MAGIC;  /* メモリ中のスタックの底を目視確認するマジック番号設定 */
 
@@ -91,7 +92,7 @@ ti_thread_info_init(thread_info *ti){
 	ti->flags   = 0;     /* 例外出口制御フラグを初期化                               */
 	ti->mdflags = 0;     /* アーキ固有例外出口制御フラグを初期化                     */
 	ti->kstack = (void *)truncate_align(ti, TI_KSTACK_SIZE); /* カーネルスタック設定 */
-	ti->thr  = NULL;     /* TODO: カレントCPUのアイドルスレッドを指すように修正      */
+	ti->thr  = thr;      /* スレッドを指すように初期化                               */
 	ti->cpu = krn_current_cpu_get();  /*  現在のCPUIDを設定 */
 }
 

@@ -328,8 +328,8 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	    NULL, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &thr);
 	if ( rc != 0 ) 
 		goto free_stk_out;  /*  スレッドの生成に失敗した */
-	/* TODO: スレッド管理作成後にコメントを外す */
-	//queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
+
+	queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
 
 	new_proc->id = thr->id;                                   /* プロセスIDを設定 */
 

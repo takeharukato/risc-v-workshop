@@ -54,10 +54,6 @@ release_thread(thread *thr){
 
 	kassert( list_not_linked(&thr->link) );  /* レディキューに繋がっていないことを確認 */
 
-	sched_thread_del(thr);  /* レディキューから外す */
-	/* wait待ち中の子スレッドを起こす */
-	// TODO 修正 wque_wakeup(&thr->cque, WQUE_DESTROYED);  
-	
 	cpu = krn_current_cpu_get();
 	cinf = krn_cpuinfo_get(cpu);
 
@@ -148,7 +144,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
-	ti_thread_info_init(thr->tinfo); /* スレッド情報初期化                   */
+	ti_thread_info_init(thr); /* スレッド情報初期化                   */
 	thr->ksp = newstk;               /* スタック位置をスタックの先頭に初期化 */
 
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
@@ -273,11 +269,17 @@ error_out:
 /**
    スレッド終了システムコール実処理
    @param[in] ec スレッド終了コード
+   @note LO reaperスレッドのロック, reaper内に追加するスレッドのロック
  */
 void
 thr_thread_exit(exit_code ec){
 	bool            res;
+	thread          key;
 	thread         *cur;
+	thread      *reaper;
+	thread         *thr;
+	list            *lp;
+	list            *np;
 	thr_wait_entry  ent;
 	wque_reason  reason;
 	intrflags    iflags;
@@ -294,10 +296,9 @@ thr_thread_exit(exit_code ec){
 
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
 
-	res = thr_ref_inc(cur->parent);        /* 親スレッドの参照を獲得 */
-	kassert( !res );  /* 親スレッドは存在するはず */
-
-	/* 親スレッドをロック */
+	/* 親スレッドをロック
+	   @note 親スレッドの参照は生成時に獲得済み
+	 */
 	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
 
 	queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録 */
@@ -312,7 +313,51 @@ thr_thread_exit(exit_code ec){
 	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
 
 	thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
+
+	/* 子スレッドをreaper threadに引き渡す
+	 */
+	key.id = THR_TID_REAPER;
+	/* スレッド管理ツリーのロックを獲得 */
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+
+	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* 生成したスレッドを登録 */
+
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	kassert( reaper != NULL );
+
+	res = thr_ref_inc(reaper);      /*  Reaperスレッドの参照を取得    */
+	kassert( res );
 	
+	/* Reaperスレッドのロックを獲得 */
+	spinlock_lock_disable_intr(&reaper->lock, &iflags);
+
+	/**
+	   Reaperの子スレッドに追加
+	 */
+	queue_for_each_safe(lp, &cur->children, np) {
+
+		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
+		spinlock_lock(&thr->lock);                      /* 子スレッドのロックを獲得 */
+		
+		/** 子スレッドをReaperの子に移動
+		 */
+		/* 自スレッドのキューから取り外す */
+		queue_del(&cur->children, &thr->children_link); 
+		/* Reaperスレッドのキューに追加する */
+		queue_add(&reaper->children, &thr->children_link);  
+
+		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
+	}
+
+	/* Reaperスレッドのロックを解放 */
+	spinlock_unlock_restore_intr(&reaper->lock, &iflags);
+
+	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* 子スレッドを起床 */
+
+	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
+	kassert( !res );
+
 	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放  */
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放          */
@@ -343,6 +388,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 		  thr_flags flags, thread **thrp){
 	int            rc;
 	thread       *thr;
+	bool      ref_res;
 
 	if ( !SCHED_VALID_PRIO(prio) )
 		return -EINVAL;
@@ -359,7 +405,10 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 
 	/* スレッドを生成したスレッドを親スレッドに設定 */
 	thr->parent = ti_get_current_thread(); 
-	
+
+	ref_res = thr_ref_inc(thr->parent);        /* 親スレッドの参照を獲得 */
+	kassert( ref_res );  /* 親スレッドは存在するはず */
+
 	return 0;
 
 error_out:
@@ -471,4 +520,5 @@ thr_init(void){
 				  THR_THRFLAGS_KERNEL, &thr);
 	kassert( rc == 0 );
 	thr->parent = thr;  /* 自分自身を参照 */
+	ti->thr = thr;      /* スレッド情報からスレッドへのリンクを設定 */
 }
