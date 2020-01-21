@@ -12,6 +12,7 @@
 #include <kern/kern-cpuinfo.h>
 #include <kern/thr-if.h>
 
+#include <hal/riscv64.h>
 #include <hal/hal-traps.h>
 #include <hal/hal-thread.h>
 
@@ -26,7 +27,6 @@ void
 hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void **stkp) {
 	trap_context         *trap;
 	rv64_thrsw_context *thrctx;
-	void                   *sp;
 
 	/* 例外コンテキスト位置 */
 	trap = (trap_context *)((void *)*stkp - sizeof(trap_context)); 
@@ -39,7 +39,7 @@ hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void *
 	memset(thrctx, 0, sizeof(rv64_thrsw_context));
 
 	/* スレッドスイッチ後の復帰先アドレスに例外出口処理ルーチンを設定 */
-	thrctx->ra = rv64_return_from_trap;
+	thrctx->ra = (reg_type)rv64_return_from_trap;
 
 	trap->epc = entry; /* 例外復帰後のアドレスにスレッドのエントリアドレスを設定 */
 
@@ -49,11 +49,11 @@ hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void *
 	trap->estatus &= ~( SSTATUS_SPP | SSTATUS_SPIE | SSTATUS_UPIE );
 	if ( flags & THR_THRFLAGS_USER ) {  /* ユーザスレッドの場合 */
 
-		trap->sp = thr_sp;  /* スタックポインタをユーザスタックに設定 */
+		trap->sp = (reg_type)thr_sp;  /* スタックポインタをユーザスタックに設定 */
 		trap->estatus |= SSTATUS_SPIE | SSTATUS_UPIE ; /* ユーザモードに復帰 */
 	} else {
 
-		trap->sp = (void *)*stkp;  /* スタックポインタをカーネルスタックに設定 */
+		trap->sp = (reg_type)*stkp;  /* スタックポインタをカーネルスタックに設定 */
 		trap->estatus |= SSTATUS_SPP | SSTATUS_SPIE; /* スーパバイザモードに復帰 */
 	}
 
