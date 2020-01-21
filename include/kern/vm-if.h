@@ -37,6 +37,15 @@
 #define VM_FLAGS_USER						\
 	( (0x0) << VM_FLAGS_ATTR_SHIFT )    /*< ユーザページ */
 
+#define VM_FLAGS_LARGE_PAGE						\
+	( (0x10) << VM_FLAGS_ATTR_SHIFT )   /*< ラージページ利用可能な領域の場合は利用する */
+
+#define VM_FLAGS_DIRTY							\
+	( (0x100) << VM_FLAGS_ATTR_SHIFT )  /*< ページ書き込み済み */
+
+#define VM_FLAGS_ACCESSED						\
+	( (0x200) << VM_FLAGS_ATTR_SHIFT )  /*< アクセス済み */
+
 #define VM_FLAGS_NONE                (0)    /*< マップ属性なし
 					       - ページアウト可能
 					       - ページフレームDB管理ページ

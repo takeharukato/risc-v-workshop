@@ -51,12 +51,14 @@ show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused s
 			kprintf("vaddr=%p has no map.\n", cur_vaddr);
 			continue;
 		}
-		kprintf("vaddr=%p paddr=%p pgsize=%ld prot=[%c|%c|%c] flags=[%c]\n",
+		kprintf("vaddr=%p paddr=%p pgsize=%ld prot=[%c|%c|%c] flags=[%c|%c|%c]\n",
 		    cur_vaddr, cur_paddr, pgsize,
 		    ( (prot & VM_PROT_READ)         ? ('R') : ('-') ),
 		    ( (prot & VM_PROT_WRITE)        ? ('W') : ('-') ),
 		    ( (prot & VM_PROT_EXECUTE)      ? ('E') : ('-') ),
-		    ( (flags & VM_FLAGS_SUPERVISOR) ? ('S') : ('U') ));
+		    ( (flags & VM_FLAGS_SUPERVISOR) ? ('S') : ('U') ),
+		    ( (flags & VM_FLAGS_ACCESSED)   ? ('A') : ('-') ),
+		    ( (flags & VM_FLAGS_DIRTY)      ? ('D') : ('-') ));
 	}
 #endif  /*  RV64_SHOW_PAGE_MAP  */
 }
@@ -87,7 +89,13 @@ pte_to_vmprot_and_vmflags(hal_pte pte, vm_prot *protp, vm_flags *flagsp){
 
 	if ( !( RV64_PTE_FLAGS(pte) & RV64_PTE_U ) )
 		flags |= VM_FLAGS_SUPERVISOR;  /* スーパバイザページ  */
-	
+
+	if ( ( RV64_PTE_FLAGS(pte) & RV64_PTE_A ) )
+		flags |= VM_FLAGS_ACCESSED;  /* アクセス済みページ  */
+
+	if ( ( RV64_PTE_FLAGS(pte) & RV64_PTE_D ) )
+		flags |= VM_FLAGS_DIRTY;  /* 書込み済みページ  */
+
 out:
 	*protp =   prot;  /* アクセス属性を返却 */
 	*flagsp = flags;  /* マップ属性を返却 */
@@ -118,6 +126,12 @@ vmprot_and_vmflags_to_pte(vm_prot prot, vm_flags flags, hal_pte *ptep){
 	if ( !( flags & VM_FLAGS_SUPERVISOR ) )
 		pte |= RV64_PTE_U;  /* ユーザアクセス可能 */
 	
+	if ( flags & VM_FLAGS_ACCESSED )
+		pte |= RV64_PTE_A;  /* アクセス済みページ  */
+
+	if ( flags & VM_FLAGS_DIRTY )
+		pte |= RV64_PTE_D;  /* ダーティページ  */
+
 	*ptep = pte;  /* PTE属性値を返却 */
 
 	return;
