@@ -42,21 +42,25 @@ ASMMAC_FUNCTION(entry)
 	li  a7, TI_THREAD_INFO_SIZE /* スレッド情報をスタックの底に設定  */
 	sub a4, a3, a7        /* a4がスレッド情報を指すように設定        */
 
+	li  a2, HAL_KERN_VMA_BASE     /* カーネル仮想アドレスオフセット     */
+
 	/* スレッド情報
-         * 上記の処理でa3, a4, a5に以下の値が設定されている
+         * 上記の処理でa2, a3, a4, a5に以下の値が設定されている
+	 * a2 カーネル仮想アドレスのベース
 	 * a3 自hartのスタックの底
 	 * a4 スレッド情報領域のアドレス
 	 * a5 自hartのスタックのトップ
 	 */
-	li  a2, TI_MAGIC              /* マジック番号読み込み            */
-	sw  a2, TI_MAGIC_OFFSET(a4)   /* マジック番号書き込み            */
-	sw  x0, TI_INTRCNT_OFFSET(a4) /* 割り込みカウント初期化          */
-	sw  x0, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化  */
-	sw  x0, TI_FLAGS_OFFSET(a4)   /* フラグ初期化                    */
-	sw  x0, TI_MDFLAGS_OFFSET(a4) /* アーキ依存フラグ初期化          */
-	sw  x0, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化               */
-	sw  a5, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化  */
-	sw  x0, TI_THR_OFFSET(a4)     /* 論理CPU番号初期化               */
+	li  a1, TI_MAGIC              /* マジック番号読み込み               */
+	sw  a1, TI_MAGIC_OFFSET(a4)   /* マジック番号書き込み               */
+	sw  x0, TI_INTRCNT_OFFSET(a4) /* 割り込みカウント初期化             */
+	sw  x0, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化     */
+	sw  x0, TI_FLAGS_OFFSET(a4)   /* フラグ初期化                       */
+	sw  x0, TI_MDFLAGS_OFFSET(a4) /* アーキ依存フラグ初期化             */
+	sw  x0, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化                  */
+	add a6, a5, a2                /* カーネル仮想アドレス内スレッド情報 */
+	sd  a6, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化     */
+
 
 	mv  sp, a4                    /*  スレッド情報位置にスタックポインタ設定     */
 
@@ -65,7 +69,6 @@ ASMMAC_FUNCTION(entry)
 	/*
 	 * BSSクリア/マシンモード情報テーブル/MMU設定 (BSPのみ実施)
 	 */
-	li a2, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
 
 	/*
 	 * BSSクリア (BSS中にあるマシンモード情報テーブルを設定する前に実施)
