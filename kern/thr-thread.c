@@ -330,12 +330,14 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_inc(reaper);      /*  Reaperスレッドの参照を取得    */
 	kassert( res );
 	
-	/* Reaperスレッドのロックを獲得 */
-	spinlock_lock_disable_intr(&reaper->lock, &iflags);
 
 	/**
 	   Reaperの子スレッドに追加
+	   TODO: add childを別操作に独立
 	 */
+	/* Reaperスレッドのロックを獲得 */
+	spinlock_lock_disable_intr(&reaper->lock, &iflags);
+
 	queue_for_each_safe(lp, &cur->children, np) {
 
 		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
@@ -354,10 +356,10 @@ thr_thread_exit(exit_code ec){
 	/* Reaperスレッドのロックを解放 */
 	spinlock_unlock_restore_intr(&reaper->lock, &iflags);
 
-	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* 子スレッドを起床 */
-
 	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
 	kassert( !res );
+
+	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* 子スレッドを起床 */
 
 	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放  */
 
