@@ -50,11 +50,13 @@ hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void *
 	if ( flags & THR_THRFLAGS_USER ) {  /* ユーザスレッドの場合 */
 
 		trap->sp = (reg_type)thr_sp;  /* スタックポインタをユーザスタックに設定 */
-		trap->estatus |= SSTATUS_SPIE | SSTATUS_UPIE ; /* ユーザモードに復帰 */
+		/* ユーザモードに復帰 */
+		trap->estatus |= SSTATUS_SPIE | SSTATUS_UPIE ; 
 	} else {
 
 		trap->sp = (reg_type)*stkp;  /* スタックポインタをカーネルスタックに設定 */
-		trap->estatus |= SSTATUS_SPP | SSTATUS_SPIE; /* スーパバイザモードに復帰 */
+		/* スーパバイザモードに復帰 */
+		trap->estatus |= SSTATUS_SUM | SSTATUS_SPP | SSTATUS_SPIE; 
 	}
 
 	*stkp = (void *)thrctx;  /* スレッドスイッチコンテキストを指すようにスタックを更新 */

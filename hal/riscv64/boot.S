@@ -143,7 +143,11 @@ ap_boot: /* APの処理再開位置 */
 	csrr a1, mstatus          /* mstatusを読み込む */
 	li a2, ~MSTATUS_MPP_MASK  /* Machine Previous Privilege Modeビットをクリアする */
 	and a1, a1, a2
-	li a2, MSTATUS_MPP_S  /* Machine Previous Privilege Modeを supervisor modeに設定 */
+	/* Supervisor User Memory accessビットを設定し, 
+	 * Supervisorからユーザメモリアクセスを許可, 
+	 * Machine Previous Privilege Modeを supervisor modeに設定
+	 */
+	li a2, (MSTATUS_MPP_S|SSTATUS_SUM)  
 	or a1, a1, a2         
 	csrw mstatus, a1      /* mstatusを更新                                     */
 
