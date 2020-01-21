@@ -12,6 +12,7 @@
 
 #include <kern/page-if.h>
 #include <kern/kern-if.h>
+#include <kern/proc-if.h>
 #include <kern/thr-if.h>
 #include <kern/sched-if.h>
 
@@ -320,7 +321,7 @@ thr_thread_exit(exit_code ec){
 	/* スレッド管理ツリーのロックを獲得 */
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
 
-	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* 生成したスレッドを登録 */
+	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* Reaperスレッドを取得 */
 
 	/* スレッド管理ツリーのロックを解放 */
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
@@ -358,7 +359,7 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
 	kassert( !res );
 
-	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放  */
+	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放  */
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放          */
 
@@ -408,6 +409,9 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 
 	ref_res = thr_ref_inc(thr->parent);        /* 親スレッドの参照を獲得 */
 	kassert( ref_res );  /* 親スレッドは存在するはず */
+
+	if ( thrp != NULL )
+		*thrp = thr;  /* スレッドを返却 */
 
 	return 0;
 
@@ -465,10 +469,6 @@ thr_ref_dec(thread *thr){
 		/* スレッドをツリーから削除 */
 		thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
 		kassert( thr_res != NULL );
-		/* TODO: プロセスIDと一致しない場合にのみ返却する */
-		bitops_clr(thr->id, &g_thrdb.idmap);      /* IDを返却 */
-
-		/* TODO: プロセスキューが空だったらプロセスIDのTIDを返却 */
 
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
@@ -476,6 +476,25 @@ thr_ref_dec(thread *thr){
 	}
 
 	return res;
+}
+/**
+   スレッドIDを返却する
+   @param[in] id スレッドID
+   @note マスタスレッドが他のスレッドより先に終了したプロセスの
+   プロセスIDを返却するために使用
+ */
+void
+release_threadid(tid id){
+	intrflags   iflags;
+
+	/* スレッド管理ツリーのロックを獲得 */
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+
+	bitops_clr(id, &g_thrdb.idmap);  /* IDを解放する */
+
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+
 }
 /**
    アイドルスレッド

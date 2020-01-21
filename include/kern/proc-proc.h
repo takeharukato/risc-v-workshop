@@ -51,6 +51,7 @@ typedef struct _proc{
 	vm_pgtbl                       pgt; /**< ページテーブル           */
 	struct _refcounter            refs; /**< 参照カウンタ             */
 	struct _queue               thrque; /**< スレッドキュー           */
+	struct _thread             *master; /**< マスタースレッド         */
 	pid                             id; /**< プロセスID               */
 	proc_segment segments[PROC_SEG_NR]; /**< セグメント               */
 	char           name[PROC_NAME_LEN]; /**< プロセス名               */
@@ -76,7 +77,9 @@ int proc_user_allocate(entry_addr _entry, struct _proc **_procp);
 bool proc_ref_inc(struct _proc *_p);
 bool proc_ref_dec(struct _proc *_p);
 struct _proc *proc_find_by_pid(pid _target);
+struct _thread *proc_find_thread(pid _target);
 int proc_add_thread(struct _proc *_p, struct _thread *_thr);
+bool proc_del_thread(struct _proc *p, struct _thread *thr);
 void proc_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_PROC_PROC_H   */

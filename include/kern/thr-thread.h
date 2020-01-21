@@ -42,6 +42,7 @@
 #define THR_TID_REAPER            (ULONGLONG_C(1))    /**< 刈り取りスレッドのスレッドID */
 
 struct _thread_info;
+struct _proc;
 
 /**
    スレッドの状態
@@ -90,6 +91,7 @@ typedef struct _thread{
 	thr_flags                 flags;  /**< スレッドの属性                     */
 	thr_state                 state;  /**< スレッドの状態                     */
 	tid                          id;  /**< Thread ID                          */
+	struct _proc                 *p;  /**< プロセス管理情報へのポインタ       */
 	void                       *ksp;  /**< スレッドスイッチコンテキスト       */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ           */
 	struct _list               link;  /**< スケジューラキューへのリンク       */
@@ -138,6 +140,7 @@ int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, th
 void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
 bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);
+void release_threadid(tid _id);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

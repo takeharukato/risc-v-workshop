@@ -185,6 +185,8 @@ free_user_process(proc *p){
    @param[in] target 検索対象プロセスのpid
    @return NULL 指定されたpidのプロセスが見つからなかった
    @return 見つかったプロセスのプロセス管理情報
+   @note   プロセスへの参照をインクリメントするので返却後に
+   proc_ref_dec()を呼び出すこと
  */
 proc *
 proc_find_by_pid(pid target){
@@ -198,6 +200,7 @@ proc_find_by_pid(pid target){
 	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
 
 	p = RB_FIND(_procdb_tree, &g_procdb.head, &key); /* プロセス管理情報を検索 */
+
 	if ( p != NULL )
 		proc_ref_inc(p);  /* プロセス管理構造への参照をインクリメント */
 
@@ -205,6 +208,53 @@ proc_find_by_pid(pid target){
 	spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
 
 	return p;  /* プロセス管理情報を返却 */
+}
+/**
+   プロセスのマスタースレッドを取得する
+   @param[in] target 検索対象プロセスのpid
+   @return NULL 指定されたpidのプロセスが見つからなかった
+   @return 見つかったプロセスのマスタースレッド
+   @note   スレッドへの参照をインクリメントするので返却後に
+   thr_ref_dec()を呼び出すこと
+ */
+thread *
+proc_find_thread(pid target){
+	bool         res;
+	proc          *p;
+	thread      *thr;
+	proc         key;
+	intrflags iflags;
+	
+	key.id = target; /* キーとなるpidを設定 */
+
+	/* プロセスDBのロックを獲得 */
+	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
+
+	p = RB_FIND(_procdb_tree, &g_procdb.head, &key); /* プロセス管理情報を検索 */
+	if ( p == NULL )
+		goto unlock_out;
+
+	res = proc_ref_inc(p);  /* スレッド獲得処理用の参照を獲得 */
+	kassert( res );  /* 対象のスレッドが含まれるはずなので参照を獲得できる */
+
+	/* プロセスDBのロックを解放 */
+	spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
+
+	thr = p->master;        /* マスタースレッド取得     */
+
+	res = thr_ref_inc(thr); /*  スレッドの参照を取得    */
+	kassert( res );
+
+	res = proc_ref_dec(p);  /* スレッド獲得処理用の参照を獲得 */
+	kassert( !res );  /* 最終参照ではないはず */
+
+	return thr;  /* スレッド管理情報を返却 */
+
+unlock_out:
+	/* プロセスDBのロックを解放 */
+	spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
+
+	return NULL;
 }
 
 /**
@@ -225,6 +275,7 @@ proc_add_thread(proc *p, thread *thr){
 	spinlock_lock_disable_intr(&p->lock, &iflags);
 
 	queue_add(&p->thrque, &thr->proc_link);  /* スレッドキューに追加      */	
+	thr->p = p;  /*  プロセスへのポインタを更新 */
 
 	/* プロセス管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&p->lock, &iflags);
@@ -253,12 +304,24 @@ proc_del_thread(proc *p, thread *thr){
 
 	queue_del(&p->thrque, &thr->proc_link);  /* スレッドキューから削除  */	
 
-	rc = proc_ref_dec(p);  /* スレッド削除に伴う参照のデクリメント */
-	kassert( !rc );  /* 上記で参照を得ているので最終参照ではないはず */
-
 	/* プロセス管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&p->lock, &iflags);
 
+	rc = proc_ref_dec(p);  /* スレッド削除に伴う参照のデクリメント */
+	kassert( !rc );  /* 上記で参照を得ているので最終参照ではないはず */
+
+	/* 最初のスレッドのスレッドIDは, スレッド終了後もプロセスIDとして使用されるため,
+	 * プロセスIDと一致しない場合にのみスレッドIDを返却する 
+	 */
+	if ( p->id != thr->id ) 
+		release_threadid(thr->id); /* スレッドIDを返却 */
+
+	if ( queue_is_empty(&p->thrque) )  /* プロセスキューが空だったらプロセスIDを返却 */
+		release_threadid(p->id);
+	else if ( thr == thr->p->master )  /* マスタースレッドを更新 */
+		p->master = container_of(queue_ref_top( &thr->p->thrque ),
+		    thread, proc_link);
+	
 	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を獲得 */
 
 	return  rc;
@@ -330,8 +393,8 @@ proc_user_allocate(entry_addr entry, proc **procp){
 		goto free_stk_out;  /*  スレッドの生成に失敗した */
 
 	queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
-
-	new_proc->id = thr->id;                                   /* プロセスIDを設定 */
+	new_proc->master = thr;                         /* マスタースレッドを設定 */
+	new_proc->id = thr->id;                         /* プロセスIDを設定       */
 
         /* プロセス管理情報をプロセスツリーに登録 */
 	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
