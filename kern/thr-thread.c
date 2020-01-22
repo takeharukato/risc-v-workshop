@@ -297,25 +297,29 @@ thr_thread_exit(exit_code ec){
 
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
 
-	/* 親スレッドをロック
-	   @note 親スレッドの参照は生成時に獲得済み
+	/** 親スレッドからのwaitを待ち合せる
 	 */
-	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
+	do{
+		/* 親スレッドをロック
+		   @note 親スレッドの参照は生成時に獲得済み
+		*/
+		spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
 
-	queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録 */
+		queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録 */
+		
+		wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
 
-	wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
+		/* wait待ちキューで休眠する */
+		reason = wque_wait_on_queue_with_spinlock(&cur->cque, &cur->parent->lock);
 
-	/* wait待ちキューで休眠する */
-	reason = wque_wait_on_queue_with_spinlock(&cur->cque, &cur->parent->lock);
+		/* 親スレッドのロックを解放 */
+		spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
+
+		thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
+	}while( reason == WQUE_DESTROYED );
 	kassert( reason == WQUE_RELEASED );
 
-	/* 親スレッドのロックを解放 */
-	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
-
-	thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
-
-	/* 子スレッドをreaper threadに引き渡す
+	/* 子スレッドをreaper threadの子スレッドに設定する
 	 */
 	key.id = THR_TID_REAPER;
 	/* スレッド管理ツリーのロックを獲得 */
@@ -351,6 +355,14 @@ thr_thread_exit(exit_code ec){
 		queue_add(&reaper->children, &thr->children_link);  
 
 		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
+		kassert( cur == thr->parent );
+
+		res = thr_ref_dec(thr->parent);  /* 親スレッドの参照を解放 */
+		kassert( !res );  /* スレッド管理ツリーから自スレッドへの参照が残るはず */
+
+		res = thr_ref_inc(reaper);
+		kassert( res );  /* Reaperスレッドは常に存在する */
+		thr->parent = reaper;  /* Reaperスレッドを親スレッドに設定 */
 	}
 
 	/* Reaperスレッドのロックを解放 */
@@ -359,7 +371,7 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
 	kassert( !res );
 
-	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* 子スレッドを起床 */
+	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* wait待ち中の子スレッドを起床 */
 
 	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放  */
 
@@ -498,26 +510,47 @@ release_threadid(tid id){
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 
 }
+
 /**
    アイドルスレッド
    @param[in] arg 引数へのポインタ
- */
-static void
-do_idle(void __unused *arg){
+*/
+void
+thr_do_idle(void __unused *arg){
 
-	for( ; ; ){
+	for( ; ; ) {
 
 		sched_schedule();
 	}
 }
+
+/**
+   アイドルスレッドを生成する
+   @param[in] thrp スレッド管理情報を指し示すポインタの格納先アドレス
+ */
+void
+thr_idlethread_create(thread **thrp){
+	int          rc;
+	thread_info *ti;
+	thread     *thr;
+
+	ti = ti_get_current_thread_info(); /* スタック上のスレッド情報を参照 */
+	rc = create_thread_common(THR_TID_IDLE, (vm_vaddr)thr_do_idle, NULL, ti->kstack,
+				  SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, &thr);
+	kassert( rc == 0 );
+	thr->parent = thr;  /* 自分自身を参照 */
+	ti_bind_thread(thr, ti); /* スレッド情報からスレッドへのリンクを設定 */
+
+	if ( thrp != NULL )
+		*thrp = thr;   /* スレッド管理情報を返却 */
+}
+
 /**
    スレッド情報管理機構を初期化する
  */
 void
 thr_init(void){
 	int          rc;
-	thread_info *ti;
-	thread     *thr;
 	int           i;
 
 	/* スレッド管理情報のキャッシュを初期化する */
@@ -533,13 +566,8 @@ thr_init(void){
 		bitops_set(i, &g_thrdb.idmap);  /* 予約IDを使用済みIDに設定 */
 	}
 
-	/** アイドルスレッド
-	    TODO: idを即値で書かないこと
+	/**
+	   アイドルスレッドを生成
 	 */
-	ti = ti_get_current_thread_info();
-	rc = create_thread_common(0, (vm_vaddr)do_idle, NULL, ti->kstack, SCHED_MIN_RR_PRIO, 
-				  THR_THRFLAGS_KERNEL, &thr);
-	kassert( rc == 0 );
-	thr->parent = thr;  /* 自分自身を参照 */
-	ti->thr = thr;      /* スレッド情報からスレッドへのリンクを設定 */
+	thr_idlethread_create(NULL);
 }
