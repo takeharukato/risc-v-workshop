@@ -53,16 +53,6 @@ ti_current_cpu_get(void){
 
 	return ti->cpu; /* スレッド情報中に格納されているCPUを返却する  */
 }
-/**
-   スレッド情報にスレッドを設定する
-   @param[in]  thr スレッド
-   @param[out] ti  スレッド情報
- */
-void
-ti_bind_thread(thread *thr, thread_info *ti){
-
-	ti->thr = thr;  /*  スレッド情報にスレッドを設定する  */
-}
 
 /**
    スレッド情報の論理CPUIDを更新する

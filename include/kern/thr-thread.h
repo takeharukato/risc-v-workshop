@@ -142,7 +142,7 @@ bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);
 void release_threadid(tid _id);
 void thr_do_idle(void *_arg);
-void thr_idlethread_create(struct _thread **_thrp);
+int thr_idlethread_create(cpu_id _cpu, thread **_thrp);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

@@ -79,7 +79,7 @@ bool proc_ref_dec(struct _proc *_p);
 struct _proc *proc_find_by_pid(pid _target);
 struct _thread *proc_find_thread(pid _target);
 int proc_add_thread(struct _proc *_p, struct _thread *_thr);
-bool proc_del_thread(struct _proc *p, struct _thread *thr);
+bool proc_del_thread(struct _proc *_p, struct _thread *_thr);
 void proc_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_PROC_PROC_H   */

@@ -146,6 +146,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
 	ti_thread_info_init(thr); /* スレッド情報初期化                   */
+
 	thr->ksp = newstk;               /* スタック位置をスタックの先頭に初期化 */
 
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
@@ -198,6 +199,23 @@ free_thr_out:
 
 error_out:
 	return rc;
+}
+
+/**
+   アイドルスレッド
+   @param[in] arg 引数へのポインタ
+*/
+static void
+do_idle(void __unused *arg){
+	intrflags iflags;
+
+	for( ; ; ) {
+
+		krn_cpu_save_and_disable_interrupt(&iflags);
+		/* TODO: アーキ依存の割込み待ちプロセッサ休眠処理を入れる */
+		sched_schedule();
+		krn_cpu_restore_interrupt(&iflags);
+	}
 }
 
 /**
@@ -512,37 +530,43 @@ release_threadid(tid id){
 }
 
 /**
-   アイドルスレッド
-   @param[in] arg 引数へのポインタ
-*/
-void
-thr_do_idle(void __unused *arg){
-
-	for( ; ; ) {
-
-		sched_schedule();
-	}
-}
-
-/**
    アイドルスレッドを生成する
+   @param[in] cpu  論理プロセッサ番号
    @param[in] thrp スレッド管理情報を指し示すポインタの格納先アドレス
+   @retval    0    正常終了
+   @retval    -EINVAL 不正な優先度を指定した
+   @retval    -ENOMEM メモリ不足
+   @retval    -ENOSPC スレッドIDに空きがない
  */
-void
-thr_idlethread_create(thread **thrp){
+int
+thr_idlethread_create(cpu_id cpu, thread **thrp){
 	int          rc;
 	thread_info *ti;
 	thread     *thr;
+	tid          id;
 
 	ti = ti_get_current_thread_info(); /* スタック上のスレッド情報を参照 */
-	rc = create_thread_common(THR_TID_IDLE, (vm_vaddr)thr_do_idle, NULL, ti->kstack,
-				  SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, &thr);
-	kassert( rc == 0 );
+	/** アイドルスレッドを生成
+	 */
+	if ( cpu == 0 )
+		id = THR_TID_IDLE;  /* 論理プロセッサ番号0のアイドルスレッドに0番を割振る */
+	else
+		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
+
+	rc = create_thread_common(id, (vm_vaddr)do_idle, NULL, ti->kstack,
+	    SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, &thr);
+	if ( rc != 0 )
+		goto error_out;
+
 	thr->parent = thr;  /* 自分自身を参照 */
-	ti_bind_thread(thr, ti); /* スレッド情報からスレッドへのリンクを設定 */
 
 	if ( thrp != NULL )
 		*thrp = thr;   /* スレッド管理情報を返却 */
+
+	return 0;
+
+error_out:
+	return rc;
 }
 
 /**
@@ -565,9 +589,4 @@ thr_init(void){
 
 		bitops_set(i, &g_thrdb.idmap);  /* 予約IDを使用済みIDに設定 */
 	}
-
-	/**
-	   アイドルスレッドを生成
-	 */
-	thr_idlethread_create(NULL);
 }

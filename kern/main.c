@@ -54,8 +54,8 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
 	proc_init();  /* プロセス管理情報を初期化する */
-	sched_init(); /* スケジューラを初期化する */
 	thr_init(); /* スレッド管理機構を初期化する */
+	sched_init(); /* スケジューラを初期化する */
 	irq_init(); /* 割込み管理を初期化する */
 	tim_callout_init();  /* コールアウト機構を初期化する */
 	pagecache_init(); /* ページキャッシュ機構を初期化する */

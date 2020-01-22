@@ -12,9 +12,10 @@
 #include <kern/spinlock.h>
 #include <kern/thr-if.h>
 #include <kern/sched-if.h>
+#include <kern/kern-cpuinfo.h>
 
-/** レディキュー */
-static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,};
+static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,}; /** レディキュー      */
+static thread     *idle_threads[KC_CPUS_NR];                      /**< アイドルスレッド */
 
 /**
    実行可能なスレッドを返却する
@@ -108,10 +109,13 @@ void
 sched_schedule(void) {
 	thread  *prev, *next;
 	thread          *cur;
+	cpu_id       cur_cpu;
 	intrflags     iflags;
 
-	krn_cpu_save_and_disable_interrupt(&iflags); /* 割り込み禁止 */
+	krn_cpu_save_and_disable_interrupt(&iflags);         /* 割り込み禁止 */
+
 	prev = ti_get_current_thread();  /* 実行中のスレッドの管理情報を取得 */
+	cur_cpu = ti_current_cpu_get();  /* 実行中の論理プロセッサ番号を取得 */
 
 	if ( ti_dispatch_disabled() ) {
 
@@ -126,6 +130,10 @@ sched_schedule(void) {
 	ti_set_preempt_active();         /* プリエンプションの抑止 */
 
 	next = get_next_thread();        /* 次に実行するスレッドの管理情報を取得 */
+	if ( next == NULL )
+		next = idle_threads[cur_cpu];                  /* アイドルスレッドを参照 */
+	kassert( next != NULL );         /* 少なくともアイドルスレッドを参照しているはず */
+
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;
 
@@ -177,7 +185,25 @@ sched_delay_disptach(void) {
 
 	return false;  /* 遅延ディスパッチ要求処理済み */
 }
+/**
+   自プロセッサのアイドルスレッドを登録する
+ */
+void
+sched_idlethread_add(void){
+	int      rc;
+	thread *thr;
+	cpu_id  cpu;
 
+	cpu = krn_current_cpu_get();  /* 論理プロセッサ番号取得 */
+	rc = thr_idlethread_create(cpu, &thr); /* アイドルスレッドを生成 */
+	kassert( rc == 0 );
+
+	/**
+	   @note アイドルスレッド情報は他のプロセッサから参照されることは
+	   ないので排他不要
+	 */
+	idle_threads[cpu] = thr;  /* アイドルスレッドを登録 */
+}
 /**
    スケジューラの初期化
  */
@@ -191,4 +217,6 @@ sched_init(void){
 
 		queue_init(&ready_queue.que[i]);  /* レディキューを初期化 */
 	}
+
+	sched_idlethread_add();  /* BSP用のアイドルスレッドを生成 */
 }

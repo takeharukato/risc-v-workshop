@@ -87,6 +87,7 @@ void sched_thread_add(struct _thread *_thr);
 void sched_thread_del(struct _thread *_thr);
 void sched_schedule(void);
 bool sched_delay_disptach(void);
+void sched_idlethread_add(void);
 void sched_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _KERN_SCHED_IF_H   */
