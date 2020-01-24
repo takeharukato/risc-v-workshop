@@ -43,6 +43,7 @@ kern_common_tests(void){
 	tst_rv64pgtbl();
 	tst_irqctrlr();
 #endif 
+	tst_thread();
 }
 /** カーネルの初期化
  */

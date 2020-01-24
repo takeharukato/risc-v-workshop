@@ -52,7 +52,9 @@ vmmap1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	show_page_map(pgt1, USER_VMA_ADDR, PAGE_SIZE*2);
 	hal_pgtbl_activate(pgt1);
+#if defined(CONFIG_HAL)
 	*(uint64_t *)USER_VMA_ADDR = 0xdeadbeef;
+#endif  /* CONFIG_HAL */
 	hal_pgtbl_deactivate(pgt1);
 	hal_pgtbl_activate(hal_refer_kernel_pagetable());
 	show_page_map(pgt1, USER_VMA_ADDR, PAGE_SIZE*2);
