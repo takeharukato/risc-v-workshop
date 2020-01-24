@@ -30,8 +30,9 @@ int hal_pgtbl_enter(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_paddr _paddr, vm_prot _pr
 int hal_pgtbl_extract(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_paddr *_paddrp, 
     vm_prot *_protp, vm_flags *_flagsp, vm_size *_pgsizep);
 void hal_pgtbl_remove(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _len);
+void hal_pgtbl_activate(struct _vm_pgtbl_type *_pgt);
+void hal_pgtbl_deactivate(struct _vm_pgtbl_type *_pgt);
 void hal_flush_tlb(vm_pgtbl _pgt);
 int  hal_copy_kernel_pgtbl(vm_pgtbl _upgtbl);
 void hal_map_kernel_space(void);
 #endif  /*  _HAL_PGTBL_H  */
-

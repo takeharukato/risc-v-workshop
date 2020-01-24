@@ -476,6 +476,28 @@ hal_flush_tlb(vm_pgtbl __unused pgt){
 
 	//rv64_flush_tlb_local();  /* 自hartのTLBをフラッシュする */
 }
+/**
+   ページテーブルをロードする
+   @param[in]  pgt  ページテーブル
+ */
+void
+hal_pgtbl_activate(vm_pgtbl pgt){
+	/* hal_pgtbl_md     *md; */
+
+	/* md = &pgt->md;  /\* ページテーブルアーキテクチャ依存部を参照 *\/ */
+
+	/* rv64_write_satp(md->satp);  /\* ページテーブル読み込み *\/ */
+}
+
+/**
+   指定されたページテーブルに関するアドレス変換情報をフラッシュする
+   @param[in]  pgt  ページテーブル
+ */
+void
+hal_pgtbl_deactivate(vm_pgtbl pgt){
+
+	//rv64_flush_tlb_local();  /* 自hartのTLBをフラッシュする */
+}
 
 /**
    仮想アドレスにマップされている物理アドレスを得る
