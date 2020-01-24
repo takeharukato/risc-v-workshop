@@ -202,7 +202,7 @@ error_out:
 }
 
 /**
-   アイドルスレッド
+   アイドルスレッドループ関数 (内部関数)
    @param[in] arg 引数へのポインタ
 */
 static void
@@ -216,6 +216,100 @@ do_idle(void __unused *arg){
 		sched_schedule();
 		krn_cpu_restore_interrupt(&iflags);
 	}
+}
+
+/**
+   スレッドに子スレッドを追加する (内部関数)
+   @param[in] thr    追加する子スレッドのスレッド管理情報
+   @param[in] parent 追加先の親スレッド
+   @retval    0      正常終了
+   @retval   -ENOENT 解放処理中のスレッドを追加しようとした
+*/
+static int
+add_child_thread_nolock(thread *thr, thread *parent){
+	int              rc;
+	bool            res;
+
+	res = thr_ref_inc(parent);  /* 親スレッドの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 解放処理中 */
+		goto error_out;
+	}
+
+
+	res = thr_ref_inc(thr);  /* 子スレッドの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 解放処理中 */
+		goto unref_parent_out;
+	}
+
+	/*
+	 * スレッドを親の子スレッドに追加
+	 */
+
+	/* 以前の親スレッドキューから取り外し済みであることを確認 */
+	kassert( list_not_linked(&thr->children_link) ); 
+
+	/* 親スレッドのキューに追加する */
+	queue_add(&parent->children, &thr->children_link);  
+
+	thr->parent = parent;  /* 親スレッドを更新する */
+	res = thr_ref_inc(thr->parent);  /* 子スレッドから親スレッドへの参照を加算 */
+	kassert( res );  /* 親スレッドは常に存在する */
+
+	thr_ref_dec(thr);     /* 子スレッドの参照を解放 */
+
+	thr_ref_dec(parent);  /*  親スレッドの参照を解放 */
+
+	return 0;
+
+unref_parent_out:
+	thr_ref_dec(parent);      /*  親スレッドの参照を解放    */
+
+error_out:
+	return rc;
+}
+
+/**
+   指定した子スレッドを取り除く (内部関数)
+   @param[in] thr    取り除く子スレッドのスレッド管理情報
+   @param[in] parent 削除元の親スレッド
+*/
+static void
+del_child_thread_nolock(thread *thr, thread *parent){
+	bool            res;
+
+	res = thr_ref_inc(parent);  /* 親スレッドの参照を獲得 */
+	kassert( res ); /* 解放処理中でないことを確認 */
+
+	res = thr_ref_inc(thr);  /* 子スレッドの参照を獲得 */
+	kassert( res ); /* 解放処理中でないことを確認 */
+
+	/*
+	 * スレッドを親の子スレッドキューから外す
+	 */
+
+	/* スレッドキューに追加されていることを確認 */
+	kassert( !list_not_linked(&thr->children_link) ); 
+	
+	/* 指定された親スレッドの子を削除することを確認 */
+	kassert( thr->parent == parent );
+	
+	/* 親スレッドのキューから削除する */
+	queue_del(&parent->children, &thr->children_link);  
+
+	res = thr_ref_dec(thr->parent);  /* 子スレッドから親スレッドへの参照を減算 */
+	kassert( !res );  /* 上記で参照を得ているので最終参照とはならない */
+
+	thr->parent = NULL;  /* 親スレッドを更新する */
+
+	thr_ref_dec(thr);     /* 子スレッドの参照を解放 */
+
+	thr_ref_dec(parent);  /*  親スレッドの参照を解放 */
+
+	return ;
 }
 
 /**
@@ -235,9 +329,9 @@ thr_thread_wait(thr_wait_res *resp){
 	intrflags    iflags;
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
-	res = thr_ref_inc(cur);         /*  自スレッドの参照を取得    */
+	res = thr_ref_inc(cur);         /* 自スレッドの参照を取得     */
 	if ( !res )
-		goto error_out;         /*  終了処理中                */
+		goto error_out;         /* 終了処理中 */
 
 	/* 自スレッドをロック */
 	spinlock_lock_disable_intr(&cur->lock, &iflags);
@@ -255,7 +349,7 @@ thr_thread_wait(thr_wait_res *resp){
 	}	
 
 	/**
-	   wait待ち中の子スレッドの終了状態を取得
+	   wait待ち中の子スレッドを取り出し, 終了状態を取得
 	*/
 	ent = container_of(queue_get_top(&cur->waiters), thr_wait_entry, link);
 	thr = ent->thr;               /*  子スレッドを取得          */
@@ -352,10 +446,8 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_inc(reaper);      /*  Reaperスレッドの参照を取得    */
 	kassert( res );
 	
-
 	/**
 	   Reaperの子スレッドに追加
-	   TODO: add childを別操作に独立
 	 */
 	/* Reaperスレッドのロックを獲得 */
 	spinlock_lock_disable_intr(&reaper->lock, &iflags);
@@ -363,24 +455,32 @@ thr_thread_exit(exit_code ec){
 	queue_for_each_safe(lp, &cur->children, np) {
 
 		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
+
+		res = thr_ref_inc(thr);        /*  スレッドの参照を取得    */
+		kassert( res );
+
+		kassert( thr->parent == cur );  /* 自スレッドの子スレッドである事を確認 */
+
 		spinlock_lock(&thr->lock);                      /* 子スレッドのロックを獲得 */
-		
-		/** 子スレッドをReaperの子に移動
+
+		/*
+		 * 子スレッドをReaperの子に移動
 		 */
-		/* 自スレッドのキューから取り外す */
-		queue_del(&cur->children, &thr->children_link); 
-		/* Reaperスレッドのキューに追加する */
-		queue_add(&reaper->children, &thr->children_link);  
+		del_child_thread_nolock(thr, cur);    /* スレッドを取り除く */
+		add_child_thread_nolock(thr, reaper); /* reaperの子スレッドに追加する */
 
 		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
 		kassert( cur == thr->parent );
 
 		res = thr_ref_dec(thr->parent);  /* 親スレッドの参照を解放 */
-		kassert( !res );  /* スレッド管理ツリーから自スレッドへの参照が残るはず */
+		kassert( !res );  /* スレッド管理ツリーからの参照が残るはず */
 
-		res = thr_ref_inc(reaper);
-		kassert( res );  /* Reaperスレッドは常に存在する */
 		thr->parent = reaper;  /* Reaperスレッドを親スレッドに設定 */
+
+		res = thr_ref_inc(thr->parent);
+		kassert( res );  /* 親スレッドとなるreaperスレッドは常に存在する */
+
+		res = thr_ref_dec(thr);        /*  スレッドの参照を解放    */
 	}
 
 	/* Reaperスレッドのロックを解放 */
