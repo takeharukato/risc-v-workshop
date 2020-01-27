@@ -12,13 +12,15 @@
 #include <kern/spinlock.h>
 #include <kern/mutex.h>
 #include <kern/wqueue.h>
-#include <kern/thr-preempt.h>
+#include <kern/thr-if.h>
+#include <kern/sched-if.h>
 
 /**
    ウエイトキューにウエイトキューエントリを追加する
    @param[in] wque 操作対象のウエイトキュー
    @param[in] ent  追加するウエイトキューエントリ
    @retval 起床要因
+   @note LO: ウエイトキューのロック, スレッドのロックの順に獲得
  */
 static void
 enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
@@ -26,9 +28,16 @@ enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 
 	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
 
-	/* TODO: スレッド管理実装後にスレッドを休眠状態に遷移する処理を追加する */
-	ent->reason = WQUE_WAIT;              /* 待ち中に遷移する */
-	queue_add(&wque->que, &ent->link);   /* キューに追加     */
+	ent->reason = WQUE_WAIT;            /* 待ち中に遷移する */
+	queue_add(&wque->que, &ent->link);  /* キューに追加     */
+
+	/* @note 自スレッドへの操作であるため参照獲得は不要
+	 */
+	spinlock_lock(&ent->thr->lock);     /* スレッドのロックを獲得 */
+
+	ent->thr->state = THR_TSTATE_WAIT;  /* 状態を更新 */
+
+	spinlock_unlock(&ent->thr->lock);   /* スレッドのロックを解放 */
 
 	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
 }
@@ -74,10 +83,7 @@ wque_init_wque_entry(wque_entry *ent){
 
 	list_init(&ent->link);   /* キューへのリンクを初期化する */
 	ent->reason = WQUE_WAIT; /* 待ち中に初期化する */
-
-	/* TODO: スレッド管理実装後にコメントアウトする */
-	ent->thr = NULL;
-	// ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
+	ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
 }
 
 /**
@@ -94,9 +100,8 @@ wque_wait_on_queue_with_spinlock(wque_waitqueue *wque, spinlock *lock){
 
 	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
 
-	spinlock_unlock(lock);        /* スピンロックを解放する */
-	/* TODO: スレッド管理実装後に休眠処理を追加する */
-	//sched_schedule();
+	spinlock_unlock(lock);      /* スピンロックを解放する */
+	sched_schedule(); 	    /* スレッド休眠に伴う再スケジュール */
 	spinlock_lock(lock);        /* スピンロックを獲得する */
 
 	return ent.reason;  /* 起床要因を返却する */
@@ -117,8 +122,9 @@ wque_wait_on_event_with_mutex(wque_waitqueue *wque, mutex *mtx){
 	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
 
 	mutex_unlock(mtx);  /* ミューテックスを解放する */
-	/* TODO: スレッド管理実装後に休眠処理を追加する */
-	//sched_schedule();
+
+	sched_schedule();   /* スレッド休眠に伴う再スケジュール */
+
 	mutex_lock(mtx);    /* ミューテックスを獲得する */
 
 	return ent.reason;  /* 起床要因を返却する */
@@ -128,11 +134,12 @@ wque_wait_on_event_with_mutex(wque_waitqueue *wque, mutex *mtx){
    ウエイトキューで休眠しているスレッドを起床する
    @param[in] wque   操作対象のウエイトキュー
    @param[in] reason 起床要因
+   @note LO: ウエイトキューのロック, スレッドのロックの順に獲得
 */
 void
 wque_wakeup(wque_waitqueue *wque, wque_reason reason){
-	intrflags iflags;
 	wque_entry  *ent;
+	intrflags iflags;
 
 	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
 
@@ -142,9 +149,11 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 		ent = container_of(queue_get_top(&wque->que), wque_entry, link);
 		ent->reason = reason; /* 起床要因を通知する */
 
-		/* TODO: スレッド管理実装後にコメントアウトする */		
-		//sched_wakeup(ent->thr);
+		spinlock_lock(&ent->thr->lock);   /* スレッドのロックを獲得 */
+		ent->thr->state = THR_TSTATE_RUNABLE;  /* 状態を更新 */
+		spinlock_unlock(&ent->thr->lock);   /* スレッドのロックを解放 */
 
+		sched_thread_add(ent->thr); /* スレッドをレディーキューに追加 */
 		if ( wque->wqflag == WQUE_WAKEFLAG_ONE )
 			break;  /* 先頭のスレッドだけを起こして抜ける */
 	}

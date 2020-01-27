@@ -58,11 +58,17 @@ unlock_out:
 /**
    スレッドをレディキューに追加する
    @param[in] thr 追加するスレッド
+   @note LO: レディーキューのロック, スレッドのロックの順に獲得
  */
 void
 sched_thread_add(thread *thr){
+	bool            tref;
 	thr_prio        prio;
 	intrflags     iflags;
+
+	tref = thr_ref_inc(thr);
+	if ( !tref )
+		goto error_out;  /* 終了中スレッドだった場合 */
 
 	/* スレッドがどこにもリンクされていないことを確認する */
 	kassert(list_not_linked(&thr->link));  
@@ -74,16 +80,37 @@ sched_thread_add(thread *thr){
 
 	if ( queue_is_empty(&ready_queue.que[prio]) )   /*  キューが空だった場合     */
 		bitops_set(prio, &ready_queue.bitmap);  /* ビットマップ中のビットをセット */
+
+	spinlock_lock(&thr->lock);  /* スレッドのロックを獲得 */
 	/* キューにスレッドを追加          */
 	queue_add(&ready_queue.que[prio], &thr->link);
-	/* レディキューをアンロック   */
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 
+	if ( thr->tinfo->cpu == krn_current_cpu_get() ) {
+
+		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
+		/* レディキューをアンロック   */
+		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
+		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
+		sched_schedule(); 	    /* スレッド起床に伴う再スケジュール */
+	} else {
+
+		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
+		/* レディキューをアンロック   */
+		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
+		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
+		/* TODO: 他のプロセッサで動作中のスレッドの場合はスケジュールIPIを発行 */
+	}
+
+	return;
+
+error_out:
+	return;
 }
 
 /**
    スレッドをレディキューから外す
    @param[in] thr 操作対象スレッド
+   @note LO: レディーキューのロック, スレッドのロックの順に獲得
  */
 void
 sched_thread_del(thread *thr){
@@ -91,12 +118,15 @@ sched_thread_del(thread *thr){
 	intrflags     iflags;
 
 	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+	spinlock_lock(&thr->lock);  /* スレッドのロックを獲得 */
 
 	prio = thr->attr.cur_prio;
 
 	queue_del(&ready_queue.que[prio], &thr->link);  /*  キューからスレッドを削除 */
 	if ( queue_is_empty(&ready_queue.que[prio]) )   /*  キューが空になった場合   */
 		bitops_clr(prio, &ready_queue.bitmap);  /*  ビットマップ中のビットをクリア  */
+
+	spinlock_unlock(&thr->lock);  /* スレッドのロックを解放 */
 
 	/* レディキューをアンロック   */
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);

@@ -429,7 +429,7 @@ thr_thread_exit(exit_code ec){
 
 		thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
 	}while( reason == WQUE_DESTROYED );
-	kassert( reason == WQUE_RELEASED );
+//	kassert( reason == WQUE_RELEASED );
 
 	/* 子スレッドをreaper threadの子スレッドに設定する
 	 */

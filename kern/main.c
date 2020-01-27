@@ -19,7 +19,7 @@
 #include <kern/dev-pcache.h>
 #include <kern/irq-if.h>
 #include <kern/timer.h>
-#include <hal/hal-traps.h>
+#include <klib/asm-offset.h>
 /** 
     カーネルのアーキ共通テスト
  */
@@ -43,7 +43,7 @@ kern_common_tests(void){
 	tst_rv64pgtbl();
 	tst_irqctrlr();
 #endif 
-	tst_thread();
+	//tst_thread();
 }
 /** カーネルの初期化
  */
@@ -74,10 +74,10 @@ main(int argc, char *argv[]) {
 	thread_info *ti;
 
 	kprintf("Kernel\n");
-
-	ti = (thread_info *)(( (void *)&_tflib_bsp_stack ) + TI_KSTACK_SIZE - sizeof(thread_info));
-	new_sp = (void *)ti - sizeof(trap_context) - sizeof(x64_thrsw_context);
+	ti = calc_thread_info_from_kstack_top( (void *)&_tflib_bsp_stack );
 	ti->kstack = (void *)&_tflib_bsp_stack;
+	new_sp = (void *)ti 
+		- (TI_THREAD_INFO_SIZE + X64_TRAP_CONTEXT_SIZE + X64_THRSW_CONTEXT_SIZE);
 
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();

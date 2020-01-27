@@ -61,8 +61,10 @@ ASMMAC_FUNCTION(entry)
 	add a6, a5, a2                /* カーネル仮想アドレス内スレッド情報 */
 	sd  a6, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化     */
 
+	li  a7, (RV64_TRAP_CONTEXT_SIZE + RV64_THRSW_CONTEXT_SIZE) /* コンテキスト保存域 */
+	sub a7, a4, a7                /* コンテキスト保存域をスタック上に確保 */
 
-	mv  sp, a4                    /*  スレッド情報位置にスタックポインタ設定     */
+	mv  sp, a7                    /* スタックポインタをコンテキスト保存域に設定      */
 
 	bne  a0, x0, wait_bsp         /*  ページテーブル設定を待ち合わせる */
 	
