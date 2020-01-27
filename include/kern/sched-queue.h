@@ -36,15 +36,18 @@
 /**< ラウンドロビンクラスの最高優先度   */
 #define SCHED_MIN_RR_PRIO       ( SCHED_MAX_RR_PRIO + SCHED_PRIO_PER_POLICY - 1)
 
-/* ユーザスレッドが動作しうる最低優先度 */
+/**< ユーザスレッドが動作しうる最低優先度 */
 #define SCHED_MIN_USER_PRIO     (SCHED_MIN_RR_PRIO)
-/* ユーザスレッドが動作しうる最高優先度 */
+/**< ユーザスレッドが動作しうる最高優先度 */
 #define SCHED_MAX_USER_PRIO     (SCHED_MAX_FCFS_PRIO)
 
-/* スレッドの最低優先度 */
+/**< スレッドの最低優先度 */
 #define SCHED_MIN_PRIO          (SCHED_MIN_USER_PRIO)
-/* スレッドの最高優先度 */
+/**< スレッドの最高優先度 */
 #define SCHED_MAX_PRIO          (SCHED_MAX_ITHR_PRIO)
+
+/**< スレッドの優先度数 */
+#define SCHED_PRIO_NR           (SCHED_MIN_USER_PRIO + 1)
 
 /**
    プロセスの優先度として有効であることを確認する
@@ -79,8 +82,8 @@ struct _thread;
  */
 typedef struct _sched_queue{
 	spinlock                                   lock;  /**< スケジューラキューのロック */
-	struct _queue               que[SCHED_MAX_PRIO];  /**< スケジューラキュー         */
-	BITMAP_TYPE(, uint64_t, SCHED_MAX_PRIO)  bitmap;  /**< スケジューラビットマップ   */
+	struct _queue                que[SCHED_PRIO_NR];  /**< スケジューラキュー         */
+	BITMAP_TYPE(, uint64_t, SCHED_PRIO_NR)  bitmap;  /**< スケジューラビットマップ   */
 }sched_queue;
 
 void sched_thread_add(struct _thread *_thr);

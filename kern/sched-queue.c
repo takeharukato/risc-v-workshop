@@ -213,7 +213,7 @@ sched_init(void){
 
 	spinlock_init(&ready_queue.lock);  /* ロックを初期化       */
 	bitops_zero(&ready_queue.bitmap);  /* ビットマップを初期化 */
-	for( i = 0; SCHED_MAX_PRIO > i; ++i) {
+	for( i = 0; SCHED_PRIO_NR > i; ++i) {
 
 		queue_init(&ready_queue.que[i]);  /* レディキューを初期化 */
 	}

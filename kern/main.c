@@ -71,10 +71,13 @@ int
 main(int argc, char *argv[]) {
 	cpu_id log_id;
 	void *new_sp;
+	thread_info *ti;
 
 	kprintf("Kernel\n");
 
 	new_sp = ( (void *)&_tflib_bsp_stack ) + TI_KSTACK_SIZE - sizeof(thread_info);
+	ti = (thread_info *)new_sp;
+	ti->kstack = (void *)&_tflib_bsp_stack;
 
 	tflib_kernlayout_init();
 	slab_prepare_preallocate_cahches();
