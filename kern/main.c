@@ -19,7 +19,7 @@
 #include <kern/dev-pcache.h>
 #include <kern/irq-if.h>
 #include <kern/timer.h>
-
+#include <hal/hal-traps.h>
 /** 
     カーネルのアーキ共通テスト
  */
@@ -75,8 +75,8 @@ main(int argc, char *argv[]) {
 
 	kprintf("Kernel\n");
 
-	new_sp = ( (void *)&_tflib_bsp_stack ) + TI_KSTACK_SIZE - sizeof(thread_info);
-	ti = (thread_info *)new_sp;
+	ti = (thread_info *)(( (void *)&_tflib_bsp_stack ) + TI_KSTACK_SIZE - sizeof(thread_info));
+	new_sp = (void *)ti - sizeof(trap_context) - sizeof(x64_thrsw_context);
 	ti->kstack = (void *)&_tflib_bsp_stack;
 
 	tflib_kernlayout_init();

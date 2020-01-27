@@ -147,7 +147,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
 	ti_thread_info_init(thr); /* スレッド情報初期化                   */
 
-	thr->ksp = newstk;               /* スタック位置をスタックの先頭に初期化 */
+	thr->ksp = (void *)thr->tinfo;               /* スタック位置を初期化 */
 
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
