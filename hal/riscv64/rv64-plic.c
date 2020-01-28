@@ -239,7 +239,6 @@ static irq_ctrlr plic_ctrlr={
 
 /**
    Platform-Level Interrupt Controllerに自hartの割込み優先度を設定する
-   @param[in] ctrlr 割込みコントローラ
    @param[in] prio  割込み優先度
    @retval    設定前の優先度
  */

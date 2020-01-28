@@ -93,7 +93,7 @@ show_trap_backtrace(void) {
 /**
    例外/割込みコンテキストを表示する
    @param[in] ctx   例外/割込みコンテキスト
-   @param[in] casue トラップ要因
+   @param[in] cause トラップ要因
    @param[in] stval アドレス例外発生要因アドレス
  */
 void
@@ -143,7 +143,7 @@ rv64_show_trap_context(trap_context *ctx, scause_type cause, stval_type stval){
 /**
    割込みを処理する
    @param[in] ctx   例外/割込みコンテキスト
-   @param[in] casue トラップ要因
+   @param[in] cause トラップ要因
    @param[in] stval アドレス例外発生要因アドレス
  */
 void
@@ -157,7 +157,7 @@ handle_interrupt(trap_context *ctx, scause_type __unused cause,
 /**
    システムコールを処理する
    @param[in] ctx   例外/割込みコンテキスト
-   @param[in] casue トラップ要因
+   @param[in] cause トラップ要因
    @param[in] stval アドレス例外発生要因アドレス
  */
 void
@@ -170,7 +170,7 @@ handle_syscall(trap_context __unused *ctx, scause_type __unused cause,
 /**
    CPU例外を処理する
    @param[in] ctx   例外/割込みコンテキスト
-   @param[in] casue トラップ要因
+   @param[in] cause トラップ要因
    @param[in] stval アドレス例外発生要因アドレス
  */
 void

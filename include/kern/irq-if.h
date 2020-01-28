@@ -148,7 +148,7 @@ int irq_handle_irq(struct _trap_context *_ctx);
 
 int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, irq_handler _handler,
     void *_private);
-int irq_unregister_handler(irq_no _irq, irq_handler _handler, void *_private);
+int irq_unregister_handler(irq_no _irq, irq_handler _handler);
 
 int irq_register_ctrlr(irq_ctrlr *_ctrlr);
 void irq_unregister_ctrlr(irq_ctrlr *_ctrlr);

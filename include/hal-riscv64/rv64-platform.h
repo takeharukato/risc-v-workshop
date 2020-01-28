@@ -60,14 +60,14 @@
 #define RV64_CLINT_MSIP_SIZE        (4)
 
 /** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 物理アドレス   
-    @param[in] hart コアのhartid
+    @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MSIP_PADDR(_hart)		\
 	( RV64_CLINT_PADDR + RV64_CLINT_MSIP_OFFSET	\
 	    + ( (_hart) * RV64_CLINT_MSIP_SIZE) )
 
 /** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 仮想アドレス   
-    @param[in] hart コアのhartid
+    @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MSIP(_hart)			\
 	( RV64_CLINT + RV64_CLINT_MSIP_OFFSET	\
@@ -80,14 +80,14 @@
 #define RV64_CLINT_MTIMECMP_SIZE    (8)
 
 /** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 物理アドレス   
-    @param[in] hart コアのhartid
+    @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MTIMECMP_PADDR(_hart)		\
 	( RV64_CLINT_PADDR + RV64_CLINT_MTIMECMP_OFFSET	\
 	    + ( (_hart) * RV64_CLINT_MTIMECMP_SIZE) )
 
 /** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 仮想アドレス   
-    @param[in] hart コアのhartid
+    @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MTIMECMP(_hart)			\
 	( RV64_CLINT + RV64_CLINT_MTIMECMP_OFFSET	\

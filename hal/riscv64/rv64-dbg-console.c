@@ -11,8 +11,9 @@
 #include <kern/kern-common.h>
 
 #include <dev/uart.h>
-#include <hal/rv64-platform.h>
 #include <kern/irq-if.h>
+#include <hal/rv64-platform.h>
+#include <hal/hal-traps.h>
 
 /**
    UARTレジスタを参照する
@@ -22,18 +23,26 @@
 
 /**
    UARTレジスタを読み込む
-   @param[in] 読み込み先レジスタオフセットアドレス
+   @param[in] reg 読み込み先レジスタオフセットアドレス
  */
 #define dbg_read_uart_reg(reg) (*(dbg_uart_reg(reg)))
 
 /**
    UARTレジスタに書き込む
-   @param[in] 書き込み先レジスタオフセットアドレス
+   @param[in] reg 書き込み先レジスタオフセットアドレス
+   @param[in] v   書き込む値
  */
 #define dbg_write_uart_reg(reg, v) (*(dbg_uart_reg(reg)) = (v))
 
+/**
+   UART割り込みハンドラ
+   @param[in] irq     割込み番号
+   @param[in] ctx     割込みコンテキスト
+   @param[in] private ハンドラプライベート情報
+   @retval IRQ_HANDLED 割込みを処理した
+ */
 static int 
-uart_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
+uart_irq_handler(irq_no irq, trap_context *ctx, void *private){
 	int ch;
 
 	/* 受信可能になるのを待ち合わせる */
@@ -52,6 +61,9 @@ uart_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	return IRQ_HANDLED;
 }
 
+/**
+   UART受信割り込みを有効化する
+ */
 void
 uart_rxintr_enable(void){
 	int rc;

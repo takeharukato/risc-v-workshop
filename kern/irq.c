@@ -361,6 +361,7 @@ error_out:
    @param[in] attr    登録する割込みの属性
    @param[in] prio    登録する割込みの優先度 (大きいほど優先度が高い)
    @param[in] handler 登録する割込みハンドラ
+   @param[in] private 割込みハンドラプライベート情報
    @retval    0       正常終了
    @retval   -EINVAL  IRQ番号/割込み優先度/トリガ種別が不正
    @retval   -ENOENT  割込みコントローラが未登録
@@ -482,7 +483,7 @@ unlock_out:
    @retval   -ENOENT  割込みハンドラが未登録/コントローラ未初期化
  */
 int
-irq_unregister_handler(irq_no irq, irq_handler handler, void *private){
+irq_unregister_handler(irq_no irq, irq_handler handler){
 	int                rc;
 	irq_info         *inf;
 	irq_handler_ent *hdlr;
@@ -540,8 +541,6 @@ unlock_out:
 
 /**
    割込みコントローラの登録
-   @param[in] irq    先頭の割込み番号
-   @param[in] nr     管理している割込みの数 (単位:個)
    @param[in] ctrlr  割込みコントローラ
    @retval    0      正常終了
    @retval   -EINVAL 割込みコントローラのハンドラが不正

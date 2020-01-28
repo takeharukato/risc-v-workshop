@@ -14,12 +14,12 @@ all: gen-doxygen
 #実際の処理は, ${top}/docs/doxygen/scripts/gen-doxygen.shで実施
 #
 gen-doxygen: clean-doxygen
-	${top}/doxygen/scripts/gen-doxygen.sh \
+	@${top}/doxygen/scripts/gen-doxygen.sh \
 		-s ${top} -n ${DOXYGEN_ARCHIVE_NAME}
-	if [ -f ${DOXYGEN_ARCHIVE_NAME}-doxygen-doc.tar.gz ]; then 	\
+	@if [ -f ${DOXYGEN_ARCHIVE_NAME}-doxygen-doc.tar.gz ]; then 	\
 		mv ${DOXYGEN_ARCHIVE_NAME}-doxygen-doc.tar.gz ${top}; \
 	fi;
-	if [ -f ${DOXYGEN_ARCHIVE_NAME}-doxygen-error.log ]; then 	\
+	@if [ -f ${DOXYGEN_ARCHIVE_NAME}-doxygen-error.log ]; then 	\
 		mv  ${DOXYGEN_ARCHIVE_NAME}-doxygen-error.log ${top}; 	\
 	fi;
 
