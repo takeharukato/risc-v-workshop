@@ -1,7 +1,8 @@
 top=..
 include ${top}/Makefile.inc
 CFLAGS += -I${top}/include
-subdirs=asmoffset kconfig
+subdirs-build=asmoffset
+subdirs=${subdirs-build} kconfig
 
 all: kconfig/mconf
 	for dir in ${subdirs-build} ; do 	\
@@ -9,7 +10,7 @@ all: kconfig/mconf
 	done
 
 kconfig/mconf:
-	cd kconfig && $(MAKE) mconf
+	cd kconfig && ${MAKE} mconf
 
 gcov:
 

@@ -68,8 +68,9 @@ GCOV_CLEAN_FILES=*.gcda *.gcno *.gcov
 
 CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES}
 DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz ${GTAGS_CLEAN_FILES}
+DOXYGEN_ARCHIVE_NAME=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(shell date +%F))
 
-.PHONY: clean distclean hal tools gtags dist
+.PHONY: clean distclean hal tools gtags dist doxygen
 
 .SUFFIXES: .o .c .S .d
 

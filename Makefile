@@ -4,7 +4,7 @@ targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 fsimg_obj=$(patsubst %.img,%.o, ${FSIMG_FILE})
 fsimg_objfile=${top}/fs/${fsimg_obj}
 subdirs=kern klib fs hal test tools
-cleandirs=include ${subdirs}
+cleandirs=include ${subdirs} doxygen
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a 
 mconf=tools/kconfig/mconf
@@ -90,6 +90,9 @@ run: hal kernel.elf
 
 run-debug: hal kernel.elf
 	${MAKE} -C hal/hal $@ ;\
+
+doxygen: 
+	${MAKE} -C doxygen
 
 hal:
 	${MAKE} -C include hal
