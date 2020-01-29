@@ -102,7 +102,6 @@ typedef struct _thread{
 	struct _queue          children;  /**< 子スレッド                         */
 	struct _queue           waiters;  /**< wait待ち合わせ中の子スレッド       */
 	struct _wque_waitqueue     pque;  /**< wait待ち合せ中親スレッド           */
-	struct _wque_waitqueue     cque;  /**< wait待ち合せ中子スレッド           */
 	exit_code              exitcode;  /**< 終了コード                         */
 }thread;
 

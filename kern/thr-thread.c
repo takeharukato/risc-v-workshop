@@ -120,7 +120,6 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	queue_init(&thr->children);        /* 子スレッド一覧を初期化                    */
 	queue_init(&thr->waiters);         /* wait待ちスレッドのキューを初期化          */
 	wque_init_wait_queue(&thr->pque);  /* wait待ちスレッドの待ちキューを初期化(親)  */
-	wque_init_wait_queue(&thr->cque);  /* wait待ちスレッドの待ちキューを初期化(子)  */
 
 	thr->exitcode = 0;           /* 終了コードを初期化     */
 
@@ -324,6 +323,23 @@ del_child_thread_nolock(thread *thr, thread *parent){
 }
 
 /**
+   スレッド資源を回収する (内部関数)
+   @param[in] arg 引数へのポインタ
+*/
+static void
+reap_thread(void __unused *arg){
+	intrflags iflags;
+
+	for( ; ; ) {
+
+		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
+		
+
+		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
+	}
+}
+
+/**
    スレッドの終了を待ち合わせシステムコール実処理関数
    @param[out] *resp 終了したスレッドの終了時情報格納領域
    @retval  0      正常終了
@@ -370,7 +386,6 @@ thr_thread_wait(thr_wait_res *resp){
 	resp->id = thr->id;             /* 子スレッドのIDを取得     */
 	resp->exitcode = thr->exitcode; /* 終了コードを取得         */
 
-	wque_wakeup(&thr->cque, WQUE_RELEASED);  /* 子スレッドを起床 */
 	thr_ref_dec(thr);         /*  子スレッドの参照を解放  */
 	
 	/* 自スレッドのロックを解放 */
@@ -405,7 +420,6 @@ thr_thread_exit(exit_code ec){
 	list            *lp;
 	list            *np;
 	thr_wait_entry  ent;
-	wque_reason  reason;
 	intrflags    iflags;
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
@@ -415,32 +429,12 @@ thr_thread_exit(exit_code ec){
 
 	list_init(&ent.link);           /* リストエントリを初期化     */
 	ent.thr = cur;                  /* 自スレッドを設定           */
+
+	kassert( list_not_linked(&cur->link) );  /* レディキューに繋がっていないことを確認 */
 	
 	cur->exitcode = ec;             /*  終了コードを設定          */
 
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
-
-	/** 親スレッドからのwaitを待ち合せる
-	 */
-	do{
-		/* 親スレッドをロック
-		   @note 親スレッドの参照は生成時に獲得済み
-		*/
-		spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
-
-		queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録 */
-		
-		wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
-
-		/* wait待ちキューで休眠する */
-		reason = wque_wait_on_queue_with_spinlock(&cur->cque, &cur->parent->lock);
-
-		/* 親スレッドのロックを解放 */
-		spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
-
-		thr_ref_dec(cur->parent);        /* 親スレッドの参照を解放 */
-	}while( reason == WQUE_DESTROYED );
-//	kassert( reason == WQUE_RELEASED );
 
 	/* 子スレッドをreaper threadの子スレッドに設定する
 	 */
@@ -500,11 +494,25 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
 	kassert( !res );
 
-	wque_wakeup(&cur->cque, WQUE_DESTROYED);  /* wait待ち中の子スレッドを起床 */
+	/** 親スレッドからのwaitを待ち合せる
+	    @note 親スレッドの参照は生成時に獲得済み
+	 */
+	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
 
-	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放  */
+	queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録    */
+	cur->state = THR_TSTATE_DEAD;                 /*  回収待ち中に遷移   */	
+	wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
 
-	thr_ref_dec(cur);         /*  自スレッドの参照を解放          */
+	/* 親スレッドのロックを解放 */
+	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
+
+	thr_ref_dec(cur->parent); /* 親スレッドの参照を解放            */
+
+	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放   */
+
+	thr_ref_dec(cur);         /*  自スレッドの参照を解放           */
+
+	sched_schedule();         /*  スレッド終了に伴う再スケジュール */
 
 	return;
 
