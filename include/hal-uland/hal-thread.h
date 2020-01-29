@@ -32,5 +32,7 @@ void hal_setup_thread_context(entry_addr _entry, void *_thr_sp, thr_flags _flags
 
 void hal_thread_switch(void **_prev, void **_next);
 
+#define hal_cpu_halt() do{}while(0)
+
 #endif  /*  ASM_FILE  */
 #endif  /* _HAL_HAL_THREAD_H  */

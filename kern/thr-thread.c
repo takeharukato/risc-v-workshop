@@ -211,10 +211,21 @@ do_idle(void __unused *arg){
 
 	for( ; ; ) {
 
-		krn_cpu_save_and_disable_interrupt(&iflags);
-		/* TODO: アーキ依存の割込み待ちプロセッサ休眠処理を入れる */
-		sched_schedule();
-		krn_cpu_restore_interrupt(&iflags);
+		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
+
+		if ( ti_dispatch_delayed() ) 
+			sched_schedule();  /* ディスパッチ要求に従って再スケジュール */
+		else {
+
+			/** 
+			    @note 多くのCPUでは, 割込み禁止状態に遷移した後でCPU休眠命令を
+			    発行することでCPUの休眠と割込み通知とのレースコンディションを
+			    避ける機能をCPU休眠命令が提供しているのでアーキごとに休眠処理を
+			    実装する
+			 */
+			hal_cpu_halt(); /* 割込み待ちでプロセッサを休眠させる */
+		}
+		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
 	}
 }
 
