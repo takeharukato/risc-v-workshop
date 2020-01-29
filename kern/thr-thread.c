@@ -73,7 +73,7 @@ release_thread(thread *thr){
    @param[in]  usp     ユーザスタックポインタ初期値
    @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
    @param[in]  prio    初期化時のスレッド優先度
-   @param[in]  kstack  カーネルスタック
+   @param[in]  flags   スレッド属性フラグ
    @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
    @retval     0      正常終了
    @retval    -EINVAL 不正な優先度を指定した
@@ -508,7 +508,7 @@ error_out:
    @param[in]  usp     ユーザスタックポインタ初期値
    @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
    @param[in]  prio    初期化時のスレッド優先度
-   @param[in]  flags  スレッド属性フラグ
+   @param[in]  flags   スレッド属性フラグ
    @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
    @retval     0      正常終了
    @retval    -EINVAL 不正な優先度を指定した

@@ -74,23 +74,34 @@ typedef struct _call_out_ent{
 	.head = __QUEUE_INITIALIZER(&((_walltime)->head)), \
 	}
 
+#if defined(CONFIG_TIMER_INTERVAL_MS_1MS)
+#define MS_PER_TICKS       (1)
 /**
    ミリ秒をjiffiesに変換する
    @param[in] _ms ミリ秒
    @return jiffies値
  */
-#if defined(CONFIG_TIMER_INTERVAL_MS_1MS)
-#define MS_PER_TICKS       (1)
 #define MS_TO_JIFFIES(_ms) ((_ms))
 #elif defined(CONFIG_TIMER_INTERVAL_MS_10MS)
 #define MS_PER_TICKS       (10)
+/**
+   ミリ秒をjiffiesに変換する
+   @param[in] _ms ミリ秒
+   @return jiffies値
+ */
 #define MS_TO_JIFFIES(_ms) (roundup_align((_ms), 10)/10)
 #elif defined(CONFIG_TIMER_INTERVAL_MS_100MS)
 #define MS_PER_TICKS       (100)
+/**
+   ミリ秒をjiffiesに変換する
+   @param[in] _ms ミリ秒
+   @return jiffies値
+ */
 #define MS_TO_JIFFIES(_ms) (roundup_align((_ms), 100)/100)
 #else
 #error "Invalid timer interval"
 #endif
+
 void tim_update_walltime(struct _trap_context *_ctx, struct _ktimespec *_diff);
 int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private, 
 		    struct _call_out_ent **entp);

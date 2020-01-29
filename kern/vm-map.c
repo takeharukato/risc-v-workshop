@@ -72,8 +72,9 @@ error_out:
    仮想空間にページをマップする  (内部関数)
    @param[in]  pgt        アドレス空間のページテーブル情報
    @param[in]  vaddr      マップする仮想アドレス
+   @param[in]  prot       保護属性
    @param[in]  flags      ページ割り当て要否の判断に使用するマップ属性
-   @param[in]  size       コピーする領域長(単位:バイト)
+   @param[in]  pgsize     マップするページサイズ(単位:バイト)
    @retval     0          正常終了
    @retval    -ENOENT     ページテーブルまたはラージページがマップされていない
    @retval    -ESRCH      ページがマップされていない, ページサイズが大きすぎる

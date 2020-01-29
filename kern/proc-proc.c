@@ -110,12 +110,13 @@ init_kernel_process(void){
 
 	return ;
 }
+
 /**
    ユーザプロセスのセグメントを解放する(内部関数)
    @param[in]  p          プロセス管理情報
-   @param[in]  vaddr      アンマップする仮想アドレス
+   @param[in]  start      アンマップする仮想空間中の開始アドレス
+   @param[in]  end        アンマップする仮想空間中の終了アドレス
    @param[in]  flags      ページ割り当て要否の判断に使用するマップ属性
-   @param[in]  size       アンマップする領域長(単位:バイト)
  */
 static void
 release_process_segment(proc *p, vm_vaddr start, vm_vaddr end, vm_flags flags){
