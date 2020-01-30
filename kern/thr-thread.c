@@ -360,7 +360,7 @@ thr_thread_wait(thr_wait_res *resp){
 	if ( queue_is_empty(&cur->waiters) ) {
 
 		/* wait待ちキューで休眠する */
-		reason = wque_wait_on_queue_with_spinlock(&cur->pque, &cur->lock);
+		reason = wque_wait_for_curthr(&cur->pque);
 		if ( reason == WQUE_DELIVEV ) {
 			
 			rc = -EINTR; /* イベントを受信した */

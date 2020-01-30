@@ -34,6 +34,30 @@ enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 }
 
 /**
+   ウエイトエントリを初期化する(内部関数)
+   @param[in] ent  操作対象のウエイトキューエントリ
+   @note 自スレッドのウエイトキューで待ち合わせるための内部関数
+ */
+static void
+init_wque_entry_nolock(wque_entry *ent){
+	bool         res;
+	thread      *cur;
+
+	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
+	res = thr_ref_inc(cur);         /* 自スレッドの参照を取得     */
+	kassert( res );                 /* 自スレッドは終了していないはず */
+
+	list_init(&ent->link);   /* キューへのリンクを初期化する */
+	ent->reason = WQUE_WAIT; /* 待ち中に初期化する */
+	ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
+	ent->thr->state = THR_TSTATE_WAIT;  /* 状態を更新 */
+
+	res = thr_ref_dec(cur);         /* 自スレッドの参照を解放     */
+	kassert( !res );                /* 自スレッドは終了していないはず */
+
+}
+
+/**
    ウエイトキューの初期化
    @param[in] wque 操作対象のウエイトキュー
  */
@@ -71,11 +95,51 @@ wque_is_empty(wque_waitqueue *wque){
  */
 void
 wque_init_wque_entry(wque_entry *ent){
+	intrflags iflags;
 
-	list_init(&ent->link);   /* キューへのリンクを初期化する */
-	ent->reason = WQUE_WAIT; /* 待ち中に初期化する */
-	ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
-	ent->thr->state = THR_TSTATE_WAIT;  /* 状態を更新 */
+	spinlock_lock_disable_intr(&ent->thr->lock, &iflags); /* スレッドをロック */
+	init_wque_entry_nolock(ent);              /* スレッドをウエイトキューに追加する */
+	spinlock_unlock_restore_intr(&ent->thr->lock, &iflags); /* スレッドをアンロック */
+}
+
+/**
+   自スレッドのウエイトキューで待ち合わせる
+   @param[in] wque 操作対象のウエイトキュー
+   @retval 起床要因
+   @note 自スレッドのウエイトキューで待ち合わせるため自スレッドのロックをとって呼び出すこと
+ */
+wque_reason
+wque_wait_for_curthr(wque_waitqueue *wque){
+	bool         res;
+	thread      *cur;
+	wque_entry   ent;
+
+	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
+
+	res = thr_ref_inc(cur);         /* 自スレッドの参照を取得     */
+	kassert( res );                 /* 自スレッドは終了していないはず */
+
+	kassert( spinlock_locked_by_self( &cur->lock ) );
+
+	init_wque_entry_nolock(&ent);   /* ウエイトキューエントリを初期化する */
+	enque_wque_entry(wque, &ent);   /* ウエイトキューエントリをウエイトキューに追加する */
+
+	spinlock_unlock(&cur->lock);    /* スピンロックを解放する */
+
+	res = thr_ref_dec(cur);         /* 自スレッドの参照を解放     */
+	kassert( !res );                /* 自スレッドは終了していないはず */
+
+	sched_schedule(); 	        /* スレッド休眠に伴う再スケジュール */
+
+	res = thr_ref_inc(cur);         /* 自スレッドの参照を取得     */
+	kassert( res );                 /* 自スレッドは終了していないはず */
+
+	spinlock_lock(&cur->lock);      /* スピンロックを獲得する */
+
+	res = thr_ref_dec(cur);         /* 自スレッドの参照を解放     */
+	kassert( !res );                /* 自スレッドは終了していないはず */
+
+	return ent.reason;  /* 起床要因を返却する */
 }
 
 /**
@@ -93,7 +157,9 @@ wque_wait_on_queue_with_spinlock(wque_waitqueue *wque, spinlock *lock){
 	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
 
 	spinlock_unlock(lock);      /* スピンロックを解放する */
+
 	sched_schedule(); 	    /* スレッド休眠に伴う再スケジュール */
+
 	spinlock_lock(lock);        /* スピンロックを獲得する */
 
 	return ent.reason;  /* 起床要因を返却する */
@@ -130,6 +196,7 @@ wque_wait_on_event_with_mutex(wque_waitqueue *wque, mutex *mtx){
 */
 void
 wque_wakeup(wque_waitqueue *wque, wque_reason reason){
+	bool         res;
 	wque_entry  *ent;
 	intrflags iflags;
 
@@ -140,9 +207,20 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 		/* ウエイトエントリを取り出す */
 		ent = container_of(queue_get_top(&wque->que), wque_entry, link);
 		ent->reason = reason; /* 起床要因を通知する */
+
+		res = thr_ref_inc(ent->thr);    /* スレッドの参照を取得     */
+		if ( !res )
+			continue;  /* 終了中のスレッドを無視する */
+
+		spinlock_lock(&ent->thr->lock); /* スレッドをロックする */
 		ent->thr->state = THR_TSTATE_RUNABLE;  /* 状態を更新 */
+		spinlock_unlock(&ent->thr->lock); /* スレッドをアンロックする */
 
 		sched_thread_add(ent->thr); /* スレッドをレディーキューに追加 */
+
+		res = thr_ref_dec(ent->thr);    /* スレッドの参照を解放     */
+		kassert( !res );                /* スレッドは終了していないはず */
+		
 		if ( wque->wqflag == WQUE_WAKEFLAG_ONE )
 			break;  /* 先頭のスレッドだけを起こして抜ける */
 	}
