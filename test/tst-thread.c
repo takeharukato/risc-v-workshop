@@ -33,14 +33,14 @@ threada(void *arg){
 	kassert( rc == 0 );
 
 	sched_thread_add(thr);
-	thr_thread_wait(&res);
-	while(1)
-		sched_schedule();
+	rc = thr_thread_wait(&res);
+	thr_thread_exit(rc);
 }
 static void
 thread1(struct _ktest_stats *sp, void __unused *arg){
-	int      rc;
-	thread *thr;
+	int           rc;
+	thread      *thr;
+	thr_wait_res res;
 
 	rc = thr_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, NULL, 
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
@@ -50,8 +50,8 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	sched_thread_add(thr);
-	while(1)
-		sched_schedule();
+	rc = thr_thread_wait(&res);
+	thr_thread_exit(rc);
 }
 
 void

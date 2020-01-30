@@ -45,10 +45,24 @@ kern_common_tests(void){
 #endif 
 	tst_thread();
 }
+
+/**
+   テストスレッド
+   @param[in] _arg スレッド引数
+ */
+static void
+test_thread(void __unused *_arg){
+
+	kern_common_tests();
+	thr_thread_exit(0);
+}
+
 /** カーネルの初期化
  */
 void
 kern_init(void) {
+	int      rc;
+	thread *thr;
 
 	kprintf("fsimage: [%p, %p) len:%u\n", 
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
@@ -62,8 +76,16 @@ kern_init(void) {
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
-	kern_common_tests();
-	krn_cpu_enable_interrupt();
+
+	/**
+	   テスト処理用スレッドを起動する
+	 */
+	rc = thr_thread_create(THR_TID_AUTO, (entry_addr )test_thread, NULL, NULL, 
+			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
+	kassert( rc == 0 );
+	sched_thread_add(thr); /* スレッドを開始する */
+
+	thr_idle_loop(NULL);  /* アイドル処理を実行する */
 }
 
 #if !defined(CONFIG_HAL)

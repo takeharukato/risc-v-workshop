@@ -182,8 +182,8 @@ error_out:
    アイドルスレッドループ関数 (内部関数)
    @param[in] arg 引数へのポインタ
 */
-static void
-do_idle(void __unused *arg){
+void
+thr_idle_loop(void __unused *arg){
 	intrflags iflags;
 
 	for( ; ; ) {
@@ -680,7 +680,7 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	else
 		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
 
-	rc = create_thread_common(id, (vm_vaddr)do_idle, NULL, ti->kstack,
+	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, ti->kstack,
 	    SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, &thr);
 	if ( rc != 0 )
 		goto error_out;

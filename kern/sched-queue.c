@@ -91,6 +91,7 @@ sched_thread_add(thread *thr){
 		/* レディキューをアンロック   */
 		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
+		ti_set_delay_dispatch(ti_get_current_thread_info()); /* 遅延ディスパッチ */
 	} else {
 
 		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
@@ -162,6 +163,8 @@ sched_schedule(void) {
 	if ( next == NULL )
 		next = idle_threads[cur_cpu];                  /* アイドルスレッドを参照 */
 	kassert( next != NULL );         /* 少なくともアイドルスレッドを参照しているはず */
+
+	ti_clr_delay_dispatch();  /* ディスパッチ要求をクリア */
 
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;
