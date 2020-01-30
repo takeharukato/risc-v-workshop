@@ -19,8 +19,6 @@
 static kmem_cache thr_cache;  /**< スレッド管理情報のSLABキャッシュ */
 static thread_db  g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< スレッド管理ツリー */
 
-/** スレッド管理情報比較関数
- */
 static int _thread_cmp(struct _thread *_key, struct _thread *_ent);
 RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
 
@@ -176,35 +174,6 @@ free_thr_out:
 
 error_out:
 	return rc;
-}
-
-/**
-   アイドルスレッドループ関数 (内部関数)
-   @param[in] arg 引数へのポインタ
-*/
-void
-thr_idle_loop(void __unused *arg){
-	intrflags iflags;
-
-	for( ; ; ) {
-
-		krn_cpu_enable_interrupt();                   /* 割込みを許可する */
-		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
-
-		if ( ti_dispatch_delayed() ) 
-			sched_schedule();  /* ディスパッチ要求に従って再スケジュール */
-		else {
-
-			/** 
-			    @note 多くのCPUでは, 割込み禁止状態に遷移した後でCPU休眠命令を
-			    発行することでCPUの休眠と割込み通知とのレースコンディションを
-			    避ける機能をCPU休眠命令が提供しているのでアーキごとに休眠処理を
-			    実装する
-			 */
-			hal_cpu_halt(); /* 割込み待ちでプロセッサを休眠させる */
-		}
-		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
-	}
 }
 
 /**
@@ -658,6 +627,36 @@ release_threadid(tid id){
 }
 
 /**
+   アイドルスレッドループ関数
+   @param[in] arg 引数へのポインタ
+*/
+void
+thr_idle_loop(void __unused *arg){
+	intrflags iflags;
+
+	krn_cpu_enable_interrupt();                   /* 割込みを許可する */
+
+	for( ; ; ) {
+
+		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
+
+		if ( ti_dispatch_delayed() ) 
+			sched_schedule();  /* ディスパッチ要求に従って再スケジュール */
+		else {
+
+			/** 
+			    @note 多くのCPUでは, 割込み禁止状態に遷移した後でCPU休眠命令を
+			    発行することでCPUの休眠と割込み通知とのレースコンディションを
+			    避ける機能をCPU休眠命令が提供しているのでアーキごとに休眠処理を
+			    実装する
+			 */
+			hal_cpu_halt(); /* 割込み待ちでプロセッサを休眠させる */
+		}
+		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
+	}
+}
+
+/**
    アイドルスレッドを生成する
    @param[in] cpu  論理プロセッサ番号
    @param[in] thrp スレッド管理情報を指し示すポインタの格納先アドレス
@@ -715,7 +714,6 @@ thr_system_thread_create(void){
 	thr->parent = thr;  /* 自分自身を参照 */
 
 	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
-
 
 	return ;
 }
