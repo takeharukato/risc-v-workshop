@@ -125,7 +125,6 @@ prepare(uint64_t hartid){
 		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
 		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
 	}
-	kprintf("end\n");
 loop:
 	while(1);
 }

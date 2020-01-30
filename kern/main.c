@@ -44,6 +44,7 @@ kern_common_tests(void){
 	tst_irqctrlr();
 #endif 
 	tst_thread();
+	kprintf("end\n");
 }
 
 /**

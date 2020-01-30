@@ -30,10 +30,14 @@ ASMMAC_FUNCTION(hal_cpu_halt)
 	csrr s1, sie     /* sieの内容をs1に退避する                          */
 
 	csrc sstatus, SSTATUS_SIE /* Supervisorへの割込みを禁止する          */
+
 	li s2, SIE_SEIE|SIE_STIE|SIE_SSIE /* 割込みを受け付ける              */
 	or s2, s1, s2             /* sieレジスタの現在値に反映する           */
 	csrw sie, s2              /* sieを更新する                           */
+
+	fence                     /* メモリへの書き込みを待ち合わせる        */
 	wfi                       /* 割込み待ち合せて停止する                */
+	nop                       /* 念のためwfi復帰先にnopを入れておく      */
 
 	csrw sie, s1     /* sieの内容を復元する                              */
 	

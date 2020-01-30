@@ -41,6 +41,7 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 	int           rc;
 	thread      *thr;
 	thr_wait_res res;
+	tid           id;
 
 	rc = thr_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, NULL, 
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
@@ -50,8 +51,20 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	sched_thread_add(thr);
+	id = thr->id;
+
 	rc = thr_thread_wait(&res);
-	thr_thread_exit(rc);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( res.id == id )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	return;
 }
 
 void

@@ -88,17 +88,18 @@ sched_thread_add(thread *thr){
 	if ( thr->tinfo->cpu == krn_current_cpu_get() ) {
 
 		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
-		/* レディキューをアンロック   */
-		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
 		ti_set_delay_dispatch(ti_get_current_thread_info()); /* 遅延ディスパッチ */
+		/* レディキューをアンロック   */
+		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 	} else {
 
 		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
-		/* レディキューをアンロック   */
-		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
 		/* TODO: 他のプロセッサで動作中のスレッドの場合はスケジュールIPIを発行 */
+
+		/* レディキューをアンロック   */
+		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 	}
 
 	return;

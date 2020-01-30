@@ -188,6 +188,7 @@ thr_idle_loop(void __unused *arg){
 
 	for( ; ; ) {
 
+		krn_cpu_enable_interrupt();                   /* 割込みを許可する */
 		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
 
 		if ( ti_dispatch_delayed() ) 

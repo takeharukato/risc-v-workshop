@@ -23,11 +23,6 @@ ASMMAC_DECLARE_NAME(hal_thread_switch)
     @note  void hal_thread_switch(void **prev, void **next) 相当
 */
 ASMMAC_FUNCTION(hal_thread_switch)
-	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
-	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
-	sd   s0,  (sp)   /*  s0レジスタを待避する                            */
-	add  s0, sp, 16  /*  fpを更新する                                    */
-
 	addi sp, sp, -RV64_THRSW_CONTEXT_SIZE /* コンテキスト保存領域を確保  */
 	RV64_ASM_SAVE_THRSW_CONTEXT(sp)  /* スレッドスイッチコンテキストを保存 */
 	sd   sp, (a0)  /* 現在のスレッドのコンテキスト格納先アドレスを更新  */
@@ -36,7 +31,4 @@ ASMMAC_FUNCTION(hal_thread_switch)
 	RV64_ASM_RESTORE_THRSW_CONTEXT(sp)   /* スレッドスイッチコンテキストを復元 */
 	addi sp, sp, RV64_THRSW_CONTEXT_SIZE /* コンテキスト保存領域を解放  */
 	
-	ld s0,  (sp)     /*  s0レジスタを復元する                            */
-	ld ra, 8(sp)     /*  raレジスタを復元する                            */
-	addi sp,sp,16    /*  スタック位置を復元する                          */
 	jr ra            /*  呼び出し元に戻る                                */
