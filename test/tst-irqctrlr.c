@@ -198,12 +198,12 @@ irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("pending: 0x%lx mask:0x%lx\n",
 	    regs->pending, regs->mask);
 
-	rc = irq_unregister_handler(2, tst_irq_handler, regs);
+	rc = irq_unregister_handler(2, tst_irq_handler);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rc = irq_unregister_handler(1, tst_irq_handler, regs);
+	rc = irq_unregister_handler(1, tst_irq_handler);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
