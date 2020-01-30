@@ -91,7 +91,6 @@ sched_thread_add(thread *thr){
 		/* レディキューをアンロック   */
 		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
-		sched_schedule(); 	    /* スレッド起床に伴う再スケジュール */
 	} else {
 
 		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
@@ -249,4 +248,5 @@ sched_init(void){
 	}
 
 	sched_idlethread_add();  /* BSP用のアイドルスレッドを生成 */
+	thr_system_thread_create(); /* システムスレッドを生成 */
 }

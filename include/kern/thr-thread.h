@@ -16,6 +16,7 @@
 #include <kern/kern-types.h>
 #include <kern/spinlock.h>
 #include <kern/wqueue.h>
+#include <kern/sched-queue.h>
 
 #include <klib/refcount.h>
 #include <klib/list.h>
@@ -31,15 +32,16 @@
 #define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド                            */
 #define THR_THRFLAGS_MANAGED_STK  (2)  /**< カーネルスタックをページプールから割当て  */
 /**
-   スレッドID
+   スレッドID/優先度
  */
 #define THR_TID_MAX               (KC_THR_MAX)        /**< スレッドID総数   */
 #define THR_TID_RSV_ID_NR         (ULONGLONG_C(32))   /**< 予約ID数         */
 #define THR_TID_INVALID           (~(ULONGLONG_C(0))) /**< 不正スレッドID   */
 #define THR_TID_AUTO              THR_TID_INVALID     /**< ID自動割り当て   */
 
-#define THR_TID_IDLE              (ULONGLONG_C(0))    /**< アイドルスレッドのスレッドID */
-#define THR_TID_REAPER            (ULONGLONG_C(1))    /**< 刈り取りスレッドのスレッドID */
+#define THR_TID_IDLE              (ULONGLONG_C(0))          /**< アイドルスレッドのスレッドID */
+#define THR_TID_REAPER            (ULONGLONG_C(2))          /**< 刈り取りスレッドのスレッドID */
+#define THR_PRIO_REAPER           (SCHED_MAX_SYS_PRIO - 1)  /**< 刈り取りスレッドの優先度 */ 
 
 struct _thread_info;
 struct _proc;
@@ -141,6 +143,7 @@ bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);
 void release_threadid(tid _id);
 int thr_idlethread_create(cpu_id _cpu, thread **_thrp);
+void thr_system_thread_create(void);
 void thr_init(void);
 #endif  /*  !ASM_FILE */
 #endif  /*  _KERN_THR_THREAD_H  */

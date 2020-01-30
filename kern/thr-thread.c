@@ -17,7 +17,7 @@
 #include <kern/sched-if.h>
 
 static kmem_cache thr_cache;  /**< スレッド管理情報のSLABキャッシュ */
-static thread_db g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< スレッド管理ツリー */
+static thread_db  g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< スレッド管理ツリー */
 
 /** スレッド管理情報比較関数
  */
@@ -42,28 +42,6 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 		return -1;
 
 	return 0;	
-}
-
-/**
-   スレッドの資源を解放する
-   @param[in] thr スレッド管理情報
- */
-static void
-release_thread(thread *thr){
-	cpu_id         cpu;
-	cpu_info     *cinf;
-
-	kassert( list_not_linked(&thr->link) );  /* レディキューに繋がっていないことを確認 */
-
-	cpu = krn_current_cpu_get();
-	cinf = krn_cpuinfo_get(cpu);
-
-	ti_set_delay_dispatch(thr->tinfo);  /* ディスパッチ要求をセットする */
-	/* TODO: 回収処理を追加する */
-	if ( cinf->cur_ti == thr->tinfo ) {
-		
-		sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
-	}
 }
 
 /**
@@ -321,6 +299,19 @@ del_child_thread_nolock(thread *thr, thread *parent){
 
 	return ;
 }
+/**
+   スレッド資源(スレッド管理情報とカーネルスタック)を解放する
+   @param[in] thr 
+ */
+static void
+free_thread(thread *thr){
+
+	kassert( refcnt_read(&thr->refs) == 0 );
+	kassert( thr->state == THR_TSTATE_DEAD );
+
+	pgif_free_page(thr->attr.kstack_top);  /* カーネルスタックを解放 */
+	slab_kmem_cache_free((void *)thr);     /* スレッド管理情報を解放 */
+}
 
 /**
    スレッド資源を回収する (内部関数)
@@ -328,13 +319,15 @@ del_child_thread_nolock(thread *thr, thread *parent){
 */
 static void
 reap_thread(void __unused *arg){
-	intrflags iflags;
-
+	thr_wait_res child;
+	intrflags   iflags;
+	
 	for( ; ; ) {
 
 		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
 		
-
+		thr_thread_wait(&child); /* 子スレッドを待ち合せる */
+		
 		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
 	}
 }
@@ -380,18 +373,26 @@ thr_thread_wait(thr_wait_res *resp){
 	*/
 	ent = container_of(queue_get_top(&cur->waiters), thr_wait_entry, link);
 	thr = ent->thr;               /*  子スレッドを取得          */
-	res = thr_ref_inc(thr);       /*  子スレッドの参照を取得    */
-	kassert( res );
-		
+
+	if ( thr->state != THR_TSTATE_DEAD ) {  /*  終了したスレッドでない場合 */
+
+		res = thr_ref_inc(thr);       /*  子スレッドの参照を取得    */
+		kassert( !res );
+	}
+
 	resp->id = thr->id;             /* 子スレッドのIDを取得     */
 	resp->exitcode = thr->exitcode; /* 終了コードを取得         */
 
-	thr_ref_dec(thr);         /*  子スレッドの参照を解放  */
-	
+	if ( thr->state != THR_TSTATE_DEAD )
+		thr_ref_dec(thr);         /*  子スレッドの参照を解放  */
+
 	/* 自スレッドのロックを解放 */
 	spinlock_unlock_restore_intr(&cur->lock, &iflags);
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放    */
+
+	if ( thr->state == THR_TSTATE_DEAD )
+		free_thread(thr);       /*  子スレッドの資源を解放      */
 
 	return 0;
 
@@ -442,26 +443,26 @@ thr_thread_exit(exit_code ec){
 	/* スレッド管理ツリーのロックを獲得 */
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
 
-	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* Reaperスレッドを取得 */
+	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* 回収スレッドを検索 */
 
 	/* スレッド管理ツリーのロックを解放 */
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 	kassert( reaper != NULL );
 
-	res = thr_ref_inc(reaper);      /*  Reaperスレッドの参照を取得    */
+	res = thr_ref_inc(reaper);      /*  回収スレッドの参照を取得    */
 	kassert( res );
 	
 	/**
-	   Reaperの子スレッドに追加
+	   回収スレッドの子スレッドに追加
 	 */
-	/* Reaperスレッドのロックを獲得 */
+	/* 回収スレッドのロックを獲得 */
 	spinlock_lock_disable_intr(&reaper->lock, &iflags);
 
 	queue_for_each_safe(lp, &cur->children, np) {
 
 		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
 
-		res = thr_ref_inc(thr);        /*  スレッドの参照を取得    */
+		res = thr_ref_inc(thr);        /*  子スレッドの参照を取得    */
 		kassert( res );
 
 		kassert( thr->parent == cur );  /* 自スレッドの子スレッドである事を確認 */
@@ -469,10 +470,10 @@ thr_thread_exit(exit_code ec){
 		spinlock_lock(&thr->lock);                      /* 子スレッドのロックを獲得 */
 
 		/*
-		 * 子スレッドをReaperの子に移動
+		 * 子スレッドを回収スレッドの子に移動
 		 */
 		del_child_thread_nolock(thr, cur);    /* スレッドを取り除く */
-		add_child_thread_nolock(thr, reaper); /* reaperの子スレッドに追加する */
+		add_child_thread_nolock(thr, reaper); /* 回収スレッドの子スレッドに追加する */
 
 		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
 		kassert( cur == thr->parent );
@@ -480,7 +481,7 @@ thr_thread_exit(exit_code ec){
 		res = thr_ref_dec(thr->parent);  /* 親スレッドの参照を解放 */
 		kassert( !res );  /* スレッド管理ツリーからの参照が残るはず */
 
-		thr->parent = reaper;  /* Reaperスレッドを親スレッドに設定 */
+		thr->parent = reaper;  /* 回収スレッドを親スレッドに設定 */
 
 		res = thr_ref_inc(thr->parent);
 		kassert( res );  /* 親スレッドとなるreaperスレッドは常に存在する */
@@ -488,23 +489,24 @@ thr_thread_exit(exit_code ec){
 		res = thr_ref_dec(thr);        /*  スレッドの参照を解放    */
 	}
 
-	/* Reaperスレッドのロックを解放 */
+	/* 回収スレッドのロックを解放 */
 	spinlock_unlock_restore_intr(&reaper->lock, &iflags);
 
-	res = thr_ref_dec(reaper);      /*  Reaperスレッドの参照を解放    */
+	res = thr_ref_dec(reaper);      /*  回収スレッドの参照を解放    */
 	kassert( !res );
 
-	/** 親スレッドからのwaitを待ち合せる
+	/**
+	   親スレッドからのwaitを待ち合せる
 	    @note 親スレッドの参照は生成時に獲得済み
 	 */
 	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
 
 	queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録    */
 	cur->state = THR_TSTATE_DEAD;                 /*  回収待ち中に遷移   */	
-	wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
-
 	/* 親スレッドのロックを解放 */
 	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
+
+	wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
 
 	thr_ref_dec(cur->parent); /* 親スレッドの参照を解放            */
 
@@ -608,6 +610,7 @@ thr_ref_inc(thread *thr){
 bool
 thr_ref_dec(thread *thr){
 	bool           res;
+	thread        *cur;
 	thread    *thr_res;
 	intrflags   iflags;
 
@@ -622,7 +625,13 @@ thr_ref_dec(thread *thr){
 
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-		release_thread(thr);  /* スレッドの資源を解放する  */
+
+		 /* レディキューに繋がっていないことを確認 */
+		kassert( list_not_linked(&thr->link) ); 
+		cur = ti_get_current_thread(); /* カレントスレッドを参照 */
+
+		if ( cur == thr ) 
+			sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
 	}
 
 	return res;
@@ -685,6 +694,29 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 
 error_out:
 	return rc;
+}
+
+/**
+   システムスレッドを生成する
+ */
+void
+thr_system_thread_create(void){
+	int          rc;
+	thread     *thr;
+
+	/**
+	   回収スレッドを生成
+	 */
+	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
+				  THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, &thr);
+	kassert( rc == 0 );
+
+	thr->parent = thr;  /* 自分自身を参照 */
+
+	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
+
+
+	return ;
 }
 
 /**

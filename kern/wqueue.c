@@ -20,7 +20,6 @@
    @param[in] wque 操作対象のウエイトキュー
    @param[in] ent  追加するウエイトキューエントリ
    @retval 起床要因
-   @note LO: ウエイトキューのロック, スレッドのロックの順に獲得
  */
 static void
 enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
@@ -30,14 +29,6 @@ enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 
 	ent->reason = WQUE_WAIT;            /* 待ち中に遷移する */
 	queue_add(&wque->que, &ent->link);  /* キューに追加     */
-
-	/* @note 自スレッドへの操作であるため参照獲得は不要
-	 */
-	spinlock_lock(&ent->thr->lock);     /* スレッドのロックを獲得 */
-
-	ent->thr->state = THR_TSTATE_WAIT;  /* 状態を更新 */
-
-	spinlock_unlock(&ent->thr->lock);   /* スレッドのロックを解放 */
 
 	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
 }
@@ -84,6 +75,7 @@ wque_init_wque_entry(wque_entry *ent){
 	list_init(&ent->link);   /* キューへのリンクを初期化する */
 	ent->reason = WQUE_WAIT; /* 待ち中に初期化する */
 	ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
+	ent->thr->state = THR_TSTATE_WAIT;  /* 状態を更新 */
 }
 
 /**
@@ -148,10 +140,7 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 		/* ウエイトエントリを取り出す */
 		ent = container_of(queue_get_top(&wque->que), wque_entry, link);
 		ent->reason = reason; /* 起床要因を通知する */
-
-		spinlock_lock(&ent->thr->lock);   /* スレッドのロックを獲得 */
 		ent->thr->state = THR_TSTATE_RUNABLE;  /* 状態を更新 */
-		spinlock_unlock(&ent->thr->lock);   /* スレッドのロックを解放 */
 
 		sched_thread_add(ent->thr); /* スレッドをレディーキューに追加 */
 		if ( wque->wqflag == WQUE_WAKEFLAG_ONE )
