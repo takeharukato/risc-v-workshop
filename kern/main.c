@@ -20,6 +20,9 @@
 #include <kern/irq-if.h>
 #include <kern/timer.h>
 #include <klib/asm-offset.h>
+#if !defined(CONFIG_HAL)
+#include <stdlib.h>
+#endif  /*  !CONFIG_HAL  */
 /** 
     カーネルのアーキ共通テスト
  */
@@ -38,13 +41,16 @@ kern_common_tests(void){
 #if defined(CONFIG_HAL)
 	tst_vmcopy();
 	tst_vmstrlen();
-#endif 
+#endif  /*  CONFIG_HAL  */
 #if !defined(CONFIG_HAL)
 	tst_rv64pgtbl();
 	tst_irqctrlr();
-#endif 
+#endif  /*  CONFIG_HAL  */ 
 	tst_thread();
 	kprintf("end\n");
+#if !defined(CONFIG_HAL)
+	exit(0);
+#endif  /*  CONFIG_HAL  */
 }
 
 /**
