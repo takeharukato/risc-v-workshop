@@ -23,6 +23,10 @@ ASMMAC_DECLARE_NAME(hal_thread_switch)
     @note  void hal_thread_switch(void **prev, void **next) 相当
 */
 ASMMAC_FUNCTION(hal_thread_switch)
+	/* @note スタック操作を伴うリーフ関数なので,
+	   関数エントリ/復帰処理(リターンアドレス/フレームポインタの退避・復元)は行わない
+	*/
+	
 	addi sp, sp, -RV64_THRSW_CONTEXT_SIZE /* コンテキスト保存領域を確保  */
 	RV64_ASM_SAVE_THRSW_CONTEXT(sp)  /* スレッドスイッチコンテキストを保存 */
 	sd   sp, (a0)  /* 現在のスレッドのコンテキスト格納先アドレスを更新  */
