@@ -43,6 +43,44 @@ _thread_cmp(struct _thread *key, struct _thread *ent){
 }
 
 /**
+   スレッドIDを獲得する (内部関数)
+   @param[out] idp スレッドID返却域
+   @retval     0      正常終了
+   @retval    -ENOSPC IDに空きがない
+   @note プロセスID用のIDを返却するために使用
+ */
+static int
+alloc_new_tid_nolock(tid *idp){
+	tid         newid;
+
+	newid = bitops_ffc(&g_thrdb.idmap);  /* 空きIDを取得 */
+	if ( newid == 0 ) 
+		return  -ENOSPC;  /* 空IDがない */
+
+	--newid;  /* スレッドIDに変換 */
+
+	/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
+	bitops_set(newid, &g_thrdb.idmap); 
+
+	if ( idp != NULL )
+		*idp = newid;  /* スレッドIDを返却 */
+
+	return 0;
+}
+
+/**
+   スレッドIDを返却する(内部関数)
+   @param[in] id スレッドID
+   @note マスタスレッドが他のスレッドより先に終了したプロセスの
+   プロセスIDを返却するために使用
+ */
+static void
+release_tid_nolock(tid id){
+
+	bitops_clr(id, &g_thrdb.idmap);  /* IDを解放する */
+}
+
+/**
    スレッド生成共通処理 (内部関数)
    @param[in]  id      スレッドID
    @param[in]  entry   スレッドエントリアドレス
@@ -140,16 +178,11 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	if ( THR_TID_RSV_ID_NR > id )
 		thr->id = id;
 	else {
+		rc = alloc_new_tid_nolock(&newid);  /* 空きIDを取得 */
+		if (rc != 0 )
+			goto unlock_out; /* 空IDがない */
 
-		newid = bitops_ffc(&g_thrdb.idmap);  /* 空きIDを取得 */
-		if ( newid == 0 ) {
-
-			rc = -ENOSPC;  /* 空IDがない */
-			goto unlock_out;
-		}
-		thr->id = newid - 1;  /* スレッドIDを設定 */
-		/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
-		bitops_set(thr->id, &g_thrdb.idmap); 
+		thr->id = newid;  /* スレッドIDを設定 */
 	}
 
 	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
@@ -618,12 +651,19 @@ bool
 thr_ref_dec(thread *thr){
 	bool           res;
 	thread        *cur;
+	thread    *thr_res;
 	intrflags   iflags;
 
 	/*  スレッドの最終参照者であればスレッドを解放する
 	 */
 	res = refcnt_dec_and_lock_disable_intr(&thr->refs, &g_thrdb.lock, &iflags);
 	if ( res ) {  /* 最終参照者だった場合  */
+
+		/* スレッドをツリーから削除 */
+		thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
+		kassert( thr_res != NULL );
+
+		release_tid_nolock(thr->id); /* スレッドIDを返却  */
 
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
@@ -640,29 +680,46 @@ thr_ref_dec(thread *thr){
 	return res;
 }
 /**
+   スレッドIDを獲得する
+   @param[out] idp スレッドID返却域
+   @note プロセスID用のIDを返却するために使用
+ */
+int
+thr_id_alloc(tid *idp){
+	int             rc;
+	tid          newid;
+	intrflags   iflags;
+
+	/* スレッド管理ツリーのロックを獲得 */
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+	rc = alloc_new_tid_nolock(&newid);  /* 空きIDを取得 */
+	if (rc != 0 )
+		goto unlock_out; /* 空IDがない */
+
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	if ( idp != NULL )
+		*idp = newid;  /*  スレッドIDを返却 */
+
+	return 0;
+
+unlock_out:
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	return rc;
+}
+/**
    スレッドIDを返却する
    @param[in] id スレッドID
    @note マスタスレッドが他のスレッドより先に終了したプロセスの
    プロセスIDを返却するために使用
  */
 void
-release_threadid(tid id){
+thr_id_release(tid id){
 	intrflags   iflags;
-	thread    *thr_res;
-	thread        *thr;
-	thread         key;
 
-	key.id = id;
 	/* スレッド管理ツリーのロックを獲得 */
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
 
-	thr = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);       /* スレッドを検索 */
-	kassert( thr != NULL );                                /* スレッドが見つからなかった */
-
-	thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);  /* スレッドをツリーから削除 */
-	kassert( thr_res != NULL );
-
-	bitops_clr(id, &g_thrdb.idmap);  /* IDを解放する */
+	release_tid_nolock(id); /* スレッドIDを返却  */
 
 	/* スレッド管理ツリーのロックを解放 */
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);

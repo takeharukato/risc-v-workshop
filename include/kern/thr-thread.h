@@ -141,7 +141,8 @@ int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, th
 void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
 bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);
-void release_threadid(tid _id);
+int thr_id_alloc(tid *_idp);
+void thr_id_release(tid _id);
 void thr_idle_loop(void *_arg);
 int thr_idlethread_create(cpu_id _cpu, thread **_thrp);
 void thr_system_thread_create(void);
