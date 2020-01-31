@@ -247,12 +247,13 @@ error_out:
 static void
 del_child_thread_nolock(thread *thr, thread *parent){
 	bool            res;
+	bool      child_res;
 
 	res = thr_ref_inc(parent);  /* 親スレッドの参照を獲得 */
 	kassert( res ); /* 解放処理中でないことを確認 */
 
-	res = thr_ref_inc(thr);  /* 子スレッドの参照を獲得 */
-	kassert( res ); /* 解放処理中でないことを確認 */
+	/* 子スレッドの解放処理中に呼ばれるケースがあり得るので参照獲得を記憶する */
+	child_res = thr_ref_inc(thr);  /* 子スレッドの参照を獲得 */
 
 	/*
 	 * スレッドを親の子スレッドキューから外す
@@ -269,7 +270,8 @@ del_child_thread_nolock(thread *thr, thread *parent){
 	res = thr_ref_dec(thr);   /*  親スレッドのキューから子スレッドの参照を減算    */
 	kassert( !res );
 
-	thr_ref_dec(thr);     /* 子スレッドの参照を解放 */
+	if ( child_res )
+		thr_ref_dec(thr);     /* 子スレッドの参照を解放 */
 
 	thr_ref_dec(parent);  /*  親スレッドの参照を解放 */
 
