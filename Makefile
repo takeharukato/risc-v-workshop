@@ -3,8 +3,10 @@ include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 fsimg_obj=$(patsubst %.img,%.o, ${FSIMG_FILE})
 fsimg_objfile=${top}/fs/${fsimg_obj}
-subdirs=kern klib fs hal test tools
-cleandirs=include ${subdirs} doxygen
+kern_subdirs=kern klib fs hal test
+supdirs=tools doxygen
+subdirs=kern klib fs hal test
+cleandirs=include ${subdirs} ${supdirs}
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a 
 mconf=tools/kconfig/mconf
@@ -124,7 +126,28 @@ gcov: run
 	for dir in ${subdirs} ; do \
 		${MAKE} -C $${dir} $@ ;\
 	done
+lcov: gcov
+	${RM} ${LCOV_CLEAN_FILES}
+	${LCOV} -c -d . -o tmp-kernel-cov.linfo
+	${LCOV} -r tmp-kernel-cov.linfo *docs*  \
+	     -r tmp-kernel-cov.linfo *tools* \
+	     -r tmp-kernel-cov.linfo *test*  \
+	     -o kernel-cov.linfo
+	${RM} -fr ${LCOV_DIR}
+	${MKDIR} -p ${LCOV_DIR}
+	${GENHTML} kernel-cov.linfo --output-directory ${LCOV_DIR} --show-details
+	${TAR} zcvf ${LCOV_DIR}.tar.gz ${LCOV_DIR}
+	${RM} ${LCOV_CLEAN_FILES}
+	${RM} -fr ${LCOV_DIR}
 else
 gcov: 
+lcov:
 endif
+
+loc:
+	tempfile=`mktemp`;					\
+	echo ${supdirs}|sed  's|\s\+|\n|g' > $${tempfile};	\
+	${CLOC} --exclude-lang="D" --exclude-list-file=$${tempfile} --by-file --vcs=git; \
+	${RM} $${tempfile};
+
 

@@ -21,6 +21,7 @@ STRIP=${CROSS_COMPILE}strip
 OBJCOPY=${CROSS_COMPILE}objcopy
 OBJDUMP=${CROSS_COMPILE}objdump
 NM=${CROSS_COMPILE}nm
+CLOC=cloc
 GCOV=gcov
 GCOV_OPTS=-l
 SED=sed
@@ -31,6 +32,10 @@ RM=rm -f
 LN=ln
 ARFLAGS=rvc
 DD=dd
+MKDIR=mkdir
+LCOV=lcov
+GENHTML=genhtml
+TAR=gtar
 INC_FLAGS = -I${top}/include
 WARN_FLAGS=-Wall -Werror
 OPT_FLAGS=-O0 -ggdb3
@@ -65,8 +70,9 @@ GTAGS_CLEAN_FILES=GPATH GRTAGS GSYMS GTAGS
 TEX_CLEAN_FILES=*.aux *.bbl *.blg *.dvi *.log *.toc \
 	*.ptb *.tod *.fls *.fdb-latexmk *.lof
 GCOV_CLEAN_FILES=*.gcda *.gcno *.gcov
-
-CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES}
+LCOV_CLEAN_FILES=*.linfo
+LCOV_DIR=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(shell date +%F))-lcov
+CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES} ${LCOV_CLEAN_FILES}
 DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz ${GTAGS_CLEAN_FILES}
 DOXYGEN_ARCHIVE_NAME=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(shell date +%F))
 
