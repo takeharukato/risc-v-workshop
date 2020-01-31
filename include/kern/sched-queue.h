@@ -22,17 +22,17 @@
 #define SCHED_MIN_ITHR_PRIO     ( SCHED_MAX_ITHR_PRIO + SCHED_PRIO_PER_POLICY - 1 )
 
 /**< システムスレッドの最高優先度 */
-#define SCHED_MAX_SYS_PRIO      ( SCHED_MIN_ITHR_PRIO )
+#define SCHED_MAX_SYS_PRIO      ( SCHED_MIN_ITHR_PRIO + 1 )
 /**< システムスレッドの最低優先度 */
 #define SCHED_MIN_SYS_PRIO      ( SCHED_MAX_SYS_PRIO + SCHED_PRIO_PER_POLICY - 1 )
 
 /**< First Come First Servedクラスの最高優先度   */
-#define SCHED_MAX_FCFS_PRIO     ( SCHED_MIN_SYS_PRIO )
+#define SCHED_MAX_FCFS_PRIO     ( SCHED_MIN_SYS_PRIO + 1 )
 /**< First Come First Servedクラスの最低優先度   */
 #define SCHED_MIN_FCFS_PRIO     ( SCHED_MAX_FCFS_PRIO + SCHED_PRIO_PER_POLICY - 1)
 
 /**< ラウンドロビンクラスの最低優先度   */
-#define SCHED_MAX_RR_PRIO       ( SCHED_MIN_FCFS_PRIO )
+#define SCHED_MAX_RR_PRIO       ( SCHED_MIN_FCFS_PRIO + 1 )
 /**< ラウンドロビンクラスの最高優先度   */
 #define SCHED_MIN_RR_PRIO       ( SCHED_MAX_RR_PRIO + SCHED_PRIO_PER_POLICY - 1)
 

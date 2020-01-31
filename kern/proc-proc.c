@@ -323,7 +323,7 @@ proc_del_thread(proc *p, thread *thr){
 		p->master = container_of(queue_ref_top( &thr->p->thrque ),
 		    thread, proc_link);
 	
-	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を獲得 */
+	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を解放 */
 
 	return  rc;
 }

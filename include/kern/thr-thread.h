@@ -96,7 +96,7 @@ typedef struct _thread{
 	struct _proc                 *p;  /**< プロセス管理情報へのポインタ       */
 	void                       *ksp;  /**< スレッドスイッチコンテキスト       */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ           */
-	struct _list               link;  /**< スケジューラキューへのリンク       */
+	struct _list               link;  /**< スケジューラキュー/wait待ちへのリンク  */
 	struct _list          proc_link;  /**< プロセス管理情報のリンク           */
 	struct _list      children_link;  /**< 親スレッドのchildrenキューのリンク */
 	struct _thread_attr        attr;  /**< スレッド属性                       */

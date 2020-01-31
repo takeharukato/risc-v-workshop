@@ -122,7 +122,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
 	ti_thread_info_init(thr); /* スレッド情報初期化                   */
 
-	thr->ksp = (void *)thr->tinfo;               /* スタック位置を初期化 */
+	thr->ksp = (void *)thr->tinfo;   /* スレッド管理情報を指すようにスタック位置を初期化 */
 
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
@@ -144,13 +144,11 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 		newid = bitops_ffc(&g_thrdb.idmap);  /* 空きIDを取得 */
 		if ( newid == 0 ) {
 
-			/* スレッド管理ツリーのロックを解放 */
-			spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 			rc = -ENOSPC;  /* 空IDがない */
-			goto free_stk_out;
+			goto unlock_out;
 		}
-		thr->id = newid - 1;  /* IDを初期化 */
-		/* ビットマップ中のビットを使用中にセット */
+		thr->id = newid - 1;  /* スレッドIDを設定 */
+		/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
 		bitops_set(thr->id, &g_thrdb.idmap); 
 	}
 
@@ -165,7 +163,10 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 
 	return 0;
 
-free_stk_out:
+unlock_out:
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+
 	if ( kstktop == NULL )
 		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
 
@@ -212,6 +213,9 @@ add_child_thread_nolock(thread *thr, thread *parent){
 
 	/* 親スレッドのキューに追加する */
 	queue_add(&parent->children, &thr->children_link);  
+	res = thr_ref_inc(thr);   /*  親スレッドのキューから子スレッドの参照を加算    */
+	kassert( res );
+
 
 	thr->parent = parent;  /* 親スレッドを更新する */
 	res = thr_ref_inc(thr->parent);  /* 子スレッドから親スレッドへの参照を加算 */
@@ -257,11 +261,8 @@ del_child_thread_nolock(thread *thr, thread *parent){
 	
 	/* 親スレッドのキューから削除する */
 	queue_del(&parent->children, &thr->children_link);  
-
-	res = thr_ref_dec(thr->parent);  /* 子スレッドから親スレッドへの参照を減算 */
-	kassert( !res );  /* 上記で参照を得ているので最終参照とはならない */
-
-	thr->parent = NULL;  /* 親スレッドを更新する */
+	res = thr_ref_dec(thr);   /*  親スレッドのキューから子スレッドの参照を減算    */
+	kassert( !res );
 
 	thr_ref_dec(thr);     /* 子スレッドの参照を解放 */
 
@@ -276,8 +277,8 @@ del_child_thread_nolock(thread *thr, thread *parent){
 static void
 free_thread(thread *thr){
 
-	kassert( refcnt_read(&thr->refs) == 0 );
-	kassert( thr->state == THR_TSTATE_DEAD );
+	kassert( refcnt_read(&thr->refs) == 0 );  /* 解放中のスレッドである事を確認             */
+	kassert( thr->state == THR_TSTATE_DEAD ); /* 親プロセスへの終了通知済みであることを確認 */
 
 	pgif_free_page(thr->attr.kstack_top);  /* カーネルスタックを解放 */
 	slab_kmem_cache_free((void *)thr);     /* スレッド管理情報を解放 */
@@ -303,6 +304,33 @@ reap_thread(void __unused *arg){
 }
 
 /**
+   スレッドの終了を親スレッドに通知する(内部関数)
+   @param[in] thr 終了するスレッドのスレッド管理情報
+ */
+static void
+notify_parent_child_state(thread *thr){
+	intrflags    iflags;
+
+	kassert( list_not_linked(&thr->link) );  /* レディキューに繋がっていないことを確認 */
+
+	/**
+	   親スレッドからのwaitを待ち合せる
+	    @note 親スレッドの参照は生成時に獲得済み
+	 */
+	spinlock_lock_disable_intr(&thr->parent->lock, &iflags);  /* 親スレッドのロックを獲得 */
+	spinlock_lock(&thr->lock);                    /* 終了するスレッドのロックを獲得 */
+
+	queue_add(&thr->parent->waiters, &thr->link);  /* 終了するスレッドを登録    */
+	thr->state = THR_TSTATE_DEAD;                 /* 回収待ち中に遷移   */	
+
+	spinlock_unlock(&thr->lock);                    /* 終了するスレッドのロックを解放 */
+	spinlock_unlock_restore_intr(&thr->parent->lock, &iflags); /* 親スレッドのロックを解放 */
+
+	wque_wakeup(&thr->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
+	thr_ref_dec(thr->parent); /* 子スレッドから親スレッドへの参照を解放         */
+}
+
+/**
    スレッドの終了を待ち合わせシステムコール実処理関数
    @param[out] *resp 終了したスレッドの終了時情報格納領域
    @retval  0      正常終了
@@ -314,7 +342,6 @@ thr_thread_wait(thr_wait_res *resp){
 	bool            res;
 	thread         *cur;
 	thread         *thr;
-	thr_wait_entry *ent;
 	wque_reason  reason;
 	intrflags    iflags;
 
@@ -341,8 +368,7 @@ thr_thread_wait(thr_wait_res *resp){
 	/**
 	   wait待ち中の子スレッドを取り出し, 終了状態を取得
 	*/
-	ent = container_of(queue_get_top(&cur->waiters), thr_wait_entry, link);
-	thr = ent->thr;               /*  子スレッドを取得          */
+	thr = container_of(queue_get_top(&cur->waiters), thread, link);
 
 	if ( thr->state != THR_TSTATE_DEAD ) {  /*  終了したスレッドでない場合 */
 
@@ -390,16 +416,12 @@ thr_thread_exit(exit_code ec){
 	thread         *thr;
 	list            *lp;
 	list            *np;
-	thr_wait_entry  ent;
 	intrflags    iflags;
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
 	res = thr_ref_inc(cur);         /*  自スレッドの参照を取得    */
 	if ( !res )
 		goto error_out;         /*  終了処理中                */
-
-	list_init(&ent.link);           /* リストエントリを初期化     */
-	ent.thr = cur;                  /* 自スレッドを設定           */
 
 	kassert( list_not_linked(&cur->link) );  /* レディキューに繋がっていないことを確認 */
 	
@@ -432,10 +454,9 @@ thr_thread_exit(exit_code ec){
 
 		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
 
-		res = thr_ref_inc(thr);        /*  子スレッドの参照を取得    */
-		kassert( res );
-
 		kassert( thr->parent == cur );  /* 自スレッドの子スレッドである事を確認 */
+		res = thr_ref_inc(thr);         /*  スレッドの参照を獲得                */
+		kassert( res );
 
 		spinlock_lock(&thr->lock);                      /* 子スレッドのロックを獲得 */
 
@@ -443,20 +464,19 @@ thr_thread_exit(exit_code ec){
 		 * 子スレッドを回収スレッドの子に移動
 		 */
 		del_child_thread_nolock(thr, cur);    /* スレッドを取り除く */
+
+		res = thr_ref_dec(thr->parent);  /* 子スレッドから親スレッドへの参照を減算 */
+		kassert( !res );  /* 上記で参照を得ているので最終参照とはならない */
+
+		thr->parent = NULL;  /* 親スレッドへのリンクを無効化する */
+
 		add_child_thread_nolock(thr, reaper); /* 回収スレッドの子スレッドに追加する */
 
 		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
-		kassert( cur == thr->parent );
+		kassert( thr->parent == reaper);
 
-		res = thr_ref_dec(thr->parent);  /* 親スレッドの参照を解放 */
-		kassert( !res );  /* スレッド管理ツリーからの参照が残るはず */
-
-		thr->parent = reaper;  /* 回収スレッドを親スレッドに設定 */
-
-		res = thr_ref_inc(thr->parent);
-		kassert( res );  /* 親スレッドとなるreaperスレッドは常に存在する */
-
-		res = thr_ref_dec(thr);        /*  スレッドの参照を解放    */
+		res = thr_ref_dec(thr);        /*  子スレッドの参照を解放    */
+		kassert( !res );               /*  親スレッドの子スレッドキューからの参照が残る */
 	}
 
 	/* 回収スレッドのロックを解放 */
@@ -465,22 +485,8 @@ thr_thread_exit(exit_code ec){
 	res = thr_ref_dec(reaper);      /*  回収スレッドの参照を解放    */
 	kassert( !res );
 
-	/**
-	   親スレッドからのwaitを待ち合せる
-	    @note 親スレッドの参照は生成時に獲得済み
-	 */
-	spinlock_lock_disable_intr(&cur->parent->lock, &iflags);
-
-	queue_add(&cur->parent->waiters, &ent.link);  /* 自スレッドを登録    */
-	cur->state = THR_TSTATE_DEAD;                 /*  回収待ち中に遷移   */	
-	/* 親スレッドのロックを解放 */
-	spinlock_unlock_restore_intr(&cur->parent->lock, &iflags);
-
-	wque_wakeup(&cur->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
-
-	thr_ref_dec(cur->parent); /* 親スレッドの参照を解放            */
-
-	thr_ref_dec(cur);         /*  スレッド終了処理用の参照を解放   */
+	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
+	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放   */
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放           */
 
@@ -511,6 +517,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 		  thr_flags flags, thread **thrp){
 	int            rc;
 	thread       *thr;
+	thread    *parent;
 	bool      ref_res;
 
 	if ( !SCHED_VALID_PRIO(prio) )
@@ -526,11 +533,14 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	if ( rc != 0 )
 		goto error_out;  /* スレッド生成失敗 */
 
-	/* スレッドを生成したスレッドを親スレッドに設定 */
-	thr->parent = ti_get_current_thread(); 
+	parent = ti_get_current_thread(); /* スレッドを生成したスレッドを親スレッドに設定 */
+	ref_res = thr_ref_inc(parent);    /* 親スレッドの参照を獲得                       */
+	kassert( ref_res );               /* 親スレッドは存在するはず                     */
 
-	ref_res = thr_ref_inc(thr->parent);        /* 親スレッドの参照を獲得 */
-	kassert( ref_res );  /* 親スレッドは存在するはず */
+	add_child_thread_nolock(thr, parent);  /* 親スレッドの子スレッドキューに追加する  */
+
+	ref_res = thr_ref_dec(parent);         /*  親スレッドの参照を解放                   */
+	kassert( !ref_res );  /* 自スレッドから親スレッドへの参照があるため最終参照ではない */
 
 	if ( thrp != NULL )
 		*thrp = thr;  /* スレッドを返却 */
@@ -581,7 +591,6 @@ bool
 thr_ref_dec(thread *thr){
 	bool           res;
 	thread        *cur;
-	thread    *thr_res;
 	intrflags   iflags;
 
 	/*  スレッドの最終参照者であればスレッドを解放する
@@ -589,17 +598,14 @@ thr_ref_dec(thread *thr){
 	res = refcnt_dec_and_lock_disable_intr(&thr->refs, &g_thrdb.lock, &iflags);
 	if ( res ) {  /* 最終参照者だった場合  */
 
-		/* スレッドをツリーから削除 */
-		thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);
-		kassert( thr_res != NULL );
-
 		/* スレッド管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 
 		 /* レディキューに繋がっていないことを確認 */
 		kassert( list_not_linked(&thr->link) ); 
 		cur = ti_get_current_thread(); /* カレントスレッドを参照 */
-
+		/* スレッド管理情報の解放準備ができたことを親スレッドに通知 */
+		notify_parent_child_state(thr); 
 		if ( cur == thr ) 
 			sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
 	}
@@ -615,15 +621,24 @@ thr_ref_dec(thread *thr){
 void
 release_threadid(tid id){
 	intrflags   iflags;
+	thread    *thr_res;
+	thread        *thr;
+	thread         key;
 
+	key.id = id;
 	/* スレッド管理ツリーのロックを獲得 */
 	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+
+	thr = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);       /* スレッドを検索 */
+	kassert( thr != NULL );                                /* スレッドが見つからなかった */
+
+	thr_res = RB_REMOVE(_thrdb_tree, &g_thrdb.head, thr);  /* スレッドをツリーから削除 */
+	kassert( thr_res != NULL );
 
 	bitops_clr(id, &g_thrdb.idmap);  /* IDを解放する */
 
 	/* スレッド管理ツリーのロックを解放 */
 	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-
 }
 
 /**
