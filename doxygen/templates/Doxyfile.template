@@ -918,7 +918,8 @@ EXCLUDE_PATTERNS       = */docs/* \
 		       */objs/*	  \
 		       */klib/early-malloc.c	\
 		       */include/hal-*/hal-spinlock.h \
-		       */include/kern/cpuintr.h
+		       */include/kern/cpuintr.h \
+		       */*.d
 
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
