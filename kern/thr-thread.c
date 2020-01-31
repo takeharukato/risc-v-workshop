@@ -505,14 +505,11 @@ thr_thread_exit(exit_code ec){
 
 	kassert( list_not_linked(&cur->link) );  /* レディキューに繋がっていないことを確認 */
 	
+	handle_orphan_thread(cur);      /*  子スレッドを回収スレッドの子スレッドに移動 */
+	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
 	cur->exitcode = ec;             /*  終了コードを設定          */
 
-	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - begin - */
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
-	handle_orphan_thread(cur);      /*  子スレッドを回収スレッドの子スレッドに移動 */
-
-	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
-	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - end - */
 
 	spinlock_unlock_restore_intr(&cur->lock, &iflags);   /* 自スレッドのロックを解放 */
 
