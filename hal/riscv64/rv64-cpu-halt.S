@@ -3,7 +3,7 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  RISC-V64 cpu halt operations                                      */
+/*  RISC-V64 cpu halt operation                                       */
 /*                                                                    */
 /**********************************************************************/
 #define ASM_FILE   1
