@@ -338,6 +338,82 @@ notify_parent_child_exit(thread *thr){
 }
 
 /**
+   子スレッドを回収スレッドの子スレッドに移動する
+   @param[in] old_parent 操作対象のスレッド
+   @note LO: old_parentのロック, 回収スレッドのロック, 
+   回収スレッドの子スレッドに追加するスレッドのロックの順に獲得する
+ */
+static __unused void
+handle_orphan_thread(thread *old_parent){
+	bool            res;
+	thread          key;
+	thread      *reaper;
+	thread         *thr;
+	list            *lp;
+	list            *np;
+	intrflags    iflags;
+
+	kassert(spinlock_locked_by_self(&old_parent->lock)); /* 親スレッドのロック獲得済み */
+
+	/* 子スレッドをreaper threadの子スレッドに設定する
+	 */
+	key.id = THR_TID_REAPER;
+
+	/* スレッド管理ツリーのロックを獲得 */
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+
+	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* 回収スレッドを検索 */
+
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	kassert( reaper != NULL );
+
+	res = thr_ref_inc(reaper); /* 回収スレッドの参照を取得 */
+	kassert( res );
+	
+	/**
+	   回収スレッドの子スレッドに追加
+	 */
+	/* 回収スレッドのロックを獲得 */
+	spinlock_lock_disable_intr(&reaper->lock, &iflags);
+
+	queue_for_each_safe(lp, &old_parent->children, np) {
+
+		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し */
+
+		/* 自スレッドの子スレッドである事を確認 */
+		kassert( thr->parent == old_parent );
+		res = thr_ref_inc(thr); /*  スレッドの参照を獲得 */
+		kassert( res );
+
+		spinlock_lock(&thr->lock); /* 子スレッドのロックを獲得 */
+
+		/*
+		 * 子スレッドを回収スレッドの子に移動
+		 */
+		del_child_thread_nolock(thr, old_parent); /* スレッドを取り除く */
+
+		res = thr_ref_dec(thr->parent);  /* 子スレッドから親スレッドへの参照を減算 */
+		kassert( !res );  /* 上記で参照を得ているので最終参照とはならない */
+
+		thr->parent = NULL;  /* 親スレッドへのリンクを無効化する */
+		add_child_thread_nolock(thr, reaper); /* 回収スレッドの子スレッドに追加する */
+
+		spinlock_unlock(&thr->lock);   /* 子スレッドのロックを解放 */
+		kassert( thr->parent == reaper);
+
+		res = thr_ref_dec(thr);  /* 子スレッドの参照を解放 */
+		kassert( !res );   /*  親スレッドの子スレッドキューからの参照が残る */
+	}
+
+	/* 回収スレッドのロックを解放 */
+	spinlock_unlock_restore_intr(&reaper->lock, &iflags);
+
+	res = thr_ref_dec(reaper);  /* 回収スレッドの参照を解放 */
+	kassert( !res );
+}
+
+/**
    スレッドの終了を待ち合わせシステムコール実処理関数
    @param[out] *resp 終了したスレッドの終了時情報格納領域
    @retval  0      正常終了
