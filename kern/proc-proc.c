@@ -176,6 +176,8 @@ free_user_process(proc *p){
 	/* ページテーブルを解放 */
 	pgtbl_free_user_pgtbl(p->pgt);
 
+	thr_id_release(p->id);   /* プロセスIDを返却する   */
+
 	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
 
 	return ;
@@ -311,19 +313,14 @@ proc_del_thread(proc *p, thread *thr){
 	rc = proc_ref_dec(p);  /* スレッド削除に伴う参照のデクリメント */
 	kassert( !rc );  /* 上記で参照を得ているので最終参照ではないはず */
 
-	/* 最初のスレッドのスレッドIDは, スレッド終了後もプロセスIDとして使用されるため,
-	 * プロセスIDと一致しない場合にのみスレッドIDを返却する 
+	/* プロセスキューが空でなく, 終了したスレッドがマスタースレッドの場合
+	   マスタースレッドを更新する
 	 */
-	if ( p->id != thr->id ) 
-		release_threadid(thr->id); /* スレッドIDを返却 */
-
-	if ( queue_is_empty(&p->thrque) )  /* プロセスキューが空だったらプロセスIDを返却 */
-		release_threadid(p->id);
-	else if ( thr == thr->p->master )  /* マスタースレッドを更新 */
+	if ( !queue_is_empty(&p->thrque) && ( thr == thr->p->master ) )
 		p->master = container_of(queue_ref_top( &thr->p->thrque ),
 		    thread, proc_link);
 	
-	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を獲得 */
+	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を解放 */
 
 	return  rc;
 }
@@ -355,6 +352,7 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	proc          *res;
 	proc_segment  *seg;
 	thread        *thr;
+	pid        new_pid;
 	intrflags   iflags;
 
 	/* プロセス管理情報を割り当てる
@@ -365,12 +363,18 @@ proc_user_allocate(entry_addr entry, proc **procp){
 		rc = -ENOMEM;
 		goto error_out;  /* メモリ不足 */
 	}
+	/** プロセスIDを割り当てる
+	 */
+	rc = thr_id_alloc(&new_pid);
+	if ( rc != 0 )
+		goto free_proc_out;
+	new_proc->id = new_pid;  /* プロセスIDを設定 */
 
 	/* ページテーブルを割り当てる
 	 */
 	rc = pgtbl_alloc_user_pgtbl(&new_proc->pgt);
 	if ( rc != 0 ) 
-		goto free_proc_out;  
+		goto free_id_out;  
 	
 	/* ユーザスタックを割り当てる
 	 */
@@ -395,7 +399,6 @@ proc_user_allocate(entry_addr entry, proc **procp){
 
 	queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
 	new_proc->master = thr;                         /* マスタースレッドを設定 */
-	new_proc->id = thr->id;                         /* プロセスIDを設定       */
 
         /* プロセス管理情報をプロセスツリーに登録 */
 	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
@@ -415,7 +418,8 @@ free_stk_out:
 
 free_pgtbl_out:
 	pgtbl_free_user_pgtbl(new_proc->pgt);  /* ページテーブルを解放する */
-
+free_id_out:
+	thr_id_release(thr->id);  /*  プロセスIDを返却  */
 free_proc_out:
 	slab_kmem_cache_free(new_proc); /* プロセス情報を解放する */
 

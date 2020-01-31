@@ -56,8 +56,8 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 
 		thr = proc_find_thread(p1->id);  /* マスタースレッド取得                    */
 		proc_del_thread(p1, thr);        /* マスタースレッド除去に伴うプロセス解放  */
+		/* TODO: 本来は, 自スレッド終了処理を呼び出す  */
 		thr_ref_dec(thr);                /* スレッドの参照返却                      */
-		thr_ref_dec(thr);                /* スレッド削除                            */
 	}
 	kp = proc_kproc_refer();
 	if ( kp != NULL )
