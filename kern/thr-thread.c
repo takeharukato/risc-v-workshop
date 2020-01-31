@@ -343,7 +343,7 @@ notify_parent_child_exit(thread *thr){
    @note LO: old_parentのロック, 回収スレッドのロック, 
    回収スレッドの子スレッドに追加するスレッドのロックの順に獲得する
  */
-static __unused void
+static void
 handle_orphan_thread(thread *old_parent){
 	bool            res;
 	thread          key;
@@ -493,18 +493,15 @@ error_out:
 void
 thr_thread_exit(exit_code ec){
 	bool            res;
-	thread          key;
 	thread         *cur;
-	thread      *reaper;
-	thread         *thr;
-	list            *lp;
-	list            *np;
-	intrflags    iflags;
+ 	intrflags    iflags;
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
 	res = thr_ref_inc(cur);         /*  自スレッドの参照を取得    */
 	if ( !res )
 		goto error_out;         /*  終了処理中                */
+
+	spinlock_lock_disable_intr(&cur->lock, &iflags);  /* 自スレッドのロックを獲得 */
 
 	kassert( list_not_linked(&cur->link) );  /* レディキューに繋がっていないことを確認 */
 	
@@ -512,65 +509,12 @@ thr_thread_exit(exit_code ec){
 
 	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - begin - */
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
-
-	/* 子スレッドをreaper threadの子スレッドに設定する
-	 */
-	key.id = THR_TID_REAPER;
-	/* スレッド管理ツリーのロックを獲得 */
-	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
-
-	reaper = RB_FIND(_thrdb_tree, &g_thrdb.head, &key);  /* 回収スレッドを検索 */
-
-	/* スレッド管理ツリーのロックを解放 */
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-	kassert( reaper != NULL );
-
-	res = thr_ref_inc(reaper);      /*  回収スレッドの参照を取得    */
-	kassert( res );
-	
-	/**
-	   回収スレッドの子スレッドに追加
-	 */
-	/* 回収スレッドのロックを獲得 */
-	spinlock_lock_disable_intr(&reaper->lock, &iflags);
-
-	queue_for_each_safe(lp, &cur->children, np) {
-
-		thr = container_of(lp, thread, children_link);  /* 子スレッドを取り出し     */
-
-		kassert( thr->parent == cur );  /* 自スレッドの子スレッドである事を確認 */
-		res = thr_ref_inc(thr);         /*  スレッドの参照を獲得                */
-		kassert( res );
-
-		spinlock_lock(&thr->lock);                  /* 子スレッドのロックを獲得 */
-
-		/*
-		 * 子スレッドを回収スレッドの子に移動
-		 */
-		del_child_thread_nolock(thr, cur);    /* スレッドを取り除く */
-
-		res = thr_ref_dec(thr->parent);  /* 子スレッドから親スレッドへの参照を減算 */
-		kassert( !res );  /* 上記で参照を得ているので最終参照とはならない */
-
-		thr->parent = NULL;  /* 親スレッドへのリンクを無効化する */
-
-		add_child_thread_nolock(thr, reaper); /* 回収スレッドの子スレッドに追加する */
-
-		spinlock_unlock(&thr->lock);   /* 子スレッドのロックを解放   */
-		kassert( thr->parent == reaper);
-
-		res = thr_ref_dec(thr);        /*  子スレッドの参照を解放                       */
-		kassert( !res );               /*  親スレッドの子スレッドキューからの参照が残る */
-	}
-
-	/* 回収スレッドのロックを解放 */
-	spinlock_unlock_restore_intr(&reaper->lock, &iflags);
-
-	res = thr_ref_dec(reaper);      /*  回収スレッドの参照を解放    */
-	kassert( !res );
+	handle_orphan_thread(cur);      /*  子スレッドを回収スレッドの子スレッドに移動 */
 
 	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
 	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - end - */
+
+	spinlock_unlock_restore_intr(&cur->lock, &iflags);   /* 自スレッドのロックを解放 */
 
 	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放   */
 
