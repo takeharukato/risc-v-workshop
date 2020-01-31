@@ -238,6 +238,11 @@ error_out:
    指定した子スレッドを取り除く (内部関数)
    @param[in] thr    取り除く子スレッドのスレッド管理情報
    @param[in] parent 削除元の親スレッド
+   @note 親スレッドの子スレッドキューから指定したスレッドを取り除くが,
+   子スレッドから親スレッドへの通知を行うために親スレッドへの参照は解放できない。
+   子スレッドから親スレッドへの参照は, スレッド管理情報への全ての参照が完了し, 
+   親プロセスへスレッドの終了を通知可能になった時点(notify_parent_child_exit)で
+   解放する。
 */
 static void
 del_child_thread_nolock(thread *thr, thread *parent){
@@ -308,7 +313,7 @@ reap_thread(void __unused *arg){
    @param[in] thr 終了するスレッドのスレッド管理情報
  */
 static void
-notify_parent_child_state(thread *thr){
+notify_parent_child_exit(thread *thr){
 	intrflags    iflags;
 
 	kassert( list_not_linked(&thr->link) );  /* レディキューに繋がっていないことを確認 */
@@ -427,6 +432,7 @@ thr_thread_exit(exit_code ec){
 	
 	cur->exitcode = ec;             /*  終了コードを設定          */
 
+	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - begin - */
 	cur->state = THR_TSTATE_EXIT;   /*  終了処理中に遷移          */
 
 	/* 子スレッドをreaper threadの子スレッドに設定する
@@ -458,7 +464,7 @@ thr_thread_exit(exit_code ec){
 		res = thr_ref_inc(thr);         /*  スレッドの参照を獲得                */
 		kassert( res );
 
-		spinlock_lock(&thr->lock);                      /* 子スレッドのロックを獲得 */
+		spinlock_lock(&thr->lock);                  /* 子スレッドのロックを獲得 */
 
 		/*
 		 * 子スレッドを回収スレッドの子に移動
@@ -472,10 +478,10 @@ thr_thread_exit(exit_code ec){
 
 		add_child_thread_nolock(thr, reaper); /* 回収スレッドの子スレッドに追加する */
 
-		spinlock_unlock(&thr->lock);  /* 子スレッドのロックを解放 */
+		spinlock_unlock(&thr->lock);   /* 子スレッドのロックを解放   */
 		kassert( thr->parent == reaper);
 
-		res = thr_ref_dec(thr);        /*  子スレッドの参照を解放    */
+		res = thr_ref_dec(thr);        /*  子スレッドの参照を解放                       */
 		kassert( !res );               /*  親スレッドの子スレッドキューからの参照が残る */
 	}
 
@@ -486,6 +492,8 @@ thr_thread_exit(exit_code ec){
 	kassert( !res );
 
 	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
+	/* TODO: thr_ref_decで最終参照の場合の処理に移動する - end - */
+
 	thr_ref_dec(cur);         /*  スレッド終了処理用に参照を解放   */
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放           */
@@ -605,7 +613,7 @@ thr_ref_dec(thread *thr){
 		kassert( list_not_linked(&thr->link) ); 
 		cur = ti_get_current_thread(); /* カレントスレッドを参照 */
 		/* スレッド管理情報の解放準備ができたことを親スレッドに通知 */
-		notify_parent_child_state(thr); 
+		notify_parent_child_exit(thr); 
 		if ( cur == thr ) 
 			sched_schedule();  /*  自コアのカレントスレッドだった場合はCPUを解放 */
 	}
