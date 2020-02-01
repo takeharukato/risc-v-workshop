@@ -464,6 +464,25 @@ handle_orphan_thread(thread *old_parent){
 }
 
 /**
+   回収スレッドを生成する
+*/
+static void
+create_reaper_thread(void){
+	int          rc;
+	thread     *thr;
+	cpu_info  *cinf; 
+
+	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
+	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
+	    THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
+	kassert( rc == 0 );
+
+	thr->tinfo->thr = thr;               /* 自スレッドを設定       */
+
+	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
+}
+
+/**
    スレッドの終了を待ち合わせシステムコール実処理関数
    @param[out] *resp 終了したスレッドの終了時情報格納領域
    @retval  0      正常終了
@@ -811,21 +830,8 @@ error_out:
  */
 void
 thr_system_thread_create(void){
-	int          rc;
-	thread     *thr;
-	cpu_info  *cinf; 
 
-	/**
-	   回収スレッドを生成 
-	 */
-	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
-	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
-	    THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
-	kassert( rc == 0 );
-
-	thr->tinfo->thr = thr;               /* 自スレッドを設定       */
-
-	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
+	create_reaper_thread();  /* 回収スレッドを生成する */
 
 	return ;
 }
