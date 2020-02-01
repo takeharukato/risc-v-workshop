@@ -68,8 +68,8 @@ test_thread(void __unused *_arg){
  */
 void
 kern_init(void) {
-	int      rc;
-	thread *thr;
+	int       rc;
+	thread  *thr;
 
 	kprintf("fsimage: [%p, %p) len:%u\n", 
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
@@ -96,9 +96,27 @@ kern_init(void) {
 }
 
 #if !defined(CONFIG_HAL)
+/**
+   ユーザランドテスト用の初期化を行う
+ */
+static void
+uland_test_init(void){
+	cpu_id log_id;
+
+	tflib_kernlayout_init();
+	slab_prepare_preallocate_cahches();
+	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
+
+	krn_cpuinfo_init();  /* CPU情報を初期化する */
+	krn_cpuinfo_cpu_register(0, &log_id); /* BSPを登録する */
+	krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
+
+	kern_init();  /* カーネルの初期化 */
+
+	tflib_kernlayout_finalize();
+}
 int 
 main(int argc, char *argv[]) {
-	cpu_id log_id;
 	void *new_sp;
 	thread_info *ti;
 
@@ -108,16 +126,8 @@ main(int argc, char *argv[]) {
 	new_sp = (void *)ti 
 		- (TI_THREAD_INFO_SIZE + X64_TRAP_CONTEXT_SIZE + X64_THRSW_CONTEXT_SIZE);
 
-	tflib_kernlayout_init();
-	slab_prepare_preallocate_cahches();
-	vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
+	hal_call_with_newstack(uland_test_init, NULL, new_sp);
 
-	krn_cpuinfo_init();  /* CPU情報を初期化する */
-	krn_cpuinfo_cpu_register(0, &log_id); /* BSPを登録する */
-	krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
-	hal_call_with_newstack(kern_init, NULL, new_sp);
-
-	tflib_kernlayout_finalize();
 	return 0;
 }
 #endif  /*  !CONFIG_HAL  */
