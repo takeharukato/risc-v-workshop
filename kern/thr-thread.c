@@ -81,135 +81,6 @@ release_tid_nolock(tid id){
 }
 
 /**
-   スレッド生成共通処理 (内部関数)
-   @param[in]  id      スレッドID
-   @param[in]  entry   スレッドエントリアドレス
-   @param[in]  usp     ユーザスタックポインタ初期値
-   @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
-   @param[in]  prio    初期化時のスレッド優先度
-   @param[in]  flags   スレッド属性フラグ
-   @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
-   @retval     0      正常終了
-   @retval    -EINVAL 不正な優先度を指定した
-   @retval    -ENOMEM メモリ不足
-   @retval    -ENOSPC スレッドIDに空きがない
-   @note      アイドルスレッド生成処理と通常のスレッド生成処理との共通部分を実装.
-   アイドルスレッド生成時は, 親スレッドがいないので親スレッドの参照獲得処理を除いている.
-   また, アイドルスレッドのスレッド情報はスレッドへの参照を除いて初期化済みなので
-   スレッド情報の初期化を除いている
-*/
-static int
-create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
-		  thr_flags flags, thread **thrp){
-	int            rc;
-	tid         newid;
-	void      *newstk;
-	thread       *thr;
-	thread       *res;
-	intrflags  iflags;
-
-	if ( !SCHED_VALID_PRIO(prio) )
-		return -EINVAL;
-
-	if ( ( flags & THR_THRFLAGS_USER ) && ( !SCHED_VALID_USER_PRIO(prio) ) )
-		return -EINVAL;
-
-	/* スレッド管理情報を割り当てる
-	 */
-	rc = slab_kmem_cache_alloc(&thr_cache, KMALLOC_NORMAL, (void **)&thr);
-	if ( rc != 0 ) {
-
-		rc = -ENOMEM;
-		goto error_out;  /* メモリ不足 */
-	}
-
-	/* スレッド管理情報の初期化
-	 */
-	spinlock_init(&thr->lock);         /* スレッド管理情報のロックを初期化 */
-	thr->state = THR_TSTATE_DORMANT;   /* スレッドを実行可能状態に遷移     */
-	thr->id = 0;                       /* idを初期化                       */
-
-	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
-	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化         */
-	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化   */
-	list_init(&thr->children_link);    /* 子スレッド一覧へのリンクを初期化              */
-	queue_init(&thr->children);        /* 子スレッド一覧を初期化                    */
-	queue_init(&thr->waiters);         /* wait待ちスレッドのキューを初期化          */
-	wque_init_wait_queue(&thr->pque);  /* wait待ちスレッドの待ちキューを初期化(親)  */
-
-	thr->exitcode = 0;           /* 終了コードを初期化     */
-
-	thr->flags = flags;          /* スレッドの属性値を設定 */
-
-	thr->attr.ini_prio = prio;   /* 初期化時優先度を初期化 */
-	thr->attr.base_prio = prio;  /* ベース優先度を初期化   */
-	thr->attr.cur_prio = prio;   /* 現在の優先度を初期化   */
-
-	newstk = kstktop;        /* 指定されたカーネルスタックの先頭アドレスをセットする */
-	if ( newstk == NULL ) {  /* スタックを動的に割り当てる場合 */
-
-		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER, 
-		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);  /* カーネルスタックページの割当て */
-		if ( rc != 0 ) {
-
-			rc = -ENOMEM;  /* メモリ不足 */
-			goto free_thr_out;
-		}
-		thr->flags |= THR_THRFLAGS_MANAGED_STK; /* ページプールからスタックを割当て */
-	}
-
-	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
-	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
-	thr->ksp = (void *)thr->tinfo;   /* スレッド管理情報を指すようにスタック位置を初期化 */
-	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
-	 */
-	hal_setup_thread_context(entry, usp, thr->flags, &thr->ksp);
-
-	thr->state = THR_TSTATE_RUNABLE;   /* スレッドを実行可能状態に遷移  */
-
-	/* スレッドIDの割当て, スレッド管理ツリーへの登録
-	 */
-	/* スレッド管理ツリーのロックを獲得 */
-	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
-
-	/* スレッドIDを設定
-	 */
-	if ( THR_TID_RSV_ID_NR > id )
-		thr->id = id;
-	else {
-		rc = alloc_new_tid_nolock(&newid);  /* 空きIDを取得 */
-		if (rc != 0 )
-			goto unlock_out; /* 空IDがない */
-
-		thr->id = newid;  /* スレッドIDを設定 */
-	}
-
-	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
-
-	/* スレッド管理ツリーのロックを解放 */
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-	kassert( res == NULL );
-
-	if ( thrp != NULL )
-		*thrp = thr;  /* スレッド情報を返却 */
-
-	return 0;
-
-unlock_out:
-	/* スレッド管理ツリーのロックを解放 */
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-
-	if ( kstktop == NULL )
-		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
-
-free_thr_out:
-	slab_kmem_cache_free((void *)thr);  /* スレッド管理情報を解放 */
-
-error_out:
-	return rc;
-}
-
-/**
    スレッドに子スレッドを追加する (内部関数)
    @param[in] thr    追加する子スレッドのスレッド管理情報
    @param[in] parent 追加先の親スレッド
@@ -308,6 +179,154 @@ del_child_thread_nolock(thread *thr, thread *parent){
 
 	return ;
 }
+
+/**
+   スレッド生成共通処理 (内部関数)
+   @param[in]  id      スレッドID
+   @param[in]  entry   スレッドエントリアドレス
+   @param[in]  usp     ユーザスタックポインタ初期値
+   @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
+   @param[in]  prio    初期化時のスレッド優先度
+   @param[in]  flags   スレッド属性フラグ
+   @param[in]  parent  親スレッドのスレッド管理情報
+   @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
+   @retval     0      正常終了
+   @retval    -EINVAL 不正な優先度を指定した
+   @retval    -ENOMEM メモリ不足
+   @retval    -ENOSPC スレッドIDに空きがない
+   @note      アイドルスレッド生成処理と通常のスレッド生成処理との共通部分を実装.
+   アイドルスレッド生成時は, 親スレッドがいないので親スレッドの参照獲得処理を除いている.
+   また, アイドルスレッドのスレッド情報はスレッドへの参照を除いて初期化済みなので
+   スレッド情報の初期化を除いている
+*/
+static int
+create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
+    thr_flags flags, thread *parent, thread **thrp){
+	int            rc;
+	tid         newid;
+	void      *newstk;
+	thread       *thr;
+	thread       *res;
+	bool      ref_res;
+	intrflags  iflags;
+
+	if ( !SCHED_VALID_PRIO(prio) )
+		return -EINVAL;
+
+	if ( ( flags & THR_THRFLAGS_USER ) && ( !SCHED_VALID_USER_PRIO(prio) ) )
+		return -EINVAL;
+
+	/* スレッド管理情報を割り当てる
+	 */
+	rc = slab_kmem_cache_alloc(&thr_cache, KMALLOC_NORMAL, (void **)&thr);
+	if ( rc != 0 ) {
+
+		rc = -ENOMEM;
+		goto error_out;  /* メモリ不足 */
+	}
+
+	/* スレッド管理情報の初期化
+	 */
+	spinlock_init(&thr->lock);         /* スレッド管理情報のロックを初期化 */
+	thr->state = THR_TSTATE_DORMANT;   /* スレッドを実行可能状態に遷移     */
+	thr->id = 0;                       /* idを初期化                       */
+
+	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
+	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化         */
+	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化   */
+	list_init(&thr->children_link);    /* 子スレッド一覧へのリンクを初期化              */
+	queue_init(&thr->children);        /* 子スレッド一覧を初期化                    */
+	queue_init(&thr->waiters);         /* wait待ちスレッドのキューを初期化          */
+	wque_init_wait_queue(&thr->pque);  /* wait待ちスレッドの待ちキューを初期化(親)  */
+
+	thr->exitcode = 0;           /* 終了コードを初期化     */
+
+	thr->flags = flags;          /* スレッドの属性値を設定 */
+
+	thr->attr.ini_prio = prio;   /* 初期化時優先度を初期化 */
+	thr->attr.base_prio = prio;  /* ベース優先度を初期化   */
+	thr->attr.cur_prio = prio;   /* 現在の優先度を初期化   */
+
+	newstk = kstktop;        /* 指定されたカーネルスタックの先頭アドレスをセットする */
+	if ( newstk == NULL ) {  /* スタックを動的に割り当てる場合 */
+
+		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER, 
+		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);  /* カーネルスタックページの割当て */
+		if ( rc != 0 ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto free_thr_out;
+		}
+		thr->flags |= THR_THRFLAGS_MANAGED_STK; /* ページプールからスタックを割当て */
+	}
+
+	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
+	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
+	thr->ksp = (void *)thr->tinfo;   /* スレッド管理情報を指すようにスタック位置を初期化 */
+	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
+	 */
+	hal_setup_thread_context(entry, usp, thr->flags, &thr->ksp);
+
+	thr->state = THR_TSTATE_RUNABLE;   /* スレッドを実行可能状態に遷移  */
+
+	/* スレッドIDの割当て, スレッド管理ツリーへの登録
+	 */
+	/* スレッド管理ツリーのロックを獲得 */
+	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
+
+	/* スレッドIDを設定
+	 */
+	if ( THR_TID_RSV_ID_NR > id )
+		thr->id = id;
+	else {
+		rc = alloc_new_tid_nolock(&newid);  /* 空きIDを取得 */
+		if (rc != 0 )
+			goto unlock_out; /* 空IDがない */
+
+		thr->id = newid;  /* スレッドIDを設定 */
+	}
+
+	res = RB_INSERT(_thrdb_tree, &g_thrdb.head, thr);  /* 生成したスレッドを登録 */
+
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+	kassert( res == NULL );
+
+	/**
+	   スレッドの親子関係を設定
+	 */
+	if ( parent != NULL ) {
+
+		ref_res = thr_ref_inc(parent); /* 親スレッドの参照を獲得  */
+		kassert( ref_res );            /* 親スレッドは存在するはず  */
+
+		 /* 親スレッドの子スレッドキューに追加し参照を更新する  */
+		add_child_thread_nolock(thr, parent); 
+
+		ref_res = thr_ref_dec(parent); /*  親スレッドの参照を解放 */
+		/* 自スレッドから親スレッドへの参照があるため最終参照ではない */
+		kassert( !ref_res );
+	}
+
+	if ( thrp != NULL )
+		*thrp = thr;  /* スレッド情報を返却 */
+
+	return 0;
+
+unlock_out:
+	/* スレッド管理ツリーのロックを解放 */
+	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
+
+	if ( kstktop == NULL )
+		pgif_free_page(newstk);  /* 動的に割り当てたスタックを解放 */
+
+free_thr_out:
+	slab_kmem_cache_free((void *)thr);  /* スレッド管理情報を解放 */
+
+error_out:
+	return rc;
+}
+
 /**
    スレッド資源(スレッド管理情報とカーネルスタック)を解放する
    @param[in] thr 
@@ -576,7 +595,6 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	int            rc;
 	thread       *thr;
 	thread    *parent;
-	bool      ref_res;
 
 	if ( !SCHED_VALID_PRIO(prio) )
 		return -EINVAL;
@@ -584,21 +602,15 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	if ( ( flags & THR_THRFLAGS_USER ) && ( !SCHED_VALID_USER_PRIO(prio) ) )
 		return -EINVAL;
 
+	parent = ti_get_current_thread(); /* スレッドを生成したスレッドを親スレッドに設定 */
+
 	/**
 	   スレッド管理情報を生成, 登録する
 	 */
-	rc = create_thread_common(id, entry, usp, kstktop, prio, flags, &thr);
+	rc = create_thread_common(id, entry, usp, kstktop, prio, flags, parent, &thr);
 	if ( rc != 0 )
 		goto error_out;  /* スレッド生成失敗 */
 	ti_thread_info_init(thr->tinfo, thr);  /* スレッド情報初期化 */
-	parent = ti_get_current_thread(); /* スレッドを生成したスレッドを親スレッドに設定 */
-	ref_res = thr_ref_inc(parent);    /* 親スレッドの参照を獲得                       */
-	kassert( ref_res );               /* 親スレッドは存在するはず                     */
-
-	add_child_thread_nolock(thr, parent);  /* 親スレッドの子スレッドキューに追加する  */
-
-	ref_res = thr_ref_dec(parent);         /*  親スレッドの参照を解放                   */
-	kassert( !ref_res );  /* 自スレッドから親スレッドへの参照があるため最終参照ではない */
 
 	if ( thrp != NULL )
 		*thrp = thr;  /* スレッドを返却 */
@@ -778,7 +790,7 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
 
 	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, ti->kstack,
-	    SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, &thr);
+	    SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, NULL, &thr);
 	if ( rc != 0 )
 		goto error_out;
 
@@ -801,17 +813,17 @@ void
 thr_system_thread_create(void){
 	int          rc;
 	thread     *thr;
+	cpu_info  *cinf; 
 
 	/**
 	   回収スレッドを生成 
-	   TODO: システムスレッド生成処理に共通化
 	 */
+	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
 	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
-				  THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, &thr);
+	    THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
 	kassert( rc == 0 );
 
-	thr->parent = thr;      /* 自分自身を参照                   */
-	thr->tinfo->thr = thr;          /* スレッド管理情報にスレッドを設定 */
+	thr->tinfo->thr = thr;               /* 自スレッドを設定       */
 
 	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
 
