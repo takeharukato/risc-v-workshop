@@ -860,7 +860,9 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	tid          id;
 
 	ti = ti_get_current_thread_info(); /* スタック上のスレッド情報を参照 */
-	/** アイドルスレッドを生成
+
+	/*
+	 * アイドルスレッドを生成
 	 */
 	if ( cpu == KRN_CPUINFO_BSP_NUM )
 		id = THR_TID_IDLE;  /* 論理プロセッサ番号0のアイドルスレッド */
