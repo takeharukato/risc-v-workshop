@@ -95,6 +95,8 @@ release_tid_nolock(tid id){
    @retval    -ENOSPC スレッドIDに空きがない
    @note      アイドルスレッド生成処理と通常のスレッド生成処理との共通部分を実装.
    アイドルスレッド生成時は, 親スレッドがいないので親スレッドの参照獲得処理を除いている.
+   また, アイドルスレッドのスレッド情報はスレッドへの参照を除いて初期化済みなので
+   スレッド情報の初期化を除いている
 */
 static int
 create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
@@ -158,10 +160,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  /* スレッド情報アドレスを算出  */
-	ti_thread_info_init(thr); /* スレッド情報初期化                   */
-
 	thr->ksp = (void *)thr->tinfo;   /* スレッド管理情報を指すようにスタック位置を初期化 */
-
 	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
 	 */
 	hal_setup_thread_context(entry, usp, thr->flags, &thr->ksp);
@@ -228,7 +227,6 @@ add_child_thread_nolock(thread *thr, thread *parent){
 		rc = -ENOENT;  /* 解放処理中 */
 		goto error_out;
 	}
-
 
 	res = thr_ref_inc(thr);  /* 子スレッドの参照を獲得 */
 	if ( !res ) {
@@ -592,7 +590,7 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	rc = create_thread_common(id, entry, usp, kstktop, prio, flags, &thr);
 	if ( rc != 0 )
 		goto error_out;  /* スレッド生成失敗 */
-
+	ti_thread_info_init(thr->tinfo, thr);  /* スレッド情報初期化 */
 	parent = ti_get_current_thread(); /* スレッドを生成したスレッドを親スレッドに設定 */
 	ref_res = thr_ref_inc(parent);    /* 親スレッドの参照を獲得                       */
 	kassert( ref_res );               /* 親スレッドは存在するはず                     */
@@ -785,6 +783,7 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 		goto error_out;
 
 	thr->parent = thr;  /* 自分自身を参照 */
+	ti->thr = thr;      /* スレッド管理情報にスレッドを設定 */
 
 	if ( thrp != NULL )
 		*thrp = thr;   /* スレッド管理情報を返却 */
@@ -804,13 +803,15 @@ thr_system_thread_create(void){
 	thread     *thr;
 
 	/**
-	   回収スレッドを生成
+	   回収スレッドを生成 
+	   TODO: システムスレッド生成処理に共通化
 	 */
 	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
 				  THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, &thr);
 	kassert( rc == 0 );
 
-	thr->parent = thr;  /* 自分自身を参照 */
+	thr->parent = thr;      /* 自分自身を参照                   */
+	thr->tinfo->thr = thr;          /* スレッド管理情報にスレッドを設定 */
 
 	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
 

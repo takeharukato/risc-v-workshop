@@ -54,7 +54,8 @@ ASMMAC_FUNCTION(entry)
 	li  a1, TI_MAGIC              /* マジック番号読み込み               */
 	sw  a1, TI_MAGIC_OFFSET(a4)   /* マジック番号書き込み               */
 	sw  x0, TI_INTRCNT_OFFSET(a4) /* 割り込みカウント初期化             */
-	sw  x0, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化     */
+	li  a6, 1                     /* ディスパッチ禁止で開始             */
+	sw  a6, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化     */
 	sw  x0, TI_FLAGS_OFFSET(a4)   /* フラグ初期化                       */
 	sw  x0, TI_MDFLAGS_OFFSET(a4) /* アーキ依存フラグ初期化             */
 	sw  x0, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化                  */

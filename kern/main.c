@@ -71,6 +71,8 @@ kern_init(void) {
 	int       rc;
 	thread  *thr;
 
+	kassert( ti_dispatch_disabled() ); /* ディスパッチ禁止であることを確認 */
+
 	kprintf("fsimage: [%p, %p) len:%u\n", 
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
@@ -91,6 +93,9 @@ kern_init(void) {
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
 	kassert( rc == 0 );
 	sched_thread_add(thr); /* スレッドを開始する */
+
+	ti_dec_preempt();  /* ディスパッチを許可する */
+	kassert( !ti_dispatch_disabled() ); /* ディスパッチ可能であることを確認 */
 
 	thr_idle_loop(NULL);  /* アイドル処理を実行する */
 }
@@ -125,7 +130,7 @@ main(int argc, char *argv[]) {
 	ti->kstack = (void *)&_tflib_bsp_stack;
 	new_sp = (void *)ti 
 		- (TI_THREAD_INFO_SIZE + X64_TRAP_CONTEXT_SIZE + X64_THRSW_CONTEXT_SIZE);
-
+	ti->preempt = 1; /* プリエンプション禁止 */
 	hal_call_with_newstack(uland_test_init, NULL, new_sp);
 
 	return 0;

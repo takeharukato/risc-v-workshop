@@ -68,12 +68,11 @@ ti_update_current_cpu(void) {
 
 /**
    スレッド情報を初期化する
-   @param[in] thr      スレッド管理情報
-   @note テストプログラムから使用するためにthread-kstack.cから独立して定義
+   @param[in] ti  スレッド情報
+   @param[in] thr スレッド管理情報
  */
 void
-ti_thread_info_init(thread *thr){
-	thread_info *ti = thr->tinfo;  /* スレッド情報 */
+ti_thread_info_init(thread_info *ti, thread *thr){
 
 	ti->magic = TI_MAGIC;  /* メモリ中のスタックの底を目視確認するマジック番号設定 */
 
