@@ -32,11 +32,13 @@ kernel.map: kernel.elf
 	${NM} $< |${SORT} > $@
 
 kernel.elf: kernel-dbg.elf
+	${RM} $@
 	${CP}	$< $@
 	${STRIP} -g $@
 
 kernel-dbg.elf: include/kern/autoconf.h include/klib/asm-offset.h subsystem ${start_obj} \
 	${fsimg_objfile}
+	${RM} $@
 ifeq ($(CONFIG_HAL),y)
 	${CC} -static ${PIC_OPT_FLAGS} ${CFLAGS} ${LDFLAGS}  $(shell echo ${CONFIG_HAL_LDFLAGS}) 	\
 		-nostdlib -Wl,-T hal/hal/kernel.lds			\

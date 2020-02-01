@@ -23,7 +23,7 @@
 
 struct _thread_info;
 struct _proc;
-
+struct _thread;
 /**
    CPU情報
  */
@@ -35,6 +35,7 @@ typedef struct _cpu_info{
 	size_t        l1_dcache_linesize;  /*< L1データキャッシュラインサイズ (単位:バイト) */
 	size_t        l1_dcache_colornum;  /*< L1データキャッシュカラーリング数 (単位:個)   */
 	size_t            l1_dcache_size;  /*< L1データキャッシュサイズ (単位:バイト)       */
+	struct _thread      *idle_thread;  /*< 対象のプロセッサでアイドルスレッド           */
 	struct _thread_info      *cur_ti;  /*< 対象のプロセッサで動作中のスレッド情報  */
 	struct _proc           *cur_proc;  /*< カレントプロセス                        */
 	struct _hal_cpuinfo      cinf_md;  /*< アーキテクチャ依存CPU情報               */
@@ -78,6 +79,7 @@ void krn_cpuinfo_init(void);
 
 cpu_id hal_get_physical_cpunum(void);
 cpu_info *krn_cpuinfo_get(cpu_id _cpu_num);
+cpu_info *krn_current_cpuinfo_get(void);
 void hal_cpuinfo_fill(struct _cpu_info *_cinf);
 void hal_cpuinfo_update(struct _cpu_info *_cinf);
 size_t krn_get_cpu_l1_dcache_linesize(void);

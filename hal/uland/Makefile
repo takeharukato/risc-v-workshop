@@ -19,6 +19,7 @@ lib=libhal.a
 all: ${depends} ${lib}
 
 ${lib}: ${objects}
+	${RM} $@
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 

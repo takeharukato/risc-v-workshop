@@ -26,6 +26,7 @@ lib=libhal.a
 all: kernel.lds ${depends} ${lib}
 
 ${lib}: ${objects}
+	${RM} $@
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 

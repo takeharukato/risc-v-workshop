@@ -225,6 +225,20 @@ krn_cpuinfo_get(cpu_id cpu_num){
 }
 
 /**
+   カレントCPUのCPU情報を取得する
+   @return CPU情報
+   @note スレッド情報から論理CPUを取得する
+ */
+cpu_info *
+krn_current_cpuinfo_get(void){
+	cpu_id     mycpu;
+
+	mycpu = ti_current_cpu_get();    /* 論理CPU番号を取得 */
+
+	return krn_cpuinfo_get(mycpu);  /* CPU情報を返却     */
+}
+
+/**
    CPU情報を設定する
    @param[in]  phys_id 物理CPUID
    @param[out] log_idp 論理CPUID返却域
@@ -308,6 +322,7 @@ krn_cpuinfo_init(void){
 		cinf->l1_dcache_linesize = 0;  /* キャッシュラインサイズを初期化 */
 		cinf->l1_dcache_colornum = 0;  /* キャッシュカラーリング数を初期化 */
 		cinf->l1_dcache_size = 0;      /* キャッシュサイズを初期化 */
+		cinf->idle_thread = NULL;      /* アイドルスレッドを初期化     */
 		cinf->cur_ti = NULL;           /* スレッド情報ポインタを初期化 */
 		cinf->cur_proc = NULL;         /* ページテーブルを初期化 */
 	}
