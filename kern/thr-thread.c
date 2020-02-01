@@ -228,7 +228,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	/* スレッド管理情報の初期化
 	 */
 	spinlock_init(&thr->lock);         /* スレッド管理情報のロックを初期化 */
-	thr->state = THR_TSTATE_DORMANT;   /* スレッドを実行可能状態に遷移     */
+	thr->state = THR_TSTATE_DORMANT;   /* スレッドを生成済み状態に遷移     */
 	thr->id = 0;                       /* idを初期化                       */
 
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
@@ -388,10 +388,45 @@ notify_parent_child_exit(thread *thr){
 }
 
 /**
+   wait待ち中のスレッドの資源を解放する
+   @param[in] thr 操作対象のスレッド
+ */
+static void
+handle_waiter_thread(thread *thr){
+	list *lp, *np;
+	thread *child;
+	bool      res;
+
+	kassert(spinlock_locked_by_self(&thr->lock)); /* スレッドのロック獲得済み */
+
+	/**
+	   wait待ちスレッドの資源を回収する
+	 */
+	queue_for_each_safe(lp, &thr->waiters, np){
+
+		child = container_of(queue_get_top(&thr->waiters), thread, link);
+		kassert( ( child->state == THR_TSTATE_WAIT ) || 
+		    ( child->state == THR_TSTATE_DEAD ) ); /* wait待ち状態であることを確認 */
+
+		if ( child->state == THR_TSTATE_WAIT ) {  /*  終了したスレッドでない場合 */
+
+			res = thr_ref_inc(child);          /*  子スレッドの参照を取得  */
+			kassert( res );
+
+			child->state = THR_TSTATE_RUNABLE; /* 実行可能状態に遷移       */
+			sched_thread_add(child);           /* スレッドを実行可能にする */
+
+			res = thr_ref_dec(child);          /*  子スレッドの参照を取得  */
+			kassert( !res );
+		} else if ( child->state == THR_TSTATE_DEAD ) 
+			free_thread(child);  /*  子スレッドの資源を解放 */
+	}
+}
+/**
    子スレッドを回収スレッドの子スレッドに移動する
    @param[in] old_parent 操作対象のスレッド
    @note LO: old_parentのロック, 回収スレッドのロック, 
-   回収スレッドの子スレッドに追加するスレッドのロックの順に獲得する
+   回収スレッドの子スレッドとして追加するスレッドのロックの順に獲得する
  */
 static void
 handle_orphan_thread(thread *old_parent){
@@ -525,7 +560,7 @@ thr_thread_wait(thr_wait_res *resp){
 	if ( thr->state != THR_TSTATE_DEAD ) {  /*  終了したスレッドでない場合 */
 
 		res = thr_ref_inc(thr);       /*  子スレッドの参照を取得    */
-		kassert( !res );
+		kassert( res );
 	}
 
 	resp->id = thr->id;             /* 子スレッドのIDを取得     */
@@ -573,8 +608,10 @@ thr_thread_exit(exit_code ec){
 	spinlock_lock_disable_intr(&cur->lock, &iflags);  /* 自スレッドのロックを獲得 */
 
 	kassert( list_not_linked(&cur->link) );  /* レディキューに繋がっていないことを確認 */
-	
+
+	handle_waiter_thread(cur);      /*  wait待ち状態のスレッドの資源を解放 */
 	handle_orphan_thread(cur);      /*  子スレッドを回収スレッドの子スレッドに移動 */
+
 	del_child_thread_nolock(cur, cur->parent);    /* 自スレッドを親から取り除く */
 	cur->exitcode = ec;             /*  終了コードを設定          */
 
