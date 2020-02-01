@@ -229,7 +229,7 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	spinlock_init(&thr->lock);         /* スレッド管理情報のロックを初期化 */
 	thr->state = THR_TSTATE_DORMANT;   /* スレッドを生成済み状態に遷移     */
 	thr->id = 0;                       /* idを初期化                       */
-
+	thr->p = proc_kernel_process_refer(); /* カーネルプロセスを参照        */
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
 	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化         */
 	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化   */

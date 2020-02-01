@@ -72,7 +72,7 @@ typedef struct _proc_db{
 	.head  = RB_INITIALIZER(&(procdb)->head),	\
 }
 
-struct _proc *proc_kproc_refer(void);
+struct _proc *proc_kernel_process_refer(void);
 int proc_user_allocate(entry_addr _entry, struct _proc **_procp);
 bool proc_ref_inc(struct _proc *_p);
 bool proc_ref_dec(struct _proc *_p);

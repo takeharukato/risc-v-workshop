@@ -83,16 +83,18 @@ krn_get_cpu_dcache_size(void){
  */
 void
 krn_cpuinfo_update(void){
-	cpu_info *cinf;
-	cpu_id     cpu;
+	cpu_info  *cinf;
+	cpu_id      cpu;
+	thread_info *ti;
 
 	cpu  = krn_current_cpu_get();  /* 論理CPUID       */
 	cinf = krn_cpuinfo_get(cpu);   /* 自CPU情報を参照 */
-
+	ti = ti_get_current_thread_info(); /* スレッド情報参照 */
 	/** スレッド情報を初期化 */
-	cinf->cur_ti = ti_get_current_thread_info();
+	cinf->cur_ti = ti;
 	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
-	cinf->cur_proc = NULL;
+	kassert( ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */
+	cinf->cur_proc = ti->thr->p;  /* カレントプロセスを更新 */
 }
 
 /**

@@ -329,7 +329,7 @@ proc_del_thread(proc *p, thread *thr){
    カーネルプロセスを参照する
  */
 proc *
-proc_kproc_refer(void){
+proc_kernel_process_refer(void){
 
 	return kern_proc;  /* カーネルプロセスへの参照を返却する */
 }

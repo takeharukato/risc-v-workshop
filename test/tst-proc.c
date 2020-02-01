@@ -59,7 +59,7 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 		/* TODO: 本来は, 自スレッド終了処理を呼び出す  */
 		thr_ref_dec(thr);                /* スレッドの参照返却                      */
 	}
-	kp = proc_kproc_refer();
+	kp = proc_kernel_process_refer();
 	if ( kp != NULL )
 		ktest_pass( sp );
 	else
