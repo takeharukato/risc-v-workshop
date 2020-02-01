@@ -6,8 +6,12 @@
 /*  CPU information definitions                                       */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_CPU_INFO_H)
-#define  _KERN_CPU_INFO_H 
+#if !defined(_KERN_CPUINFO_H)
+#define  _KERN_CPUINFO_H 
+
+#include <klib/misc.h>
+
+#define KRN_CPUINFO_BSP_NUM     (UINT64_C(0))  /**< ブートプロセッサ論理プロセッサ番号 */
 
 #if !defined(ASM_FILE)
 
@@ -86,4 +90,4 @@ size_t krn_get_cpu_l1_dcache_linesize(void);
 obj_cnt_type krn_get_cpu_l1_dcache_color_num(void);
 size_t krn_get_cpu_dcache_size(void);
 #endif  /* !ASM_FILE */
-#endif  /* _KERN_CPU_INFO_H */
+#endif  /* _KERN_CPUINFO_H  */
