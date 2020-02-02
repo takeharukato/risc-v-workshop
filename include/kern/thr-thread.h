@@ -136,8 +136,10 @@ typedef struct _thread_db{
 
 int thr_thread_wait(struct _thr_wait_res *_resp);
 void thr_thread_exit(exit_code _ec);
-int thr_thread_create(tid _id, entry_addr _entry, void *_usp, void *_kstktop, thr_prio _prio, 
-		      thr_flags _flags, struct _thread **_thrp);
+int thr_user_thread_create(tid _id, entry_addr _entry, struct _proc *_p, void *_usp, 
+    thr_prio _prio, thr_flags _flags, struct _thread **_thrp);
+int thr_kernel_thread_create(tid _id, entry_addr _entry, thr_prio _prio, thr_flags _flags,
+    thread **_thrp);
 void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
 bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);

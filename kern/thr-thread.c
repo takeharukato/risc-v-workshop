@@ -184,6 +184,7 @@ del_child_thread_nolock(thread *thr, thread *parent){
    スレッド生成共通処理 (内部関数)
    @param[in]  id      スレッドID
    @param[in]  entry   スレッドエントリアドレス
+   @param[in]  p       プロセス管理情報
    @param[in]  usp     ユーザスタックポインタ初期値
    @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
    @param[in]  prio    初期化時のスレッド優先度
@@ -199,8 +200,8 @@ del_child_thread_nolock(thread *thr, thread *parent){
    スレッド情報の初期化を除いている
 */
 static int
-create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
-    thr_flags flags, thread *parent, thread **thrp){
+create_thread_common(tid id, entry_addr entry, proc *p, void *usp, void *kstktop, 
+    thr_prio prio, thr_flags flags, thread *parent, thread **thrp){
 	int            rc;
 	tid         newid;
 	void      *newstk;
@@ -229,7 +230,8 @@ create_thread_common(tid id, entry_addr entry, void *usp, void *kstktop, thr_pri
 	spinlock_init(&thr->lock);         /* スレッド管理情報のロックを初期化 */
 	thr->state = THR_TSTATE_DORMANT;   /* スレッドを生成済み状態に遷移     */
 	thr->id = 0;                       /* idを初期化                       */
-	thr->p = proc_kernel_process_refer(); /* カーネルプロセスを参照        */
+	thr->p = p;                 /* プロセス管理情報を参照 */
+
 	refcnt_init(&thr->refs);    /* 参照カウンタを初期化(スレッド管理ツリーからの参照分) */
 	list_init(&thr->link);      /* スケジューラキューへのリストエントリを初期化         */
 	list_init(&thr->proc_link); /* プロセス内のスレッドキューのリストエントリを初期化   */
@@ -434,6 +436,7 @@ handle_waiter_thread(thread *thr){
 			free_thread(child);  /*  子スレッドの資源を解放 */
 	}
 }
+
 /**
    子スレッドを回収スレッドの子スレッドに移動する
    @param[in] old_parent 操作対象のスレッド
@@ -520,8 +523,9 @@ create_reaper_thread(void){
 	cpu_info  *cinf; 
 
 	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
-	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread, NULL, NULL,
-	    THR_PRIO_REAPER, THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
+	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread,
+	    proc_kernel_process_refer(), NULL, NULL, THR_PRIO_REAPER, 
+	    THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
 	kassert( rc == 0 );
 
 	thr->tinfo->thr = thr;  /* 自スレッドを設定 */
@@ -649,11 +653,11 @@ error_out:
 }
 
 /**
-   スレッド生成処理
+   ユーザスレッド生成処理
    @param[in]  id      スレッドID
    @param[in]  entry   スレッドエントリアドレス
+   @param[in]  p       プロセス管理情報
    @param[in]  usp     ユーザスタックポインタ初期値
-   @param[in]  kstktop カーネルスタックの先頭アドレス (NULLの場合は動的に割当てる)
    @param[in]  prio    初期化時のスレッド優先度
    @param[in]  flags   スレッド属性フラグ
    @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
@@ -663,7 +667,7 @@ error_out:
    @retval    -ENOSPC スレッドIDに空きがない
 */
 int
-thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio prio, 
+thr_user_thread_create(tid id, entry_addr entry, proc *p, void *usp, thr_prio prio, 
 		  thr_flags flags, thread **thrp){
 	int            rc;
 	thread       *thr;
@@ -681,7 +685,51 @@ thr_thread_create(tid id, entry_addr entry, void *usp, void *kstktop, thr_prio p
 	/**
 	   スレッド管理情報を生成, 登録する
 	 */
-	rc = create_thread_common(id, entry, usp, kstktop, prio, flags, parent, &thr);
+	rc = create_thread_common(id, entry, p, usp, NULL, prio, flags, parent, &thr);
+	if ( rc != 0 )
+		goto error_out;  /* スレッド生成失敗 */
+
+	ti_thread_info_init(thr->tinfo, thr);  /* スレッド情報初期化 */
+
+	if ( thrp != NULL )
+		*thrp = thr;  /* スレッドを返却 */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   カーネルスレッド生成処理
+   @param[in]  id      スレッドID
+   @param[in]  entry   スレッドエントリアドレス
+   @param[in]  prio    初期化時のスレッド優先度
+   @param[in]  flags   スレッド属性フラグ
+   @param[out] thrp    スレッド管理情報のアドレスの返却先 (NULLを指定すると返却しない)
+   @retval     0      正常終了
+   @retval    -EINVAL 不正な優先度を指定した
+   @retval    -ENOMEM メモリ不足
+   @retval    -ENOSPC スレッドIDに空きがない
+*/
+int
+thr_kernel_thread_create(tid id, entry_addr entry, thr_prio prio, 
+		  thr_flags flags, thread **thrp){
+	int            rc;
+	thread       *thr;
+	thread    *parent;
+
+	if ( ( !SCHED_VALID_PRIO(prio) ) || ( ( flags & THR_THRFLAGS_USER ) ) )
+		return -EINVAL;
+
+	/* スレッドを生成したスレッドを親スレッドに設定 */
+	parent = ti_get_current_thread(); 
+
+	/**
+	   スレッド管理情報を生成, 登録する
+	 */
+	rc = create_thread_common(id, entry, proc_kernel_process_refer(), 
+	    NULL, NULL, prio, flags, parent, &thr);
 	if ( rc != 0 )
 		goto error_out;  /* スレッド生成失敗 */
 
@@ -869,8 +917,8 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	else
 		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
 
-	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, ti->kstack,
-	    SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, NULL, &thr);
+	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop,  proc_kernel_process_refer(), 
+	    NULL, ti->kstack, SCHED_MIN_RR_PRIO, THR_THRFLAGS_KERNEL, NULL, &thr);
 	if ( rc != 0 )
 		goto error_out;
 

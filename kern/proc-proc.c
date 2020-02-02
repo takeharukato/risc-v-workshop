@@ -391,9 +391,9 @@ proc_user_allocate(entry_addr entry, proc **procp){
 
 	/* ユーザスレッドを生成する
 	 */
-	rc = thr_thread_create(THR_TID_AUTO, entry, 
+	rc = thr_user_thread_create(THR_TID_AUTO, entry, new_proc, 
 	    (void *)truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE), 
-	    NULL, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &thr);
+	    SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &thr);
 	if ( rc != 0 ) 
 		goto free_stk_out;  /*  スレッドの生成に失敗した */
 
