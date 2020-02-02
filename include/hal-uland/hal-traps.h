@@ -68,11 +68,17 @@ typedef struct _trap_context{
 	reg_type r15;
 	reg_type trapno;
 	reg_type errno;
+#if !defined(CONFIG_HAL)
+	reg_type rflags;
+	reg_type rip;
+#else
 	reg_type rip;
 	reg_type cs;
 	reg_type rflags;
 	reg_type rsp;
 	reg_type ss;
+#endif
 }trap_context;
+void x64_return_from_trap(void);
 #endif  /*  ASM_FILE  */
 #endif  /* _HAL_HAL_TRAPS_H  */

@@ -38,8 +38,11 @@ hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void *
 	memset(thrctx, 0, sizeof(x64_thrsw_context));
 
 	/* スレッドスイッチ後の復帰先アドレスに例外出口処理ルーチンを設定 */
-	thrctx->rip = entry; /* 例外復帰後のアドレスにスレッドのエントリアドレスを設定 */
+	thrctx->rip = (reg_type)x64_return_from_trap; 
 	thrctx->rflags = X64_RFLAGS_RESVBITS;  /* 予約ビットを立てる */
+
+	trap->rip = entry; /* 例外復帰後のアドレスにスレッドのエントリアドレスを設定 */
+	trap->rflags = X64_RFLAGS_RESVBITS;  /* 予約ビットを立てる */
 
 	*stkp = (void *)thrctx;  /* スレッドスイッチコンテキストを指すようにスタックを更新 */
 }
