@@ -10,10 +10,11 @@
 #define  _HAL_PGTBL_H 
 
 #include <klib/freestanding.h>
+#include <klib/misc.h>
 #include <hal/hal-types.h>
 
-#define HAL_PGTBL_KERNEL_ASID          (0)  /**< カーネルのASID */
-#define HAL_PGTBL_MAX_ASID        (0xffff)  /**< ASIDの最大値   */
+#define HAL_PGTBL_KERNEL_ASID     (ULONGLONG_C(0))       /**< カーネルのASID */
+#define HAL_PGTBL_MAX_ASID        (ULONGLONG_C(0xffff))  /**< ASIDの最大値   */
 
 /**
    RISC-V64 ページテーブル アーキテクチャ依存部
@@ -22,7 +23,9 @@ typedef struct _hal_pgtbl_md{
 	cpu_bitmap   active;  /*< アクティブCPUビットマップ        */
 	reg_type       satp;  /*< SATPレジスタ値                   */
 }hal_pgtbl_md;
-typedef uint16_t               hal_asid;  /*< アドレス空間ID         */
+typedef uint64_t               hal_asid;  /*< アドレス空間ID 
+					   * (44bitシフトするため符号なし64bit) 
+					   */
 typedef uint64_t                hal_pte;  /*< ページテーブルエントリ */
 typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型       */
 

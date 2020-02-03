@@ -89,7 +89,7 @@ typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
 
 void vm_pgtbl_cache_init(void);
 int pgtbl_alloc_pgtbl_page(vm_pgtbl _pgt, hal_pte **_tblp, vm_paddr *_paddrp);
-int pgtbl_alloc_pgtbl(vm_pgtbl *_pgtp);
+int pgtbl_alloc_pgtbl(vm_pgtbl *_pgtp, hal_asid _asid);
 int pgtbl_alloc_user_pgtbl(vm_pgtbl *_pgtp);
 void pgtbl_free_user_pgtbl(vm_pgtbl _pgt);
 void vm_copy_kmap_page(void *_dest, void *_src);

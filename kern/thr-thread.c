@@ -210,6 +210,8 @@ create_thread_common(tid id, entry_addr entry, proc *p, void *usp, void *kstktop
 	bool      ref_res;
 	intrflags  iflags;
 
+	kassert( p != NULL );  /* カーネルプロセス初期化済みであることを確認 */
+
 	if ( !SCHED_VALID_PRIO(prio) )
 		return -EINVAL;
 
@@ -751,12 +753,20 @@ error_out:
  */
 void
 thr_thread_switch(thread *prev, thread *next){
+	thread *cur;
 
-	/* TODO: ページテーブルを不活性化 (プロセス管理実装後) */
+	/* ページテーブルを不活性化 */
+	hal_pgtbl_deactivate(prev->p->pgt);
+
 	hal_thread_switch(&prev->ksp, &next->ksp);
-	/* TODO: ページテーブルを活性化 (プロセス管理実装後) */
+
 	krn_cpuinfo_update();     /* CPU情報を更新      */
 	ti_update_current_cpu();  /* スレッド情報を更新 */
+
+	cur = 	ti_get_current_thread();
+
+	/* ページテーブルを活性化 */
+	hal_pgtbl_activate(cur->p->pgt);
 }
 
 /**

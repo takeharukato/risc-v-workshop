@@ -77,7 +77,7 @@ ASMMAC_FUNCTION(rv64_flush_tlb_vaddr)
 
 	ld s0,  0(sp)   /*  s0レジスタを復元する                            */
 	ld ra,  8(sp)   /*  raレジスタを復元する                            */
-	ld ra, 16(sp)   /*  s1レジスタを復元する                            */	
+	ld s1, 16(sp)   /*  s1レジスタを復元する                            */	
 	addi sp,sp,24  /*  スタック位置を復元する                          */
 	jr ra          /*  呼び出し元に戻る                                */
 
@@ -95,3 +95,5 @@ ASMMAC_FUNCTION(rv64_fence_i)
  
  	ld s0, 0(sp)   /*  s0レジスタを復元する                            */
  	ld ra, 8(sp)   /*  raレジスタを復元する                            */
+	addi sp,sp,16  /*  スタック位置を復元する                          */
+	jr ra          /*  呼び出し元に戻る                                */

@@ -107,10 +107,11 @@ error_out:
 /**
    ページテーブルを割り当てる (カーネル/ユーザ共通処理)
    @param[out] pgtp 割り当てたページテーブル情報を指し示すポインタのアドレス
+   @param[in]  asid アドレス空間識別子
    @retval     0    正常終了
  */
 int
-pgtbl_alloc_pgtbl(vm_pgtbl *pgtp){
+pgtbl_alloc_pgtbl(vm_pgtbl *pgtp, hal_asid asid){
 	int             rc;
 	vm_pgtbl_type *pgt;
 
@@ -167,7 +168,7 @@ pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){
 	if ( rc != 0 )
 		goto error_out;
 
-	rc = pgtbl_alloc_pgtbl(&pgt);  /* ページテーブル情報を割り当てる */
+	rc = pgtbl_alloc_pgtbl(&pgt, asid);  /* ページテーブル情報を割り当てる */
 	if ( rc != 0 )
 		goto free_asid_out;
 

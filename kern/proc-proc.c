@@ -319,7 +319,14 @@ proc_del_thread(proc *p, thread *thr){
 	if ( !queue_is_empty(&p->thrque) && ( thr == thr->p->master ) )
 		p->master = container_of(queue_ref_top( &thr->p->thrque ),
 		    thread, proc_link);
-	
+
+	/** スレッドのアドレス空間離脱に伴うTLBのフラッシュ
+	 */
+	if ( thr->tinfo->cpu == ti_current_cpu_get() )
+		hal_pgtbl_deactivate(p->pgt);  /* TLBのフラッシュ */
+	else {
+		/* TODO: TLBフラッシュを他コアに発行 */
+	}
 	rc = proc_ref_dec(p);  /* スレッド削除処理用の参照を解放 */
 
 	return  rc;
@@ -419,7 +426,7 @@ free_stk_out:
 free_pgtbl_out:
 	pgtbl_free_user_pgtbl(new_proc->pgt);  /* ページテーブルを解放する */
 free_id_out:
-	thr_id_release(thr->id);  /*  プロセスIDを返却  */
+	thr_id_release(new_pid);        /*  プロセスIDを返却  */
 free_proc_out:
 	slab_kmem_cache_free(new_proc); /* プロセス情報を解放する */
 

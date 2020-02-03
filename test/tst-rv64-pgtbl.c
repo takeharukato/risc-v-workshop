@@ -699,14 +699,17 @@ hal_refer_kernel_pagetable(void){
 void
 hal_pgtbl_init(vm_pgtbl pgt){
 	hal_pgtbl_md     *md;
+	intrflags     iflags;
 
+	spinlock_lock_disable_intr(&pgt->lock, &iflags);
 	md = &pgt->md;  /* ページテーブルアーキテクチャ依存部を参照 */
 
 	/*
 	 * SATPレジスタ値を設定
 	 */
-	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
+	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, pgt->asid, 
 	    pgt->tblbase_paddr >> PAGE_SHIFT);
+	spinlock_unlock_restore_intr(&pgt->lock, &iflags);
 
 	return ;
 }
@@ -757,7 +760,7 @@ prepare_map(void){
 
 	/* カーネルのページテーブルを割り当てる
 	 */
-	rc = pgtbl_alloc_pgtbl(&pgtbl);
+	rc = pgtbl_alloc_pgtbl(&pgtbl, HAL_PGTBL_KERNEL_ASID);
 	if ( rc != 0 ) {
 	
 		kprintf(KERN_PNC "Can not allocate kernel page table\n");

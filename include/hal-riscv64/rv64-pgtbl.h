@@ -256,10 +256,4 @@
 #define RV64_SATP_VAL(_mode, _asid, _ppn)  \
 	( (_mode) | ( (_asid) << RV64_SATP_ASID_SHIFT ) | ( (_ppn) << RV64_SATP_PPN_SHIFT ) )
 
-#if !defined(ASM_FILE)
-
-#include <klib/freestanding.h>
-typedef uint64_t        hal_pte;  /* ページテーブルエントリ型 */
-
-#endif  /* !ASM_FILE */
 #endif  /*  _HAL_RV64_PGTBL_H  */

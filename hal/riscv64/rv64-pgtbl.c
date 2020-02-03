@@ -453,7 +453,7 @@ sucess_out:
 	tbl_changed = true; /* ページテーブル更新 */
 	rc = 0;
 
-error_out: /* TODO: カレントページテーブルが操作対象ページテーブルの場合TLBをフラッシュする */
+error_out: 
 	/* テーブル割り当てに失敗した場合はテーブル間の参照を削除する
 	 */
 	if ( rc == -ENOMEM )
@@ -495,7 +495,7 @@ hal_pgtbl_activate(vm_pgtbl pgt){
 void
 hal_pgtbl_deactivate(vm_pgtbl pgt){
 
-	rv64_flush_tlb_local();  /* 自hartのTLBをフラッシュする */
+	rv64_flush_tlb_vaddr(0, pgt->asid); /* 自プロセスのTLBをフラッシュする */
 }
 
 /**
@@ -705,7 +705,7 @@ hal_pgtbl_init(vm_pgtbl pgt){
 	/*
 	 * SATPレジスタ値を設定
 	 */
-	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, ULONGLONG_C(0), 
+	md->satp = RV64_SATP_VAL(RV64_SATP_MODE_SV39, HAL_PGTBL_KERNEL_ASID, 
 	    pgt->tblbase_paddr >> PAGE_SHIFT);
 
 	return ;
@@ -760,7 +760,7 @@ hal_map_kernel_space(void){
 
 	/* カーネルのページテーブルを割り当てる
 	 */
-	rc = pgtbl_alloc_pgtbl(&pgtbl);
+	rc = pgtbl_alloc_pgtbl(&pgtbl, HAL_PGTBL_KERNEL_ASID);
 	if ( rc != 0 ) {
 	
 		kprintf(KERN_PNC "Can not allocate kernel page table\n");

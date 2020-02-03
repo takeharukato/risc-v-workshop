@@ -92,7 +92,7 @@ krn_cpuinfo_update(void){
 	ti = ti_get_current_thread_info(); /* スレッド情報参照 */
 	/** スレッド情報を初期化 */
 	cinf->cur_ti = ti;
-	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
+
 	kassert( ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */
 	cinf->cur_proc = ti->thr->p;  /* カレントプロセスを更新 */
 }
