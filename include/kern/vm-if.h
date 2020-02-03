@@ -58,11 +58,21 @@
 #include <kern/kern-cpuinfo.h>
 #include <kern/spinlock.h>
 #include <kern/mutex.h>
+#include <klib/bitops.h>
 #include <klib/statcnt.h>
 #include <hal/hal-pgtbl.h>
 
 struct _proc;
-
+/**
+   アドレスIDマップ
+ */
+typedef struct _vm_asid_map{
+	spinlock                                      lock;  /**< ビットマップ操作用lock */
+	BITMAP_TYPE(, uint64_t, HAL_PGTBL_MAX_ASID)  idmap;  /**< アドレスIDビットマップ */	
+}vm_asid_map;
+/**
+   ページテーブル
+ */
 typedef struct _vm_pgtbl_type{
 	spinlock           lock;  /*< ビットマップ操作用lock                     */
 	cpu_bitmap       active;  /*< アクティブCPUビットマップ                  */
@@ -71,6 +81,7 @@ typedef struct _vm_pgtbl_type{
 	vm_paddr  tblbase_paddr;  /*< ページテーブルベース(物理アドレス)         */
 	struct _proc         *p;  /*< procへの逆リンク                           */
 	stat_cnt       nr_pages;  /*< ページテーブルを構成するページ数           */
+	hal_asid           asid;  /*< アドレス空間ID                             */
 	struct _hal_pgtbl_md md;  /*< アーキテクチャ依存部                       */
 }vm_pgtbl_type;
 

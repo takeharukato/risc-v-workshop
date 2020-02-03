@@ -12,6 +12,9 @@
 #include <klib/freestanding.h>
 #include <hal/hal-types.h>
 
+#define HAL_PGTBL_KERNEL_ASID          (0)  /**< カーネルのASID */
+#define HAL_PGTBL_MAX_ASID        (0xffff)  /**< ASIDの最大値   */
+
 /**
    RISC-V64 ページテーブル アーキテクチャ依存部
  */
@@ -19,9 +22,9 @@ typedef struct _hal_pgtbl_md{
 	cpu_bitmap   active;  /*< アクティブCPUビットマップ        */
 	reg_type       satp;  /*< SATPレジスタ値                   */
 }hal_pgtbl_md;
-
+typedef uint16_t               hal_asid;  /*< アドレス空間ID         */
 typedef uint64_t                hal_pte;  /*< ページテーブルエントリ */
-typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型 */
+typedef struct _vm_pgtbl_type *vm_pgtbl;  /*< ページテーブル型       */
 
 vm_pgtbl hal_refer_kernel_pagetable(void);
 void hal_pgtbl_init(vm_pgtbl pgtbl);

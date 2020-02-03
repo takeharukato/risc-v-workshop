@@ -13,6 +13,9 @@
 #include <hal/hal-types.h>
 #include <hal/rv64-pgtbl.h>
 
+#define HAL_PGTBL_KERNEL_ASID          (0)  /**< カーネルのASID */
+#define HAL_PGTBL_MAX_ASID        (0xffff)  /**< ASIDの最大値   */
+
 struct _vm_pgtbl_type;
 /**
    RISC-V64 ページテーブル アーキテクチャ依存部
@@ -22,6 +25,7 @@ typedef struct _hal_pgtbl_md{
 }hal_pgtbl_md;
 
 typedef uint64_t                hal_pte; /*< ページテーブルエントリ */
+typedef uint16_t               hal_asid;  /*< アドレス空間ID         */
 
 struct _vm_pgtbl_type *hal_refer_kernel_pagetable(void);
 void hal_pgtbl_init(struct _vm_pgtbl_type *_pgt);

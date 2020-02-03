@@ -14,6 +14,55 @@
 #include <kern/vm-if.h>
 
 static kmem_cache pgtbl_cache;  /* ページテーブル情報のキャッシュ */
+static vm_asid_map  g_asidmap;  /* アドレス空間IDマップ           */
+
+/**
+   アドレス空間IDマップを初期化する
+ */
+static void
+init_asidmap(void){
+
+	bitops_zero(&g_asidmap.idmap);  /* アドレス空間IDマップを初期化 */
+	bitops_set(HAL_PGTBL_KERNEL_ASID, &g_asidmap.idmap);  /* カーネルIDを使用済みに設定 */
+}
+
+/**
+   アドレス空間IDを割当てる (内部関数)
+   @param[out] idp    アドレス空間ID返却域
+   @retval     0      正常終了
+   @retval    -ENOSPC IDに空きがない
+ 
+  */
+static int
+alloc_asid(hal_asid *idp){
+	tid         newid;
+
+	newid = bitops_ffc(&g_asidmap.idmap);  /* 空きIDを取得 */
+	if ( newid == 0 ) 
+		return  -ENOSPC;  /* 空IDがない */
+
+	--newid;  /* スレッドIDに変換 */
+
+	/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
+	bitops_set(newid, &g_asidmap.idmap); 
+
+	if ( idp != NULL )
+		*idp = newid;  /* スレッドIDを返却 */
+
+	return 0;
+}
+
+/**
+   アドレス空間IDを解放する (内部関数)
+   @param[in] id    アドレス空間ID
+   @retval    0     正常終了
+   @retval   -ENOSPC IDに空きがない
+  */
+static void
+release_asid(hal_asid id){
+
+	bitops_clr(id, &g_asidmap.idmap);  /* IDを解放する */
+}
 
 /**
    ページテーブル用にページを割り当てる
@@ -112,14 +161,21 @@ int
 pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){
 	int             rc;
 	vm_pgtbl_type *pgt;
+	hal_asid      asid;
+
+	rc = alloc_asid(&asid);
+	if ( rc != 0 )
+		goto error_out;
 
 	rc = pgtbl_alloc_pgtbl(&pgt);  /* ページテーブル情報を割り当てる */
 	if ( rc != 0 )
-		goto error_out;
+		goto free_asid_out;
+
+	pgt->asid = asid;  /* アドレス空間IDを設定  */
 
 	rc = mutex_lock(&pgt->mtx);    /* ユーザ空間側のロックを獲得する  */
 	if ( rc != 0 )
-		goto error_out;
+		goto free_pgtbl_out;
 
 	rc = hal_copy_kernel_pgtbl(pgt);    /* カーネル空間部分を初期化する   */
 	if ( rc != 0 )
@@ -131,8 +187,16 @@ pgtbl_alloc_user_pgtbl(vm_pgtbl *pgtp){
 
 	return 0;
 
+
 unlock_mtx_out:
 	mutex_unlock(&pgt->mtx);      /* ユーザ空間側のロックを解放する  */
+
+free_pgtbl_out:
+	pgif_free_page(pgt->pgtbl_base);    /* ベースページテーブルを解放  */
+	slab_kmem_cache_free((void *)pgt);  /* ページテーブル情報を解放    */
+
+free_asid_out:
+	release_asid(asid);  /* アドレス空間ID解放 */
 
 error_out:
 	return rc;
@@ -151,6 +215,8 @@ pgtbl_free_user_pgtbl(vm_pgtbl pgt){
 
 	/* ベースページテーブル以外のテーブルが解放済みであることを確認する */
 	kassert(statcnt_read(&pgt->nr_pages) == 1);  
+
+	release_asid(pgt->asid);  /* アドレス空間ID解放 */
 
 	pgif_free_page(pgt->pgtbl_base);    /* ベースページテーブルを解放  */
 
@@ -173,4 +239,6 @@ vm_pgtbl_cache_init(void){
 	rc = slab_kmem_cache_create(&pgtbl_cache, "pgtbl cache", sizeof(vm_pgtbl_type),
 	    SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
+
+	init_asidmap();  /* アドレス空間IDマップを初期化 */
 }
