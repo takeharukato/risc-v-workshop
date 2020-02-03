@@ -50,12 +50,16 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(X64_TRAP_CONTEXT_R15, _trap_context, r15);
 	OFFSET(X64_TRAP_CONTEXT_TRAPNO, _trap_context, trapno);
 	OFFSET(X64_TRAP_CONTEXT_ERRNO, _trap_context, errno);
+#if !defined(CONFIG_HAL)
+	OFFSET(X64_TRAP_CONTEXT_RFLAGS, _trap_context, rflags);
+	OFFSET(X64_TRAP_CONTEXT_RIP, _trap_context, rip);
+#else
 	OFFSET(X64_TRAP_CONTEXT_RIP, _trap_context, rip);
 	OFFSET(X64_TRAP_CONTEXT_CS, _trap_context, cs);
 	OFFSET(X64_TRAP_CONTEXT_RFLAGS, _trap_context, rflags);
 	OFFSET(X64_TRAP_CONTEXT_RSP, _trap_context, rsp);
 	OFFSET(X64_TRAP_CONTEXT_SS, _trap_context, ss);
-
+#endif  /*  !CONFIG_HAL  */
 
 	/*
 	 * スレッドスイッチコンテキスト情報
