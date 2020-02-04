@@ -153,6 +153,7 @@ release_process_segment(proc *p, vm_vaddr start, vm_vaddr end, vm_flags flags){
 
 	return ;
 }
+
 /**
    ユーザプロセス管理情報を解放する(内部関数)
    @param[in] p プロセス管理情報
@@ -179,6 +180,65 @@ free_user_process(proc *p){
 	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
 
 	return ;
+}
+
+/**
+   引数領域の大きさを算出する (内部関数)
+   @param[in]  src         引数を読込むプロセス
+   @param[in]  argv        引数配列のアドレス
+   @param[in]  environment 環境変数配列のアドレス
+   @param[out] sizp        引数領域長返却領域
+   @retval     0           正常終了
+   @retval    -EFAULT      メモリアクセス不可
+ */
+static int
+calc_argument_areasize(proc *src, const char *argv[], const char *environment[], 
+    size_t *sizp){
+	int          rc;
+	int           i;
+	size_t      len;
+	size_t argc_len;
+	size_t argv_len;
+	size_t  env_len;
+
+	/* argc, argv, environmentを配置するために必要な領域長を算出する
+	 */
+	for(i = 0, argv_len = 1; argv[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		len = vm_strlen(src->pgt, argv[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		argv_len +=  len + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	for(i = 0, env_len = 1; environment[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		len = vm_strlen(src->pgt, environment[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		env_len += len + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	/* argc, argv, environmentに対してスタックアラインメントで
+	 * アクセスできるようにサイズを調整する
+	 */
+	argc_len = roundup_align(sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
+	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
+	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
+
+	if ( sizp != NULL )
+		*sizp = argc_len + argv_len + env_len;  /* 引数領域長を返却する */
+
+	return  0;
+
+error_out:
+	return rc;
 }
 
 /**
@@ -331,6 +391,184 @@ proc_del_thread(proc *p, thread *thr){
 }
 
 /**
+   スタックを割り当てる
+   @param[in]  dest        割り当て先プロセス
+   @param[in]  newsp       割り当て後のスタックポインタ
+   @retval     0           正常終了
+   @retval    -EFAULT      メモリアクセス不可
+ */
+int
+proc_grow_stack(proc *dest, vm_vaddr newsp){
+	int              rc;
+	vm_vaddr   pg_start;
+	vm_vaddr     pg_end;
+	vm_vaddr     pg_cur;
+	vm_prot    map_prot;
+	vm_vaddr  map_paddr;
+	vm_flags  map_flags;
+	vm_size  map_pgsize;
+
+	pg_start = truncate_align(newsp, PAGE_SIZE);    /* 割り当て対象開始アドレス */
+	/* 最終割り当て対象ページ開始アドレス */
+	pg_end = truncate_align(dest->segments[PROC_STACK_SEG].start - 1, PAGE_SIZE);
+	
+	for( pg_cur = pg_end; pg_cur >= pg_start; ) {
+
+		rc = hal_pgtbl_extract(dest->pgt, pg_cur, &map_paddr, &map_prot, &map_flags,
+		    &map_pgsize);
+		if ( rc == 0 ) { /* 既にマップ済み */
+
+			pg_cur = truncate_align(pg_cur, map_pgsize); /* ページの先頭を指す */
+			pg_cur = truncate_align(pg_cur, PAGE_SIZE);  /* 次ページの先頭 */
+			continue;
+		}
+
+		/* スタックページを割り当てる */
+		rc = vm_map_userpage(dest->pgt, pg_cur, 
+		    dest->segments[PROC_STACK_SEG].prot, VM_FLAGS_USER, PAGE_SIZE, PAGE_SIZE);
+		if ( rc != 0 )
+			goto error_out;
+
+		/* 割当て済み先頭ページを更新 */
+		dest->segments[PROC_STACK_SEG].start = pg_cur; 
+		pg_cur -= PAGE_SIZE;  /* 次のページの割り当て */
+	}
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   引数をコピーする
+   @param[in]  src         引数を読込むプロセス
+   @param[in]  prot        スタックの保護属性
+   @param[in]  argv        引数配列のアドレス
+   @param[in]  environment 環境変数配列のアドレス
+   @param[out] cursp       スタックポインタを指し示すポインタ変数のアドレス
+   @retval     0           正常終了
+   @retval    -EFAULT      メモリアクセス不可
+ */
+int
+proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *environment[], 
+    proc *dest, vm_vaddr *cursp){
+	int              rc;
+	int               i;
+	vm_vaddr         sp;
+	vm_vaddr      argcp;
+	vm_vaddr      argvp;
+	vm_vaddr       envp;
+	char        term[1];
+	proc     *kern_proc;
+	reg_type       argc;
+	size_t          len;
+
+	kern_proc = proc_kernel_process_refer(); /* カーネルプロセス */
+	sp = *cursp;    /* 現在のスタック位置を取得 */
+	term[0]	= '\0'; /* NULLターミネート文字列 */
+
+	/*
+	 * 引数領域長を得る
+	 */
+	rc = calc_argument_areasize(src, argv, environment, &len);
+	if ( rc != 0 )
+		goto error_out;  /* アクセス不能 */
+	rc = proc_grow_stack(dest, sp - len);  /* スタック伸張 */
+	if ( rc != 0 )
+		goto error_out;  /* 伸張不能 */
+
+	sp -= len; /* 引数領域のスタックポインタの先頭位置  */
+
+	/* argc, argv, environmentをコピーする
+	 */
+	argcp = sp;  /* argc保存領域 */
+
+	/*
+	 * argv[]のコピー
+	 */
+	argvp = roundup_align(argcp+sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
+	for(i = 0; argv[i] != NULL; ++i) {
+
+		len = vm_strlen(src->pgt, argv[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		/* NULL終端を含めてコピーする */
+		len = vm_memmove( dest->pgt, (void *)argvp, src->pgt, 
+		    (void *)argv[i], len + 1);
+		if ( len != 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		argvp += len;  /* 次の領域を指す */
+	}
+
+	len = vm_memmove( dest->pgt, (void *)argvp, kern_proc->pgt, 
+	    (void *)term, 1); /* NULLターミネート */
+	if ( len != 0 ) {
+
+		rc = -EFAULT;  /* アクセスできなかった */
+		goto error_out;
+	}
+	++argvp;  /* NULLターミネートの次の位置を参照 */
+
+	argc = i;  /* argcを記憶 */
+	/*
+	 * environment[]のコピー
+	 */
+	envp = roundup_align(argvp, HAL_STACK_ALIGN_SIZE);
+	for(i = 0; environment[i] != NULL; ++i) {
+
+		len = vm_strlen(src->pgt, environment[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		/* NULL終端を含めてコピーする */
+		len = vm_memmove( dest->pgt, (void *)envp, src->pgt, 
+		    (void *)environment[i], len + 1);
+		if ( len != 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		envp += len;  /* 次の領域を指す */
+	}
+
+	len = vm_memmove( dest->pgt, (void *)envp, kern_proc->pgt, 
+	    (void *)term, 1); /* NULLターミネート */
+	if ( len != 0 ) {
+
+		rc = -EFAULT;  /* アクセスできなかった */
+		goto error_out;
+	}
+	++envp;  /* NULLターミネートの次の位置を参照 */
+
+	/*
+	 * argcを設定
+	 */
+	len = vm_memmove( dest->pgt, (void *)argcp, kern_proc->pgt, 
+	    (void *)&argc, sizeof(reg_type)); /* argcを設定       */
+	if ( len != 0 ) {
+
+		rc = -EFAULT;  /* アクセスできなかった */
+		goto error_out;
+	}
+	
+	*cursp = argcp;  /* スタックを更新 */
+
+	return  0;
+
+error_out:
+	return rc;
+}
+
+/**
    カーネルプロセスを参照する
  */
 proc *
@@ -379,13 +617,12 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	/* ユーザスタックを割り当てる
 	 */
 	seg = &new_proc->segments[PROC_STACK_SEG];              /* スタックセグメント参照 */
-	seg->start = PAGE_TRUNCATE(HAL_USER_END_ADDR);          /* スタック開始ページ */
+	seg->start = PAGE_ROUNDUP(HAL_USER_END_ADDR);           /* スタック開始ページ */
 	seg->end = PAGE_ROUNDUP(HAL_USER_END_ADDR);             /* スタック終了ページ */
 	seg->prot = VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE; /* スタック保護属性   */
 	seg->flags = VM_FLAGS_USER;                             /* マップ属性         */
 	/* スタックを割り当てる */
-	rc = vm_map_userpage(new_proc->pgt, seg->start, seg->prot, seg->flags, 
-	    PAGE_SIZE, seg->end - seg->start);
+	rc = proc_grow_stack(new_proc, PAGE_TRUNCATE(HAL_USER_END_ADDR)); 
 	if ( rc != 0 )
 		goto free_pgtbl_out;  /* スタックの割当てに失敗した */
 

@@ -76,8 +76,10 @@ error_out:
    @param[in]  flags      ページ割り当て要否の判断に使用するマップ属性
    @param[in]  pgsize     マップするページサイズ(単位:バイト)
    @retval     0          正常終了
-   @retval    -ENOENT     ページテーブルまたはラージページがマップされていない
-   @retval    -ESRCH      ページがマップされていない, ページサイズが大きすぎる
+   @retval    -ESRCH  格納可能なページオーダを越えている
+   @retval    -ENOMEM メモリ不足
+   @retval    -ENOMEM        メモリ不足
+   @retval    -EBUSY         すでにマップ済みの領域だった
    @note      ページ単位でのアンマップを行う
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
@@ -346,9 +348,11 @@ error_out:
    @param[in]  size       マップする領域長 (単位: バイト)
    @retval     0          正常終了
    @retval    -EINVAL     不正な仮想アドレス/マップ属性を指定した
-   @retval    -ENOENT     ページテーブルまたはラージページがマップされていない
-   @retval    -ESRCH      ページがマップされていない
-   @note      ページ単位でのアンマップを行う
+   @retval    -ESRCH      格納可能なページオーダを越えている
+   @retval    -ENOMEM     メモリ不足
+   @retval    -EBUSY      すでにマップ済みの領域だった
+   @retval    -ENODEV     ミューテックスが破棄された
+   @retval    -EINTR      非同期イベントを受信した
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
 int

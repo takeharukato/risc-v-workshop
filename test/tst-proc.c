@@ -19,6 +19,9 @@
 
 static ktest_stats tstat_proc=KTEST_INITIALIZER;
 
+//static const char *tst_args[]={"init", "arg1", "arg2", "arg3", NULL};
+//static const char *tst_envs[]={"TERM=rv64ws", NULL};
+
 static void
 proc1(struct _ktest_stats *sp, void __unused *arg){
 	int      rc;
