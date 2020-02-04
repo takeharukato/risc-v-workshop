@@ -71,7 +71,7 @@ allocate_process_common(proc **procp){
 	/* 参照カウンタを初期化(プロセスの最初のスレッドからの参照分) */
 	refcnt_init(&new_proc->refs); 
 	queue_init(&new_proc->thrque);  /* スレッドキューの初期化      */
-	new_proc->id = 0;          /* PID                              */
+	new_proc->id = PROC_KERN_PID;   /* PIDをカーネル空間IDに設定   */
 
 	/** セグメントの初期化
 	 */
@@ -172,11 +172,9 @@ free_user_process(proc *p){
 		/* 領域を開放 */
 		release_process_segment(p, seg->start, seg->end, seg->flags);
 	}
-
-	/* ページテーブルを解放 */
-	pgtbl_free_user_pgtbl(p->pgt);
-
-	thr_id_release(p->id);   /* プロセスIDを返却する   */
+	
+	pgtbl_free_user_pgtbl(p->pgt);         /* ページテーブルを解放 */
+	p->id = HAL_PGTBL_KERNEL_ASID;  /* カーネル空間IDに設定 */
 
 	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
 
@@ -359,7 +357,6 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	proc          *res;
 	proc_segment  *seg;
 	thread        *thr;
-	pid        new_pid;
 	intrflags   iflags;
 
 	/* プロセス管理情報を割り当てる
@@ -370,19 +367,15 @@ proc_user_allocate(entry_addr entry, proc **procp){
 		rc = -ENOMEM;
 		goto error_out;  /* メモリ不足 */
 	}
-	/** プロセスIDを割り当てる
-	 */
-	rc = thr_id_alloc(&new_pid);
-	if ( rc != 0 )
-		goto free_proc_out;
-	new_proc->id = new_pid;  /* プロセスIDを設定 */
 
 	/* ページテーブルを割り当てる
 	 */
 	rc = pgtbl_alloc_user_pgtbl(&new_proc->pgt);
 	if ( rc != 0 ) 
-		goto free_id_out;  
-	
+		goto free_proc_out;  
+
+	new_proc->id = new_proc->pgt->asid;  /* アドレス空間IDをプロセスIDに設定 */
+
 	/* ユーザスタックを割り当てる
 	 */
 	seg = &new_proc->segments[PROC_STACK_SEG];              /* スタックセグメント参照 */
@@ -425,8 +418,8 @@ free_stk_out:
 
 free_pgtbl_out:
 	pgtbl_free_user_pgtbl(new_proc->pgt);  /* ページテーブルを解放する */
-free_id_out:
-	thr_id_release(new_pid);        /*  プロセスIDを返却  */
+	new_proc->id = HAL_PGTBL_KERNEL_ASID;  /* カーネル空間IDに設定 */
+
 free_proc_out:
 	slab_kmem_cache_free(new_proc); /* プロセス情報を解放する */
 

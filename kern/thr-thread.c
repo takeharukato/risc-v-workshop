@@ -824,52 +824,6 @@ thr_ref_dec(thread *thr){
 
 	return res;
 }
-/**
-   スレッドIDを獲得する
-   @param[out] idp スレッドID返却域
-   @note プロセスID用のIDを返却するために使用
- */
-int
-thr_id_alloc(tid *idp){
-	int             rc;
-	tid          newid;
-	intrflags   iflags;
-
-	/* スレッド管理ツリーのロックを獲得 */
-	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
-	rc = alloc_new_tid_nolock(&newid);  /* 空きIDを取得 */
-	if (rc != 0 )
-		goto unlock_out; /* 空IDがない */
-
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-	if ( idp != NULL )
-		*idp = newid;  /*  スレッドIDを返却 */
-
-	return 0;
-
-unlock_out:
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-	return rc;
-}
-
-/**
-   スレッドIDを返却する
-   @param[in] id スレッドID
-   @note マスタスレッドが他のスレッドより先に終了したプロセスの
-   プロセスIDを返却するために使用
- */
-void
-thr_id_release(tid id){
-	intrflags   iflags;
-
-	/* スレッド管理ツリーのロックを獲得 */
-	spinlock_lock_disable_intr(&g_thrdb.lock, &iflags);
-
-	release_tid_nolock(id); /* スレッドIDを返却  */
-
-	/* スレッド管理ツリーのロックを解放 */
-	spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
-}
 
 /**
    アイドルスレッドループ関数
