@@ -73,15 +73,13 @@ typedef struct _proc_db{
 }
 
 struct _proc *proc_kernel_process_refer(void);
-int proc_user_allocate(entry_addr _entry, struct _proc **_procp);
+int proc_user_allocate(struct _proc **_procp);
 bool proc_ref_inc(struct _proc *_p);
 bool proc_ref_dec(struct _proc *_p);
 struct _proc *proc_find_by_pid(pid _target);
 struct _thread *proc_find_thread(pid _target);
 int proc_add_thread(struct _proc *_p, struct _thread *_thr);
 bool proc_del_thread(struct _proc *_p, struct _thread *_thr);
-int proc_argument_areasize_calc(struct _proc *_src, const char *_argv[], 
-    const char *_environment[], size_t *_sizp);
 int proc_argument_copy(struct _proc *_src, vm_prot _prot, const char *_argv[], 
     const char *_environment[], struct _proc *_dest, vm_vaddr *_cursp);
 int proc_grow_stack(struct _proc *_dest, vm_vaddr _newsp);

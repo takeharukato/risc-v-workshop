@@ -19,36 +19,65 @@
 
 static ktest_stats tstat_proc=KTEST_INITIALIZER;
 
-//static const char *tst_args[]={"init", "arg1", "arg2", "arg3", NULL};
-//static const char *tst_envs[]={"TERM=rv64ws", NULL};
+static const char __unused *tst_args[]={"init", "arg1", "arg2", "arg3", NULL};
+static const char __unused *tst_envs[]={"TERM=rv64ws", NULL};
 
 static void
 proc1(struct _ktest_stats *sp, void __unused *arg){
-	int      rc;
-	proc    *p1;
-	proc  *pres;
-	thread *thr;
-	proc    *kp;
-	bool    res;
+	int         rc;
+	proc       *p1;
+	proc     *pres;
+	thread    *thr;
+	thread *master;
+	proc       *kp;
+	bool       res;
+	vm_vaddr   usp;
 
-	rc = proc_user_allocate(0x10390, &p1);
+	rc = proc_user_allocate(&p1);
 	if ( rc == 0 ) 
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
+	usp = truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE);
 	if ( rc == 0 ) {
 
+#if defined(CONFIG_HAL)
+		usp = HAL_USER_END_ADDR;
+		rc = proc_argument_copy(proc_kernel_process_refer(), 
+			p1->segments[PROC_STACK_SEG].prot, tst_args, tst_envs, p1, &usp);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+#endif
+		rc = thr_user_thread_create(THR_TID_AUTO, 0x10390, NULL, p1,
+		    (void *)usp, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &master);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		rc = proc_add_thread(p1, master);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+		/*
+		 * 参照獲得処理のテスト
+		 */
 		res = proc_ref_inc(p1);
 		if ( res )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
+
 		res = proc_ref_dec(p1);
 		if ( !res )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
+
 		pres = proc_find_by_pid(p1->id);  /* プロセスへの参照を取得 */
 		if ( pres != NULL )
 			ktest_pass( sp );

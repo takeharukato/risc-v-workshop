@@ -68,7 +68,7 @@ allocate_process_common(proc **procp){
 	}
 
 	spinlock_init(&new_proc->lock); /* プロセス管理情報のロックを初期化  */
-	/* 参照カウンタを初期化(プロセスの最初のスレッドからの参照分) */
+	/* 参照カウンタを初期化(マスタースレッドからの参照分) */
 	refcnt_init(&new_proc->refs); 
 	queue_init(&new_proc->thrque);  /* スレッドキューの初期化      */
 	new_proc->id = PROC_KERN_PID;   /* PIDをカーネル空間IDに設定   */
@@ -327,6 +327,8 @@ unlock_out:
  */
 int
 proc_add_thread(proc *p, thread *thr){
+	bool         res;
+	bool    is_first;
 	intrflags iflags;
 
 	if ( !proc_ref_inc(p) )  /* スレッドからの参照をインクリメント */
@@ -334,9 +336,22 @@ proc_add_thread(proc *p, thread *thr){
 
 	/* プロセス管理情報のロックを獲得 */
 	spinlock_lock_disable_intr(&p->lock, &iflags);
+	is_first = queue_is_empty(&p->thrque);
 
 	queue_add(&p->thrque, &thr->proc_link);  /* スレッドキューに追加      */	
 	thr->p = p;  /*  プロセスへのポインタを更新 */
+
+	if ( is_first ) { /* 最初のスレッドだった場合 */
+
+		p->master = container_of(queue_ref_top( &thr->p->thrque ),
+		    thread, proc_link);  /* マスタースレッド更新 */
+
+		/* 最初のスレッドからの参照分はプロセス生成時に加算済みなので
+		 * 2重カウントしないように減算する
+		 */
+		res = proc_ref_dec(p);
+		kassert( !res );  /* 上記で参照を得ているので最終参照ではない */
+	}
 
 	/* プロセス管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&p->lock, &iflags);
@@ -579,7 +594,6 @@ proc_kernel_process_refer(void){
 
 /**
    ユーザプロセス用のプロセス管理情報を割り当てる
-   @param[in]  entry プロセス開始アドレス
    @param[out] procp プロセス管理情報返却アドレス
    @retval     0     正常終了
    @retval    -ENOMEM メモリ不足
@@ -589,12 +603,11 @@ proc_kernel_process_refer(void){
    @retval    -ENOSPC スレッドIDに空きがない
  */
 int
-proc_user_allocate(entry_addr entry, proc **procp){
+proc_user_allocate(proc **procp){
 	int             rc;
 	proc     *new_proc;
 	proc          *res;
 	proc_segment  *seg;
-	thread        *thr;
 	intrflags   iflags;
 
 	/* プロセス管理情報を割り当てる
@@ -614,28 +627,13 @@ proc_user_allocate(entry_addr entry, proc **procp){
 
 	new_proc->id = new_proc->pgt->asid;  /* アドレス空間IDをプロセスIDに設定 */
 
-	/* ユーザスタックを割り当てる
+	/* ユーザスタックアドレスを設定する
 	 */
 	seg = &new_proc->segments[PROC_STACK_SEG];              /* スタックセグメント参照 */
 	seg->start = PAGE_ROUNDUP(HAL_USER_END_ADDR);           /* スタック開始ページ */
 	seg->end = PAGE_ROUNDUP(HAL_USER_END_ADDR);             /* スタック終了ページ */
-	seg->prot = VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE; /* スタック保護属性   */
+	seg->prot = VM_PROT_READ|VM_PROT_WRITE;                 /* スタック保護属性   */
 	seg->flags = VM_FLAGS_USER;                             /* マップ属性         */
-	/* スタックを割り当てる */
-	rc = proc_grow_stack(new_proc, PAGE_TRUNCATE(HAL_USER_END_ADDR)); 
-	if ( rc != 0 )
-		goto free_pgtbl_out;  /* スタックの割当てに失敗した */
-
-	/* ユーザスレッドを生成する
-	 */
-	rc = thr_user_thread_create(THR_TID_AUTO, entry, NULL, new_proc, 
-	    (void *)truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE), 
-	    SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &thr);
-	if ( rc != 0 ) 
-		goto free_stk_out;  /*  スレッドの生成に失敗した */
-
-	queue_add(&new_proc->thrque, &thr->proc_link);  /* スレッドキューに追加      */
-	new_proc->master = thr;                         /* マスタースレッドを設定 */
 
         /* プロセス管理情報をプロセスツリーに登録 */
 	spinlock_lock_disable_intr(&g_procdb.lock, &iflags);
@@ -646,16 +644,6 @@ proc_user_allocate(entry_addr entry, proc **procp){
 	*procp = new_proc;  /* プロセス管理情報を返却 */
 	
 	return 0;
-
-free_stk_out:
-	release_process_segment(new_proc, 
-	    new_proc->segments[PROC_STACK_SEG].start, 
-	    new_proc->segments[PROC_STACK_SEG].end,
-	    new_proc->segments[PROC_STACK_SEG].flags);  /* スタックセグメントを解放する */
-
-free_pgtbl_out:
-	pgtbl_free_user_pgtbl(new_proc->pgt);  /* ページテーブルを解放する */
-	new_proc->id = HAL_PGTBL_KERNEL_ASID;  /* カーネル空間IDに設定 */
 
 free_proc_out:
 	slab_kmem_cache_free(new_proc); /* プロセス情報を解放する */
