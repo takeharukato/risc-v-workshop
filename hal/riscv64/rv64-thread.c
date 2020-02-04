@@ -19,12 +19,14 @@
 /**
    スレッドコンテキストを作成
    @param[in]  entry  スレッドの開始アドレス
+   @param[in]  args   スレッド引数情報
    @param[in]  thr_sp スレッド開始時のユーザランドスタックポインタ
    @param[in]  flags  スレッド属性フラグ
    @param[out] stkp コンテキスト保存先を確保するスタックアドレスを指し示すポインタのアドレス
  */
 void
-hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void **stkp) {
+hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
+    thr_flags flags, void **stkp) {
 	trap_context         *trap;
 	rv64_thrsw_context *thrctx;
 
@@ -57,6 +59,19 @@ hal_setup_thread_context(entry_addr entry, void *thr_sp, thr_flags flags, void *
 		trap->sp = (reg_type)*stkp;  /* スタックポインタをカーネルスタックに設定 */
 		/* スーパバイザモードに復帰 */
 		trap->estatus |= SSTATUS_SUM | SSTATUS_SPP | SSTATUS_SPIE; 
+	}
+
+	/*
+	 * 引数情報設定
+	 */
+	if ( args != NULL ) {
+		
+		trap->a0 = args->arg1;
+		trap->a1 = args->arg2;
+		trap->a2 = args->arg3;
+		trap->a3 = args->arg4;
+		trap->a4 = args->arg5;
+		trap->a5 = args->arg6;
 	}
 
 	*stkp = (void *)thrctx;  /* スレッドスイッチコンテキストを指すようにスタックを更新 */

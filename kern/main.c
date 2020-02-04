@@ -89,7 +89,7 @@ kern_init(void) {
 	/**
 	   テスト処理用スレッドを起動する
 	 */
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )test_thread, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )test_thread, NULL,
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
 	kassert( rc == 0 );
 	sched_thread_add(thr); /* スレッドを開始する */

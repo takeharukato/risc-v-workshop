@@ -13,6 +13,8 @@
 #include <kern/kern-types.h>
 #include <hal/x64-rflags.h>
 
+struct _thread_args;
+
 /**
    スレッドスイッチコンテキスト
  */
@@ -27,8 +29,8 @@ typedef struct _x64_thrsw_context{
 	reg_type     rip;  /* rip    */
 }x64_thrsw_context;
 
-void hal_setup_thread_context(entry_addr _entry, void *_thr_sp, thr_flags _flags, 
-    void **_stkp);
+void hal_setup_thread_context(entry_addr _entry, struct _thread_args *_args, 
+    void *_thr_sp, thr_flags _flags, void **_stkp);
 
 void hal_thread_switch(void **_prev, void **_next);
 

@@ -22,6 +22,7 @@ config CONFIG_CPUS_NR
 
 config CONFIG_UPPERHALF_KERNEL
     bool "Use Upper Half Kernel"
+    depends on CONFIG_HAL
     default n if !CONFIG_RISCV64
     default y if CONFIG_RISCV64
     help

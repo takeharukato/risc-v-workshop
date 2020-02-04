@@ -117,6 +117,18 @@ typedef struct _thread_db{
 }thread_db;
 
 /**
+   引数情報
+ */
+typedef struct _thread_args{
+	reg_type  arg1;  /**< 第1引数 */
+	reg_type  arg2;  /**< 第2引数 */
+	reg_type  arg3;  /**< 第3引数 */
+	reg_type  arg4;  /**< 第4引数 */
+	reg_type  arg5;  /**< 第5引数 */
+	reg_type  arg6;  /**< 第6引数 */
+}thread_args;
+
+/**
    スレッド管理DB初期化子
  */
 #define __THRDB_INITIALIZER(thrdb) {		                \
@@ -136,10 +148,10 @@ typedef struct _thread_db{
 
 int thr_thread_wait(struct _thr_wait_res *_resp);
 void thr_thread_exit(exit_code _ec);
-int thr_user_thread_create(tid _id, entry_addr _entry, struct _proc *_p, void *_usp, 
-    thr_prio _prio, thr_flags _flags, struct _thread **_thrp);
-int thr_kernel_thread_create(tid _id, entry_addr _entry, thr_prio _prio, thr_flags _flags,
-    thread **_thrp);
+int thr_user_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args, 
+    struct _proc *_p, void *_usp, thr_prio _prio, thr_flags _flags, struct _thread **_thrp);
+int thr_kernel_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args, 
+    thr_prio _prio, thr_flags _flags, thread **_thrp);
 void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
 bool thr_ref_dec(struct _thread *_thr);
 bool thr_ref_inc(struct _thread *_thr);
