@@ -15,6 +15,94 @@
 #include <kern/ktest.h>
 
 static ktest_stats tstat_thread=KTEST_INITIALIZER;
+/**
+   引数領域の大きさを算出する
+   @param[in]  src         引数を読込むプロセス
+   @param[in]  argv        引数配列のアドレス
+   @param[in]  environment 環境変数配列のアドレス
+   @param[out] sizp        引数領域長返却領域
+   @retval     0           正常終了
+   @retval    -EFAULT      メモリアクセス不可
+ */
+int
+thr_argarea_size_calc(proc *src, const char *argv[], const char *environment[], size_t *sizp){
+	int          rc;
+	int           i;
+	size_t      len;
+	size_t argc_len;
+	size_t argv_len;
+	size_t  env_len;
+
+	/* argc, argv, environmentを配置するために必要な領域長を算出する
+	 */
+	for(i = 0, argv_len = 1; argv[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		len = vm_strlen(src->pgt, argv[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		argv_len +=  len + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	for(i = 0, env_len = 1; environment[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		len = vm_strlen(src->pgt, environment[i]);
+		if ( len == 0 ) {
+
+			rc = -EFAULT;  /* アクセスできなかった */
+			goto error_out;
+		}
+		env_len += len + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	/* argc, argv, environmentに対してスタックアラインメントで
+	 * アクセスできるようにサイズを調整する
+	 */
+	argc_len = roundup_align(sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
+	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
+	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
+
+	if ( sizp != NULL )
+		*sizp = argc_len + argv_len + env_len;  /* 引数領域長を返却する */
+
+	return  0;
+
+error_out:
+	return rc;
+}
+#if 0
+int
+setup_thread_args(proc *src, proc *dest, void *sp, reg_type argc, const char *argv[], 
+    const char *environment[]){
+	int           i;
+	size_t      len;
+	size_t argc_len;
+	size_t argv_len;
+	size_t  env_len;
+	void     *destp;
+
+	/* argc, argv, environmentを配置するために必要な領域長を算出する
+	 */
+	for(i = 0, argv_len = 1; argv[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		argv_len += strlen(argv[i]) + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	for(i = 0, env_len = 1; environment[i] != NULL; ++i) { /* NULLターミネート分を足す */
+
+		env_len += strlen(environment[i]) + 1;  /* 文字列長+NULLターミネート */
+	}
+
+	argc_len = roundup_align(sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
+	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
+	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
+}
+#endif
+
+static const char *tst_args[]={"init", "arg1", "arg2", "arg3"};
+static const char *tst_envs[]={"TERM=rv64ws"};
 
 static void
 thread_test(void *arg){
@@ -39,6 +127,7 @@ threada(void *arg){
 static void
 thread1(struct _ktest_stats *sp, void __unused *arg){
 	int           rc;
+	size_t       siz;
 	thread      *thr;
 	thr_wait_res res;
 	thread_args args;
@@ -109,6 +198,12 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	rc = thr_argarea_size_calc(proc_kernel_process_refer(), tst_args, tst_envs, &siz);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	kprintf("arg siz=%lu\n", siz);
 	return;
 }
 

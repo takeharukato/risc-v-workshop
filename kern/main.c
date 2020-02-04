@@ -101,6 +101,7 @@ kern_init(void) {
 }
 
 #if !defined(CONFIG_HAL)
+void prepare_map(void);
 /**
    ユーザランドテスト用の初期化を行う
  */
@@ -115,7 +116,7 @@ uland_test_init(void){
 	krn_cpuinfo_init();  /* CPU情報を初期化する */
 	krn_cpuinfo_cpu_register(0, &log_id); /* BSPを登録する */
 	krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
-
+	prepare_map(); /* proc_initにためにカーネルページテーブルをセットアップする */
 	kern_init();  /* カーネルの初期化 */
 
 	tflib_kernlayout_finalize();
