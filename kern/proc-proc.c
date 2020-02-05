@@ -194,12 +194,15 @@ free_user_process(proc *p){
 static int
 calc_argument_areasize(proc *src, const char *argv[], const char *environment[], 
     size_t *sizp){
-	int          rc;
-	int           i;
-	size_t      len;
-	size_t argc_len;
-	size_t argv_len;
-	size_t  env_len;
+	int           rc;
+	int            i;
+	size_t       len;
+	size_t  argc_len;
+	size_t array_len;
+	size_t  argv_len;
+	size_t   env_len;
+	reg_type nr_args;
+	reg_type nr_envs;
 
 	/* argc, argv, environmentを配置するために必要な領域長を算出する
 	 */
@@ -213,6 +216,7 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 		}
 		argv_len +=  len + 1;  /* 文字列長+NULLターミネート */
 	}
+	nr_args = i;  /* 引数の数 */
 
 	for(i = 0, env_len = 1; environment[i] != NULL; ++i) { /* NULLターミネート分を足す */
 
@@ -224,16 +228,19 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 		}
 		env_len += len + 1;  /* 文字列長+NULLターミネート */
 	}
+	nr_envs = i;  /* 環境変数の数 */
 
-	/* argc, argv, environmentに対してスタックアラインメントで
+	/* argc, argv配列, environment配列, argv, environmentに対してスタックアラインメントで
 	 * アクセスできるようにサイズを調整する
 	 */
 	argc_len = roundup_align(sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
+	array_len = roundup_align(sizeof(char *) * nr_args, HAL_STACK_ALIGN_SIZE) 
+		+ roundup_align(sizeof(char *) * nr_envs, HAL_STACK_ALIGN_SIZE);
 	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
 	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
 
 	if ( sizp != NULL )
-		*sizp = argc_len + argv_len + env_len;  /* 引数領域長を返却する */
+		*sizp = argc_len + array_len + argv_len + env_len;  /* 引数領域長を返却する */
 
 	return  0;
 
