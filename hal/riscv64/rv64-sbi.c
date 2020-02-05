@@ -15,7 +15,15 @@
 #include <hal/rv64-platform.h>
 #include <hal/rv64-clint.h>
 #include <hal/rv64-sbi.h>
-
+/**
+   SBIコールを発行する
+   @param[in] arg7 SBIコール番号
+   @param[in] arg0 第1引数
+   @param[in] arg1 第2引数
+   @param[in] arg2 第3引数
+   @param[in] arg3 第4引数
+   @retval SBIコールの返値
+ */
 uint64_t
 sbi_call(uint64_t arg7, uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3){
 	register uintptr_t a0 __asm ("a0") = (uintptr_t)(arg0);
@@ -30,9 +38,10 @@ sbi_call(uint64_t arg7, uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t ar
 		:"r"(a1), "r"(a2), "r" (a3), "r"(a7)	\
 		:"memory");
 
-	return (a0);
+	return a0;
 }
-
+/**
+ */
 void 
 ksbi_send_ipi(const unsigned long *hart_mask){
 	int i;
