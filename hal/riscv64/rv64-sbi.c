@@ -11,10 +11,35 @@
 #include <kern/kern-common.h>
 #include <klib/backtrace.h>
 #include <kern/page-macros.h>
+#include <kern/kern-cpuinfo.h>
 
 #include <hal/rv64-platform.h>
 #include <hal/rv64-clint.h>
 #include <hal/rv64-sbi.h>
+
+/**
+   CLINT MSIPレジスタを参照する
+   @param[in] _hart IPI送信先hartid
+ */
+#define msip_reg(_hart) ((volatile uint32_t *)(RV64_CLINT_MSIP((_hart))))
+
+/**
+   IPI割込み要求を発行する
+   @param[in] _hart IPI送信先hartid
+ */
+#define msip_set_ipi(_hart) do{					\
+		*(msip_reg((_hart))) = 0x1;				\
+	}while(0)
+
+/**
+   IPI割込み受付けを通知する
+   @param[in] _hart IPI割込みを受け付けたhartid
+ */
+#define msip_clr_ipi(_hart) do{					\
+		*(msip_reg((_hart))) = 0x0;			\
+	}while(0)
+
+
 /**
    SBIコールを発行する
    @param[in] arg7 SBIコール番号
@@ -40,24 +65,19 @@ sbi_call(uint64_t arg7, uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t ar
 
 	return a0;
 }
+
 /**
+   プロセッサ間割込みを発行する
+   @param[in] hart_mask 割込み送信先CPUのビットマップ
  */
 void 
-ksbi_send_ipi(const unsigned long *hart_mask){
-	int i;
-	int idx;
-	int off;
-	volatile uint32_t *reg;  /* TODO:レジスタアクセスマクロを統一 */
+ksbi_send_ipi(const cpu_bitmap *hart_mask){
+	cpu_id cpu;
 
-	for(i = 0; KC_CPUS_NR > i; ++i) {
+	FOREACH_ONLINE_CPUS(cpu) {  /* すべてのオンラインプロセッサをたどる */
 
-		idx = i / ( sizeof(unsigned long)*BITS_PER_BYTE );
-		off = i % ( sizeof(unsigned long)*BITS_PER_BYTE );
-		if ( hart_mask[idx] & (1 << off ) ) {
-
-			reg = (volatile uint32_t *)RV64_CLINT_MSIP(i);
-			*reg = 1;  /* TODO: アクセスマクロ作成 */
-		}
+		if ( bitops_isset(cpu, hart_mask) )  /* 宛先CPUに含まれる場合 */
+			msip_set_ipi(cpu);  /* IPIを発行する */
 	}
 }
 

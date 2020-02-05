@@ -12,6 +12,7 @@
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
+#include <kern/kern-cpuinfo.h>
 
 #define SBI_SUCCESS                    (0)   /**< 正常終了                 */
 #define SBI_ERR_FAILURE                (-1)  /**< 失敗                     */
@@ -38,6 +39,6 @@ struct sbiret {
         long value;  /**< 返却値       */
 };
 
-void ksbi_send_ipi(const unsigned long *_hart_mask);
+void ksbi_send_ipi(const cpu_bitmap *_hart_mask);
 #endif  /* !ASM_FILE */
 #endif  /* _HAL_RV64_SBI_H  */
