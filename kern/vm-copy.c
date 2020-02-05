@@ -184,7 +184,7 @@ vm_memmove(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t le
 		dest_kmem = dest_kpage + dest_off;
 
 		/* コピー元のページ内オフセットを求める */
-		src_off = (uintptr_t)dp % src_pgsize;
+		src_off = (uintptr_t)sp % src_pgsize;
 		
 		/* コピー元の転送可能量を求める */
 		src_remain = src_pgsize - src_off;
