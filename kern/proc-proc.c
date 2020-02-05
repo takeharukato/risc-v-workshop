@@ -547,7 +547,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 		/* 転送先のargv配列に記録する */
 		len = vm_memmove( dest->pgt, (void *)&argv_ptr[i], kern_proc->pgt, 
-		    (void *)argvp, sizeof(char *));
+		    (void *)&argvp, sizeof(char *));
 		if ( len != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
@@ -567,7 +567,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 	/* 転送先のargv配列にNULL文字列のアドレスを記録 */
 	len = vm_memmove( dest->pgt, (void *)&argv_ptr[i], kern_proc->pgt, 
-	    (void *)argvp, sizeof(char *));
+	    (void *)&argvp, sizeof(char *));
 	if ( len != 0 ) {
 		
 		rc = -EFAULT;  /* アクセスできなかった */
@@ -597,9 +597,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 
-		/* 転送先のenvironment配列に記録する */
+		/* 転送先のenvironment配列に記録 */
 		len = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt, 
-		    (void *)envp, sizeof(char *));
+		    (void *)&envp, sizeof(char *));
 		if ( len != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
