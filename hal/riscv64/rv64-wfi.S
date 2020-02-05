@@ -21,11 +21,11 @@ ASMMAC_DECLARE_NAME(hal_cpu_halt)
 */
 ASMMAC_FUNCTION(hal_cpu_halt)
 	addi sp,sp,-32   /*  レジスタ4つ分のアドレスを確保する               */
-	sd   s2,24(sp)   /*  s1レジスタを待避する                            */
-	sd   s1,16(sp)   /*  s1レジスタを待避する                            */
-	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
-	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
-	add  s0, sp, 24  /*  fpを更新する                                    */
+	sd   ra,24(sp)   /*  raレジスタを待避する                            */
+	sd   s0,16(sp)   /*  s0レジスタを待避する                            */
+	sd   s2, 8(sp)   /*  s2レジスタを待避する                            */
+	sd   s1,  (sp)   /*  s1レジスタを待避する                            */
+	add  s0, sp, 32  /*  fpを更新する                                    */
 
 	csrr s1, sie     /* sieの内容をs1に退避する                          */
 
@@ -36,15 +36,15 @@ ASMMAC_FUNCTION(hal_cpu_halt)
 	csrw sie, s2              /* sieを更新する                           */
 
 	fence                     /* メモリへの書き込みを待ち合わせる        */
-	wfi                       /* 割込み待ち合せて停止する                */
+	wfi                       /* 割込みを待ち合わせる                    */
 	nop                       /* 念のためwfi復帰先にnopを入れておく      */
 
 	csrw sie, s1     /* sieの内容を復元する                              */
 	
-	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
-	ld ra, 8(sp)     /*  raレジスタを復元する                            */
-	ld s1, 16(sp)    /*  s1レジスタを復元する                            */
-	ld s2, 24(sp)    /*  s2レジスタを復元する                            */		
+	ld s1,   (sp)    /*  s1レジスタを復元する                            */
+	ld s2,  8(sp)    /*  s2レジスタを復元する                            */		
+	ld s0, 16(sp)     /*  s0レジスタを復元する                            */
+	ld ra, 24(sp)     /*  raレジスタを復元する                            */
 	addi sp,sp,32    /*  スタック位置を復元する                          */
 	jr ra            /*  呼び出し元に戻る                                */
 
