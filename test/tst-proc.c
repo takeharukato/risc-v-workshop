@@ -50,6 +50,11 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
+		hal_pgtbl_activate(p1->pgt);
+		
+		hal_pgtbl_deactivate(p1->pgt);
+		hal_pgtbl_activate(hal_refer_kernel_pagetable());
+
 #endif
 		rc = thr_user_thread_create(THR_TID_AUTO, 0x10390, NULL, p1,
 		    (void *)usp, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &master);
