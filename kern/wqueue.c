@@ -25,6 +25,7 @@ static void
 enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 	intrflags iflags;
 
+	kassert(list_not_linked(&ent->thr->link));  
 	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
 
 	ent->reason = WQUE_WAIT;            /* 待ち中に遷移する */
