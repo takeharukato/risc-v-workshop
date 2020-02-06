@@ -2,10 +2,10 @@
 # OS kernel sample
 # Copyright 2019 Takeharu KATO
 #
-top=..
+top=../..
 include ${top}/Makefile.inc
 
-objects=dev-fsimg.o
+objects=
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
@@ -13,7 +13,7 @@ endif
 
 depends = $(patsubst %.o,%.d,${objects})
 
-lib=libfs.a
+lib=libminixfs.a
 
 all: ${depends} ${lib}
 
@@ -24,20 +24,6 @@ gcov:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
-
-${fsimg_obj}: fsimg.S 
-
-fsimg.S: fsimg.S.in ${FSIMG}
-	${RM} $@
-	${SED} -e 's|__fsimg_file__|${FSIMG}|g' 			\
-	       -e 's|__PAGE_SIZE__|${CONFIG_HAL_PAGE_SIZE}|g' 		\
-	fsimg.S.in > $@
-
-
-
-${FSIMG}:
-	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
-	mkfs.mfs $@
 
 clean:
 	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}  fsimg.S

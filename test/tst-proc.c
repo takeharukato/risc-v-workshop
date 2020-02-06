@@ -32,10 +32,12 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 	proc            *kp;
 	bool            res;
 	vm_vaddr        usp;
+	thread_args thrargs;
+#if defined(CONFIG_HAL)
 	vm_vaddr      argcp;
 	vm_vaddr      argvp;
 	vm_vaddr       envp;
-	thread_args thrargs;
+#endif  /* CONFIG_HAL */
 
 	usp = truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE);
 	memset(&thrargs, 0, sizeof(thread_args));
