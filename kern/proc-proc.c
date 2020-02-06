@@ -557,7 +557,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
 		}
-		argvp += len;  /* 次の領域を指す */
+		argvp += len + 1;  /* 次の領域を指す */
 	}
 
 	/* NULL文字列を追記 */
@@ -610,7 +610,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 
-		envp += len;  /* 次の領域を指す */
+		envp += len + 1;  /* 次の領域を指す */
 	}
 
 	len = vm_memmove( dest->pgt, (void *)envp, kern_proc->pgt, 
