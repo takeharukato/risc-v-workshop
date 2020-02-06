@@ -34,10 +34,9 @@ threada(void *arg){
 	}
 	mutex_unlock(&mtxA);
 	thr_thread_exit(0);
-
 }
 
-static void __unused
+static void
 threadb(void *arg){
 	int rc;
 
@@ -59,7 +58,7 @@ static void
 mutex1(struct _ktest_stats *sp, void __unused *arg){
 	int            rc;
 	thread      *thrA;
-//	thread      *thrB;
+	thread      *thrB;
 	thr_wait_res  res;
 
 	mutex_init(&mtxA);
@@ -69,20 +68,30 @@ mutex1(struct _ktest_stats *sp, void __unused *arg){
 	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thrA);
 	kassert( rc == 0 );
-#if 0
+
 	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threadb, NULL, 
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thrB);
 	kassert( rc == 0 );
-	sched_thread_add(thrB);
-#endif
+
 	sched_thread_add(thrA);
+	sched_thread_add(thrB);
 
 	sched_schedule();
 	mutex_unlock(&mtxA);
 
 	rc = thr_thread_wait(&res);
-//	rc = thr_thread_wait(&res);
-	thr_thread_exit(0);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = thr_thread_wait(&res);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("tst-mutex: end\n");
 }
 
 void

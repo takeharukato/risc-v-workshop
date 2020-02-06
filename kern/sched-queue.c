@@ -37,6 +37,7 @@ get_next_thread(void){
 
 	--idx;  /* レディキュー配列のインデックスに変換 */
 
+	/* TODO: キューからの削除のロック無し版を作って処理を共通化する */
 	/* キューの最初のスレッドを取り出す */
 	thr = container_of(queue_get_top(&ready_queue.que[idx]), thread, link);
 	if ( queue_is_empty(&ready_queue.que[idx]) )   /*  キューが空になった  */

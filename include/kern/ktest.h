@@ -186,4 +186,5 @@ void tst_pcache(void);
 void tst_cpuinfo(void);
 void tst_proc(void);
 void tst_thread(void);
+void tst_mutex(void);
 #endif  /*  _KERN_KTEST_H  */

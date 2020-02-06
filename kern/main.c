@@ -47,6 +47,7 @@ kern_common_tests(void){
 	tst_irqctrlr();
 #endif  /*  CONFIG_HAL  */ 
 	tst_thread();
+	tst_mutex();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);

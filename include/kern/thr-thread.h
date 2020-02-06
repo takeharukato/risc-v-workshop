@@ -28,9 +28,10 @@
 /**
    スレッドの属性
  */
-#define THR_THRFLAGS_KERNEL       (0)  /**< カーネルスレッド                          */
-#define THR_THRFLAGS_USER         (1)  /**< ユーザスレッド                            */
-#define THR_THRFLAGS_MANAGED_STK  (2)  /**< カーネルスタックをページプールから割当て  */
+#define THR_THRFLAGS_KERNEL        (0)  /**< カーネルスレッド                          */
+#define THR_THRFLAGS_USER        (0x1)  /**< ユーザスレッド                            */
+#define THR_THRFLAGS_MANAGED_STK (0x2)  /**< カーネルスタックをページプールから割当て  */
+#define THR_THRFLAGS_IDLE        (0x4)  /**< アイドルスレッド                          */
 /**
    スレッドID/優先度
  */
