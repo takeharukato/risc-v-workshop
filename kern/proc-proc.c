@@ -522,14 +522,15 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/* argv[]配列の先頭アドレス */
 	argv_ptr = (char **)(roundup_align(argcp + sizeof(int), HAL_STACK_ALIGN_SIZE));  
 	/* environment[]配列の先頭アドレス */
-	env_ptr = (char **)(roundup_align(((uintptr_t)argv_ptr + sizeof(char *) * argv_nr),
+	env_ptr = (char **)(roundup_align((uintptr_t)argv_ptr + sizeof(char *) * argv_nr,
 		 HAL_STACK_ALIGN_SIZE));
 
 	/*
 	 * argv[]のコピー
 	 */
 	/* 引数文字列の先頭アドレス */
-	argvp = roundup_align((uintptr_t)env_ptr + 1, HAL_STACK_ALIGN_SIZE);
+	argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr + 1, 
+			      HAL_STACK_ALIGN_SIZE);
 	for(i = 0; argv[i] != NULL; ++i) {
 
 		len = vm_strlen(src->pgt, argv[i]);
