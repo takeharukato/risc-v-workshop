@@ -475,13 +475,17 @@ error_out:
    @param[in]  prot        スタックの保護属性
    @param[in]  argv        引数配列のアドレス
    @param[in]  environment 環境変数配列のアドレス
+   @param[in]  dest        引数を書き込むプロセス
    @param[out] cursp       スタックポインタを指し示すポインタ変数のアドレス
+   @param[out] argcp       引数の個数格納領域を返却域
+   @param[out] argvp       引数の個数格納領域を返却域
+   @param[out] envp        引数の個数格納領域を返却域
    @retval     0           正常終了
    @retval    -EFAULT      メモリアクセス不可
  */
 int
 proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *environment[], 
-    proc *dest, vm_vaddr *cursp){
+    proc *dest, vm_vaddr *cursp, vm_vaddr *argcp, vm_vaddr *argvp, vm_vaddr *envp){
 	int              rc;
 	int               i;
 	vm_vaddr         sp;
@@ -489,9 +493,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	char      **env_ptr;
 	int         argv_nr;
 	int          env_nr;
-	vm_vaddr      argcp;
-	vm_vaddr      argvp;
-	vm_vaddr       envp;
+	vm_vaddr  cur_argcp;
+	vm_vaddr  cur_argvp;
+	vm_vaddr   cur_envp;
 	char       *term[1];
 	proc     *kern_proc;
 	reg_type       argc;
@@ -519,9 +523,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 	/* argc, argv, environmentをコピーする
 	 */
-	argcp = sp;  /* argc保存領域 */
+	cur_argcp = sp;  /* argc保存領域 */
 	/* argv[]配列の先頭アドレス */
-	argv_ptr = (char **)(argcp + sizeof(char *));  
+	argv_ptr = (char **)(cur_argcp + sizeof(char *));  
 	/* environment[]配列の先頭アドレス */
 	env_ptr = (char **)((uintptr_t)argv_ptr + sizeof(char *) * argv_nr);
 
@@ -530,7 +534,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	 */
 
 	/* 引数文字列の先頭アドレス */
-	argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr, 
+	cur_argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr, 
 			      HAL_STACK_ALIGN_SIZE);
 	for(i = 0; argv[i] != NULL; ++i) {
 
@@ -541,7 +545,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		res = vm_memmove( dest->pgt, (void *)argvp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)cur_argvp, src->pgt, 
 		    (void *)argv[i], len + 1);
 		if ( res != 0 ) {
 
@@ -551,13 +555,13 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 		/* 転送先のargv配列に記録する */
 		res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
-		    (void *)&argvp, sizeof(char *));
+		    (void *)&cur_argvp, sizeof(char *));
 		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
 		}
-		argvp += len + 1;  /* 次の領域を指す */
+		cur_argvp += len + 1;  /* 次の領域を指す */
 	}
 
 	/* 転送先のargv配列にNULLを記録 */
@@ -574,7 +578,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/*
 	 * environment[]のコピー
 	 */
-	envp = roundup_align(argvp, HAL_STACK_ALIGN_SIZE);
+	cur_envp = roundup_align(cur_argvp, HAL_STACK_ALIGN_SIZE);
 	for(i = 0; environment[i] != NULL; ++i) {
 
 		len = vm_strlen(src->pgt, environment[i]);
@@ -584,7 +588,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		res = vm_memmove( dest->pgt, (void *)envp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)cur_envp, src->pgt, 
 		    (void *)environment[i], len + 1);
 		if ( res != 0 ) {
 
@@ -594,14 +598,14 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 		/* 転送先のenvironment配列に記録 */
 		res = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt, 
-		    (void *)&envp, sizeof(char *));
+		    (void *)&cur_envp, sizeof(char *));
 		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
 		}
 
-		envp += len + 1;  /* 次の領域を指す */
+		cur_envp += len + 1;  /* 次の領域を指す */
 	}
 
 	/* 転送先のenvironment配列にNULLを記録 */
@@ -616,7 +620,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/*
 	 * argcを設定
 	 */
-	res = vm_memmove( dest->pgt, (void *)argcp, kern_proc->pgt, 
+	res = vm_memmove( dest->pgt, (void *)cur_argcp, kern_proc->pgt, 
 	    (void *)&argc, sizeof(reg_type)); /* argcを設定       */
 	if ( res != 0 ) {
 
@@ -624,7 +628,10 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 		goto error_out;
 	}
 	
-	*cursp = argcp;  /* スタックを更新 */
+	*cursp = cur_argcp;     /* スタックを更新             */
+	*argcp = cur_argcp;     /* 引数の個数を返却           */
+	*argvp = (vm_vaddr)&argv_ptr[0];  /* 引数配列アドレスを返却     */
+	*envp  = (vm_vaddr)&env_ptr[0];   /* 環境変数配列アドレスを返却 */
 
 	return  0;
 

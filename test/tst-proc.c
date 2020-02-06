@@ -32,6 +32,9 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 	proc       *kp;
 	bool       res;
 	vm_vaddr   usp;
+	vm_vaddr argcp;
+	vm_vaddr argvp;
+	vm_vaddr  envp;
 
 	rc = proc_user_allocate(&p1);
 	if ( rc == 0 ) 
@@ -45,7 +48,8 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 #if defined(CONFIG_HAL)
 		usp = HAL_USER_END_ADDR;
 		rc = proc_argument_copy(proc_kernel_process_refer(), 
-			p1->segments[PROC_STACK_SEG].prot, tst_args, tst_envs, p1, &usp);
+		    p1->segments[PROC_STACK_SEG].prot, tst_args, tst_envs, p1, 
+		    &usp, &argcp, &argvp, &envp);
 		if ( rc == 0 )
 			ktest_pass( sp );
 		else
