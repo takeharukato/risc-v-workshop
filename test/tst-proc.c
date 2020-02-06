@@ -24,17 +24,21 @@ static const char __unused *tst_envs[]={"TERM=rv64ws", NULL};
 
 static void
 proc1(struct _ktest_stats *sp, void __unused *arg){
-	int         rc;
-	proc       *p1;
-	proc     *pres;
-	thread    *thr;
-	thread *master;
-	proc       *kp;
-	bool       res;
-	vm_vaddr   usp;
-	vm_vaddr argcp;
-	vm_vaddr argvp;
-	vm_vaddr  envp;
+	int              rc;
+	proc            *p1;
+	proc          *pres;
+	thread         *thr;
+	thread      *master;
+	proc            *kp;
+	bool            res;
+	vm_vaddr        usp;
+	vm_vaddr      argcp;
+	vm_vaddr      argvp;
+	vm_vaddr       envp;
+	thread_args thrargs;
+
+	usp = truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE);
+	memset(&thrargs, 0, sizeof(thread_args));
 
 	rc = proc_user_allocate(&p1);
 	if ( rc == 0 ) 
@@ -42,7 +46,6 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	usp = truncate_align(HAL_USER_END_ADDR, HAL_STACK_ALIGN_SIZE);
 	if ( rc == 0 ) {
 
 #if defined(CONFIG_HAL)
@@ -59,8 +62,12 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 		hal_pgtbl_deactivate(p1->pgt);
 		hal_pgtbl_activate(hal_refer_kernel_pagetable());
 
+		thrargs.arg1 = argcp;
+		thrargs.arg2 = argvp;
+		thrargs.arg3 = envp;
 #endif
-		rc = thr_user_thread_create(THR_TID_AUTO, 0x10390, NULL, p1,
+
+		rc = thr_user_thread_create(THR_TID_AUTO, 0x10390, &thrargs, p1,
 		    (void *)usp, SCHED_MIN_USER_PRIO, THR_THRFLAGS_USER, &master);
 		if ( rc == 0 )
 			ktest_pass( sp );
