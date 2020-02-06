@@ -497,6 +497,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	proc     *kern_proc;
 	reg_type       argc;
 	size_t          len;
+	size_t          res;
 
 	kern_proc = proc_kernel_process_refer(); /* カーネルプロセス */
 	sp = *cursp;    /* 現在のスタック位置を取得 */
@@ -520,9 +521,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	 */
 	argcp = sp;  /* argc保存領域 */
 	/* argv[]配列の先頭アドレス */
-	argv_ptr = (char **)(roundup_align(argcp + sizeof(int), HAL_STACK_ALIGN_SIZE));  
+	argv_ptr = (char **)(roundup_align(argcp + sizeof(void *), HAL_STACK_ALIGN_SIZE));  
 	/* environment[]配列の先頭アドレス */
-	env_ptr = (char **)(roundup_align((uintptr_t)argv_ptr + sizeof(char *) * argv_nr,
+	env_ptr = (char **)(roundup_align((uintptr_t)argv_ptr + sizeof(char *) * argv_nr + 1,
 		 HAL_STACK_ALIGN_SIZE));
 
 	/*
@@ -540,18 +541,18 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		len = vm_memmove( dest->pgt, (void *)argvp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)argvp, src->pgt, 
 		    (void *)argv[i], len + 1);
-		if ( len != 0 ) {
+		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
 		}
 
 		/* 転送先のargv配列に記録する */
-		len = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
-		    (void *)&argvp, sizeof(char *));
-		if ( len != 0 ) {
+		res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
+		    (void *)argvp, sizeof(char *));
+		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
@@ -560,18 +561,18 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	}
 
 	/* NULL文字列を追記 */
-	len = vm_memmove( dest->pgt, (void *)argvp, kern_proc->pgt, 
+	res = vm_memmove( dest->pgt, (void *)argvp, kern_proc->pgt, 
 	    (void *)term, 1); /* NULLターミネート */
-	if ( len != 0 ) {
+	if ( res != 0 ) {
 
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
 	}
 
 	/* 転送先のargv配列にNULL文字列のアドレスを記録 */
-	len = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
+	res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
 	    (void *)&argvp, sizeof(char *));
-	if ( len != 0 ) {
+	if ( res != 0 ) {
 		
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
@@ -592,18 +593,18 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		len = vm_memmove( dest->pgt, (void *)envp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)envp, src->pgt, 
 		    (void *)environment[i], len + 1);
-		if ( len != 0 ) {
+		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
 		}
 
 		/* 転送先のenvironment配列に記録 */
-		len = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt, 
+		res = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt, 
 		    (void *)&envp, sizeof(char *));
-		if ( len != 0 ) {
+		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
 			goto error_out;
@@ -621,9 +622,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	}
 
 	/* 転送先のenvironment配列にNULL文字列のアドレスを記録 */
-	len = vm_memmove( dest->pgt, (void *)&env_ptr[i], dest->pgt, 
+	res = vm_memmove( dest->pgt, (void *)&env_ptr[i], dest->pgt, 
 	    (void *)&envp, sizeof(char *));
-	if ( len != 0 ) {
+	if ( res != 0 ) {
 		
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
@@ -632,9 +633,9 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/*
 	 * argcを設定
 	 */
-	len = vm_memmove( dest->pgt, (void *)argcp, kern_proc->pgt, 
+	res = vm_memmove( dest->pgt, (void *)argcp, kern_proc->pgt, 
 	    (void *)&argc, sizeof(reg_type)); /* argcを設定       */
-	if ( len != 0 ) {
+	if ( res != 0 ) {
 
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
