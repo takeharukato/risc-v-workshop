@@ -199,7 +199,6 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 	int           rc;
 	int            i;
 	size_t       len;
-	size_t  argc_len;
 	size_t array_len;
 	size_t  argv_len;
 	size_t   env_len;
@@ -235,9 +234,9 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 	/* argc, argv配列, environment配列, argv, environmentに対してスタックアラインメントで
 	 * アクセスできるようにサイズを調整する
 	 */
-	argc_len = roundup_align(sizeof(reg_type), HAL_STACK_ALIGN_SIZE);
-	array_len = roundup_align(sizeof(char *) * nr_args, HAL_STACK_ALIGN_SIZE) 
-		+ roundup_align(sizeof(char *) * nr_envs, HAL_STACK_ALIGN_SIZE);
+	array_len = roundup_align(
+		sizeof(reg_type) + sizeof(char *) * nr_args + sizeof(char *) * nr_envs, 
+		HAL_STACK_ALIGN_SIZE);
 	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
 	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
 
@@ -248,7 +247,7 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 		 *env_nrp = nr_envs;    /* 環境変数の個数を返却する */
 
 	if ( sizp != NULL )
-		*sizp = argc_len + array_len + argv_len + env_len;  /* 引数領域長を返却する */
+		*sizp = array_len + argv_len + env_len;  /* 引数領域長を返却する */
 
 	return  0;
 
@@ -509,28 +508,29 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	rc = calc_argument_areasize(src, argv, environment, &argv_nr, &env_nr, &len);
 	if ( rc != 0 )
 		goto error_out;  /* アクセス不能 */
-	/* スタック伸張 */
-	rc = proc_grow_stack(dest, truncate_align(sp - len, HAL_STACK_ALIGN_SIZE));  
-	if ( rc != 0 )
-		goto error_out;  /* 伸張不能 */
 
 	/* 引数領域のスタックポインタの先頭位置  */
 	sp = truncate_align(sp - len, HAL_STACK_ALIGN_SIZE); 
+
+	/* スタック伸張 */
+	rc = proc_grow_stack(dest, sp);  
+	if ( rc != 0 )
+		goto error_out;  /* 伸張不能 */
 
 	/* argc, argv, environmentをコピーする
 	 */
 	argcp = sp;  /* argc保存領域 */
 	/* argv[]配列の先頭アドレス */
-	argv_ptr = (char **)(roundup_align(argcp + sizeof(char *), HAL_STACK_ALIGN_SIZE));  
+	argv_ptr = (char **)(argcp + sizeof(char *));  
 	/* environment[]配列の先頭アドレス */
-	env_ptr = (char **)(roundup_align((uintptr_t)argv_ptr + sizeof(char *) * argv_nr + 1,
-		 HAL_STACK_ALIGN_SIZE));
+	env_ptr = (char **)((uintptr_t)argv_ptr + sizeof(char *) * argv_nr);
 
 	/*
 	 * argv[]のコピー
 	 */
+
 	/* 引数文字列の先頭アドレス */
-	argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr + 1, 
+	argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr, 
 			      HAL_STACK_ALIGN_SIZE);
 	for(i = 0; argv[i] != NULL; ++i) {
 
@@ -574,7 +574,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/*
 	 * environment[]のコピー
 	 */
-	envp = roundup_align(argvp + 1, HAL_STACK_ALIGN_SIZE);
+	envp = roundup_align(argvp, HAL_STACK_ALIGN_SIZE);
 	for(i = 0; environment[i] != NULL; ++i) {
 
 		len = vm_strlen(src->pgt, environment[i]);
