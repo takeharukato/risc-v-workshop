@@ -169,7 +169,8 @@ sched_schedule(void) {
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;
 
-	if ( prev->state == THR_TSTATE_RUN ) {
+	if ( !( prev->flags & THR_THRFLAGS_IDLE ) &&
+	    ( ( prev->state == THR_TSTATE_RUN ) || ( prev->state == THR_TSTATE_RUNABLE ) ) ) {
 
 		/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
 		 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから

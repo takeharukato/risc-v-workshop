@@ -887,7 +887,7 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 
 	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, 
 	    proc_kernel_process_refer(), NULL, ti->kstack, SCHED_MIN_RR_PRIO, 
-	    THR_THRFLAGS_KERNEL, NULL, &thr);
+	    THR_THRFLAGS_KERNEL|THR_THRFLAGS_IDLE, NULL, &thr);
 	if ( rc != 0 )
 		goto error_out;
 
