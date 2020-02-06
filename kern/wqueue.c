@@ -96,11 +96,8 @@ wque_is_empty(wque_waitqueue *wque){
  */
 void
 wque_init_wque_entry(wque_entry *ent){
-	intrflags iflags;
 
-	spinlock_lock_disable_intr(&ent->thr->lock, &iflags); /* スレッドをロック */
 	init_wque_entry_nolock(ent);              /* スレッドをウエイトキューに追加する */
-	spinlock_unlock_restore_intr(&ent->thr->lock, &iflags); /* スレッドをアンロック */
 }
 
 /**
@@ -153,7 +150,7 @@ wque_reason
 wque_wait_on_queue_with_spinlock(wque_waitqueue *wque, spinlock *lock){
 	wque_entry   ent;
 
-	wque_init_wque_entry(&ent);   /* ウエイトキューエントリを初期化する */
+	init_wque_entry_nolock(&ent);  /* ウエイトキューエントリを初期化する */
 
 	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
 
@@ -176,7 +173,7 @@ wque_reason
 wque_wait_on_event_with_mutex(wque_waitqueue *wque, mutex *mtx){
 	wque_entry   ent;
 
-	wque_init_wque_entry(&ent);   /* ウエイトキューエントリを初期化する */
+	init_wque_entry_nolock(&ent);  /* ウエイトキューエントリを初期化する */
 
 	enque_wque_entry(wque, &ent); /* ウエイトキューエントリをウエイトキューに追加する */
 
