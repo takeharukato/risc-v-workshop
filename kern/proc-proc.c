@@ -521,7 +521,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	 */
 	argcp = sp;  /* argc保存領域 */
 	/* argv[]配列の先頭アドレス */
-	argv_ptr = (char **)(roundup_align(argcp + sizeof(void *), HAL_STACK_ALIGN_SIZE));  
+	argv_ptr = (char **)(roundup_align(argcp + sizeof(char *), HAL_STACK_ALIGN_SIZE));  
 	/* environment[]配列の先頭アドレス */
 	env_ptr = (char **)(roundup_align((uintptr_t)argv_ptr + sizeof(char *) * argv_nr + 1,
 		 HAL_STACK_ALIGN_SIZE));
@@ -551,7 +551,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 
 		/* 転送先のargv配列に記録する */
 		res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
-		    (void *)argvp, sizeof(char *));
+		    (void *)&argvp, sizeof(char *));
 		if ( res != 0 ) {
 
 			rc = -EFAULT;  /* アクセスできなかった */
