@@ -17,10 +17,12 @@
 
 static ktest_stats tstat_mutex=KTEST_INITIALIZER;
 static mutex mtxA;
+static mutex mtxB;
 
 static void
 threada(void *arg){
-	int rc;
+	int   rc;
+	bool res;
 
 	while(1){
 
@@ -30,9 +32,15 @@ threada(void *arg){
 			break;
 
 		kprintf("ThreadA: can not lock mutexA. wait lock\n");
+		rc = mutex_lock(&mtxB);
+		kassert( rc == -ENODEV );
 		mutex_lock(&mtxA);
 		break;
 	}
+
+	res = mutex_locked_by_self(&mtxA);
+	kassert( res );
+
 	mutex_unlock(&mtxA);
 	kprintf("ThreadA: exit\n");
 	thr_thread_exit(0);
@@ -52,6 +60,7 @@ threadb(void *arg){
 		kprintf("ThreadB: can not lock mutexA\n");
 		sched_schedule();
 	}
+	mutex_destroy(&mtxB);
 	mutex_unlock(&mtxA);
 	kprintf("ThreadB: exit\n");
 	thr_thread_exit(0);
@@ -65,8 +74,10 @@ mutex1(struct _ktest_stats *sp, void __unused *arg){
 	thr_wait_res  res;
 
 	mutex_init(&mtxA);
+	mutex_init(&mtxB);
 
 	mutex_lock(&mtxA);
+	mutex_lock(&mtxB);
 
 	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thrA);
