@@ -13,6 +13,7 @@
 #include <klib/stack.h>
 
 #include <kern/spinlock.h>
+#include <kern/thr-if.h>
 
 /**
    spinlock獲得時のトレース情報を記録する(HALレイヤからのコールバック関数)
@@ -144,6 +145,8 @@ spinlock_raw_lock(spinlock *lock) {
 	hal_spinlock_lock(lock);    /*  スピンロック獲得                  */
 	fill_spinlock_trace(lock);  /*  スピンロック獲得シーケンスを記録  */
 	++lock->depth;              /*  ロック深度を加算                  */
+
+	ti_inc_preempt();           /* プリエンプション禁止 */
 }
 
 /**
@@ -162,6 +165,7 @@ spinlock_raw_unlock(spinlock *lock){
 
 	--lock->depth;             /* ロック深度を減算       */
 	hal_spinlock_unlock(lock); /* スピンロック解放       */
+	ti_dec_preempt();          /* プリエンプション許可   */
 }
 
 /**

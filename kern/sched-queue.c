@@ -50,17 +50,21 @@ get_next_thread(void){
 	return thr;
 
 unlock_out:
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags); /* レディキューをアンロック */
+	/* レディキューをアンロック */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 	return NULL;
 }
 
+
 /**
-   スレッドをレディキューに追加する
+   スレッドをレディキューに追加する(内部関数)
    @param[in] thr 追加するスレッド
    @note LO: レディーキューのロック, スレッドのロックの順に獲得
+   @note スケジューラ内で, 遅延ディスパッチ要求クリア後のキュー操作で
+         使用するため, 遅延ディスパッチフラグを立てない
  */
-void
-sched_thread_add(thread *thr){
+static void
+sched_thread_add_nosched(thread *thr){
 	bool            tref;
 	thr_prio        prio;
 	intrflags     iflags;
@@ -88,7 +92,6 @@ sched_thread_add(thread *thr){
 
 		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
 		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
-		ti_set_delay_dispatch(ti_get_current_thread_info()); /* 遅延ディスパッチ */
 		/* レディキューをアンロック   */
 		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 	} else {
@@ -108,16 +111,20 @@ error_out:
 }
 
 /**
-   スレッドをレディキューから外す
+   スレッドをレディキューから外す(内部関数)
    @param[in] thr 操作対象スレッド
    @note LO: レディーキューのロック, スレッドのロックの順に獲得
+   @note レディーキューのロック獲得後に呼び出す
  */
-void
-sched_thread_del(thread *thr){
+static void
+sched_thread_del_nolock(thread *thr){
 	thr_prio        prio;
 	intrflags     iflags;
 
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+	spinlock_locked_by_self( &ready_queue.lock ); /* レディーキューロック獲得済み */
+
+	krn_cpu_save_and_disable_interrupt(&iflags);         /* 割り込み禁止 */
+
 	spinlock_lock(&thr->lock);  /* スレッドのロックを獲得 */
 
 	prio = thr->attr.cur_prio;
@@ -127,6 +134,46 @@ sched_thread_del(thread *thr){
 		bitops_clr(prio, &ready_queue.bitmap);  /*  ビットマップ中のビットをクリア  */
 
 	spinlock_unlock(&thr->lock);  /* スレッドのロックを解放 */
+
+	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
+}
+
+/**
+   スレッドをレディキューに追加し, ディパッチ要求をセットする
+   @param[in] thr 追加するスレッド
+   @note LO: レディーキューのロック, スレッドのロックの順に獲得
+ */
+void
+sched_thread_add(thread *thr){
+	intrflags     iflags;
+
+	sched_thread_add_nosched(thr);               /* レディーキューに追加 */
+
+	krn_cpu_save_and_disable_interrupt(&iflags);         /* 割り込み禁止 */
+	if ( thr->tinfo->cpu == krn_current_cpu_get() )
+		ti_set_delay_dispatch(ti_get_current_thread_info()); /* 遅延ディスパッチ */
+	else {
+		/* TODO: 他のプロセッサで動作中のスレッドの場合はスケジュールIPIを発行 */
+	}
+	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
+
+	return;
+}
+
+
+/**
+   スレッドをレディキューから外す
+   @param[in] thr 操作対象スレッド
+   @note LO: レディーキューのロック, スレッドのロックの順に獲得
+ */
+void
+sched_thread_del(thread *thr){
+	intrflags     iflags;
+
+	 /* レディキューをロック */
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);
+
+	sched_thread_del_nolock(thr);  /* スレッドをレディキューから外す */
 
 	/* レディキューをアンロック   */
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
@@ -155,37 +202,43 @@ sched_schedule(void) {
 		ti_set_delay_dispatch(prev->tinfo);  
 		goto schedule_out;
 	}
-
+		
 	ti_set_preempt_active();         /* プリエンプションの抑止 */
-
 	cinf = krn_current_cpuinfo_get(); /* 動作中CPUのCPU情報を取得 */
+	
+	do{	
+		next = get_next_thread();        /* 次に実行するスレッドの管理情報を取得 */
+		if ( next == NULL )
+			next = cinf->idle_thread; /* アイドルスレッドを参照 */
+		kassert( next != NULL ); /* 少なくともアイドルスレッドを参照しているはず */
+		
+		ti_clr_delay_dispatch();  /* ディスパッチ要求をクリア */
 
-	next = get_next_thread();        /* 次に実行するスレッドの管理情報を取得 */
-	if ( next == NULL )
-		next = cinf->idle_thread; /* アイドルスレッドを参照 */
-	kassert( next != NULL );          /* 少なくともアイドルスレッドを参照しているはず */
+		if ( prev == next ) /* ディスパッチする必要なし  */
+			goto ena_preempt_out;
 
-	ti_clr_delay_dispatch();  /* ディスパッチ要求をクリア */
+		/* アイドルスレッドはキューに入れない */
+		if ( !( prev->flags & THR_THRFLAGS_IDLE ) 
+		    && ( prev->state == THR_TSTATE_RUN ) ) {
 
-	if ( prev == next ) /* ディスパッチする必要なし  */
-		goto ena_preempt_out;
+			/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
+			 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから
+			 *  参照されている状態にあるので, キュー操作を行わずスイッチする
+			 */
+			prev->state = THR_TSTATE_RUNABLE; /* 実行中の場合は実行可能に遷移 */
+			sched_thread_add_nosched(prev);   /* レディキューに戻す           */
+		}
 
-	if ( !( prev->flags & THR_THRFLAGS_IDLE ) /* アイドルスレッドはキューに入れない */
-	    && ( prev->state == THR_TSTATE_RUN ) ) {
-
-		/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
-		 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから
-		 *  参照されている状態にあるので, キュー操作を行わずスイッチする
+		/* スレッドの状態を実行中に遷移
+		 * @note スレッド生成直後は, 例外出口にジャンプするのでスレッド切り替え前に
+		 * 次スレッドの状態を更新する
 		 */
-		prev->state = THR_TSTATE_RUNABLE;  /* 実行中の場合は, 実行可能に遷移 */
-		sched_thread_add(prev);            /* レディキューに戻す             */
-	}
+		next->state = THR_TSTATE_RUN;    
+		thr_thread_switch(prev, next);   /* スレッド切り替え */
 
-	next->state = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
-	thr_thread_switch(prev, next);   /* スレッド切り替え */
-
-	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
-	kassert(cur->state == THR_TSTATE_RUN);
+		cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
+		kassert( cur->state == THR_TSTATE_RUN );  /* 実行中に遷移済み */
+	}while( ti_dispatch_delayed() );
 
 ena_preempt_out:
 	ti_clr_preempt_active(); /* プリエンプションの許可 */

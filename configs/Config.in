@@ -11,6 +11,12 @@ config CONFIG_SMP
 	help
 	  If you wish to build the kernel for multi-processor system, then answer Y here.
 
+config CONFIG_PREEMPT
+	bool "Preemptive kernel"
+	default y
+	help
+	  If you wish to build the preemptive kernel, then answer Y here.
+
 source "configs/hal/Config.in"
 
 config CONFIG_CPUS_NR
