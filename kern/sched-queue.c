@@ -17,46 +17,6 @@
 static sched_queue ready_queue={.lock = __SPINLOCK_INITIALIZER,}; /** レディキュー      */
 
 /**
-   実行可能なスレッドを返却する
-   @return 実行可能なスレッド
-   @return NULL 実行可能なスレッドがない
- */
-static thread * 
-get_next_thread(void){
-	thread          *thr;
-	singned_cnt_type idx;
-	intrflags     iflags;
-
-	/* レディキューをロック */
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); 
-
-	/* ビットマップの最初に立っているビットの位置を確認  */
-	idx = bitops_ffs(&ready_queue.bitmap);
-	if ( idx == 0 )
-		goto unlock_out;  /* 実行可能なスレッドがない  */
-
-	--idx;  /* レディキュー配列のインデックスに変換 */
-
-	/* TODO: キューからの削除のロック無し版を作って処理を共通化する */
-	/* キューの最初のスレッドを取り出す */
-	thr = container_of(queue_get_top(&ready_queue.que[idx]), thread, link);
-	if ( queue_is_empty(&ready_queue.que[idx]) )   /*  キューが空になった  */
-		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
-	kassert( thr->state == THR_TSTATE_RUNABLE );   /* 実行可能スレッドである事を確認する */
-
-	 /* レディキューをアンロック */
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
-
-	return thr;
-
-unlock_out:
-	/* レディキューをアンロック */
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
-	return NULL;
-}
-
-
-/**
    スレッドをレディキューに追加する(内部関数)
    @param[in] thr 追加するスレッド
    @note LO: レディーキューのロック, スレッドのロックの順に獲得
@@ -77,7 +37,8 @@ sched_thread_add_nosched(thread *thr){
 	kassert(list_not_linked(&thr->link));  
 	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
 
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); /* レディキューをロック */
+	/* レディキューをロック */
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);
 
 	prio = thr->attr.cur_prio;
 
@@ -85,24 +46,16 @@ sched_thread_add_nosched(thread *thr){
 		bitops_set(prio, &ready_queue.bitmap);  /* ビットマップ中のビットをセット */
 
 	spinlock_lock(&thr->lock);  /* スレッドのロックを獲得 */
-	/* キューにスレッドを追加          */
+
+	/* キューにスレッドを追加 */
 	queue_add(&ready_queue.que[prio], &thr->link);
 
-	if ( thr->tinfo->cpu == krn_current_cpu_get() ) {
+	spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
 
-		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
-		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
-		/* レディキューをアンロック   */
-		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
-	} else {
+	/* レディキューをアンロック   */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 
-		spinlock_unlock(&thr->lock);   /* スレッドのロックを解放 */
-		tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
-		/* TODO: 他のプロセッサで動作中のスレッドの場合はスケジュールIPIを発行 */
-
-		/* レディキューをアンロック   */
-		spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
-	}
+	tref = thr_ref_dec(thr);    /* スレッドの参照を解放 */
 
 	return;
 
@@ -111,31 +64,41 @@ error_out:
 }
 
 /**
-   スレッドをレディキューから外す(内部関数)
-   @param[in] thr 操作対象スレッド
-   @note LO: レディーキューのロック, スレッドのロックの順に獲得
-   @note レディーキューのロック獲得後に呼び出す
+   実行可能なスレッドを返却する
+   @return 実行可能なスレッド
+   @return NULL 実行可能なスレッドがない
  */
-static void
-sched_thread_del_nolock(thread *thr){
-	thr_prio        prio;
+static thread * 
+get_next_thread(void){
+	thread          *thr;
+	singned_cnt_type idx;
 	intrflags     iflags;
 
-	spinlock_locked_by_self( &ready_queue.lock ); /* レディーキューロック獲得済み */
+	/* レディキューをロック */
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); 
 
-	krn_cpu_save_and_disable_interrupt(&iflags);         /* 割り込み禁止 */
+	/* ビットマップの最初に立っているビットの位置を確認  */
+	idx = bitops_ffs(&ready_queue.bitmap);
+	if ( idx == 0 )
+		goto unlock_out;  /* 実行可能なスレッドがない  */
 
-	spinlock_lock(&thr->lock);  /* スレッドのロックを獲得 */
+	--idx;  /* レディキュー配列のインデックスに変換 */
 
-	prio = thr->attr.cur_prio;
+	/* キューの最初のスレッドを取り出す */
+	thr = container_of(queue_get_top(&ready_queue.que[idx]), thread, link);
+	if ( queue_is_empty(&ready_queue.que[idx]) )   /*  キューが空になった  */
+		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
+	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
 
-	queue_del(&ready_queue.que[prio], &thr->link);  /*  キューからスレッドを削除 */
-	if ( queue_is_empty(&ready_queue.que[prio]) )   /*  キューが空になった場合   */
-		bitops_clr(prio, &ready_queue.bitmap);  /*  ビットマップ中のビットをクリア  */
+	 /* レディキューをアンロック */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 
-	spinlock_unlock(&thr->lock);  /* スレッドのロックを解放 */
+	return thr;
 
-	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
+unlock_out:
+	/* レディキューをアンロック */
+	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
+	return NULL;
 }
 
 /**
@@ -158,25 +121,6 @@ sched_thread_add(thread *thr){
 	krn_cpu_restore_interrupt(&iflags); /* 割り込み復元 */
 
 	return;
-}
-
-
-/**
-   スレッドをレディキューから外す
-   @param[in] thr 操作対象スレッド
-   @note LO: レディーキューのロック, スレッドのロックの順に獲得
- */
-void
-sched_thread_del(thread *thr){
-	intrflags     iflags;
-
-	 /* レディキューをロック */
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);
-
-	sched_thread_del_nolock(thr);  /* スレッドをレディキューから外す */
-
-	/* レディキューをアンロック   */
-	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
 }
 
 /**
