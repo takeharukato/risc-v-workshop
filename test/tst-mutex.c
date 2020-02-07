@@ -29,10 +29,12 @@ threada(void *arg){
 		if ( rc == 0 ) 
 			break;
 
-		kprintf("ThreadA: can not lock mutexA\n");
-		sched_schedule();
+		kprintf("ThreadA: can not lock mutexA. wait lock\n");
+		mutex_lock(&mtxA);
+		break;
 	}
 	mutex_unlock(&mtxA);
+	kprintf("ThreadA: exit\n");
 	thr_thread_exit(0);
 }
 
@@ -51,6 +53,7 @@ threadb(void *arg){
 		sched_schedule();
 	}
 	mutex_unlock(&mtxA);
+	kprintf("ThreadB: exit\n");
 	thr_thread_exit(0);
 }
 
