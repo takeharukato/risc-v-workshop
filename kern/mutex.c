@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
 #include <kern/mutex.h>
+#include <kern/thr-if.h>
 
 /**
    ミューテックス獲得共通処理 (内部関数)
@@ -37,8 +38,7 @@ lock_mutex_common(mutex *mtx){
 
 	--mtx->resources;  /* 利用可能資源数をデクリメントする */
 
-	/* TODO: スレッド管理実装後にコメントアウトする */
-	//mtx->owner = ti_get_current_thread();  /* 自スレッドをミューテックスオーナに設定 */
+	mtx->owner = ti_get_current_thread();  /* 自スレッドをミューテックスオーナに設定 */
 
 	return 0;
 
@@ -89,9 +89,7 @@ mutex_locked_by_self(mutex *mtx){
 	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
 
 	/*  自スレッドがミューテックスオーナであることを確認  */
-	/*  TODO: スレッド管理実装後にコメントアウトする  */
-	//rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) ); 
-	rc = ( mtx->resources == 0 );
+	rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) ); 
 
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
 

@@ -14,7 +14,6 @@
 #include <kern/thr-preempt.h>
 #include <kern/thr-thread.h>
 
-int thr_create_kernel_thread(struct _thread_attr *_attr, struct _thread **_thr);
 void thr_init(void);
 
 #endif  /*  !ASM_FILE  */

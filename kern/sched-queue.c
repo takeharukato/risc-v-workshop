@@ -170,8 +170,8 @@ sched_schedule(void) {
 	if ( prev == next ) /* ディスパッチする必要なし  */
 		goto ena_preempt_out;
 
-	if ( !( prev->flags & THR_THRFLAGS_IDLE ) &&
-	    ( ( prev->state == THR_TSTATE_RUN ) || ( prev->state == THR_TSTATE_RUNABLE ) ) ) {
+	if ( !( prev->flags & THR_THRFLAGS_IDLE ) /* アイドルスレッドはキューに入れない */
+	    && ( prev->state == THR_TSTATE_RUN ) ) {
 
 		/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
 		 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから
@@ -181,10 +181,11 @@ sched_schedule(void) {
 		sched_thread_add(prev);            /* レディキューに戻す             */
 	}
 
-	thr_thread_switch(prev, next);  /* スレッド切り替え */
+	next->state = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
+	thr_thread_switch(prev, next);   /* スレッド切り替え */
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
-	cur->state = THR_TSTATE_RUN;    /* スレッドの状態を実行中に遷移 */
+	kassert(cur->state == THR_TSTATE_RUN);
 
 ena_preempt_out:
 	ti_clr_preempt_active(); /* プリエンプションの許可 */
