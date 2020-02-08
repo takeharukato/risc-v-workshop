@@ -17,7 +17,7 @@
 
 /** ページフレームデータベース
  */
-static page_frame_db g_pfdb = __PFDB_INITIALIZER(&g_pfdb.dbroot);
+static page_frame_db g_pfdb = __PFDB_INITIALIZER(&g_pfdb);
 
 /** ページフレームデータベースRB木
  */
@@ -644,10 +644,17 @@ unmark_page_frame_reserved(obj_cnt_type pfn){
 
 	/*  ページプールロックを解放      */
 	spinlock_unlock_restore_intr(&pool->lock, &iflags);
-	
-	rc = 0;
+
+	/*  ページフレームDBロックを解放      */
+	spinlock_unlock_restore_intr(&g_pfdb.lock, &iflags);
+
+	/* ページ解放待ちスレッドを起床する  */
+	wque_wakeup(&g_pfdb.page_wque, WQUE_RELEASED);
+
+	return 0;
 
 unlock_out:
+	/*  ページフレームDBロックを解放 */
 	spinlock_unlock_restore_intr(&g_pfdb.lock, &iflags);
 	return rc;
 }
@@ -716,39 +723,64 @@ error_out:
    所定のオーダのページを取り出しページフレーム番号を返す
    @param[in]  order  取得するページのオーダ
    @param[in]  usage  ページ利用用途
+   @param[in]  alloc_flags ページ獲得条件
    @param[out] pfnp   取得したページのページフレーム番号を返却する領域
    @retval     0      正常にページを獲得した
    @retval    -EINVAL ページフレーム情報返却域が不正か要求したページオーダが不正
    @retval    -ENOMEM 空きページがない
+   @retval    -EINTR  イベントを受信した
 */
 int
-pfdb_buddy_dequeue(page_order order, page_usage usage, obj_cnt_type *pfnp){
-	int           rc;   
-	pfdb_ent    *ent;
-	obj_cnt_type pfn;
-	intrflags iflags;
+pfdb_buddy_dequeue(page_order order, page_usage usage, pgalloc_flags alloc_flags, 
+    obj_cnt_type *pfnp){
+	int              rc;   
+	pfdb_ent       *ent;
+	obj_cnt_type    pfn;
+	intrflags    iflags;
+	wque_reason  reason;
 
 	/*
 	 * ページフレームDBの全エントリを走査し, 空きページの獲得を試みる
 	 */
 	spinlock_lock_disable_intr(&g_pfdb.lock, &iflags);
-	RB_FOREACH(ent, _pfdb_tree, &g_pfdb.dbroot) {
+	for( ; ; ) {
 
-		/* 空きページの獲得を試みる
-		 */
-		rc = dequeue_page_from_memory_area(ent, order, usage, &pfn);
-		if ( rc == 0 ) 
-			*pfnp = pfn;  /*  ページが獲得できたらページフレーム番号を返却  */
+		RB_FOREACH(ent, _pfdb_tree, &g_pfdb.dbroot) {
 
-		/*  エントリ内にメモリがない場合は, 次のエントリから獲得を試み,
-		 *  メモリ不足以外のエラーがあった場合は, 即時に復帰する
+			/* 空きページの獲得を試みる
+			 */
+			rc = dequeue_page_from_memory_area(ent, order, usage, &pfn);
+
+			/* ページが獲得できたらページフレーム番号を返却
+			 */
+			if ( rc == 0 ) 
+				*pfnp = pfn; 
+
+			/*  エントリ内にメモリがない場合は, 次のエントリから獲得を試み,
+			 *  メモリ不足以外のエラーがあった場合は, 即時に復帰する
+			 */
+			if ( rc != -ENOMEM )
+				goto unlock_out;  
+		}
+
+		if ( ( rc != 0 ) && ( alloc_flags & KMALLOC_ATOMIC ) ) { 
+
+			rc = -ENOMEM;  /*  メモリ不足によるメモリ獲得失敗  */
+			break;
+		}
+
+		/*
+		 * ページ解放を待ち合わせる
 		 */
-		if ( rc != -ENOMEM )
-			goto unlock_out;  
+		reason = wque_wait_on_queue_with_spinlock(&g_pfdb.page_wque, &g_pfdb.lock);
+		if ( reason == WQUE_DELIVEV ) {
+
+			rc = -EINTR;  /* イベント受信  */
+			break;
+		}
+		/* オブジェクト破棄などの他の条件はあり得ない */
+		kassert( reason == WQUE_RELEASED );
 	}
-
-	rc = -ENOMEM;  /*  メモリ不足によるメモリ獲得失敗  */
-
 unlock_out:
 	spinlock_unlock_restore_intr(&g_pfdb.lock, &iflags);
 	return rc;
@@ -1262,6 +1294,9 @@ pfdb_dec_page_use_count(page_frame *pf){
 		spinlock_lock_disable_intr(&pf->buddyp->lock, &iflags);
 		enqueue_page_to_buddy_pool(pf->buddyp, pf);  /*  ページを解放する  */
 		spinlock_unlock_restore_intr(&pf->buddyp->lock, &iflags);
+
+		/* ページ解放待ちスレッドを起床する  */
+		wque_wakeup(&g_pfdb.page_wque, WQUE_RELEASED);
 	}
 
 	return rc;

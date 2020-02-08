@@ -77,18 +77,13 @@ pgif_get_free_page_cluster(void **addrp, page_order order,
 	void     *kvaddr;
 
 	do{
-		rc = pfdb_buddy_dequeue(order, usage, &pfn);  /* 指定されたオーダーのページを取り出す */
+		rc = pfdb_buddy_dequeue(order, usage, 
+		    alloc_flags, &pfn);  /* 指定されたオーダーのページを取り出す */
 		if ( ( rc != 0 ) && ( rc != -ESRCH ) )
 			rc = -ENOMEM;  /*  ページが見つからなかった  */
 
 		if ( ( rc != 0 ) && ( alloc_flags & KMALLOC_ATOMIC ) )
 			goto error_out;  /*  ページ待ちを行わない場合はエラー復帰  */
-
-		/*  ページ解放を待ち合わせる  */
-		/* TODO: 以下をwait処理に置き換えること  */
-		if ( rc != 0 )
-			goto error_out;
-
 	}while( rc != 0 );
 
 	/* 獲得したページフレーム番号のページのカーネルアドレスを算出する

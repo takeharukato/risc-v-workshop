@@ -16,6 +16,7 @@
 #include <kern/spinlock.h>
 
 #include <kern/page-macros.h>
+#include <kern/wqueue.h>
 
 struct _page_frame;
 struct   _pfdb_ent;
@@ -42,7 +43,7 @@ typedef struct _pfdb_stat{
 typedef struct _page_buddy{
 	spinlock                            lock;  /**< バディページ管理情報のロック       */
 	obj_cnt_type free_nr[PAGE_POOL_MAX_ORDER]; /**< ページオーダ単位でのフリーページ数 */
-	queue      page_list[PAGE_POOL_MAX_ORDER]; /**< ページオーダ単位でのページリスト   */
+	struct _queue page_list[PAGE_POOL_MAX_ORDER]; /**< ページオーダ単位でのページリスト */
 	obj_cnt_type                     nr_pages; /**< ページフレーム管理配列の要素数     */
 	obj_cnt_type              available_pages; /**< 利用可能ページ数                   */
 	obj_cnt_type                  kdata_pages; /**< カーネルデータページ数             */
@@ -100,15 +101,18 @@ typedef struct _pfdb_ent{
 /** ページフレームDB
  */
 typedef struct _page_frame_db{
-	spinlock   lock;           /**< ページフレームDBキューのロック           */
-	RB_HEAD(_pfdb_tree, _pfdb_ent) dbroot;  /**< ページフレームDB            */
+	spinlock                         lock;  /**< ページフレームDBキューのロック */
+	wque_waitqueue              page_wque;  /**< ページ待ちキュー               */
+	RB_HEAD(_pfdb_tree, _pfdb_ent) dbroot;  /**< ページフレームDB               */
 }page_frame_db;
 
 /** ページフレームDB初期化子
+   @param[in] _pfque ページフレームDBのポインタ 
  */
-#define __PFDB_INITIALIZER(pfque) {		\
-	.lock = __SPINLOCK_INITIALIZER,		\
-	.dbroot  = RB_INITIALIZER(pfque),       \
+#define __PFDB_INITIALIZER(_pfque) {		                            \
+	.lock = __SPINLOCK_INITIALIZER,		                            \
+	.page_wque = __WQUE_WAITQUEUE_INITIALIZER(&((_pfque)->page_wque)),  \
+	.dbroot  = RB_INITIALIZER(&((_pfque)->dbroot)),		            \
 	}
 
 void pfdb_add(uintptr_t _phys_start, size_t _length, struct _pfdb_ent **_pfdb_ent);
@@ -116,9 +120,8 @@ int pfdb_remove(pfdb_ent *_ent);
 
 void pfdb_free(void);
 
-void pfdb_buddy_enqueue(obj_cnt_type _pfn);
-int pfdb_buddy_dequeue(page_order _order, page_usage _usage, obj_cnt_type *_pfnp);
-
+int pfdb_buddy_dequeue(page_order _order, page_usage _usage, pgalloc_flags _alloc_flags, 
+    obj_cnt_type *_pfnp);
 void pfdb_mark_phys_range_reserved(vm_paddr _start, vm_paddr _end);
 void pfdb_unmark_phys_range_reserved(vm_paddr _start, vm_paddr _end);
 
