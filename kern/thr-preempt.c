@@ -267,7 +267,7 @@ ti_dispatch_delayed(void){
 	bool             res;
 	intrflags     iflags;
 
-#if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
+#if defined(CONFIG_HAL)
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /* CONFIG_HAL */
 
@@ -289,18 +289,22 @@ ti_dispatch_delayed(void){
    @param[in] ti      スレッド情報
    @note 他プロセッサからのディスパッチがありうるので
          tiに紐付けられたスレッド参照を事前に獲得していることを確認する
-	 (TODO: スレッド機構実装時)
  */
 void
 ti_set_delay_dispatch(thread_info *ti) {
+	bool             res;
 	thread          *thr;
 	intrflags     iflags;
 
-#if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
+#if defined(CONFIG_HAL)
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
 	thr = ti->thr;  /* スレッドを参照 */
+	res = thr_ref_inc(thr);  /* スレッドの参照を獲得 */
+	if ( !res ) 
+		goto error_out;  /* 解放処理中のスレッド */
+
 	/* スレッドをロック */
 	spinlock_lock_disable_intr(&thr->lock, &iflags); 
 
@@ -308,6 +312,11 @@ ti_set_delay_dispatch(thread_info *ti) {
 
 	/* スレッドをアンロック */
 	spinlock_unlock_restore_intr(&thr->lock, &iflags);
+
+	thr_ref_dec(thr);  /* スレッドの参照を解放 */
+
+error_out:
+	return;
 }
 
 /**
@@ -321,7 +330,7 @@ ti_clr_delay_dispatch(void) {
 	thread          *cur;
 	intrflags     iflags;
 
-#if defined(CONFIG_HAL)  /* TODO: プラットフォーム管理機構実装後にCONFIG_HALを落とすこと */
+#if defined(CONFIG_HAL) 
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
@@ -366,31 +375,43 @@ ti_has_events(void){
 /**
    非同期イベントを配送したことを設定する
    @param[in] ti 配送先スレッドのスレッド情報
-   @note 他プロセッサからの非同期イベント通知がありうるので
-         tiに紐付けられたスレッド参照を事前に獲得していることを確認する
-	 (TODO: スレッド機構実装時)
  */
 void
 ti_set_events(thread_info *ti) {
-	thread          *cur;
+        bool             res;
+	thread          *thr;
 	intrflags     iflags;
 
-	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
+	/* イベント配送先スレッドをスレッド管理ツリーから検索しているはずなので
+	 * スレッド情報中のスレッド管理情報を設定済み
+	 */
+	kassert( ti->thr != NULL );  
+
+	thr = ti->thr;
+        res = thr_ref_inc(thr);  /* スレッドの参照を獲得 */
+        if ( !res )
+                goto error_out;  /* 解放処理中のスレッド */
+	
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&thr->lock, &iflags); 
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
-	/* TODO: tiに紐付けられたスレッド参照を事前に獲得済みであることを確認 */
 	ti->flags |= TI_EVENT_PENDING;   /* イベント通知を設定する  */
 
 	/* スレッドをアンロック */
-	spinlock_unlock_restore_intr(&cur->lock, &iflags);
+	spinlock_unlock_restore_intr(&thr->lock, &iflags);
+
+	thr_ref_dec(thr);  /* スレッドの参照を解放 */
+
+error_out:
+	return;
 }
 
 /**
    自スレッドの非同期イベント配送をクリアする
    @note イベント通知確認からイベント配送クリアは自スレッドのコンテキスト
-         のみで行うのでスレッドの参照獲得は不要
+         のみで行う。実行中のスレッドの場合は, スレッド管理ツリーからの
+	 参照があるのでスレッド参照獲得は不要
  */
 void
 ti_clr_events(void) {
