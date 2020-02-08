@@ -41,7 +41,6 @@ typedef struct _cpu_info{
 	size_t            l1_dcache_size;  /*< L1データキャッシュサイズ (単位:バイト)       */
 	struct _thread      *idle_thread;  /*< 対象のプロセッサでアイドルスレッド           */
 	struct _thread_info      *cur_ti;  /*< 対象のプロセッサで動作中のスレッド情報  */
-	struct _proc           *cur_proc;  /*< カレントプロセス                        */
 	struct _hal_cpuinfo      cinf_md;  /*< アーキテクチャ依存CPU情報               */
 }cpu_info;
 

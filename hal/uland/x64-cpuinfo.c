@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/kern-cpuinfo.h>
+#include <kern/thr-if.h>
 
 /**
    物理プロセッサIDを取得する
@@ -36,12 +37,11 @@ hal_cpuinfo_fill(cpu_info *cinf){
 	 *  キャッシュサイズ32Kib / ( 8way * 64バイトキャッシュラインサイズ )
 	 */
 	cinf->l1_dcache_colornum = KIB_TO_BYTE(32) / (8*64);  
-	/** キャッシュサイズを初期化 */
+	/* キャッシュサイズを初期化 */
 	cinf->l1_dcache_size = KIB_TO_BYTE(32);
-	/* TODO: スレッド管理実装後に以下をコメントアウト */
-	//cinf->cur_ti = ti_get_current_thread_info();
-	/* TODO: プロセス管理実装後に以下をカレントプロセスを指すように修正 */
-	cinf->cur_proc = NULL;
+
+	/* スレッド情報を設定 */
+	cinf->cur_ti = ti_get_current_thread_info();
 
 	md = &cinf->cinf_md;  /* アーキテクチャ依存部 */
 	md->cinf = cinf;      /* 逆リンクを設定       */
