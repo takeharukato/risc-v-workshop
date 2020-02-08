@@ -44,6 +44,16 @@ typedef struct _wque_waitqueue{
 	wque_wakeflag       wqflag; /*< 起床方法             */
 }wque_waitqueue;
 
+/** ウエイトキュー初期化子
+   @param[in] _wque ウエイトキューへのポインタ
+ */
+#define __WQUE_WAITQUEUE_INITIALIZER(_wque) {		        \
+	.lock = __SPINLOCK_INITIALIZER,		                \
+	.que  =	__QUEUE_INITIALIZER(&((_wque)->que)),	        \
+	.prio_que  = __QUEUE_INITIALIZER(&((_wque)->prio_que)),	\
+	.wqflag = WQUE_WAKEFLAG_ALL,                            \
+	}
+
 /** ウエイトキューエントリ
  */
 typedef struct _wque_entry{
