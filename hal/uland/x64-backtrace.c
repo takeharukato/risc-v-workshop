@@ -38,9 +38,7 @@ hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, vo
 	    ( bpref != NULL ) && ( depth < BACKTRACE_MAX_DEPTH );
 	    ++depth) {
 
-#if defined(CONFIG_HAL)
-		/* TODO:スタックの健全性を確認する  */
-#else
+#if !defined(CONFIG_HAL)
 		if ( (uintptr_t)bpref > 0x7fffffffffff )
 			break;
 		

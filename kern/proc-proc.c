@@ -751,8 +751,6 @@ proc_ref_dec(proc *p){
 		proc_res = RB_REMOVE(_procdb_tree, &g_procdb.head, p);
 		kassert( proc_res != NULL );
 
-		/* TODO: プロセスキューが空だったらプロセスIDのTIDを返却 */
-
 		/* プロセス管理ツリーのロックを解放 */
 		spinlock_unlock_restore_intr(&g_procdb.lock, &iflags);
 

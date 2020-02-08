@@ -12,6 +12,7 @@
 
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
+#include <kern/proc-if.h>
 
 static kmem_cache pgtbl_cache;  /* ページテーブル情報のキャッシュ */
 static vm_asid_map  g_asidmap;  /* アドレス空間IDマップ           */
@@ -142,11 +143,11 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp, hal_asid asid){
 		kassert_no_reach();
 	}
 
-	hal_pgtbl_init(pgt);            /* アーキ依存部の初期化                */
+	hal_pgtbl_init(pgt);            /* アーキ依存部の初期化   */
 
-	pgt->p = NULL; /* TODO: プロセス管理実装後にカーネルプロセスを参照するように修正 */
+	pgt->p = proc_kernel_process_refer(); /* カーネルプロセス */
 
-	*pgtp = pgt;            /* ページテーブル情報を返却する */
+	*pgtp = pgt;            /* ページテーブル情報を返却する   */
 
 	return 0;
 }
