@@ -28,11 +28,13 @@
    スーパブロックのバージョン
  */
 #define MINIX_V1_SUPER_MAGIC   (0x137F)       /* minix V1                     */
+#define MINIX_V1_SUPER_MAGIC2  (0x138F)       /* minix V1 30 バイトファイル名 */
 #define MINIX_V2_SUPER_MAGIC   (0x2468)       /* minix V2 14 バイトファイル名 */
 #define MINIX_V2_SUPER_MAGIC2  (0x2478)       /* minix V2 30 バイトファイル名 */
 #define MINIX_V3_SUPER_MAGIC   (0x4d5a)       /* minix V3 60 バイトファイル名 */
 
 #define MINIX_V1_DIRSIZ        (14)  /**< MinixV1でのファイル名長(14バイト) */
+#define MINIX_V1_DIRSIZ2       (30)  /**< MinixV1でのファイル名長(30バイト) */
 #define MINIX_V2_DIRSIZ        (14)  /**< MinixV2でのファイル名長(14バイト) */
 #define MINIX_V2_DIRSIZ2       (30)  /**< MinixV2でのファイル名長(30バイト) */
 #define MINIX_V3_DIRSIZ	       (60)  /**< MinixV3でのファイル名長(60バイト) */
