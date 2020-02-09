@@ -203,6 +203,72 @@ error_out:
 }
 
 /**
+   Minixファイルシステムのスーパブロックを書き戻す
+   @param[in] sbp スーパブロック情報
+   @retval 0   正常終了
+ */
+int
+minix_write_super(minix_super_block *sbp){
+	int                        rc;
+	page_cache                *pc;
+	vm_vaddr                  off;
+	vm_vaddr                sboff;
+	void                     *dsb;
+
+	/* デバイスの先頭からのオフセット位置を算出する */
+	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;	
+
+	/* ページキャッシュを獲得する */
+	rc = pagecache_get(sbp->dev, sboff, &pc);
+	if ( rc != 0 )
+		goto error_out;  /* ページキャシュの獲得に失敗した */
+
+	off = sboff % pc->pgsiz;   /* ページ内オフセットを算出   */
+	dsb = (pc->pc_data + off); /* ディスク上のスーパブロック */
+
+	/*
+	 * スーパブロックの内容をページキャッシュに書き込む
+	 */
+	if ( MINIX_SB_IS_V3(sbp) ){
+
+		/*
+		 * MinixV3ファイルシステムの場合
+		 */
+		if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
+			swap_minixv3_super_block((minixv3_super_block *)dsb, 
+			    (minixv3_super_block *)&sbp->d_super);
+		else
+			memmove((void *)dsb, (void *)&sbp->d_super, 
+			    sizeof(minixv3_super_block));
+	} else if ( ( MINIX_SB_IS_V1(sbp) ) || ( MINIX_SB_IS_V2(sbp) ) ) {
+
+		/*
+		 * MinixV1, MinixV2ファイルシステムの場合
+		 */
+		if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
+			swap_minixv12_super_block((minixv12_super_block *)dsb, 
+			    (minixv12_super_block *)&sbp->d_super);
+		else
+			memmove((void *)dsb, (void *)&sbp->d_super, 
+			    sizeof(minixv12_super_block));
+	} else {
+
+		rc = -EINVAL;  /* 不正なスーパブロック */
+		goto put_pcache_out;
+	}
+	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
+
+	return 0;
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する */
+
+error_out:
+	return rc;
+}
+
+/**
    Minixファイルシステムのスーパブロックを読み込む
    @param[in]  dev Minixファイルシステムが記録されたブロックデバイスのデバイスID
    @param[out] sbp 情報返却領域

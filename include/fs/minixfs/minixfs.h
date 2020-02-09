@@ -219,14 +219,14 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */
 #define MINIX_SB_IS_V1(_sbp) \
-	( ((_sbp)->s_magic) == MINIX_V1_SUPER_MAGIC )
-
+	( ( ((_sbp)->s_magic) == MINIX_V1_SUPER_MAGIC ) ||	\
+	    ( ((_sbp)->s_magic) == MINIX_V1_SUPER_MAGIC2 ) )
 /**
    MinixV2のスーパブロックを格納していることを確認
    @param[in] _sbp メモリ中のスーパブロック情報
  */
 #define MINIX_SB_IS_V2(_sbp) \
-	( ( ((_sbp)->s_magic) == MINIX_V2_SUPER_MAGIC ) || \
+	( ( ((_sbp)->s_magic) == MINIX_V2_SUPER_MAGIC ) ||	\
 	  ( ((_sbp)->s_magic) == MINIX_V2_SUPER_MAGIC2 ) )
 
 /**
@@ -234,7 +234,7 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */
 #define MINIX_SB_IS_V3(_sbp) \
-	( ((_sbp)->s__magic) == MINIX_V3_SUPER_MAGIC )
+	( ((_sbp)->s_magic) == MINIX_V3_SUPER_MAGIC )
 
 /**
    メモリ中のスーパブロックからディスクスーパブロック情報を得る
