@@ -89,9 +89,10 @@ typedef minixv2_zone minixv3_zone;  /**< MinixV3でのゾーン番号型 */
 /**
    ビットマップチャンク
  */
-typedef uint16_t minixv1_bitchunk;  /**< MinixV1 ビットマップチャンク */
-typedef uint16_t minixv2_bitchunk;  /**< MinixV2 ビットマップチャンク */
-typedef uint32_t minixv3_bitchunk;  /**< MinixV3 ビットマップチャンク */
+typedef uint16_t minixv1_bitchunk;  /**< MinixV1 ビットマップチャンク     */
+typedef uint16_t minixv2_bitchunk;  /**< MinixV2 ビットマップチャンク     */
+typedef uint32_t minixv3_bitchunk;  /**< MinixV3 ビットマップチャンク     */
+typedef uint32_t minix_bitmap_idx;  /**< メモリ中のビットマップインデクス */
 
 /**
    MinixV1/V2 のスーパブロック
@@ -237,12 +238,13 @@ typedef struct _minix3_dentry {
 	( ((_sbp)->s_magic) == MINIX_V3_SUPER_MAGIC )
 
 /**
-   メモリ中のスーパブロックからディスクスーパブロック情報を得る
+   メモリ中のスーパブロックからディスクスーパブロック情報メンバを得る
    @param[in] _sbp メモリ中のスーパブロック情報へのポインタ
+   @param[in] _m   メンバ名
  */
-#define MINIX_D_SUPER_BLOCK(_sbp) \
-	( MINIX_SB_IS_V3((_sbp)) ? ((minixv12_super_block *)(&((_sbp)->d_super.v3))) : \
-	    ((minixv3_super_block *)(&((_sbp)->d_super.v12))))
+#define MINIX_D_SUPER_BLOCK(_sbp, _m)					\
+	( MINIX_SB_IS_V3((_sbp)) ? (((minixv3_super_block *)(&((_sbp)->d_super)))->_m) : \
+	    (((minixv12_super_block *)(&((_sbp)->d_super)))->_m) )
 /**
    総ゾーン数を算出する
    @param[in] _sbp メモリ中のスーパブロック情報
@@ -280,7 +282,7 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */      
 #define MINIX_BLOCK_SIZE(_sbp) \
-	( MINIX_SB_IS_V3((_sbp)) ? ((MINIX_D_SUPER_BLOCK(_sbp))->s_blocksize) : \
+	( MINIX_SB_IS_V3((_sbp)) ? ((_sbp)->d_super.v3.s_blocksize) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_BLOCK_SIZE) : (MINIX_V1_BLOCK_SIZE) ) )
 
 /**
@@ -338,7 +340,7 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */      
 #define MINIX_ZONE_SIZE(_sbp)						\
-	( (MINIX_BLOCK_SIZE((_sbp)))  << (MINIX_D_SUPER_BLOCK(_sbp)->s_log_zone_size))
+	( (MINIX_BLOCK_SIZE((_sbp)))  << (MINIX_D_SUPER_BLOCK(_sbp, s_log_zone_size)))
 
 /**
    ゾーン番号型のサイズを得る(単位:バイト)
@@ -347,6 +349,16 @@ typedef struct _minix3_dentry {
 #define MINIX_ZONE_NUM_SIZE(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_zone)) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv2_zone)) : (sizeof(minixv1_zone)) ) )
+
+/**
+   スーパブロック中の総ゾーン数を得る
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */
+#define MINIX_SB_ZONES_NR(_sbp)     \
+	( ( MINIX_SB_IS_V3((_sbp)) || MINIX_SB_IS_V2((_sbp)) )	   \
+	    ? MINIX_D_SUPER_BLOCK((_sbp),s_zones) :		   \
+	    ((_sbp)->d_super.v12.s_nzones) )
+
 /**
    無効ゾーン番号を得る
    @param[in] _sbp メモリ中のスーパブロック情報

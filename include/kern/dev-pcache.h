@@ -108,6 +108,7 @@ typedef struct _page_cache_pool{
 	    ( ( (_pcache)->state & ( PCACHE_STATE_CLEAN | PCACHE_STATE_DIRTY ) ) != \
 		( PCACHE_STATE_CLEAN | PCACHE_STATE_DIRTY ) ) )
 
+int pagecache_pagesize(dev_id dev, size_t *pgsizp);
 int pagecache_get(dev_id dev, off_t offset, struct _page_cache **pcp);
 void pagecache_put(struct _page_cache *_pc);
 void pagecache_mark_dirty(struct _page_cache *_pc);

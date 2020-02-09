@@ -202,6 +202,97 @@ error_out:
 	return -ENODEV;
 }
 
+
+/** 
+    ビットマップ中の空きビットを割り当てる
+    @param[in] sbp      スーパブロック情報
+    @param[in] map_type 検索対象ビットマップ種別
+      INODE_MAP ... I-nodeビットマップ
+      ZONE_MAP  ... ゾーンビットマップ
+    @param[out] idxp 割り当てたビットのインデクスを返却する領域
+    @retval  0       正常終了
+    @retval -ENOSPC  空きビットマップがない
+ */
+int
+minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp) {
+	int                    rc;  /* Return code */
+	size_t              pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
+	size_t  __unused  nr_bits;  /* ビットマップ中のビット数 */
+	obj_cnt_type     cur_page;  /* 検索対象ページ */
+	obj_cnt_type     nr_pages;  /* 検索ページ数   */
+	obj_cnt_type   first_page;  /* 検索開始ページ */
+	obj_cnt_type     end_page;  /* 最終検索ページ */
+	page_cache            *pc;  /* ページキャッシュ */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	if (map_type == INODE_MAP) { /* I-nodeビットマップから空きビットを探す */
+
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
+		nr_bits = MINIX_D_SUPER_BLOCK(sbp,s_ninodes) + 1;
+		nr_pages = 
+			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks)
+			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
+	} else { /* ゾーンビットマップから空きビットを探す */
+
+		/* ゾーンビットマップのデバイス上のページ番号 */
+		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
+		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
+		nr_bits = MINIX_SB_ZONES_NR(sbp) - 
+			MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1;
+		nr_pages = 
+			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks)
+			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
+	}
+
+	end_page = first_page + nr_pages;
+
+	/*  
+	 * Search bitmap blocks
+	 */
+	for(cur_page = first_page; end_page > cur_page; ++cur_page) {
+
+		/*
+		 * Load bitmap
+		 */
+		rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+
+#if 0
+		bitmap = (minix_bitchunk_t *)&bp->data[0];
+
+		/*
+		 * Search a free bit and try to allocate it in the bitmap
+		 */
+		alloced_num = 0;
+		rc = minix_bitmap_alloc_nolock(
+			&bitmap[0], &bitmap[BITMAP_CHUNKS(dblk_siz)],
+			d_blk, dblk_siz, nr_bits, &alloced_num);
+
+		/* Ideally, we should obtain the inode/zone corresponding to
+		 * this index before write this buffer back.
+		 */
+		if ( rc == 0 ) {
+
+			/*
+			 * Write bitmap
+			 */
+			buffer_cache_mark_dirty(bp);
+			buffer_cache_blk_write(bp);  /* Write it immediately */
+			buffer_cache_blk_release(bp);
+
+			*idxp = alloced_num;
+
+			return 0;
+		}
+#endif
+		pagecache_put(pc);  /* ページキャッシュを解放する     */
+	}
+	
+	return -ENOSPC;
+}
+
 /**
    Minixファイルシステムのスーパブロックを書き戻す
    @param[in] sbp スーパブロック情報
@@ -283,7 +374,7 @@ minix_read_super(dev_id dev, minix_super_block *sbp){
 	void                     *dsb;
 
 	kassert( sbp != NULL );
-	
+
 	/* デバイスの先頭からのオフセット位置を算出する */
 	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;	
 
@@ -295,6 +386,8 @@ minix_read_super(dev_id dev, minix_super_block *sbp){
 	off = sboff % pc->pgsiz;  /* ページ内オフセットを算出 */
 	dsb = (pc->pc_data + off); /* ディスク上のスーパブロック */
 
+	sbp->s_magic = 0;          /* マジック番号をクリアする */
+	sbp->swap_needed = false;  /* スワップ要否をクリアする */
 	/*
 	 * スーパブロックの検出
 	 */

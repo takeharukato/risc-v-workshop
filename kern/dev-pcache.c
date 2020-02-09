@@ -403,6 +403,28 @@ false_out:
 }
 
 /**
+   ページキャッシュのページサイズを取得する
+   @param[in]  dev    ブロックデバイスID
+   @param[out] pgsizp ページサイズ返却領域
+   @retval     0      正常終了
+ */
+int
+pagecache_pagesize(dev_id __unused dev, size_t *pgsizp){
+
+	kassert( pgsizp != NULL );
+
+	/* ページキャッシュプールのロックを獲得 */
+	spinlock_lock(&pcache_pool.lock);
+
+	*pgsizp = pcache_pool.pgsiz;  /* ページサイズを返却 */
+
+	/* ページキャッシュプールのロックを解放 */
+	spinlock_unlock(&pcache_pool.lock);
+
+	return 0;
+}
+
+/**
    ページキャッシュを獲得する
    @param[in]  dev    ブロックデバイスID
    @param[in]  offset オフセットページアドレス
