@@ -42,6 +42,7 @@ typedef struct _page_cache{
 	SPLAY_ENTRY(_page_cache)        ent;  /**< SPLAY木へのエントリ                  */
 	refcounter                     refs;  /**< 参照カウンタ                         */
 	dev_id                       bdevid;  /**< デバイスID                           */
+	size_t                        pgsiz;  /**< ページサイズ                   */
 	off_t                        offset;  /**< オフセット (単位:バイト)             */
 	pcache_state                  state;  /**< バッファの状態                       */
 	struct _page_frame              *pf;  /**< ページフレーム情報                   */

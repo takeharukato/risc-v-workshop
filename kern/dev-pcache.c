@@ -106,6 +106,7 @@ allocate_new_pcache(page_cache **pcp){
 	refcnt_init(&pc->refs);             
 	pc->bdevid  = 0;                     /* 無効デバイスIDに設定               */
 	pc->offset  = 0;                     /* オフセットアドレスを初期化         */
+	pc->pgsiz   = 0;                     /* ページサイズを初期化               */
 	pc->state   = PCACHE_STATE_INVALID;  /* 無効キャッシュに設定               */
 	pc->pf      = pf;                    /* ページフレーム情報を設定           */
 	pc->pc_data = newpage;               /* ページアドレスを初期化             */
@@ -266,8 +267,8 @@ lookup_pagecache(dev_id dev, off_t offset, page_cache **pcp){
 			}
 
 			new->bdevid  = dev;          /* 無効デバイスIDに設定         */
-			new->offset  = key.offset;   /* オフセットアドレスを初期化   */
-			
+			new->offset  = key.offset;   /* オフセットアドレスを設定     */
+			new->pgsiz   = pcache_pool.pgsiz; /* ページサイズを設定      */
 			/* ページ未読み込みに設定しページをロック  */
 			new->state = (PCACHE_STATE_BUSY|PCACHE_STATE_INVALID);
 
