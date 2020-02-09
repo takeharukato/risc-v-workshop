@@ -34,6 +34,7 @@ kern_common_tests(void){
 	tst_spinlock();
 	tst_atomic();
 	tst_atomic64();
+	tst_bswap();
 	tst_cpuinfo();
 	tst_vmmap();
 	tst_pcache();
@@ -48,6 +49,7 @@ kern_common_tests(void){
 #endif  /*  CONFIG_HAL  */ 
 	tst_thread();
 	tst_mutex();
+	tst_minixfs();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);

@@ -4,6 +4,7 @@
 #
 top=..
 include ${top}/Makefile.inc
+subdirs=minixfs
 
 objects=dev-fsimg.o
 
@@ -15,11 +16,12 @@ depends = $(patsubst %.o,%.d,${objects})
 
 lib=libfs.a
 
-all: ${depends} ${lib}
+all: ${depends} ${lib} subsystem
 
 ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
+
 gcov:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
@@ -39,11 +41,22 @@ ${FSIMG}:
 	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
 	mkfs.mfs $@
 
+subsystem:
+	for dir in ${subdirs} ; do \
+	${MAKE} -C $${dir} ;\
+	done
+
 clean:
 	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}  fsimg.S
+	for dir in ${subdirs} ; do \
+	${MAKE} -C $${dir} $@;\
+	done
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES}
+	for dir in ${subdirs} ; do \
+	${MAKE} -C $${dir} $@;\
+	done
 
 -include *.d
 

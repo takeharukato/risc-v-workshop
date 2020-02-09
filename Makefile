@@ -8,7 +8,9 @@ supdirs=tools doxygen
 subdirs=kern klib fs hal test
 cleandirs=include ${subdirs} ${supdirs}
 distcleandirs=${cleandirs} configs
-kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a 
+kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a \
+	fs/minixfs/libminixfs.a
+
 mconf=tools/kconfig/mconf
 
 ifeq ($(CONFIG_FORCE_UPDATE_GTAGS),y)

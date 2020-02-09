@@ -187,4 +187,6 @@ void tst_cpuinfo(void);
 void tst_proc(void);
 void tst_thread(void);
 void tst_mutex(void);
+void tst_bswap(void);
+void tst_minixfs(void);
 #endif  /*  _KERN_KTEST_H  */
