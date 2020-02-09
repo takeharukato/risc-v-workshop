@@ -12,8 +12,10 @@
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
+
 uint64_t __bswap64(uint64_t _x);
 uint32_t __bswap32(uint32_t _x);
 uint16_t __bswap16(uint16_t _x);
+bool __host_is_little_endian(void);
 #endif  /* !ASM_FILE */
 #endif  /* KLIB_KLIB_BSWAP_H */

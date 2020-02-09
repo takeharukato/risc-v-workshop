@@ -95,3 +95,16 @@ __bswap16(uint16_t x){
 
 	return (uint16_t)ret;
 }
+
+/**
+   実行環境がリトルエンディアンであることを確認する
+   @retval 真 実行環境がリトルエンディアンである
+   @retval 偽 実行環境がリトルエンディアンでない
+ */
+bool
+__host_is_little_endian(void){
+	uint16_t v;
+	
+	v = 1;
+	return (bool)(*(uint8_t *)&v);  /* 最下位バイトに1が書かれていることを確認 */
+}
