@@ -38,6 +38,7 @@
 #include <klib/misc.h>
 #include <klib/regbits.h>
 #include <klib/fixed-point.h>
+#include <klib/bswap.h>
 
 #include <klib/atomic.h>
 #include <klib/atomic64.h>
