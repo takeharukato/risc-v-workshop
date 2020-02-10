@@ -345,9 +345,9 @@ success:
  */
 int
 minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp) {
-	int                    rc;  /* Return code */
+	int                    rc;  /* 返り値 */
 	size_t              pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
-	size_t  __unused  nr_bits;  /* ビットマップ中のビット数 */
+	size_t            nr_bits;  /* ビットマップ中のビット数 */
 	obj_cnt_type     cur_page;  /* 検索対象ページ   */
 	obj_cnt_type     nr_pages;  /* 検索ページ数     */
 	obj_cnt_type   first_page;  /* 検索開始ページ   */
@@ -398,6 +398,115 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 
 error_out:
 	return -ENOSPC;
+}
+
+/**
+    ビットマップ中の空きビットを割り当てる
+    @param[in] sbp      スーパブロック情報
+    @param[in] map_type 検索対象ビットマップ種別
+      INODE_MAP ... I-nodeビットマップ
+      ZONE_MAP  ... ゾーンビットマップ
+    @param[in] fbit   解放するビット
+    @retval  0       正常終了
+ */
+void
+minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
+	int                    rc;  /* 返り値 */
+	page_cache            *pc;
+	size_t              pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
+	size_t            nr_bits;  /* ビットマップ中のビット数 */
+	obj_cnt_type     cur_page;  /* 検索対象ページ   */
+	obj_cnt_type     nr_pages;  /* 検索ページ数     */
+	obj_cnt_type   first_page;  /* 検索開始ページ   */
+	obj_cnt_type     end_page;  /* 最終検索ページ   */
+	minix_bitmap_idx  bit_off;  /* ビットマップチャンク中のオフセット */
+	minix_bitmap_idx  bit_idx;  /* ビットマップチャンク配列のインデクス */
+	minix_bitmap_idx     mask;  /* ビットをセットしたチャンク */
+	minixv3_bitchunk   *v3ptr;  /* MinixV3ビットマップチャンクポインタ */
+	minixv3_bitchunk    v3val;  /* MinixV3ビットマップチャンク */
+	minixv12_bitchunk *v12ptr;  /* MinixV1, MinixV2ビットマップチャンクポインタ */
+	minixv12_bitchunk  v12val;  /* MinixV1, MinixV2ビットマップチャンク */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	if ( map_type == INODE_MAP ) { /* I-nodeビットマップから空きビットを探す */
+
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
+		nr_bits = MINIX_D_SUPER_BLOCK(sbp,s_ninodes) + 1;
+		nr_pages = 
+			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks)
+			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
+	} else { /* ゾーンビットマップから空きビットを探す */
+
+		/* ゾーンビットマップのデバイス上のページ番号 */
+		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
+		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
+		nr_bits = MINIX_SB_ZONES_NR(sbp) - 
+			MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1;
+		nr_pages = 
+			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks)
+			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
+	}
+
+	cur_page = ( fbit / ( BITS_PER_BYTE * pgsiz ) ) + first_page;
+	end_page = first_page + nr_pages;
+
+	if ( ( fbit >= nr_bits ) || ( cur_page >= end_page ) )
+		return ;  /* 範囲外のビット */
+
+	bit_idx = fbit / ( BITS_PER_BYTE * MINIX_BMAPCHUNK_SIZE(sbp) );
+	bit_idx = bit_idx % ( pgsiz / MINIX_BMAPCHUNK_SIZE(sbp) );
+	bit_off = fbit % ( BITS_PER_BYTE * MINIX_BMAPCHUNK_SIZE(sbp) );
+	
+	mask = 1 << bit_off;
+
+	rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+	if ( rc != 0 )
+		return ;
+
+	if ( MINIX_SB_IS_V3(sbp) ) {
+
+		/*
+		 * MinixV3ファイルシステム
+		 */
+		v3ptr = (minixv3_bitchunk *)pc->pc_data;
+		if ( sbp->swap_needed )
+			v3val = __bswap32(v3ptr[bit_idx]);
+		else
+			v3val = v3ptr[bit_idx];
+
+		kassert( v3val & mask );
+
+		v3val &= ~mask;
+
+		if ( sbp->swap_needed )
+			v3ptr[bit_idx] = __bswap32(v3val);
+		else
+			v3ptr[bit_idx] = v3val;
+	} else {
+
+		/*
+		 * MinixV1, MinixV2ファイルシステム
+		 */
+		v12ptr = (minixv12_bitchunk *)pc->pc_data;
+		if ( sbp->swap_needed )
+			v12val = __bswap16(v12ptr[bit_idx]);
+		else
+			v12val = v12ptr[bit_idx];
+
+		kassert( v12val & mask );
+
+		v12val &= (minixv12_bitchunk)(~mask & (~((minixv12_bitchunk)0)));
+
+		if ( sbp->swap_needed )
+			v12ptr[bit_idx] = __bswap16(v12val);
+		else
+			v12ptr[bit_idx] = v12val;
+	}
+	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */	
 }
 
 /**
