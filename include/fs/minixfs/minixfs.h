@@ -77,15 +77,22 @@
 #define ZONE_MAP               (1)      /**< ゾーンビットマップ操作  */
 
 /**
+   I-node操作の種別
+ */
+#define MINIX_INODE_READING    (0)      /**< I-node読取り */
+#define MINIX_INODE_WRITING    (1)      /**< I-node書込み */
+
+/**
    I-node番号/ゾーン番号型
  */
 typedef uint16_t      minixv1_ino;  /**< MinixV1でのI-node番号型 */
 typedef minixv1_ino   minixv2_ino;  /**< MinixV2でのI-node番号型 */
 typedef uint32_t      minixv3_ino;  /**< MinixV3でのI-node番号型 */
+typedef uint32_t        minix_ino;  /**< メモリ中のI-node番号    */
 typedef uint16_t     minixv1_zone;  /**< MinixV1でのゾーン番号型 */
 typedef uint32_t     minixv2_zone;  /**< MinixV2でのゾーン番号型 */
 typedef minixv2_zone minixv3_zone;  /**< MinixV3でのゾーン番号型 */
-
+typedef uint32_t       minix_zone;  /**< メモリ中のゾーン番号    */
 /**
    ビットマップチャンク
  */
@@ -159,6 +166,7 @@ typedef struct _minix_super_block {
 		minixv3_super_block  v3;   /**< MinixV3 スーパブロック    */
 	}d_super;
 }minix_super_block;
+
 /**
    MinixV1 ディスク I-node
  */
@@ -184,13 +192,24 @@ typedef struct _minixv2_inode {
 	uint32_t                    i_atime;  /** 最終アクセス時刻 (単位:UNIX時刻) */
 	uint32_t                    i_mtime;  /** 最終更新時刻 (単位:UNIX時刻)     */
 	uint32_t                    i_ctime;  /** 最終属性更新時刻 (単位:UNIX時刻) */
-	uint32_t i_zone[MINIX_V2_NR_TZONES];
+	uint32_t i_zone[MINIX_V2_NR_TZONES];  /** 順ファイル構成ブロック番号       */
 } __packed minixv2_inode;
 
 /**
    MinixV3 ディスク I-node
  */
 typedef struct _minixv2_inode minixv3_inode;
+
+/**
+   メモリ上のMinix I-node
+ */
+typedef struct _minix_inode {
+	minix_super_block     *sbp;  /**< Minixスーパブロック情報   */
+	union  _d_inode{
+		minixv1_inode   v1;  /**< MinixV1 I-node            */
+		minixv2_inode  v23;  /**< MinixV2 V3 I-node         */
+	}d_inode;
+}minix_inode;
 
 /**
    MinixV1 ディレクトリエントリ
@@ -373,6 +392,29 @@ typedef struct _minix3_dentry {
  */      
 #define MINIX_INODES_PER_BLOCK(_sbp) \
 	( MINIX_BLOCK_SIZE((_sbp)) / MINIX_DINODE_SIZE(_sbp))
+
+/**
+   メモリ中のMinix I-nodeからI-nodeのメンバ変数の値を得る
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _m   メンバ名
+ */
+#define MINIX_D_INODE(_inodep, _m)					\
+	( MINIX_SB_IS_V1((_inodep)->sbp)				\
+	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->_m)		\
+	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->_m) )
+
+/**
+   メモリ中のMinix I-nodeからI-nodeのメンバ変数の値を更新する
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _m   メンバ名
+   @param[in] _v   設定値
+ */
+#define MINIX_D_INODE_SET(_inodep, _m, _v) do{				\
+		if (MINIX_SB_IS_V1((_inodep)->sbp))			\
+			(((minixv1_inode *)(&((_inodep)->d_inode)))->_m) =_v; \
+		else							\
+			(((minixv2_inode *)(&((_inodep)->d_inode)))->_m) = _v; \
+	}while(0)
 
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */

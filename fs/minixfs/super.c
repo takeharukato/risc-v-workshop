@@ -16,7 +16,7 @@
 #include <fs/minixfs/minixfs.h>
 
 /**
-   MinixV3 スーパブロックのバイトオーダ反転
+   MinixV3 スーパブロックのバイトオーダ反転(内部関数)
    @param[in]  in_sb 入力スーパブロック
    @param[out] out_sb 出力スーパブロック
  */
@@ -36,7 +36,7 @@ swap_minixv3_super_block(minixv3_super_block *in_sb, minixv3_super_block *out_sb
 }
 
 /**
-   MinixV3 スーパブロックを読込む
+   MinixV3 スーパブロックを読込む(内部関数)
    @param[in]  dsb ディスク上のスーパブロック
    @param[out] sbp メモリ上のスーパブロック返却域
    @retval     0      正常終了
@@ -73,7 +73,7 @@ error_out:
 }
 
 /**
-   MinixV1/MinixV2 スーパブロックのバイトオーダ反転
+   MinixV1/MinixV2 スーパブロックのバイトオーダ反転(内部関数)
    @param[in]  in_sb 入力スーパブロック
    @param[out] out_sb 出力スーパブロック
  */
@@ -93,7 +93,7 @@ swap_minixv12_super_block(minixv12_super_block *in_sb, minixv12_super_block *out
 }
 
 /**
-   MinixV2 スーパブロックを読込む
+   MinixV2 スーパブロックを読込む(内部関数)
    @param[in]  dsb ディスク上のスーパブロック
    @param[out] sbp メモリ上のスーパブロック返却域
    @retval     0      正常終了
@@ -148,7 +148,7 @@ error_out:
 }
 
 /**
-   MinixV1 スーパブロックを読込む
+   MinixV1 スーパブロックを読込む(内部関数)
    @param[in]  dsb ディスク上のスーパブロック
    @param[out] sbp メモリ上のスーパブロック返却域
    @retval     0      正常終了
@@ -203,16 +203,16 @@ error_out:
 }
 
 /**
-   ページキャッシュ中のビットマップからビットを割当てる
-    @param[in] sbp      スーパブロック情報
-    @param[in] cur_page 検索対象ページ番号 (単位: デバイス先頭からのページ数)
-    @param[in] bit_off  検索開始ビット位置 (単位: ビット)
-    @param[in] nt_bits  ビットマップ中の総ビット数 (単位: ビット)
-    @param[in] map_type 検索対象ビットマップ種別
-      INODE_MAP ... I-nodeビットマップ
-      ZONE_MAP  ... ゾーンビットマップ
-    @param[out] idxp 割り当てたビットのインデクスを返却する領域
- */
+   ページキャッシュ中のビットマップからビットを割当てる(内部関数)
+   @param[in] sbp      スーパブロック情報
+   @param[in] cur_page 検索対象ページ番号 (単位: デバイス先頭からのページ数)
+   @param[in] bit_off  検索開始ビット位置 (単位: ビット)
+   @param[in] nt_bits  ビットマップ中の総ビット数 (単位: ビット)
+   @param[in] map_type 検索対象ビットマップ種別
+   INODE_MAP ... I-nodeビットマップ
+   ZONE_MAP  ... ゾーンビットマップ
+   @param[out] idxp 割り当てたビットのインデクスを返却する領域
+*/
 static int
 minix_bitmap_alloc_nolock(minix_super_block *sbp, obj_cnt_type cur_page, int map_type,
 			  minix_bitmap_idx bit_off, minix_bitmap_idx nr_bits, 
@@ -408,11 +408,13 @@ error_out:
       ZONE_MAP  ... ゾーンビットマップ
     @param[in] fbit   解放するビット
     @retval  0       正常終了
+    @retval -EINVAL  ビットマップ範囲内にないビットを指定した
+    @retval -ENODEV  ページキャッシュを読み込めなかった
  */
-void
+int
 minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 	int                    rc;  /* 返り値 */
-	page_cache            *pc;
+	page_cache            *pc;  /* ページキャッシュ */
 	size_t              pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
 	size_t            nr_bits;  /* ビットマップ中のビット数 */
 	obj_cnt_type     cur_page;  /* 検索対象ページ   */
@@ -442,7 +444,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 
 		/* ゾーンビットマップのデバイス上のページ番号 */
 		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
-		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
+		    * MINIX_BLOCK_SIZE(sbp) / pgsiz;  
 		nr_bits = MINIX_SB_ZONES_NR(sbp) - 
 			MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1;
 		nr_pages = 
@@ -454,7 +456,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 	end_page = first_page + nr_pages;
 
 	if ( ( fbit >= nr_bits ) || ( cur_page >= end_page ) )
-		return ;  /* 範囲外のビット */
+		return -EINVAL;  /* 範囲外のビット */
 
 	bit_idx = fbit / ( BITS_PER_BYTE * MINIX_BMAPCHUNK_SIZE(sbp) );
 	bit_idx = bit_idx % ( pgsiz / MINIX_BMAPCHUNK_SIZE(sbp) );
@@ -464,7 +466,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 
 	rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
 	if ( rc != 0 )
-		return ;
+		return -ENODEV;
 
 	if ( MINIX_SB_IS_V3(sbp) ) {
 
@@ -507,6 +509,8 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 	}
 	
 	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+
+	return 0;
 }
 
 /**
@@ -516,11 +520,11 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
  */
 int
 minix_write_super(minix_super_block *sbp){
-	int                        rc;
-	page_cache                *pc;
-	vm_vaddr                  off;
-	vm_vaddr                sboff;
-	void                     *dsb;
+	int          rc;
+	page_cache  *pc;
+	off_t       off;
+	off_t     sboff;
+	void       *dsb;
 
 	/* デバイスの先頭からのオフセット位置を算出する */
 	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;	
@@ -583,11 +587,11 @@ error_out:
  */
 int
 minix_read_super(dev_id dev, minix_super_block *sbp){
-	int                        rc;
-	page_cache                *pc;
-	vm_vaddr                  off;
-	vm_vaddr                sboff;
-	void                     *dsb;
+	int          rc;
+	page_cache  *pc;
+	off_t       off;
+	off_t     sboff;
+	void       *dsb;
 
 	kassert( sbp != NULL );
 
