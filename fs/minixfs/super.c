@@ -202,6 +202,136 @@ error_out:
 	return -ENODEV;
 }
 
+/**
+   ページキャッシュ中のビットマップからビットを割当てる
+    @param[in] sbp      スーパブロック情報
+    @param[in] cur_page 検索対象ページ番号 (単位: デバイス先頭からのページ数)
+    @param[in] bit_off  検索開始ビット位置 (単位: ビット)
+    @param[in] nt_bits  ビットマップ中の総ビット数 (単位: ビット)
+    @param[in] map_type 検索対象ビットマップ種別
+      INODE_MAP ... I-nodeビットマップ
+      ZONE_MAP  ... ゾーンビットマップ
+    @param[out] idxp 割り当てたビットのインデクスを返却する領域
+ */
+static int
+minix_bitmap_alloc_nolock(minix_super_block *sbp, obj_cnt_type cur_page, int map_type,
+			  minix_bitmap_idx bit_off, minix_bitmap_idx nr_bits, 
+			  minix_bitmap_idx *idxp) {
+	int                        rc;
+	int                         i;
+	page_cache                *pc;  /* ページキャッシュ */
+	size_t                  pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
+	minixv12_bitchunk     *v12ptr;  /* MinixV1, MinixV2ビットマップチャンクポインタ */
+	minixv12_bitchunk      v12val;  /* MinixV1, MinixV2ビットマップチャンク */
+	minixv3_bitchunk       *v3ptr;  /* MinixV3ビットマップチャンクポインタ */
+	minixv3_bitchunk        v3val;  /* MinixV3ビットマップチャンク */
+	void                 *end_ptr;  /* 末尾アドレス */
+	minix_bitmap_idx    found_num;  /* 見つかったビット */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	/*
+	 * Load bitmap
+	 */
+	rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+	if ( rc != 0 )
+		return rc;
+
+	end_ptr = (void *)pc->pc_data + pgsiz;
+
+	if ( MINIX_SB_IS_V3(sbp) ) {
+
+		for( v3ptr = (minixv3_bitchunk *)pc->pc_data; end_ptr > (void *)v3ptr; ++v3ptr) {
+
+			if ( *v3ptr == ~((minixv3_bitchunk)0) )
+				continue;  /*  空きビットがない  */
+
+			if ( sbp->swap_needed )
+				v3val = __bswap32(*v3ptr);  /* バイトスワップ */
+			else
+				v3val = *v3ptr;
+			
+			/*
+			 * ビットマップチャンク中のビットを探査する
+			 * @note 上記で空きビットの存在を確認しているので必ず見つかる
+			 */
+			for (i = 0; (v3val & (1 << i)) != 0; ++i); 
+
+			/* found_numはビットマップ領域内でのビット位置を表す
+			 */
+			found_num = bit_off + 
+				( ( (uintptr_t)v3ptr - (uintptr_t)pc->pc_data )
+				  / sizeof(minixv3_bitchunk) ) * 
+				( sizeof(minixv3_bitchunk) * BITS_PER_BYTE ) + i;
+
+			/* ビットマップの範囲を越えていないことを確認
+			*/
+			if ( found_num >= nr_bits  )
+				goto put_pcache_out;
+
+			v3val |= 1 << i;  /* ビットを使用中に設定 */
+			if ( sbp->swap_needed )
+				*v3ptr = __bswap32(v3val);  /* バイトスワップ */
+			else
+				*v3ptr = v3val;
+			break;
+		} 
+	} else { /* MinixV1, MinixV2ファイルシステム */
+
+			kassert( MINIX_SB_IS_V2(sbp) || MINIX_SB_IS_V1(sbp) );
+
+			for( v12ptr = (minixv12_bitchunk *)pc->pc_data; end_ptr > (void *)v12ptr;
+			     ++v12ptr) {
+
+				if ( *v12ptr == ~((minixv12_bitchunk)0) )
+					continue;  /*  空きビットがない  */
+				
+				if ( sbp->swap_needed )
+					v12val = __bswap16(*v12ptr);  /* バイトスワップ */
+				else
+					v12val = *v12ptr;
+				
+				/*
+				 * ビットマップチャンク中のビットを探査する
+				 * @note 上記で空きビットの存在を確認しているので必ず見つかる
+				 */
+				for (i = 0; (v12val & (1 << i)) != 0; ++i); 
+			
+				/* found_numはビットマップ領域内でのビット位置を表す
+				 */
+				found_num = bit_off + 
+					( ( (uintptr_t)v12ptr - (uintptr_t)pc->pc_data )
+					  / sizeof(minixv12_bitchunk) ) * 
+					( sizeof(minixv12_bitchunk) * BITS_PER_BYTE ) + i;
+
+				/* ビットマップの範囲を越えていないことを確認
+				 */
+				if ( found_num >= nr_bits  )
+					goto put_pcache_out;
+
+				v12val |= 1 << i;  /* ビットを使用中に設定 */
+				if ( sbp->swap_needed )
+					*v12ptr = __bswap16(v12val);  /* バイトスワップ */
+				else
+					*v12ptr = v12val;
+				break;
+			}
+	}
+
+	*idxp = found_num;  /* 見つかったビットを返却 */
+	goto success;
+	
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+	return -ESRCH;
+
+success:
+	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+
+	return 0;
+}
 
 /** 
     ビットマップ中の空きビットを割り当てる
@@ -218,11 +348,11 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 	int                    rc;  /* Return code */
 	size_t              pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
 	size_t  __unused  nr_bits;  /* ビットマップ中のビット数 */
-	obj_cnt_type     cur_page;  /* 検索対象ページ */
-	obj_cnt_type     nr_pages;  /* 検索ページ数   */
-	obj_cnt_type   first_page;  /* 検索開始ページ */
-	obj_cnt_type     end_page;  /* 最終検索ページ */
-	page_cache            *pc;  /* ページキャッシュ */
+	obj_cnt_type     cur_page;  /* 検索対象ページ   */
+	obj_cnt_type     nr_pages;  /* 検索ページ数     */
+	obj_cnt_type   first_page;  /* 検索開始ページ   */
+	obj_cnt_type     end_page;  /* 最終検索ページ   */
+	minix_bitmap_idx      idx;  /* 割り当てたビット */
 
 	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
@@ -254,42 +384,19 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 	 */
 	for(cur_page = first_page; end_page > cur_page; ++cur_page) {
 
-		/*
-		 * Load bitmap
-		 */
-		rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+		rc = minix_bitmap_alloc_nolock(sbp, cur_page, map_type,
+					       ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz, 
+					       nr_bits, &idx);
+		if ( rc != 0 )
+			goto error_out;
 
-#if 0
-		bitmap = (minix_bitchunk_t *)&bp->data[0];
-
-		/*
-		 * Search a free bit and try to allocate it in the bitmap
-		 */
-		alloced_num = 0;
-		rc = minix_bitmap_alloc_nolock(
-			&bitmap[0], &bitmap[BITMAP_CHUNKS(dblk_siz)],
-			d_blk, dblk_siz, nr_bits, &alloced_num);
-
-		/* Ideally, we should obtain the inode/zone corresponding to
-		 * this index before write this buffer back.
-		 */
-		if ( rc == 0 ) {
-
-			/*
-			 * Write bitmap
-			 */
-			buffer_cache_mark_dirty(bp);
-			buffer_cache_blk_write(bp);  /* Write it immediately */
-			buffer_cache_blk_release(bp);
-
-			*idxp = alloced_num;
-
-			return 0;
-		}
-#endif
-		pagecache_put(pc);  /* ページキャッシュを解放する     */
+		*idxp = idx;
+		break;
 	}
-	
+
+	return 0;
+
+error_out:
 	return -ENOSPC;
 }
 

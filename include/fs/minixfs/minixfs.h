@@ -89,10 +89,9 @@ typedef minixv2_zone minixv3_zone;  /**< MinixV3でのゾーン番号型 */
 /**
    ビットマップチャンク
  */
-typedef uint16_t minixv1_bitchunk;  /**< MinixV1 ビットマップチャンク     */
-typedef uint16_t minixv2_bitchunk;  /**< MinixV2 ビットマップチャンク     */
-typedef uint32_t minixv3_bitchunk;  /**< MinixV3 ビットマップチャンク     */
-typedef uint32_t minix_bitmap_idx;  /**< メモリ中のビットマップインデクス */
+typedef uint16_t minixv12_bitchunk;  /**< MinixV1, MinixV2 ビットマップチャンク */
+typedef uint32_t  minixv3_bitchunk;  /**< MinixV3 ビットマップチャンク          */
+typedef uint32_t  minix_bitmap_idx;  /**< メモリ中のビットマップインデクス      */
 
 /**
    MinixV1/V2 のスーパブロック
@@ -304,11 +303,12 @@ typedef struct _minix3_dentry {
 /**
    ビットマップチャンクのサイズを得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
+   @note 使用しない?
  */      
 #define MINIX_BMAPCHUNK_SIZE(_sbp)				    \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_bitchunk)) :	    \
-	    ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv2_bitchunk)) : \
-		(sizeof(minixv1_bitchunk)) ) )
+	  ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv12_bitchunk)) :  \
+	    (sizeof(minixv12_bitchunk)) ) )
 
 /**
    間接参照ゾーンから参照されるゾーンの数を得る
