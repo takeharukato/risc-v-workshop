@@ -63,7 +63,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	kprintf("inode[%d](i_mode, i_uid, i_size, i_gid, i_nlinks, "
 	    "i_atime, i_mtime, i_mtime)\n"
-	    "=(%lx, %d, %ld, %d, %d, %ld, %ld, %ld)\n", ino,
+	    "=(0%lo, %d, %ld, %d, %d, %ld, %ld, %ld)\n", ino,
 	    MINIX_D_INODE(&din1, i_mode),
 	    MINIX_D_INODE(&din1, i_uid),
 	    MINIX_D_INODE(&din1, i_size),
