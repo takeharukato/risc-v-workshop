@@ -256,7 +256,7 @@ typedef struct _minix3_dentry {
 	( ((_sbp)->s_magic) == MINIX_V3_SUPER_MAGIC )
 
 /**
-   メモリ中のスーパブロックからディスクスーパブロック情報メンバを得る
+   メモリ中のMinixディスクスーパブロックからディスクスーパブロック情報メンバを得る
    @param[in] _sbp メモリ中のスーパブロック情報へのポインタ
    @param[in] _m   メンバ名
  */
@@ -382,8 +382,8 @@ typedef struct _minix3_dentry {
    無効ゾーン番号を得る
    @param[in] _sbp メモリ中のスーパブロック情報
  */
-#define MINIX_NO_ZONE(_sbp)     \
-	( MINIX_SB_IS_V3((_sbp)) ? ((minixv3_zone)0) :	\
+#define MINIX_NO_ZONE(_sbp)				\
+	( MINIX_SB_IS_V3((_sbp) ) ? ((minixv3_zone)0) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? ((minixv2_zone)0) : ((minixv1_zone)0) ) )
 	
 /**
@@ -391,31 +391,68 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */      
 #define MINIX_INODES_PER_BLOCK(_sbp) \
-	( MINIX_BLOCK_SIZE((_sbp)) / MINIX_DINODE_SIZE(_sbp))
+	( MINIX_BLOCK_SIZE((_sbp) ) / MINIX_DINODE_SIZE(_sbp))
 
 /**
-   メモリ中のMinix I-nodeからI-nodeのメンバ変数の値を得る
+   メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を得る
    @param[in] _inodep メモリ中のI-node情報へのポインタ
    @param[in] _m   メンバ名
  */
 #define MINIX_D_INODE(_inodep, _m)					\
-	( MINIX_SB_IS_V1((_inodep)->sbp)				\
+	( MINIX_SB_IS_V1((_inodep)->sbp )				\
 	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->_m)		\
 	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->_m) )
 
 /**
-   メモリ中のMinix I-nodeからI-nodeのメンバ変数の値を更新する
+   メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を更新する
    @param[in] _inodep メモリ中のI-node情報へのポインタ
    @param[in] _m   メンバ名
    @param[in] _v   設定値
  */
-#define MINIX_D_INODE_SET(_inodep, _m, _v) do{				\
-		if (MINIX_SB_IS_V1((_inodep)->sbp))			\
-			(((minixv1_inode *)(&((_inodep)->d_inode)))->_m) =_v; \
-		else							\
-			(((minixv2_inode *)(&((_inodep)->d_inode)))->_m) = _v; \
+#define MINIX_D_INODE_SET(_inodep, _m, _v) do{				         \
+		if ( MINIX_SB_IS_V1((_inodep)->sbp) )			         \
+			(((minixv1_inode *)(&((_inodep)->d_inode)))->_m) = (_v); \
+		else							         \
+			(((minixv2_inode *)(&((_inodep)->d_inode)))->_m) = (_v); \
 	}while(0)
 
+/**
+   メモリ中のMinixディスクI-nodeから最終アクセス時刻を得る
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+ */
+#define MINIX_D_INODE_ATIME(_inodep)					\
+	( MINIX_SB_IS_V1((_inodep)->sbp )				\
+	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->i_mtime)	\
+	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->i_atime) )
+
+/**
+   メモリ中のMinixディスクI-nodeの最終アクセス時刻を更新する
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _v   設定値
+ */
+#define MINIX_D_INODE_ATIME_SET(_inodep, _v) do{			  \
+	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
+		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
+	}while(0)
+
+/**
+   メモリ中のMinixディスクI-nodeから属性更新時刻を得る
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+ */
+#define MINIX_D_INODE_CTIME(_inodep)					\
+	( MINIX_SB_IS_V1((_inodep)->sbp )				\
+	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->i_mtime)	\
+	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->i_ctime) )
+
+/**
+   メモリ中のMinixディスクI-nodeの最終属性更新時刻を更新する
+   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _v   設定値
+ */
+#define MINIX_D_INODE_CTIME_SET(_inodep, _v) do{			  \
+	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
+		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
+	}while(0)
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 

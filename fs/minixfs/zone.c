@@ -18,7 +18,7 @@
 /**
    インデクス種別
  */
-#define MINIX_ZONE_INDEX_NONE    (0)  /**< 未定義  */
+#define MINIX_ZONE_INDEX_NONE    (-1)  /**< 未定義  */
 #define MINIX_ZONE_ADDR_NONE     (0)
 #define MINIX_ZONE_ADDR_DIRECT   (1)
 #define MINIX_ZONE_ADDR_SINGLE   (2)
@@ -132,7 +132,7 @@ minix_calc_indexes(minix_super_block *sbp, off_t position,
 	kassert( MINIX_NR_TZONES(sbp) > zindex  );
 	kassert( ( first_ind_index == MINIX_ZONE_INDEX_NONE ) ||
 	    ( MINIX_INDIRECTS(sbp) > first_ind_index ) );
-	kassert(  ( first_ind_index == MINIX_ZONE_INDEX_NONE ) || 
+	kassert(  ( second_ind_index == MINIX_ZONE_INDEX_NONE ) || 
 	    ( MINIX_INDIRECTS(sbp) > second_ind_index ) );
 
 	*typep = index_type;

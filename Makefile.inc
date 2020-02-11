@@ -4,7 +4,7 @@
 
 ARCHIVE_NAME=risc-v-workshop
 FSIMG_FILE=fsimg.img
-FSSIZE=4
+FSSIZE=8
 
 TARGET_CPUS=riscv64 uland
 HAL_DIRS=${TARGET_CPUS}
