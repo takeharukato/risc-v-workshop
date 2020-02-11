@@ -22,14 +22,20 @@ int minix_bitmap_alloc(minix_super_block *_sbp, int _map_type, minix_bitmap_idx 
 int minix_bitmap_free(minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);
 int minix_rw_disk_inode(minix_super_block *_sbp, minix_ino _i_num, int _rw_flag,
     minix_inode *_dip);
+int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
+    int *_idx1stp, int *_idx2ndp);
 
 static void
 minixfs1(struct _ktest_stats *sp, void __unused *arg){
-	int rc;
+	int               rc;
 	minix_super_block sb;
 	minix_bitmap_idx idx;
 	minix_inode     din1;
-
+	int             type;
+	int             didx;
+	int             idx1;
+	int             idx2;
+	
 	rc = minix_read_super(FS_FSIMG_DEVID, &sb);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -73,6 +79,69 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 	if ( MINIX_D_INODE(&din1, i_uid) == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * Zoneインデクス計算
+	 */
+	/* 直接参照ゾーン最小値 */
+	rc = minix_calc_indexes(&sb, 0 * MINIX_ZONE_SIZE(&sb), 
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 直接参照ゾーン最大値 */
+	rc = minix_calc_indexes(&sb, ( MINIX_NR_DZONES(&sb) - 1 ) * MINIX_ZONE_SIZE(&sb),
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 単間接参照ゾーン最小値 */
+	rc = minix_calc_indexes(&sb, MINIX_NR_DZONES(&sb) * MINIX_ZONE_SIZE(&sb),
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 単間接参照ゾーン最大値 */
+	rc = minix_calc_indexes(&sb,( MINIX_NR_DZONES(&sb) +
+		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) )
+	    * MINIX_ZONE_SIZE(&sb) - 1,
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 2重間接参照ゾーン最小値 */
+	rc = minix_calc_indexes(&sb,( MINIX_NR_DZONES(&sb) +
+		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) )
+	    * MINIX_ZONE_SIZE(&sb),
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 2重間接参照ゾーン最大値 */
+	rc = minix_calc_indexes(&sb, ( MINIX_NR_DZONES(&sb) +
+		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) + 
+		( MINIX_NR_DIND_ZONES(&sb) * MINIX_INDIRECTS(&sb) * MINIX_INDIRECTS(&sb) ) )
+	    * MINIX_ZONE_SIZE(&sb) - 1,
+	    &type, &didx, &idx1, &idx2);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* レンジ外 */
+	rc = minix_calc_indexes(&sb, ( MINIX_NR_DZONES(&sb) +
+		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) + 
+		( MINIX_NR_DIND_ZONES(&sb) * MINIX_INDIRECTS(&sb) * MINIX_INDIRECTS(&sb) ) )
+	    * MINIX_ZONE_SIZE(&sb), &type, &didx, &idx1, &idx2);
+	if ( rc == -E2BIG )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );

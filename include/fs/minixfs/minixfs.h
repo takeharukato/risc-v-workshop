@@ -330,11 +330,18 @@ typedef struct _minix3_dentry {
 	    (sizeof(minixv12_bitchunk)) ) )
 
 /**
+   ゾーンのサイズを得る
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */      
+#define MINIX_ZONE_SIZE(_sbp) \
+	(MINIX_BLOCK_SIZE(_sbp) << MINIX_D_SUPER_BLOCK(_sbp, s_log_zone_size))
+
+/**
    間接参照ゾーンから参照されるゾーンの数を得る
    @param[in] _sbp メモリ中のスーパブロック情報
  */      
 #define MINIX_INDIRECTS(_sbp)	\
-	( MINIX_BLOCK_SIZE((_sbp)) / MINIX_ZONE_NUM_SIZE((_sbp)) )
+	( MINIX_ZONE_SIZE((_sbp)) / MINIX_ZONE_NUM_SIZE((_sbp)) )
 
 /**
    間接参照ゾーンの最初のインデクスを得る
@@ -354,13 +361,6 @@ typedef struct _minix3_dentry {
 	    ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_DBL_INDIRECT_ZONE_IDX) : \
 		(MINIX_V1_DBL_INDIRECT_ZONE_IDX) ) )
 	
-/**
-   ゾーンバイト長を算出する
-   @param[in] _sbp メモリ中のスーパブロック情報
- */      
-#define MINIX_ZONE_SIZE(_sbp)						\
-	( (MINIX_BLOCK_SIZE((_sbp)))  << (MINIX_D_SUPER_BLOCK(_sbp, s_log_zone_size)))
-
 /**
    ゾーン番号型のサイズを得る(単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報

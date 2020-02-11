@@ -5,7 +5,7 @@
 top=../..
 include ${top}/Makefile.inc
 
-objects= super.o inode.o
+objects= super.o inode.o zone.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
