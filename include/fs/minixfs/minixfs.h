@@ -391,7 +391,7 @@ typedef struct _minix3_dentry {
    @param[in] _sbp メモリ中のスーパブロック情報
  */      
 #define MINIX_INODES_PER_BLOCK(_sbp) \
-	( MINIX_BLOCK_SIZE((_sbp) ) / MINIX_DINODE_SIZE(_sbp))
+	( MINIX_BLOCK_SIZE((_sbp)) / MINIX_DINODE_SIZE(_sbp))
 
 /**
    メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を得る
@@ -453,6 +453,15 @@ typedef struct _minix3_dentry {
 	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
 		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
 	}while(0)
+
+int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
+int minix_write_super(struct _minix_super_block *_sbp);
+int minix_bitmap_alloc(struct _minix_super_block *_sbp, int _map_type, 
+    minix_bitmap_idx *_idxp);
+int minix_bitmap_free(struct _minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);
+int minix_rw_disk_inode(struct _minix_super_block *_sbp, minix_ino _i_num, int _rw_flag,
+    struct _minix_inode *_dip);
+
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 

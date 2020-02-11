@@ -16,12 +16,6 @@
 
 static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
 
-int minix_read_super(dev_id _dev, minix_super_block *_sbp);
-int minix_write_super(minix_super_block *_sbp);
-int minix_bitmap_alloc(minix_super_block *_sbp, int _map_type, minix_bitmap_idx *_idxp);
-int minix_bitmap_free(minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);
-int minix_rw_disk_inode(minix_super_block *_sbp, minix_ino _i_num, int _rw_flag,
-    minix_inode *_dip);
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
 

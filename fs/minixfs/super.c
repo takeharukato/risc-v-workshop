@@ -385,7 +385,7 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 	for(cur_page = first_page; end_page > cur_page; ++cur_page) {
 
 		rc = minix_bitmap_alloc_nolock(sbp, cur_page, map_type,
-					       ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz, 
+		    ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz, 
 					       nr_bits, &idx);
 		if ( rc != 0 )
 			goto error_out;
@@ -508,7 +508,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 			v12ptr[bit_idx] = v12val;
 	}
 	
-	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
 
 	return 0;
 }

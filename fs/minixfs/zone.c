@@ -25,6 +25,104 @@
 #define MINIX_ZONE_ADDR_DOUBLE   (3)
 
 /**
+   ゾーンを割り当てる
+   @param[in]  sbp    Minixスーパブロック情報
+   @param[out] zp     ゾーン番号返却域
+   @retval     0      正常終了
+   @retval    -ENOSPC 空きゾーンがない
+ */
+int 
+minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
+	int                        rc;
+	minix_bitmap_idx bitmap_index;
+
+	/* ゾーンビットマップから空きゾーンを割り当てる */
+	rc = minix_bitmap_alloc(sbp, ZONE_MAP, &bitmap_index);
+	if ( rc != 0 ) {
+
+		kprintf(KERN_ERR "minix_alloc_zone: No space on device %lx\n", sbp->dev);
+		return -ENOSPC;
+	}
+
+	/* 割り当てたゾーン番号を返却する */
+	/* @note Minixのファイルシステムのゾーン番号は1から始まるのに対し, 
+	 * ビットマップのビットは0から割り当てられる。
+	 * 従ってビット番号からゾーン番号への変換は
+	 * ゾーン番号 = ビット番号 + sp->s_firstdatazone 
+	 * となる. オリジナルのMinixの場合, Alloc_bit()が1からのビットを返すので
+	 * 下記と異なる変換式を用いていることに注意。
+	 * 参考: Minixのalloc_zoneのコメント
+	 * Note that the routine alloc_bit() returns 1 for the lowest possible
+	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
+	 * between the bit number, 'b', used by alloc_bit() and the zone number, 'z',
+	 * stored in the inode, use the formula:
+	 *     z = b + sp->s_firstdatazone - 1
+	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
+	 */
+
+	*zp = MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + (minix_zone)bitmap_index;
+	return 0;
+}
+/**
+   ゾーンをクリアする
+   @param[in] sbp    Minixスーパブロック情報
+   @param[in] znum   ゾーン番号
+   @retval    0      正常終了
+   @retval   -EIO    ページキャッシュアクセス失敗
+ */
+int
+minix_clear_zone(minix_super_block *sbp, minix_zone znum){
+	int                      rc;
+	page_cache              *pc; /* ページキャッシュ */
+	size_t                pgsiz; /* ページキャッシュサイズ   */
+	obj_cnt_type  blks_per_page; /* ページあたりのブロック数 */
+	obj_cnt_type     first_page; /* 操作開始ページ   */
+	obj_cnt_type       end_page; /* 操作終了ページ   */
+	obj_cnt_type       cur_page; /* 操作対象ページ   */
+	obj_cnt_type      first_blk; /* 操作開始ブロック */
+	obj_cnt_type        end_blk; /* 操作終了ブロック */
+	obj_cnt_type  __unused  cur_blk; /* 操作対象ブロック */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	/* 開始ブロック */
+	first_blk = znum << MINIX_D_SUPER_BLOCK(sbp, s_log_zone_size);
+	/* 終了ブロック */
+	end_blk = first_blk +  (1 << MINIX_D_SUPER_BLOCK(sbp, s_log_zone_size));
+
+	/* ページ当たりのMinixブロック数を算出  */
+	blks_per_page = pgsiz / MINIX_BLOCK_SIZE(sbp);
+	/* クリア対象ゾーンの先頭ページ番号を算出  */
+	first_page = truncate_align(first_blk, blks_per_page);
+	/* クリア対象ゾーンの最終ページ番号を算出  */
+	end_page = roundup_align(end_blk, blks_per_page);
+	
+	/*
+	 * ゾーン内のブロックを順次クリアする
+	 */
+	for(cur_page = first_page, cur_blk = first_blk;
+	    end_page > cur_page; ++cur_page) {
+
+		/*  ページキャッシュを読み込み  */
+		rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+		if ( rc != 0 ) {
+
+			rc = -EIO;
+			goto error_out;
+		}
+
+		/*  TODO: ブロックをクリア */
+		pagecache_put(pc);  /* ページキャッシュを解放する  */
+	}
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
    インデクス値の算出
    @param[in] sbp Minixスーパブロック情報
    @param[in] position ファイル内でのオフセットアドレス(単位:バイト)
