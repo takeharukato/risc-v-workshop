@@ -68,53 +68,61 @@ minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
    ゾーンをクリアする
    @param[in] sbp    Minixスーパブロック情報
    @param[in] znum   ゾーン番号
+   @param[in] offset クリア開始オフセット (単位: バイト)
+   @param[in] size   クリアサイズ (単位: バイト)
    @retval    0      正常終了
    @retval   -EIO    ページキャッシュアクセス失敗
  */
 int
-minix_clear_zone(minix_super_block *sbp, minix_zone znum){
-	int                      rc;
+minix_clear_zone(minix_super_block *sbp, minix_zone znum, off_t offset, off_t size){
+	int                      rc; /* 返り値 */
 	page_cache              *pc; /* ページキャッシュ */
 	size_t                pgsiz; /* ページキャッシュサイズ   */
-	obj_cnt_type  blks_per_page; /* ページあたりのブロック数 */
-	obj_cnt_type     first_page; /* 操作開始ページ   */
-	obj_cnt_type       end_page; /* 操作終了ページ   */
-	obj_cnt_type       cur_page; /* 操作対象ページ   */
-	obj_cnt_type      first_blk; /* 操作開始ブロック */
-	obj_cnt_type        end_blk; /* 操作終了ブロック */
-	obj_cnt_type  __unused  cur_blk; /* 操作対象ブロック */
+	obj_cnt_type     first_page; /* 操作開始ページアドレス(単位:バイト)   */
+	obj_cnt_type       end_page; /* 操作終了ページアドレス(単位:バイト)   */
+	obj_cnt_type       cur_page; /* 操作対象ページアドレス(単位:バイト)   */
+	off_t               clr_pos; /* クリア開始アドレス(単位:バイト)   */
+	off_t               cur_pos; /* クリア操作アドレス(単位:バイト)   */
+	off_t               remains; /* 残クリアサイズ (単位:バイト) */
+	off_t               clr_off; /* ページ内オフセット (単位:バイト) */
+	off_t               clr_len; /* ページ内クリアサイズ (単位:バイト) */
 
 	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
-	/* 開始ブロック */
-	first_blk = znum << MINIX_D_SUPER_BLOCK(sbp, s_log_zone_size);
-	/* 終了ブロック */
-	end_blk = first_blk +  (1 << MINIX_D_SUPER_BLOCK(sbp, s_log_zone_size));
+	/* デバイス内でのクリア開始アドレス */
+	clr_pos = znum * MINIX_ZONE_SIZE(sbp) + offset;
 
-	/* ページ当たりのMinixブロック数を算出  */
-	blks_per_page = pgsiz / MINIX_BLOCK_SIZE(sbp);
-	/* クリア対象ゾーンの先頭ページ番号を算出  */
-	first_page = truncate_align(first_blk, blks_per_page);
-	/* クリア対象ゾーンの最終ページ番号を算出  */
-	end_page = roundup_align(end_blk, blks_per_page);
+	/* クリア対象ゾーンの先頭ページアドレスを算出  */
+	first_page = truncate_align(clr_pos, pgsiz);
+	/* クリア対象ゾーンの最終ページアドレスを算出  */
+	end_page = roundup_align(clr_pos + size, pgsiz);
 	
 	/*
-	 * ゾーン内のブロックを順次クリアする
+	 * ゾーン内のページを順次クリアする
 	 */
-	for(cur_page = first_page, cur_blk = first_blk;
-	    end_page > cur_page; ++cur_page) {
+	cur_pos = clr_pos;
+	remains = size;
+	for(cur_page = first_page;
+	    ( end_page > cur_page ) && ( remains > 0 ); cur_page += pgsiz) {
 
 		/*  ページキャッシュを読み込み  */
-		rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
+		rc = pagecache_get(sbp->dev, cur_page, &pc);
 		if ( rc != 0 ) {
 
 			rc = -EIO;
 			goto error_out;
 		}
 
-		/*  TODO: ブロックをクリア */
+		/*  ページ内クリア */
+		clr_off = cur_pos % pgsiz;        /* ページ内オフセット */
+		clr_len = MIN(remains, pgsiz - clr_off);  /* クリア長   */
+		memset(pc->pc_data+clr_off, 0, clr_len);  /* クリア実行 */
+
 		pagecache_put(pc);  /* ページキャッシュを解放する  */
+		
+		cur_pos += clr_len;  /* 書き込み先更新 */
+		remains -= clr_len;  /* 残量更新 */
 	}
 
 	return 0;
