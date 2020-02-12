@@ -170,6 +170,77 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
 }
 
 /**
+   間接参照ブロックを更新する
+   @param[in]  sbp            Minixスーパブロック情報
+   @param[in]  ind_blk_znum   間接参照ブロックのゾーン番号
+   @param[in]  ind_blk_ind    new_zoneの間接参照ブロック(ゾーン配列)インデクス値
+   @param[in]  new_zone       割当て対象データゾーン(または2段目の間接参照ブロック)
+   @retval     0      正常終了
+   @retval    -EINVAL 不正なスーパブロック
+ */
+int
+minix_wr_indir(minix_super_block *sbp, minix_zone ind_blk_znum, 
+    int ind_blk_ind, minix_zone new_zone){
+	int                      rc; /* 返り値 */
+	page_cache              *pc; /* ページキャッシュ */
+	size_t                pgsiz; /* ページキャッシュサイズ   */
+	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)   */
+	off_t               mod_pos; /* クリア開始アドレス(単位:バイト)   */
+	off_t               mod_off; /* ページ内オフセット (単位:バイト) */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	/* インデクスの妥当性確認 */
+	kassert( MINIX_ZONE_SIZE(sbp) > ( ind_blk_ind * MINIX_ZONE_NUM_SIZE(sbp) ) );
+	
+	/* 更新対象アドレス */
+	mod_pos = ind_blk_znum * MINIX_ZONE_SIZE(sbp) + ind_blk_ind * MINIX_ZONE_NUM_SIZE(sbp);
+	
+	/* 更新対象の先頭ページアドレスを算出  */
+	mod_page = truncate_align(mod_pos, pgsiz);
+	
+	/*  ページキャッシュを読み込み  */
+	rc = pagecache_get(sbp->dev, mod_page, &pc);
+	if ( rc != 0 ) {
+		
+		rc = -EIO;
+		goto error_out;
+	}
+	
+	/* ページ内クリア */
+	mod_off = mod_pos % pgsiz;  /* ページ内オフセット */
+
+	if ( MINIX_SB_IS_V2(sbp) ||  MINIX_SB_IS_V3(sbp) ) {
+
+		if ( sbp->swap_needed )
+			*(minixv2_zone *)(pc->pc_data + mod_off) = __bswap32(new_zone);
+		else
+			*(minixv2_zone *)(pc->pc_data + mod_off) = new_zone;
+	} else if ( MINIX_SB_IS_V1(sbp) ) {
+
+		if ( sbp->swap_needed )
+			*(minixv1_zone *)(pc->pc_data + mod_off) = __bswap16(new_zone);
+		else
+			*(minixv1_zone *)(pc->pc_data + mod_off) = new_zone;
+	} else {
+
+		rc = -EINVAL;
+		goto put_pcache_out;
+	}
+
+	pagecache_put(pc);  /* ページキャッシュを解放する  */
+		
+	return 0;
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する  */
+
+error_out:
+	return rc;
+}
+
+/**
    インデクス値の算出
    @param[in] sbp Minixスーパブロック情報
    @param[in] position ファイル内でのオフセットアドレス(単位:バイト)
