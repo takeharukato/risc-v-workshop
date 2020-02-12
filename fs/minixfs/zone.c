@@ -178,16 +178,17 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
    @param[out] dzonep       参照先データゾーン(または2段目の間接参照ブロック)番号返却領域
    @retval     0      正常終了
    @retval    -EINVAL 不正なスーパブロックを指定した
+   @retval    -EIO    ページキャッシュの読み取りに失敗した
  */
 int
 minix_rd_indir(minix_super_block *sbp, minix_zone ind_blk_znum, 
     int ind_blk_ind, minix_zone *dzonep){
 	int                      rc; /* 返り値 */
-	page_cache              *pc; /* ページキャッシュ */
-	size_t                pgsiz; /* ページキャッシュサイズ   */
+	page_cache              *pc; /* ページキャッシュ                      */
+	size_t                pgsiz; /* ページキャッシュサイズ                */
 	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)   */
-	off_t               mod_pos; /* クリア開始アドレス(単位:バイト)   */
-	off_t               mod_off; /* ページ内オフセット (単位:バイト) */
+	off_t               mod_pos; /* クリア開始アドレス(単位:バイト)       */
+	off_t               mod_off; /* ページ内オフセット (単位:バイト)      */
 	minix_zone         ref_zone; /* 参照先ゾーン */
 
 	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
@@ -484,12 +485,109 @@ error_out:
 	return rc;
 }
 
+/**
+   ファイル中の指定されたオフセット位置に対応したゾーン番号を取得する
+   @param[in]  dip      MinixディスクI-node情報
+   @param[in]  position ファイル内でのオフセットアドレス(単位:バイト)
+   @param[out] zonep    ゾーン番号返却域
+   @retval     0        正常終了
+   @retval    -ENOENT   ゾーンが割り当てられていない
+   @retval    -E2BIG    ファイルサイズの上限を超えている
+   @retval    -EIO    ページキャッシュの読み取りに失敗した
+ */
+int
+minix_read_mapped_block(minix_inode *dip, off_t position, minix_zone *zonep){
+	int                    rc;  /* 返り値 */
+	minix_zone     found_zone;  /* 見つかったゾーン番号                      */
+	int            index_type;  /* ゾーン参照種別                            */
+	int                zindex;  /* I-node中のi_zone配列のインデクス          */
+	int       first_ind_index;  /* 間接参照ブロックのゾーン配列インデクス    */
+	int      second_ind_index;  /* 2重間接参照ブロックのゾーン配列インデクス */
+	minix_zone cur_1st_indblk;  /* 1段目の間接参照ブロックゾーン番号         */
+	minix_zone cur_2nd_indblk;  /* 2段目の間接参照ブロックゾーン番号         */
+
+	/*
+	 *  ゾーン番号からアドレッシング種別を分類し, 直接参照ブロック, 
+	 *  単間接ブロックのインデクス
+	 *  1段目の2重間接ブロックのインデクス
+	 *  2段目の2重間接ブロックのインデクス
+	 *  を算出する
+	 */
+	rc = minix_calc_indexes(dip->sbp, position, &index_type, 
+				&zindex, &first_ind_index, &second_ind_index);
+	if ( rc != 0 )
+		goto error_out;  /*  E2BIGを返却する  */
+	
+	found_zone = MINIX_D_INODE(dip, i_zone[zindex]);
+	if ( found_zone == MINIX_NO_ZONE(dip->sbp) ) {
+		
+		rc = -ENOENT;  
+		goto error_out; /*  ゾーンが未割り当て  */  
+	}
+
+	/*
+	 * 直接参照ブロック
+	 */
+	if ( index_type == MINIX_ZONE_ADDR_DIRECT ) 
+		goto success;
+
+	/*
+	 * 単間接ブロック/2重間接ブロック
+	 */
+	cur_1st_indblk = found_zone;
+
+	/*  間接参照ブロックからデータブロックまたは2段目の間接参照ブロックを取得  */
+	rc = minix_rd_indir(dip->sbp, cur_1st_indblk, first_ind_index, &found_zone);
+	kassert( rc != -EINVAL );  /* 不正スーパブロック情報が引き渡されることはない */
+	if ( rc != 0 )
+		goto error_out;  /* ページキャッシュ読み取りに失敗した */
+
+	if ( found_zone == MINIX_NO_ZONE(dip->sbp) ) {
+		
+		rc = -ENOENT;  /*  未割り当て  */
+		goto error_out;
+	}
+
+	/*
+	 * 単間接ブロック
+	 */
+	if ( index_type == MINIX_ZONE_ADDR_SINGLE ) 
+		goto success;
+
+	/*
+	 * 2重間接ブロックの場合
+	 */
+	cur_2nd_indblk = found_zone;
+
+	/*  間接参照ブロックからデータブロックを取得  */
+	rc = minix_rd_indir(dip->sbp, cur_2nd_indblk, second_ind_index, &found_zone);
+	kassert( rc != -EINVAL );  /* 不正スーパブロック情報が引き渡されることはない */
+	if ( rc != 0 )
+		goto error_out;  /* ページキャッシュ読み取りに失敗した */
+
+	if ( found_zone  == MINIX_NO_ZONE(dip->sbp) ) {
+		
+		rc = -ENOENT;  /*  未割り当て  */
+		goto error_out;
+	}
+
+success:
+	if ( zonep != NULL )
+		*zonep = found_zone;  /* ゾーン番号を返却 */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
 /** 
     ファイル中の指定されたオフセット位置にゾーンを割り当てる
     @param[in] dip      MinixディスクI-node情報
     @param[in] position ファイル内でのオフセットアドレス(単位:バイト)
     @param[in] new_zone 割り当てるゾーン
     @retval     0       正常終了
+    @retval    -E2BIG   ファイルサイズの上限を超えている
     @retval    -ENOSPC  空きゾーンがない
     @retval    -EINVAL  不正なスーパブロックを指定した
     @retval    -EIO     ページキャッシュ操作に失敗した
@@ -497,17 +595,15 @@ error_out:
  */
 int
 minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
-	int                    rc;  /* Return code */
-	int            index_type;  /* indexing way to point a data zone */
-	int                zindex;  /* index for direct zone in i_zone array in an inode */
-	int       first_ind_index;  /* 1st indirect index for direct zone in i_zone array */
-	int      second_ind_index;  /* 2nd indirect index for direct zone in i_zone array */
-	minix_zone new_1st_indblk;  /* newly allocated zone for 1st indirect block */
-	minix_zone new_2nd_indblk;  /* newly allocated zone for 2nd indirect block */
-	minix_zone   cur_data_blk;  /* Already allocated zone for data block 
-				     *  ( in double indirect block )  
-				     */
-	minix_zone cur_2nd_indblk;  /* Already allocated zone for 2nd indirect block */
+	int                    rc;  /* 返り値                                            */
+	int            index_type;  /* ゾーン参照種別                                    */
+	int                zindex;  /* I-node中のi_zone配列のインデクス                  */
+	int       first_ind_index;  /* 間接参照ブロックのゾーン配列インデクス            */
+	int      second_ind_index;  /* 2重間接参照ブロックのゾーン配列インデクス         */
+	minix_zone new_1st_indblk;  /* 新規に割り当てた1段目の間接参照ブロックゾーン番号 */
+	minix_zone new_2nd_indblk;  /* 新規に割り当てた2段目の間接参照ブロックゾーン番号 */
+	minix_zone   cur_data_blk;  /* 2重間接参照ブロックに割り当て済みのデータブロック */
+	minix_zone cur_2nd_indblk;  /* 割り当て済みの2段目の間接参照ブロックゾーン番号   */
 
 	/*
 	 *  ゾーン番号からアドレッシング種別を分類し, 直接参照ブロック, 
@@ -595,8 +691,12 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 	} else {  /* 単間接参照ブロック, 2重間接ブロックの1段目のブロックが割当済み  */
 
 		/* 単間接参照ブロック中のデータブロック/2段目のブロックへの参照を取得 */
-		minix_rd_indir(dip->sbp, MINIX_D_INODE(dip, i_zone[zindex]), 
+		rc = minix_rd_indir(dip->sbp, MINIX_D_INODE(dip, i_zone[zindex]), 
 		    first_ind_index, &cur_2nd_indblk);
+		kassert( rc != -EINVAL ); /* 不正スーパブロック情報が引き渡されることはない */
+		if ( rc != 0 )
+			goto error_out;  /* ページキャッシュ読み取りに失敗した */
+
 		if ( index_type == MINIX_ZONE_ADDR_SINGLE ) {
 
 			/*  データブロックへの参照を記録 */
@@ -612,8 +712,12 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 				 */
 
 				/* 2段目のブロック中のデータブロックへの参照を取得 */
-				minix_rd_indir(dip->sbp, cur_2nd_indblk, 
+				rc = minix_rd_indir(dip->sbp, cur_2nd_indblk, 
 				    second_ind_index, &cur_data_blk);
+				/* 不正スーパブロック情報が引き渡されることはない */
+				kassert( rc != -EINVAL );
+				if ( rc != 0 )
+					goto error_out; /* ページキャッシュ読み取り失敗 */
 
 				/*  データブロックへの参照を記録 */
 				kassert( cur_data_blk == MINIX_NO_ZONE(dip->sbp) );
