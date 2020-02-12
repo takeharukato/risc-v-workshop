@@ -48,12 +48,25 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
+	kprintf("Allocated I-node: %d\n", idx);
 	rc = minix_bitmap_free(&sb, INODE_MAP, idx);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	rc = minix_bitmap_alloc(&sb, ZONE_MAP, &idx);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	kprintf("Allocated Zone: %d\n", idx);
+	rc = minix_bitmap_free(&sb, ZONE_MAP, idx);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 
 	ino = 1;
 	rc = minix_rw_disk_inode(&sb, ino, MINIX_INODE_READING, &din1);

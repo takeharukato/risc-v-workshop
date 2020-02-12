@@ -8,7 +8,7 @@ mkdir -p rfs
 アンマウント
 fusermount -u /path/to/mountpoint/
 
-fusermount -u `pwd`/fsimg.img `pwd`/rfs
+fusermount -u `pwd`/rfs
 
 ファイルシステムイメージの作成
 mkfs.mfs /path/to/image_file
