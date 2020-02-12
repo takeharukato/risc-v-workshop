@@ -25,46 +25,6 @@
 #define MINIX_ZONE_ADDR_DOUBLE   (3)
 
 /**
-   ゾーンを割り当てる
-   @param[in]  sbp    Minixスーパブロック情報
-   @param[out] zp     ゾーン番号返却域
-   @retval     0      正常終了
-   @retval    -ENOSPC 空きゾーンがない
- */
-int 
-minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
-	int                        rc;
-	minix_bitmap_idx bitmap_index;
-
-	/* ゾーンビットマップから空きゾーンを割り当てる */
-	rc = minix_bitmap_alloc(sbp, ZONE_MAP, &bitmap_index);
-	if ( rc != 0 ) {
-
-		kprintf(KERN_ERR "minix_alloc_zone: No space on device %lx\n", sbp->dev);
-		return -ENOSPC;
-	}
-
-	/* 割り当てたゾーン番号を返却する */
-	/* @note Minixのファイルシステムのゾーン番号は1から始まるのに対し, 
-	 * ビットマップのビットは0から割り当てられるので, Minixファイルシステムの
-	 * フォーマット(mkfs)時点で, 0番のI-node/ゾーンビットマップは予約されいている
-	 * それに対して, I-nodeテーブルやゾーンは1番のディスクI-node情報や
-	 * ゾーンから開始される。従って, ビットマップのビット番号からゾーン番号の変換式は,
-	 * ゾーン番号 = ビット番号 + sp->s_firstdatazone - 1
-	 * となる. 
-	 * 参考: Minixのalloc_zoneのコメント
-	 * Note that the routine alloc_bit() returns 1 for the lowest possible
-	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
-	 * between the bit number, 'b', used by alloc_bit() and the zone number, 'z',
-	 * stored in the inode, use the formula:
-	 *     z = b + sp->s_firstdatazone - 1
-	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
-	 */
-
-	*zp = MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + (minix_zone)bitmap_index - 1;
-	return 0;
-}
-/**
    ゾーンをクリアする
    @param[in] sbp    Minixスーパブロック情報
    @param[in] znum   ゾーン番号
@@ -129,6 +89,84 @@ minix_clear_zone(minix_super_block *sbp, minix_zone znum, off_t offset, off_t si
 
 error_out:
 	return rc;
+}
+
+/**
+   ゾーンを割り当てる
+   @param[in]  sbp    Minixスーパブロック情報
+   @param[out] zp     ゾーン番号返却域
+   @retval     0      正常終了
+   @retval    -ENOSPC 空きゾーンがない
+ */
+int 
+minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
+	int                        rc;
+	minix_bitmap_idx bitmap_index;
+	minix_zone               znum;
+
+	/* ゾーンビットマップから空きゾーンを割り当てる */
+	rc = minix_bitmap_alloc(sbp, ZONE_MAP, &bitmap_index);
+	if ( rc != 0 ) {
+
+		kprintf(KERN_ERR "minix_alloc_zone: No space on device %lx\n", sbp->dev);
+		return -ENOSPC;
+	}
+
+	/* 割り当てたゾーン番号を返却する */
+	/* @note Minixのファイルシステムのゾーン番号は1から始まるのに対し, 
+	 * ビットマップのビットは0から割り当てられるので, Minixファイルシステムの
+	 * フォーマット(mkfs)時点で, 0番のI-node/ゾーンビットマップは予約されいている
+	 * それに対して, I-nodeテーブルやゾーンは1番のディスクI-node情報や
+	 * ゾーンから開始される。従って, ビットマップのビット番号からゾーン番号の変換式は,
+	 * ゾーン番号 = ビット番号 + sbp->s_firstdatazone - 1
+	 * となる. 
+	 * 参考: Minixのalloc_zoneのコメント
+	 * Note that the routine alloc_bit() returns 1 for the lowest possible
+	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
+	 * between the bit number, 'b', used by alloc_bit() and the zone number, 'z',
+	 * stored in the inode, use the formula:
+	 *     z = b + sp->s_firstdatazone - 1
+	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
+	 */
+	znum = MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + (minix_zone)bitmap_index - 1;
+
+	*zp = znum;
+
+	return 0;
+}
+
+/**
+   ゾーンを解放する
+   @param[in]  sbp    Minixスーパブロック情報
+   @param[in]  znum   ゾーン番号
+   @retval     0      正常終了
+   @retval    -ENOSPC 空きゾーンがない
+ */
+void
+minix_free_zone(minix_super_block *sbp, minix_zone znum){
+	minix_bitmap_idx  bitmap_index;
+
+	/* ゾーン番号の健全性を確認 */
+	if ( ( MINIX_D_SUPER_BLOCK(sbp, s_firstdatazone) > znum ) ||
+	     ( znum >= MINIX_SB_ZONES_NR(sbp) ) )
+		return;
+
+	/* ゾーン内のブロックをクリアする
+	 */
+	minix_clear_zone(sbp, znum, 0, MINIX_ZONE_SIZE(sbp));
+
+	/*
+	 * ビットマップから割り当てを開放する
+	 * ビットマップのビット番号からゾーン番号の変換式は,
+	 * ゾーン番号 = ビット番号 + sbp->s_firstdatazone - 1
+	 * であるので
+	 * ビット番号 = ゾーン番号 -  sbp->s_firstdatazone + 1
+	 * となる
+	 */
+	bitmap_index = (minix_bitmap_idx)(znum - MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1);
+	minix_bitmap_free(sbp, ZONE_MAP, bitmap_index);  /* ゾーンの割り当てを解放する */
+
+	return;
 }
 
 /**
