@@ -168,6 +168,7 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
 
 	return;
 }
+
 /**
    間接参照ブロックを解析し間接参照ブロックから参照されているゾーンのゾーン番号を得る
    @param[in]  sbp            Minixスーパブロック情報
@@ -175,7 +176,7 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
    @param[in]  ind_blk_ind    new_zoneの間接参照ブロック(ゾーン配列)インデクス値
    @param[out] dzonep       参照先データゾーン(または2段目の間接参照ブロック)番号返却領域
    @retval     0      正常終了
-   @retval    -EINVAL 不正なスーパブロック
+   @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
 minix_rd_indir(minix_super_block *sbp, minix_zone ind_blk_znum, 
@@ -242,6 +243,7 @@ put_pcache_out:
 error_out:
 	return rc;
 }
+
 /**
    間接参照ブロックを更新する
    @param[in]  sbp            Minixスーパブロック情報
@@ -249,7 +251,8 @@ error_out:
    @param[in]  ind_blk_ind    new_zoneの間接参照ブロック(ゾーン配列)インデクス値
    @param[in]  new_zone       割当て対象データゾーン(または2段目の間接参照ブロック)
    @retval     0      正常終了
-   @retval    -EINVAL 不正なスーパブロック
+   @retval    -EINVAL  不正なスーパブロックを指定した
+   @retval    -EIO    ページキャッシュ操作に失敗した
  */
 int
 minix_wr_indir(minix_super_block *sbp, minix_zone ind_blk_znum, 
@@ -310,6 +313,49 @@ put_pcache_out:
 	pagecache_put(pc);  /* ページキャッシュを解放する  */
 
 error_out:
+	return rc;
+}
+
+/**
+   間接参照ブロックを割当て指定されたゾーンへの参照をセットする
+   @param[in] sbp      Minixスーパブロック情報
+   @param[in] index    間接参照ブロックのゾーン配列インデクス
+   @param[in] new_zone 間接参照ブロックから参照するゾーン
+   @param[in] newblkp  割り当てた間接参照ブロックのゾーン番号返却域
+   @retval     0       正常終了
+   @retval    -ENOSPC  空きゾーンがない
+   @retval    -EINVAL  不正なスーパブロックを指定した
+   @retval    -EIO     ページキャッシュ操作に失敗した
+ */
+int
+minix_alloc_indirect_block(minix_super_block *sbp, int index, minix_zone new_zone, 
+			   minix_zone *newblkp){
+	int                rc;
+	minix_zone new_indblk;
+
+	kassert( index >= 0 );
+	kassert( MINIX_INDIRECTS(sbp) > index );
+
+	/* 間接参照ブロックを割り当てる
+	 */
+	rc = minix_alloc_zone(sbp, &new_indblk);
+	if ( rc != 0 ) 
+		return rc;   /* 割当てに失敗したらエラー復帰する */
+
+	/* ゾーン内のブロックをクリアする
+	 */
+	minix_clear_zone(sbp, new_indblk, 0, MINIX_ZONE_SIZE(sbp));
+
+	/* 間接参照ブロックのindexの位置にnewzoneへの参照を書き込む
+	 */
+	rc = minix_wr_indir(sbp, new_indblk, index, new_zone);
+	if ( rc != 0 )
+		goto free_blk_out;
+
+	return 0;
+
+free_blk_out:
+	minix_free_zone(sbp, new_indblk);  /* 割り当てた間接参照ブロックを解放する  */
 	return rc;
 }
 
