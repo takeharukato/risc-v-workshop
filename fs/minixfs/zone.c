@@ -46,11 +46,12 @@ minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
 
 	/* 割り当てたゾーン番号を返却する */
 	/* @note Minixのファイルシステムのゾーン番号は1から始まるのに対し, 
-	 * ビットマップのビットは0から割り当てられる。
-	 * 従ってビット番号からゾーン番号への変換は
-	 * ゾーン番号 = ビット番号 + sp->s_firstdatazone 
-	 * となる. オリジナルのMinixの場合, Alloc_bit()が1からのビットを返すので
-	 * 下記と異なる変換式を用いていることに注意。
+	 * ビットマップのビットは0から割り当てられるので, Minixファイルシステムの
+	 * フォーマット(mkfs)時点で, 0番のI-node/ゾーンビットマップは予約されいている
+	 * それに対して, I-nodeテーブルやゾーンは1番のディスクI-node情報や
+	 * ゾーンから開始される。従って, ビットマップのビット番号からゾーン番号の変換式は,
+	 * ゾーン番号 = ビット番号 + sp->s_firstdatazone - 1
+	 * となる. 
 	 * 参考: Minixのalloc_zoneのコメント
 	 * Note that the routine alloc_bit() returns 1 for the lowest possible
 	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
@@ -60,7 +61,7 @@ minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
 	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
 	 */
 
-	*zp = MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + (minix_zone)bitmap_index;
+	*zp = MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + (minix_zone)bitmap_index - 1;
 	return 0;
 }
 /**

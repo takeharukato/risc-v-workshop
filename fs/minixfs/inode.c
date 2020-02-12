@@ -88,6 +88,23 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 		+ MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks); /* ブロック単位でのオフセット */
 	
 	/* I-node格納先ブロック(単位: ブロック) */
+	/* @note MinixのファイルシステムのI-node番号は1から始まるのに対し, 
+	 * ビットマップのビットは0から割り当てられるので, Minixファイルシステムの
+	 * フォーマット(mkfs)時点で, 0番のI-node/ゾーンビットマップは予約されいている
+	 * それに対して, I-nodeテーブルやゾーンは1番のディスクI-node情報や
+	 * ゾーンから開始される。従って, ビットマップのビット番号とディレクトリエントリ中の
+	 * I-node番号は等しく, ディレクトリエントリ中のI-node番号からI-nodeテーブルの
+	 * インデクスへの変換式は,
+	 * インデクス = ディレクトリエントリ中のI-node番号 - 1
+	 * となる. 
+	 * 参考: Minixのalloc_zoneのコメント
+	 * Note that the routine alloc_bit() returns 1 for the lowest possible
+	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
+	 * between the bit number, 'b', used by alloc_bit() and the zone number, 'z',
+	 * stored in the inode, use the formula:
+	 *     z = b + sp->s_firstdatazone - 1
+	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
+	 */
 	pc_off += 
 		(off_t)( (i_num - 1) / ( MINIX_BLOCK_SIZE(sbp) / MINIX_DINODE_SIZE(sbp) ) ); 
 	pc_off = pc_off * MINIX_BLOCK_SIZE(sbp); /* 格納先アドレス ( 単位:バイト )*/
