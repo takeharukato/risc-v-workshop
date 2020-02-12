@@ -168,7 +168,80 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
 
 	return;
 }
+/**
+   間接参照ブロックを解析し間接参照ブロックから参照されているゾーンのゾーン番号を得る
+   @param[in]  sbp            Minixスーパブロック情報
+   @param[in]  ind_blk_znum   間接参照ブロックのゾーン番号
+   @param[in]  ind_blk_ind    new_zoneの間接参照ブロック(ゾーン配列)インデクス値
+   @param[out] dzonep       参照先データゾーン(または2段目の間接参照ブロック)番号返却領域
+   @retval     0      正常終了
+   @retval    -EINVAL 不正なスーパブロック
+ */
+int
+minix_rd_indir(minix_super_block *sbp, minix_zone ind_blk_znum, 
+    int ind_blk_ind, minix_zone *dzonep){
+	int                      rc; /* 返り値 */
+	page_cache              *pc; /* ページキャッシュ */
+	size_t                pgsiz; /* ページキャッシュサイズ   */
+	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)   */
+	off_t               mod_pos; /* クリア開始アドレス(単位:バイト)   */
+	off_t               mod_off; /* ページ内オフセット (単位:バイト) */
+	minix_zone         ref_zone; /* 参照先ゾーン */
 
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	/* インデクスの妥当性確認 */
+	kassert( MINIX_ZONE_SIZE(sbp) > ( ind_blk_ind * MINIX_ZONE_NUM_SIZE(sbp) ) );
+	
+	/* 参照先アドレス */
+	mod_pos = ind_blk_znum * MINIX_ZONE_SIZE(sbp) + ind_blk_ind * MINIX_ZONE_NUM_SIZE(sbp);
+	
+	/* 参照先アドレスの先頭ページアドレスを算出  */
+	mod_page = truncate_align(mod_pos, pgsiz);
+	
+	/*  ページキャッシュを読み込み  */
+	rc = pagecache_get(sbp->dev, mod_page, &pc);
+	if ( rc != 0 ) {
+		
+		rc = -EIO;
+		goto error_out;
+	}
+	
+	/* ページ内クリア */
+	mod_off = mod_pos % pgsiz;  /* ページ内オフセット */
+
+	if ( MINIX_SB_IS_V2(sbp) ||  MINIX_SB_IS_V3(sbp) ) {
+
+		if ( sbp->swap_needed )
+			ref_zone = __bswap32( *(minixv2_zone *)(pc->pc_data + mod_off) );
+		else
+			ref_zone = *(minixv2_zone *)(pc->pc_data + mod_off);
+	} else if ( MINIX_SB_IS_V1(sbp) ) {
+
+		if ( sbp->swap_needed )
+			ref_zone = __bswap16( *(minixv1_zone *)(pc->pc_data + mod_off) );
+		else
+			ref_zone = *(minixv1_zone *)(pc->pc_data + mod_off);
+	} else {
+
+		rc = -EINVAL;
+		goto put_pcache_out;
+	}
+
+	pagecache_put(pc);  /* ページキャッシュを解放する  */
+
+	if ( dzonep != NULL )
+		*dzonep = ref_zone;
+
+	return 0;
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する  */
+
+error_out:
+	return rc;
+}
 /**
    間接参照ブロックを更新する
    @param[in]  sbp            Minixスーパブロック情報
