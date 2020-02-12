@@ -234,6 +234,15 @@ typedef struct _minix3_dentry {
 } __packed minixv3_dentry;
 
 /**
+   Minix ディスクディレクトリエントリ
+ */
+typedef struct _minix_dentry{
+	union  _d_dentry{            
+		minixv1_dentry v12;  /**< MinixV1/MinixV2 dentry          */
+		minixv3_dentry  v3;  /**< MinixV3 dentry                  */
+	}d_dentry;
+}minix_dentry;
+/**
    MinixV1のスーパブロックを格納していることを確認
    @param[in] _sbp メモリ中のスーパブロック情報
  */
