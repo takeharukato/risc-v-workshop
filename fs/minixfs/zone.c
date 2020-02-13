@@ -752,3 +752,117 @@ error_out:
 	return rc;
 }
 
+/**
+   MinixのI-nodeを元にデータブロックを読み書きする
+   @param[in]   i_num      Minix I-node番号
+   @param[in]   dip        MinixディスクI-node
+   @param[in]   kpage      ファイルストリーム格納先カーネル仮想アドレス
+   @param[in]   off        ファイルストリーム開始オフセット
+   @param[in]   len        読み書き長(単位: バイト)
+   @param[in]   rw_flag    読み書き種別
+   - MINIX_RW_READING 読み取り
+   - MINIX_RW_WRITING 書き込み
+   @param[in]   rwlenp     読み書きした長さ(単位: バイト)
+   @retval      0          正常終了
+   @note TODO: I-nodeダーティ化, 更新時間更新
+ */
+int
+minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t len, 
+    int rw_flag, size_t *rwlenp){
+	int          rc;
+	size_t  remains;
+	size_t    total;
+	page_cache  *pc;
+	off_t   cur_pos;
+	off_t    pg_pos;
+	off_t    pg_off;
+	size_t    pgsiz;
+	size_t    rwsiz;
+	minix_zone zone;
+
+	if ( ( off > MINIX_D_INODE(dip, i_size) ) || ( ( off + len ) < off ) ) {
+
+		if ( rwlenp != NULL )
+			*rwlenp = 0;
+		goto success;  /* EOF */
+	}
+
+	rc = pagecache_pagesize(dip->sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	
+	total = remains = MIN(len, MINIX_D_INODE(dip, i_size) - off);  /* 書き込みサイズ */
+	for(cur_pos = off; remains > 0; remains -= rwsiz ){
+
+		rc = minix_read_mapped_block(dip, cur_pos, &zone);
+		if ( rc != 0 ) {
+
+			if ( rw_flag == MINIX_RW_READING )
+				goto error_out;  /* ゾーンがマップされていない */
+
+			/*
+			 * 書き込みの場合は新たにゾーンを割り当てる 
+			 */
+			rc = minix_alloc_zone(dip->sbp, &zone);  /* データゾーンを割当てる */
+			if ( rc != 0 ) 
+				goto error_out;
+
+			/* ゾーンをマップする */
+			rc = minix_write_mapped_block(dip, cur_pos, zone);
+			if ( rc != 0 ) {  /* 割り当てたゾーンをマップできなかった */
+
+				/* 割当てたデータゾーンを解放する  */
+				minix_free_zone(dip->sbp, zone);
+				goto error_out;
+			}
+		}
+		
+		/* 読み書き開始ページを算出する
+		 */
+		pg_pos = zone *	( MINIX_BLOCK_SIZE(dip->sbp) 
+				  << MINIX_D_SUPER_BLOCK(dip->sbp, s_log_zone_size) );
+		pg_pos = truncate_align(pg_pos, pgsiz);  /* ページ先頭アドレス */
+
+		/* ページキャッシュロード */
+		rc = pagecache_get(dip->sbp->dev, pg_pos, &pc);
+		if ( rc != 0 )
+			goto error_out;	
+
+		pg_off = cur_pos % pgsiz;  /* ページキャッシュ内オフセット */
+		rwsiz = MIN(remains, pgsiz - pg_off);  /* ページ内の読み書き可能量 */
+		if ( rw_flag == MINIX_RW_READING )
+			memmove(kpage, pc->pc_data + pg_off, rwsiz);
+		else
+			memmove(pc->pc_data + pg_off, kpage, rwsiz);
+
+		pagecache_put(pc);  /* ページキャッシュを解放  */	
+	}
+	if ( total != remains ) { /* 読み書きを行った場合 */
+
+		if ( rw_flag == MINIX_RW_WRITING ) {
+
+			/* サイズ更新 */
+			if ( ( total - remains ) > ( MINIX_D_INODE(dip, i_size) - off ) ) 
+				MINIX_D_INODE_SET(dip, i_size, ( total - remains ) + off); 
+
+			/* TODO: 更新時刻更新 */
+		} else {
+			
+			/* TODO: 参照時刻更新 */
+		}
+
+		/* I-node情報を更新 */
+		rc = minix_rw_disk_inode(dip->sbp, i_num, MINIX_RW_WRITING, dip);
+		if ( rc != 0 ) 
+			goto error_out;	
+
+		if ( rwlenp != NULL )
+			*rwlenp = total - remains;  /* 読み書きを行えたサイズを返却 */
+	}
+
+success:
+	return 0;
+
+error_out:
+	return rc;
+}

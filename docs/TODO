@@ -1,3 +1,4 @@
+* minix_inode_rwをminix_rw_datazoneに名称変更(inode番号を付加してinodeを書き戻せるようにする)
 * I-node情報のアクセスタイムメンバ更新マクロを作成
   - atime/mtime/ctimeは別マクロにする
 * プロセスヒープの伸縮処理を追加

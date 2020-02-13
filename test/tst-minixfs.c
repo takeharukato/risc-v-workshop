@@ -15,7 +15,6 @@
 #include <kern/ktest.h>
 
 static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
-int minix_inode_read(minix_inode *dip, void *dest, off_t off, size_t len, size_t *rdlenp);
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
 
@@ -36,7 +35,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int             idx2;
 	size_t           len;
 	size_t         rdlen;
-	tst_dent         ent;
+	minix_dentry     ent;
 	off_t            pos;
 
 	rc = minix_read_super(FS_FSIMG_DEVID, &sb);
@@ -77,7 +76,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 
 
 	ino = 1;
-	rc = minix_rw_disk_inode(&sb, ino, MINIX_INODE_READING, &din1);
+	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_READING, &din1);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -94,13 +93,13 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	    MINIX_D_INODE(&din1, i_mtime),
 	    MINIX_D_INODE_CTIME(&din1));
 	MINIX_D_INODE_SET(&din1, i_uid, 0);
-	rc = minix_rw_disk_inode(&sb, ino, MINIX_INODE_WRITING, &din1);
+	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_WRITING, &din1);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = minix_rw_disk_inode(&sb, 1, MINIX_INODE_READING, &din1);
+	rc = minix_rw_disk_inode(&sb, 1, MINIX_RW_READING, &din1);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -176,7 +175,9 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	pos = 0;
 	while( len > 0 ) {
 
-		rc = minix_inode_read(&din1, &ent, pos, sizeof(ent), &rdlen);
+		kassert( din1.sbp == &sb );
+		rc = minix_rw_zone(1, &din1, &ent, pos, MINIX_D_DENT_SIZE(din1.sbp), 
+		    MINIX_RW_READING, &rdlen);
 		if ( rc != 0 )
 			break;
 		len -= sizeof(ent);

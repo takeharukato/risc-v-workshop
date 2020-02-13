@@ -77,10 +77,10 @@
 #define ZONE_MAP               (1)      /**< ゾーンビットマップ操作  */
 
 /**
-   I-node操作の種別
+   読み書き種別
  */
-#define MINIX_INODE_READING    (0)      /**< I-node読取り */
-#define MINIX_INODE_WRITING    (1)      /**< I-node書込み */
+#define MINIX_RW_READING    (0)      /**< 読取り */
+#define MINIX_RW_WRITING    (1)      /**< 書込み */
 
 /**
    I-node番号/ゾーン番号型
@@ -213,15 +213,16 @@ typedef struct _minix_inode {
 
 /**
    MinixV1 ディレクトリエントリ
+   @note I-node番号2バイト, nameメンバは14または30バイト (ファイルフォーマットの版数に依存)
  */
 typedef struct _minixv1_dentry {
-	minixv1_ino inode;  /**< I-node番号                                  */
-	char      name[0];  /**< ファイル名 (NULLターミネートなし, 14バイト) */
+	minixv1_ino            inode;  /**< I-node番号                                  */
+	char  name[MINIX_V1_DIRSIZ2];  /**< ファイル名 (NULLターミネートなし, 最大30バイト) */
 } __packed minixv1_dentry ;
 
 /**
    MinixV2 ディレクトリエントリ
-   @note nameメンバは14または30バイト (ファイルフォーマットの版数に依存)
+   @note I-node番号2バイト, nameメンバは14または30バイト (ファイルフォーマットの版数に依存)
  */
 typedef minixv1_dentry minixv2_dentry;
 
@@ -229,8 +230,8 @@ typedef minixv1_dentry minixv2_dentry;
    MinixV3 ディレクトリエントリ
  */
 typedef struct _minix3_dentry {
-	minixv3_ino inode;  /**< I-node番号                                  */
-	char      name[0];  /**< ファイル名 (NULLターミネートなし, 60バイト) */
+	minixv3_ino               inode;  /**< I-node番号                                  */
+	char      name[MINIX_V3_DIRSIZ];  /**< ファイル名 (NULLターミネートなし, 60バイト) */
 } __packed minixv3_dentry;
 
 /**
@@ -242,6 +243,7 @@ typedef struct _minix_dentry{
 		minixv3_dentry  v3;  /**< MinixV3 dentry                  */
 	}d_dentry;
 }minix_dentry;
+
 /**
    MinixV1のスーパブロックを格納していることを確認
    @param[in] _sbp メモリ中のスーパブロック情報
@@ -404,7 +406,7 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を得る
-   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _m   メンバ名
  */
 #define MINIX_D_INODE(_inodep, _m)					\
@@ -414,7 +416,7 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を更新する
-   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _m   メンバ名
    @param[in] _v   設定値
  */
@@ -427,7 +429,7 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeから最終アクセス時刻を得る
-   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
  */
 #define MINIX_D_INODE_ATIME(_inodep)					\
 	( MINIX_SB_IS_V1((_inodep)->sbp )				\
@@ -446,7 +448,7 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeから属性更新時刻を得る
-   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
  */
 #define MINIX_D_INODE_CTIME(_inodep)					\
 	( MINIX_SB_IS_V1((_inodep)->sbp )				\
@@ -455,13 +457,38 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeの最終属性更新時刻を更新する
-   @param[in] _inodep メモリ中のI-node情報へのポインタ
+   @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _v   設定値
  */
 #define MINIX_D_INODE_CTIME_SET(_inodep, _v) do{			  \
 	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
 		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
 	}while(0)
+
+
+/**
+   ディレクトリエントリのファイル名長を取得する
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */
+#define MINIX_D_DIRSIZ(_sbp)						\
+	( ( ((_sbp))->s_magic == MINIX_V3_SUPER_MAGIC ) ?		\
+	    ( MINIX_V3_DIRSIZ ) :					\
+	    ( ( ( ((_sbp))->s_magic == MINIX_V1_SUPER_MAGIC ) ||	\
+		( ((_sbp))->s_magic == MINIX_V2_SUPER_MAGIC ) ) ?	\
+		( MINIX_V1_DIRSIZ ) :	\
+		( MINIX_V2_DIRSIZ2 ) ) )
+
+/**
+   ディレクトリエントリのサイズを取得する
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */
+#define MINIX_D_DENT_SIZE(_sbp)						\
+	( ( ((_sbp))->s_magic == MINIX_V3_SUPER_MAGIC ) ?		\
+	    ( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv3_ino) ) :		\
+	    ( ( ( ((_sbp))->s_magic == MINIX_V1_SUPER_MAGIC ) ||	\
+		( ((_sbp))->s_magic == MINIX_V2_SUPER_MAGIC ) ) ?	\
+		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv1_ino) ) :	\
+		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv2_ino) ) ) )
 
 int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
 int minix_write_super(struct _minix_super_block *_sbp);
@@ -473,7 +500,10 @@ int minix_rw_disk_inode(struct _minix_super_block *_sbp, minix_ino _i_num, int _
 int minix_alloc_zone(struct _minix_super_block *_sbp, minix_zone *_zp);
 void minix_free_zone(struct _minix_super_block *_sbp, minix_zone _znum);
 int minix_read_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone *_zonep);
-int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone _new_zone);
+int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, 
+    minix_zone _new_zone);
+int minix_rw_zone(minix_ino _i_num, minix_inode *_dip, void *_kpage, off_t _off, 
+    size_t _len, int _rw_flag, size_t *_rwlenp);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 
