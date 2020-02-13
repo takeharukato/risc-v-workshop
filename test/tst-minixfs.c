@@ -222,6 +222,15 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	rdbuf[MIN(MINIX_D_INODE(&din2, i_size), 1023)]='\0';
 	kprintf("Read:%s", rdbuf);
+
+	/*
+	 * ゾーンの開放
+	 */
+	rc = minix_unmap_zone(ino, &din2, 0, MINIX_D_INODE(&din2, i_size));
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 }
 
 void

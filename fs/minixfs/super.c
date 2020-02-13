@@ -214,7 +214,7 @@ error_out:
    @param[out] idxp 割り当てたビットのインデクスを返却する領域
 */
 static int
-minix_bitmap_alloc_nolock(minix_super_block *sbp, obj_cnt_type cur_page, int map_type,
+minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int map_type,
 			  minix_bitmap_idx bit_off, minix_bitmap_idx nr_bits, 
 			  minix_bitmap_idx *idxp) {
 	int                        rc;
@@ -384,7 +384,7 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 	 */
 	for(cur_page = first_page; end_page > cur_page; ++cur_page) {
 
-		rc = minix_bitmap_alloc_nolock(sbp, cur_page, map_type,
+		rc = minix_bitmap_alloc_freebit(sbp, cur_page, map_type,
 		    ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz, 
 					       nr_bits, &idx);
 		if ( rc != 0 )
@@ -479,7 +479,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 		else
 			v3val = v3ptr[bit_idx];
 
-		kassert( v3val & mask );
+		kassert( v3val & mask );  /* ビットが割り当て済みであることを確認する */
 
 		v3val &= ~mask;
 

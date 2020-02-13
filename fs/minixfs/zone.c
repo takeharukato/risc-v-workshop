@@ -885,14 +885,15 @@ error_out:
  */
 int
 minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
-	int                rc;
-	size_t          pgsiz;
-	size_t        clr_siz;
-	size_t        clr_end;
-	minix_zone    cur_pos;
-	minix_zone   cur_zone;
-	minix_zone first_zone;
-	minix_zone   end_zone;
+	int                    rc;
+	size_t              pgsiz;
+	size_t            clr_siz;
+	size_t            clr_end;
+	minix_zone        cur_pos;
+	minix_zone   cur_rel_zone;
+	minix_zone first_rel_zone;
+	minix_zone   end_rel_zone;
+	minix_zone    remove_zone;
 
 	if ( len == 0 )
 		return 0;  /* 削除不要 */
@@ -901,63 +902,98 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 		return -EINVAL;
 
 	if ( ( off > MINIX_D_INODE(dip, i_size) ) ||
-	    ( ( off + len ) > MINIX_D_INODE(dip, i_size) ) ||
 	    ( off > ( off + len ) ) )
 		return -EFBIG;  /* ファイル長よりオフセットの方が大きい */
+
+	 /* ファイルの終端を越える場合は, 削除長をファイル終端に補正する */
+	if ( ( off + len ) > MINIX_D_INODE(dip, i_size) )
+		len = MINIX_D_INODE(dip, i_size) - off;
 
 	rc = pagecache_pagesize(dip->sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
-	first_zone = 
+	first_rel_zone = 
 		truncate_align(off, MINIX_ZONE_SIZE(dip->sbp))
 		/ MINIX_ZONE_SIZE(dip->sbp);    /* 開始ゾーン     */
 
-	end_zone = roundup_align(off + len, MINIX_ZONE_SIZE(dip->sbp))
+	end_rel_zone = roundup_align(off + len, MINIX_ZONE_SIZE(dip->sbp))
 		/ MINIX_ZONE_SIZE(dip->sbp); /* 終了ゾーン     */
 
 	/* 終了点がゾーン境界と合っていない場合
 	 */
-	if ( ( end_zone > first_zone ) 
+	if ( ( end_rel_zone > first_rel_zone ) 
 	    && ( addr_not_aligned(off + len, MINIX_ZONE_SIZE(dip->sbp)) ) )
-		--end_zone;  /* 終了ゾーンを減算 */
+		--end_rel_zone;  /* 終了ゾーンを減算 */
 
 	cur_pos = off;          /* 削除開始位置   */
-	cur_zone = first_zone;  /* 削除開始ゾーン */
+	cur_rel_zone = first_rel_zone;  /* 削除開始ゾーン */
 
 	/* 開始点がゾーン境界と合っていない場合
 	 */
-	if ( addr_not_aligned(cur_pos, MINIX_ZONE_SIZE(dip->sbp)) ){
+	if ( addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp)) ){
 
 		/* クリア対象の最終ゾーンだった場合は, クリアする範囲を算出 */
-		if ( end_zone > first_zone )
+		if ( end_rel_zone > first_rel_zone )
 			clr_end = MINIX_ZONE_SIZE(dip->sbp); /* ゾーン最終位置までクリア */
 		else
 			clr_end = (off + len) % MINIX_ZONE_SIZE(dip->sbp); /* 指定範囲のみ */
 
 		/* クリアサイズを算出 */
 		clr_siz = clr_end - (cur_pos % MINIX_ZONE_SIZE(dip->sbp));
-
 		/* 開始ゾーン内をクリアする */
-		minix_clear_zone(dip->sbp, first_zone, cur_pos % MINIX_ZONE_SIZE(dip->sbp),
+		minix_clear_zone(dip->sbp, first_rel_zone, cur_pos % MINIX_ZONE_SIZE(dip->sbp),
 		    clr_siz);
 		 /* 次のゾーンから削除を開始する */
-		++cur_zone; 
+		++cur_rel_zone; 
 		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(dip->sbp));
 	}
 
 
-	for( ; end_zone > cur_zone; ++cur_zone ) {
+	for( ; end_rel_zone > cur_rel_zone; ++cur_rel_zone ) {
+		
+		/* デバイス先頭からのゾーン番号を算出
+		 */
+		rc = minix_read_mapped_block(dip, cur_rel_zone * MINIX_ZONE_SIZE(dip->sbp),
+		    &remove_zone);
 
-		/* 割当てたデータゾーンを解放する  */
-		minix_free_zone(dip->sbp, cur_zone);
+		/* 割当てられているデータゾーンを解放する
+		 */
+		if ( rc == 0 )		
+			minix_free_zone(dip->sbp, remove_zone); 
 		cur_pos += MINIX_ZONE_SIZE(dip->sbp);
 	}
 
 	if ( ( off + len ) > cur_pos ) { /* 最終ゾーン内をクリアする */
 		
-		minix_clear_zone(dip->sbp, cur_zone, 
-		    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
-		cur_pos = off + len;
+
+		/* 開始ゾーンと終了ゾーンが一致する場合でゾーン内の
+		 * 全データをクリアしている場合は, ゾーンを開放する
+		 * ゾーン解放処理の延長でブロックをクリアしてから
+		 * 解放するのでブロックのクリアは不要。
+		 */
+		if ( ( first_rel_zone == end_rel_zone ) 
+		    && ( !addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp) ) )
+		    && ( ( off + len ) == MINIX_D_INODE(dip, i_size) ) ) {
+
+			/* デバイス先頭からのゾーン番号を算出
+			 */
+			rc = minix_read_mapped_block(dip, 
+			    first_rel_zone * MINIX_ZONE_SIZE(dip->sbp), &remove_zone);
+
+			/* 割当てられているデータゾーンを解放する
+			 */
+			if ( rc == 0 )		
+				minix_free_zone(dip->sbp, remove_zone);
+		} else {
+
+			/* 最終ゾーン内にデータが残っている場合は指定された
+			 * 範囲をゼロクリアする
+			 */
+			minix_clear_zone(dip->sbp, cur_rel_zone, 
+			    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
+			cur_pos = off + len;
+		}
+
 	}
 
 	/* ファイル終端までクリアした場合 */

@@ -502,8 +502,9 @@ void minix_free_zone(struct _minix_super_block *_sbp, minix_zone _znum);
 int minix_read_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone *_zonep);
 int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, 
     minix_zone _new_zone);
-int minix_rw_zone(minix_ino _i_num, minix_inode *_dip, void *_kpage, off_t _off, 
+int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off_t _off, 
     size_t _len, int _rw_flag, size_t *_rwlenp);
+int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, size_t _len);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 
