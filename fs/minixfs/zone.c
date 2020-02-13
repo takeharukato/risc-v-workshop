@@ -47,6 +47,11 @@ minix_clear_zone(minix_super_block *sbp, minix_zone znum, off_t offset, off_t si
 	off_t               clr_off; /* ページ内オフセット (単位:バイト) */
 	off_t               clr_len; /* ページ内クリアサイズ (単位:バイト) */
 
+
+	/* ゾーン番号の健全性を確認 */
+	kassert( ( znum >= MINIX_D_SUPER_BLOCK(sbp, s_firstdatazone) ) &&
+	    ( MINIX_SB_ZONES_NR(sbp) > znum ) );
+
 	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
@@ -888,7 +893,7 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 	int                    rc;
 	size_t              pgsiz;
 	size_t            clr_siz;
-	size_t            clr_end;
+	size_t          clr_start;
 	minix_zone        cur_pos;
 	minix_zone   cur_rel_zone;
 	minix_zone first_rel_zone;
@@ -928,27 +933,32 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 	cur_pos = off;          /* 削除開始位置   */
 	cur_rel_zone = first_rel_zone;  /* 削除開始ゾーン */
 
-	/* 開始点がゾーン境界と合っていない場合
+	/* 開始点がゾーン境界と合っておらず, 後続のゾーンもクリアする場合
 	 */
-	if ( addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp)) ){
+	if ( addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp) ) 
+	    && ( end_rel_zone > first_rel_zone ) ) {
 
-		/* クリア対象の最終ゾーンだった場合は, クリアする範囲を算出 */
-		if ( end_rel_zone > first_rel_zone )
-			clr_end = MINIX_ZONE_SIZE(dip->sbp); /* ゾーン最終位置までクリア */
-		else
-			clr_end = (off + len) % MINIX_ZONE_SIZE(dip->sbp); /* 指定範囲のみ */
-
+		/* クリア開始オフセットを算出 */
+		clr_start = cur_pos % MINIX_ZONE_SIZE(dip->sbp);
 		/* クリアサイズを算出 */
-		clr_siz = clr_end - (cur_pos % MINIX_ZONE_SIZE(dip->sbp));
+		clr_siz = MINIX_ZONE_SIZE(dip->sbp) - clr_start;
+
+		/* デバイス先頭からのゾーン番号を算出
+		 */
+		rc = minix_read_mapped_block(dip, first_rel_zone * MINIX_ZONE_SIZE(dip->sbp),
+		    &remove_zone);
+
 		/* 開始ゾーン内をクリアする */
-		minix_clear_zone(dip->sbp, first_rel_zone, cur_pos % MINIX_ZONE_SIZE(dip->sbp),
-		    clr_siz);
-		 /* 次のゾーンから削除を開始する */
+		minix_clear_zone(dip->sbp, remove_zone, clr_start, clr_siz);
+
+		 /* 次のゾーンからゾーンを開放する */
 		++cur_rel_zone; 
 		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(dip->sbp));
 	}
 
-
+	/*
+	 * 削除範囲中のゾーンを解放する
+	 */
 	for( ; end_rel_zone > cur_rel_zone; ++cur_rel_zone ) {
 		
 		/* デバイス先頭からのゾーン番号を算出
@@ -964,36 +974,33 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 	}
 
 	if ( ( off + len ) > cur_pos ) { /* 最終ゾーン内をクリアする */
-		
 
-		/* 開始ゾーンと終了ゾーンが一致する場合でゾーン内の
-		 * 全データをクリアしている場合は, ゾーンを開放する
-		 * ゾーン解放処理の延長でブロックをクリアしてから
-		 * 解放するのでブロックのクリアは不要。
+		/* デバイス先頭からのゾーン番号を算出
 		 */
-		if ( ( first_rel_zone == end_rel_zone ) 
-		    && ( !addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp) ) )
-		    && ( ( off + len ) == MINIX_D_INODE(dip, i_size) ) ) {
+		rc = minix_read_mapped_block(dip, 
+		    end_rel_zone * MINIX_ZONE_SIZE(dip->sbp), &remove_zone);
+		if ( rc == 0 ) {
 
-			/* デバイス先頭からのゾーン番号を算出
+			/* 全データをクリアする場合は, ゾーンを開放する
+			 * ゾーン解放処理の延長でブロックをクリアしてから
+			 * 解放するのでブロックのクリアは不要。
 			 */
-			rc = minix_read_mapped_block(dip, 
-			    first_rel_zone * MINIX_ZONE_SIZE(dip->sbp), &remove_zone);
+			if ( ( !addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp) ) )
+			    && ( ( off + len ) == MINIX_D_INODE(dip, i_size) ) ) {
 
-			/* 割当てられているデータゾーンを解放する
-			 */
-			if ( rc == 0 )		
+				/* 割当てられているデータゾーンを解放する
+				 */
 				minix_free_zone(dip->sbp, remove_zone);
-		} else {
+			} else {
 
-			/* 最終ゾーン内にデータが残っている場合は指定された
-			 * 範囲をゼロクリアする
-			 */
-			minix_clear_zone(dip->sbp, cur_rel_zone, 
-			    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
-			cur_pos = off + len;
+				/* 最終ゾーン内にデータが残っている場合は指定された
+				 * 範囲をゼロクリアする
+				 */
+				minix_clear_zone(dip->sbp, remove_zone, 
+				    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
+				cur_pos = off + len;
+			}
 		}
-
 	}
 
 	/* ファイル終端までクリアした場合 */
