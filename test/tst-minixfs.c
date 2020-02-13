@@ -18,6 +18,7 @@ static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
 int minix_inode_read(minix_inode *dip, void *dest, off_t off, size_t len, size_t *rdlenp);
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
+
 typedef struct _tst_dent{
 	uint32_t      ino;
 	char     name[60];

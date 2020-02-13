@@ -470,6 +470,8 @@ int minix_bitmap_alloc(struct _minix_super_block *_sbp, int _map_type,
 int minix_bitmap_free(struct _minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);
 int minix_rw_disk_inode(struct _minix_super_block *_sbp, minix_ino _i_num, int _rw_flag,
     struct _minix_inode *_dip);
+int minix_alloc_zone(struct _minix_super_block *_sbp, minix_zone *_zp);
+void minix_free_zone(struct _minix_super_block *_sbp, minix_zone _znum);
 int minix_read_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone *_zonep);
 int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone _new_zone);
 #endif  /*  !ASM_FILE  */
