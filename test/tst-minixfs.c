@@ -15,8 +15,11 @@
 #include <kern/ktest.h>
 
 static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
+static char rdbuf[1024];
+
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
+
 #define ROOT_INO  (1)
 #define TST_INO   (2)
 static void
@@ -33,6 +36,8 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int             idx2;
 	size_t           len;
 	size_t         rdlen;
+	size_t         wrlen;
+	size_t         dtlen;
 	minix_dentry     ent;
 	off_t            pos;
 
@@ -190,7 +195,33 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		len -= sizeof(ent);
 		pos +=sizeof(ent);
 	}
-	
+
+	memset(&rdbuf[0], 0, 1024);
+	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, 1024, MINIX_RW_READING, &rdlen);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rdbuf[MIN(MINIX_D_INODE(&din2, i_size), 1023)]='\0';
+	kprintf("Read:%s", rdbuf);
+
+	memset(&rdbuf[0], 0, 1024);
+	dtlen = strlen("Hello RISC-V\n");
+	strcpy(&rdbuf[0], "Hello RISC-V\n");
+	rdbuf[dtlen]='\0';
+	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, dtlen + 1,MINIX_RW_WRITING, &wrlen);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	memset(&rdbuf[0], 0, 1024);
+	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, 1024, MINIX_RW_READING, &rdlen);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rdbuf[MIN(MINIX_D_INODE(&din2, i_size), 1023)]='\0';
+	kprintf("Read:%s", rdbuf);
 }
 
 void

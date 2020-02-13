@@ -790,8 +790,13 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 	rc = pagecache_pagesize(dip->sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
-	
-	total = remains = MIN(len, MINIX_D_INODE(dip, i_size) - off);  /* 書き込みサイズ */
+	if ( rw_flag == MINIX_RW_READING )
+		total = MIN(len, MINIX_D_INODE(dip, i_size) - off);  /* 読み込みサイズ */
+	else
+		total = len;  /* 書き込みサイズ */
+
+	remains = total; /* 残転送サイズ */
+
 	for(cur_pos = off; remains > 0; remains -= rwsiz ){
 
 		rc = minix_read_mapped_block(dip, cur_pos, &zone);
@@ -842,8 +847,8 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 		if ( rw_flag == MINIX_RW_WRITING ) {
 
 			/* サイズ更新 */
-			if ( ( total - remains ) > ( MINIX_D_INODE(dip, i_size) - off ) ) 
-				MINIX_D_INODE_SET(dip, i_size, ( total - remains ) + off); 
+			if ( ( off + total - remains ) > ( MINIX_D_INODE(dip, i_size) ) ) 
+				MINIX_D_INODE_SET(dip, i_size, off + ( total - remains ) ); 
 
 			/* TODO: 更新時刻更新 */
 		} else {
