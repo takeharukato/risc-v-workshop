@@ -764,7 +764,7 @@ error_out:
    - MINIX_RW_WRITING 書き込み
    @param[in]   rwlenp     読み書きした長さ(単位: バイト)
    @retval      0          正常終了
-   @note TODO: I-nodeダーティ化, 更新時間更新
+   @note TODO: 更新時間更新
  */
 int
 minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t len, 
@@ -861,6 +861,111 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 	}
 
 success:
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   MinixのI-nodeを元にデータブロックを解放する
+   @param[in]   i_num      Minix I-node番号
+   @param[in]   dip        MinixディスクI-node
+   @param[in]   off        解放開始位置のオフセット(単位: バイト)
+   @param[in]   len        解放長(単位: バイト)
+   @retval      0          正常終了
+   @retval     -EINVAL     offに負の値を指定した
+   @retval     -EFBIG      ファイル長を超えている
+   @note TODO: 更新時間更新
+ */
+int
+minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
+	int                rc;
+	size_t          pgsiz;
+	size_t        clr_siz;
+	size_t        clr_end;
+	minix_zone    cur_pos;
+	minix_zone   cur_zone;
+	minix_zone first_zone;
+	minix_zone   end_zone;
+
+	if ( len == 0 )
+		return 0;  /* 削除不要 */
+
+	if ( ( 0 > off ) || ( 0 > len ) )
+		return -EINVAL;
+
+	if ( ( off > MINIX_D_INODE(dip, i_size) ) ||
+	    ( ( off + len ) > MINIX_D_INODE(dip, i_size) ) ||
+	    ( off > ( off + len ) ) )
+		return -EFBIG;  /* ファイル長よりオフセットの方が大きい */
+
+	rc = pagecache_pagesize(dip->sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	first_zone = 
+		truncate_align(off, MINIX_ZONE_SIZE(dip->sbp))
+		/ MINIX_ZONE_SIZE(dip->sbp);    /* 開始ゾーン     */
+
+	end_zone = roundup_align(off + len, MINIX_ZONE_SIZE(dip->sbp))
+		/ MINIX_ZONE_SIZE(dip->sbp); /* 終了ゾーン     */
+
+	/* 終了点がゾーン境界と合っていない場合
+	 */
+	if ( ( end_zone > first_zone ) 
+	    && ( addr_not_aligned(off + len, MINIX_ZONE_SIZE(dip->sbp)) ) )
+		--end_zone;  /* 終了ゾーンを減算 */
+
+	cur_pos = off;          /* 削除開始位置   */
+	cur_zone = first_zone;  /* 削除開始ゾーン */
+
+	/* 開始点がゾーン境界と合っていない場合
+	 */
+	if ( addr_not_aligned(cur_pos, MINIX_ZONE_SIZE(dip->sbp)) ){
+
+		/* クリア対象の最終ゾーンだった場合は, クリアする範囲を算出 */
+		if ( end_zone > first_zone )
+			clr_end = MINIX_ZONE_SIZE(dip->sbp); /* ゾーン最終位置までクリア */
+		else
+			clr_end = (off + len) % MINIX_ZONE_SIZE(dip->sbp); /* 指定範囲のみ */
+
+		/* クリアサイズを算出 */
+		clr_siz = clr_end - (cur_pos % MINIX_ZONE_SIZE(dip->sbp));
+
+		/* 開始ゾーン内をクリアする */
+		minix_clear_zone(dip->sbp, first_zone, cur_pos % MINIX_ZONE_SIZE(dip->sbp),
+		    clr_siz);
+		 /* 次のゾーンから削除を開始する */
+		++cur_zone; 
+		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(dip->sbp));
+	}
+
+
+	for( ; end_zone > cur_zone; ++cur_zone ) {
+
+		/* 割当てたデータゾーンを解放する  */
+		minix_free_zone(dip->sbp, cur_zone);
+		cur_pos += MINIX_ZONE_SIZE(dip->sbp);
+	}
+
+	if ( ( off + len ) > cur_pos ) { /* 最終ゾーン内をクリアする */
+		
+		minix_clear_zone(dip->sbp, cur_zone, 
+		    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
+		cur_pos = off + len;
+	}
+
+	/* ファイル終端までクリアした場合 */
+	if ( ( off + len ) == MINIX_D_INODE(dip, i_size) ) { 
+
+		MINIX_D_INODE_SET(dip, i_size, off);  /* サイズを更新 */
+	}
+
+	/* I-node情報を更新 */
+	rc = minix_rw_disk_inode(dip->sbp, i_num, MINIX_RW_WRITING, dip);
+	if ( rc != 0 ) 
+		goto error_out;	
+
 	return 0;
 
 error_out:
