@@ -109,6 +109,7 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 	pc_off += 
 		(off_t)( (i_num - 1) / ( MINIX_BLOCK_SIZE(sbp) / MINIX_DINODE_SIZE(sbp) ) ); 
 	pc_off = pc_off * MINIX_BLOCK_SIZE(sbp); /* 格納先アドレス ( 単位:バイト )*/
+	pc_off += (off_t)( (i_num - 1) * MINIX_DINODE_SIZE(sbp) ); /* I-node配列 */
 
 	/* ページキャッシュを獲得する */
 	rc = pagecache_get(sbp->dev, pc_off, &pc);

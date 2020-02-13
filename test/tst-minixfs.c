@@ -17,17 +17,15 @@
 static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
-
-typedef struct _tst_dent{
-	uint32_t      ino;
-	char     name[60];
-}tst_dent;
+#define ROOT_INO  (1)
+#define TST_INO   (2)
 static void
 minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
 	minix_super_block sb;
 	minix_bitmap_idx idx;
 	minix_inode     din1;
+	minix_inode     din2;
 	minix_ino        ino;
 	int             type;
 	int             didx;
@@ -75,8 +73,14 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 
-	ino = 1;
-	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_READING, &din1);
+	rc = minix_rw_disk_inode(&sb, ROOT_INO, MINIX_RW_READING, &din1);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	ino = TST_INO;
+	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_READING, &din2);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -84,27 +88,27 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("inode[%d](i_mode, i_uid, i_size, i_gid, i_nlinks, "
 	    "i_atime, i_mtime, i_mtime)\n"
 	    "=(0%lo, %d, %ld, %d, %d, %ld, %ld, %ld)\n", ino,
-	    MINIX_D_INODE(&din1, i_mode),
-	    MINIX_D_INODE(&din1, i_uid),
-	    MINIX_D_INODE(&din1, i_size),
-	    MINIX_D_INODE(&din1, i_gid),
-	    MINIX_D_INODE(&din1, i_nlinks),
-	    MINIX_D_INODE_ATIME(&din1),
-	    MINIX_D_INODE(&din1, i_mtime),
-	    MINIX_D_INODE_CTIME(&din1));
-	MINIX_D_INODE_SET(&din1, i_uid, 0);
-	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_WRITING, &din1);
+	    MINIX_D_INODE(&din2, i_mode),
+	    MINIX_D_INODE(&din2, i_uid),
+	    MINIX_D_INODE(&din2, i_size),
+	    MINIX_D_INODE(&din2, i_gid),
+	    MINIX_D_INODE(&din2, i_nlinks),
+	    MINIX_D_INODE_ATIME(&din2),
+	    MINIX_D_INODE(&din2, i_mtime),
+	    MINIX_D_INODE_CTIME(&din2));
+	MINIX_D_INODE_SET(&din2, i_uid, 0);
+	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_WRITING, &din2);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = minix_rw_disk_inode(&sb, 1, MINIX_RW_READING, &din1);
+	rc = minix_rw_disk_inode(&sb, ino, MINIX_RW_READING, &din2);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	if ( MINIX_D_INODE(&din1, i_uid) == 0 )
+	if ( MINIX_D_INODE(&din2, i_uid) == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
@@ -171,6 +175,9 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	/*
+	 * ディレクトリエントリ読み出し
+	 */
 	len = MINIX_D_INODE(&din1, i_size);
 	pos = 0;
 	while( len > 0 ) {
