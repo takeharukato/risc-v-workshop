@@ -232,7 +232,7 @@ minix_bitmap_alloc_nolock(minix_super_block *sbp, obj_cnt_type cur_page, int map
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
 	/*
-	 * Load bitmap
+	 * ビットマップを読込む
 	 */
 	rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
 	if ( rc != 0 )
@@ -324,7 +324,7 @@ minix_bitmap_alloc_nolock(minix_super_block *sbp, obj_cnt_type cur_page, int map
 	
 
 put_pcache_out:
-	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
 	return -ESRCH;
 
 success:

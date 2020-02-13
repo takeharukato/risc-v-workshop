@@ -3,7 +3,7 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Minix file system zone operations                                 */
+/*  Minix file system I-node operations                               */
 /*                                                                    */
 /**********************************************************************/
 
@@ -184,6 +184,77 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 
 put_pcache_out:
 	pagecache_put(pc);  /* ページキャッシュを解放する     */
+
+error_out:
+	return rc;
+}
+
+
+/**
+   MinixのI-nodeを元にデータブロックを読み取る
+   @param[in]   dip        Minixスーパブロック情報
+   @param[in]   kdest_page カーネル空間中の書き込み先ページ
+   @param[in]   off        ファイルストリームのコピー開始オフセット
+   @param[in]   len        読み取り長
+                           (単位: バイト kdest_pageのサイズ以下であることは呼び出しもとで保証)
+   @param[in]   rdlenp     読み込んだ長さ(単位: バイト)
+   - MINIX_INODE_READING 読み取り
+   - MINIX_INODE_WRITING 書き込み
+   @param[out]  dip     MinixディスクI-node情報
+   @retval      0       正常終了
+   @retval     -EINVAL  不正なスーパブロック情報を指定した
+   @retval     -ENODEV  I-nodeが読み取れなかった
+ */
+int
+minix_inode_read(minix_inode *dip, void *kdest_page, off_t off, size_t len, size_t *rdlenp){
+	int          rc;
+	size_t  remains;
+	size_t    total;
+	page_cache  *pc;
+	off_t   cur_pos;
+	off_t    pg_pos;
+	off_t    pg_off;
+	size_t    pgsiz;
+	size_t    rdsiz;
+	minix_zone zone;
+
+	if ( ( off > MINIX_D_INODE(dip, i_size) ) || ( ( off + len ) < off ) ) {
+
+		if ( rdlenp != NULL )
+			*rdlenp = 0;
+		goto success;  /* EOF */
+	}
+
+	rc = pagecache_pagesize(dip->sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	
+	total = remains = MIN(len, MINIX_D_INODE(dip, i_size) - off);  /* 読み取りサイズ */
+	for(cur_pos = off; remains > 0; remains -= rdsiz ){
+
+		rc = minix_read_mapped_block(dip, cur_pos, &zone);
+		if ( rc != 0 )
+			goto error_out;
+
+		pg_pos = zone *	( MINIX_BLOCK_SIZE(dip->sbp) 
+				  << MINIX_D_SUPER_BLOCK(dip->sbp, s_log_zone_size) );
+		pg_pos = truncate_align(pg_pos, pgsiz);  /* ページ先頭アドレス */
+		/* ページキャッシュロード */
+		rc = pagecache_get(dip->sbp->dev, pg_pos, &pc);
+		if ( rc != 0 )
+			goto error_out;	
+
+		pg_off = cur_pos % pgsiz;  /* ページキャッシュ内オフセット */
+		rdsiz = MIN(remains, pgsiz - pg_off);  /* ページ内からの読み取り可能量 */
+		memmove(kdest_page, pc->pc_data + pg_off, rdsiz);
+		
+		pagecache_put(pc);  /* ページキャッシュを解放  */	
+	}
+
+	if ( rdlenp != NULL )
+		*rdlenp = total - remains;
+success:
+	return 0;
 
 error_out:
 	return rc;

@@ -15,10 +15,13 @@
 #include <kern/ktest.h>
 
 static ktest_stats tstat_minixfs=KTEST_INITIALIZER;
-
+int minix_inode_read(minix_inode *dip, void *dest, off_t off, size_t len, size_t *rdlenp);
 int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, int *_zidxp,
     int *_idx1stp, int *_idx2ndp);
-
+typedef struct _tst_dent{
+	uint32_t      ino;
+	char     name[60];
+}tst_dent;
 static void
 minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
@@ -30,7 +33,11 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int             didx;
 	int             idx1;
 	int             idx2;
-	
+	size_t           len;
+	size_t         rdlen;
+	tst_dent         ent;
+	off_t            pos;
+
 	rc = minix_read_super(FS_FSIMG_DEVID, &sb);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -164,6 +171,17 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	len = MINIX_D_INODE(&din1, i_size);
+	pos = 0;
+	while( len > 0 ) {
+
+		rc = minix_inode_read(&din1, &ent, pos, sizeof(ent), &rdlen);
+		if ( rc != 0 )
+			break;
+		len -= sizeof(ent);
+		pos +=sizeof(ent);
+	}
+	
 }
 
 void
