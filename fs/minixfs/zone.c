@@ -997,7 +997,8 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 				 * 範囲をゼロクリアする
 				 */
 				minix_clear_zone(dip->sbp, remove_zone, 
-				    0, (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
+				    off % MINIX_ZONE_SIZE(dip->sbp), 
+				    (off + len) % MINIX_ZONE_SIZE(dip->sbp) );
 				cur_pos = off + len;
 			}
 		}

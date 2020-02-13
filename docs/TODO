@@ -1,3 +1,5 @@
+* unmap_zoneでinode中のゾーン割り当てを解放する
+  (free_zoneを呼ぶ代わりにそのゾーンへのマップを消去する処理を呼び出す)
 * minix_inode_rwをminix_rw_datazoneに名称変更(inode番号を付加してinodeを書き戻せるようにする)
 * I-node情報のアクセスタイムメンバ更新マクロを作成
   - atime/mtime/ctimeは別マクロにする
