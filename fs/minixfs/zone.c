@@ -976,15 +976,21 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 		rc = minix_read_mapped_block(dip, cur_pos, &zone);
 		if ( rc != 0 ) {
 
-			if ( rw_flag == MINIX_RW_READING )
-				goto error_out;  /* ゾーンがマップされていない */
-
-			/*
-			 * 書き込みの場合は新たにゾーンを割り当てる 
+			/* ゾーンが割り当てられていない場合は, 
+			 * 新たにゾーンを割り当てる 
 			 */
 			rc = minix_alloc_zone(dip->sbp, &zone);  /* データゾーンを割当てる */
 			if ( rc != 0 ) 
 				goto error_out;
+
+			/* ゾーン内のブロックをクリアする
+			 * 本ファイルシステムで使用されたデータブロックは
+			 * データブロックの解放時にクリアされるためゼロクリアを
+			 * 保証できるが, 新規に割り当てたゾーンのディスクブロックが
+			 * 過去に他の用途で使われていた場合そのデータが読めてしまうため
+			 * 念のためゾーンをクリアしてからマップする
+			 */
+			minix_clear_zone(dip->sbp, zone, 0, MINIX_ZONE_SIZE(dip->sbp));
 
 			/* ゾーンをマップする */
 			rc = minix_write_mapped_block(dip, cur_pos, zone);
