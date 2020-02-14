@@ -19,7 +19,6 @@ typedef void (*tst_start_func_type)(void *_arg);  /*< テスト開始関数 */
  * テスト定義
  */
 typedef struct _ktest_def{
-	char            *name;  /*< テスト名    */
 	ktest_func_type  func;  /*< テスト関数  */
 	void             *arg;  /*< テスト引数  */	
 }ktest_def;
@@ -28,13 +27,14 @@ typedef struct _ktest_def{
  *   テスト配列
  */
 typedef struct _ktest_stats{
-	int32_t defined;     /*<  試験数           */
-	int32_t tested;      /*<  実施試験数       */
-	int32_t unsupported; /*<  試験対象外数     */
-	int32_t unresolved;  /*<  結果不明試験数   */
-	int32_t failed;      /*<  失敗試験数       */
-	int32_t xfailed;     /*<  意図的失敗試験数 */
-	int32_t passed;      /*<  成功試験数       */
+	char          *name;   /*< テスト名          */
+	int32_t     defined;   /*<  試験数           */
+	int32_t      tested;   /*<  実施試験数       */
+	int32_t unsupported;   /*<  試験対象外数     */
+	int32_t  unresolved;   /*<  結果不明試験数   */
+	int32_t      failed;   /*<  失敗試験数       */
+	int32_t     xfailed;   /*<  意図的失敗試験数 */
+	int32_t      passed;   /*<  成功試験数       */
 	ktest_def tests[KTEST_MAX_TEST_NR];  /*< テスト  */
 }ktest_stats;
 
@@ -56,8 +56,7 @@ typedef struct _ktest_stats{
    @param[in] _arg  テスト実施関数への引数
  */
 #define ktest_def_test(_sp, _name, _func, _arg) do{			\
-		((ktest_def *)&((_sp)->tests[(_sp)->defined]))->name =	\
-			(_name);					\
+		((ktest_stats *)(_sp))->name = (_name);			\
 		((ktest_def *)&((_sp)->tests[(_sp)->defined]))->func =	\
 			(ktest_func_type)(_func);			\
 		((ktest_def *)&((_sp)->tests[(_sp)->defined]))->arg =	\
@@ -156,14 +155,14 @@ typedef struct _ktest_stats{
 									\
 	for(__i = 0; __st->defined > __i; ++__i) {			\
 		__tst = ((ktest_def *)&__st->tests[__i]);		\
-	kprintf("Running test [%s] \n",	__tst->name);			\
+	kprintf("Running test [%s] \n",	__st->name);			\
 	if ( __tst->func != NULL )					\
 		__tst->func(__st, __tst->arg);				\
 	}								\
 	kprintf("Test: [pass/fail/xfail/total] = [%d/%d/%d/%d]\n",	\
 	    __st->passed, __st->failed, __st->xfailed, __st->tested);	\
 	kprintf("TestRes,%s,%d,%d,%d,%d\n",				\
-	    __tst->name, __st->passed, __st->failed, __st->xfailed, __st->tested); \
+	    __st->name, __st->passed, __st->failed, __st->xfailed, __st->tested); \
 	}while(0)
 
 int tflib_kernlayout_init(void);
