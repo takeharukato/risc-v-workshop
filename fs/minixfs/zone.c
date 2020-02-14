@@ -176,6 +176,87 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
 }
 
 /**
+   間接参照ブロックを解析し間接参照ブロックが空であることを確認する
+   @param[in]  sbp            Minixスーパブロック情報
+   @param[in]  ind_blk_znum   間接参照ブロックのゾーン番号
+   @retval     真             間接参照ブロックが空である
+   @retval     偽             間接参照ブロックが空でない
+ */
+bool
+minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
+	int                      rc; /* 返り値 */
+	int                       i; /* ゾーン配列インデクス                  */
+	page_cache              *pc; /* ページキャッシュ                      */
+	size_t                pgsiz; /* ページキャッシュサイズ                */
+	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)   */
+	obj_cnt_type     first_page; /* 開始ページアドレス(単位:バイト)       */
+	obj_cnt_type       end_page; /* 終了ページアドレス(単位:バイト)       */
+	minix_zone         ref_zone; /* 参照先ゾーン */
+
+	/* ゾーン番号の健全性を確認 */
+	kassert( ind_blk_znum >= ( MINIX_D_SUPER_BLOCK(sbp, s_firstdatazone) ) &&
+		 ( MINIX_SB_ZONES_NR(sbp) > ind_blk_znum ) );
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	/* 先頭ページアドレスを算出  */
+	first_page = truncate_align(ind_blk_znum, pgsiz);
+
+	/* 最終ページアドレスを算出  */
+	end_page = first_page + MINIX_ZONE_SIZE(sbp);
+
+	/* 参照先アドレス */
+	for(mod_page = first_page; end_page > mod_page; mod_page += pgsiz){
+
+		/*  ページキャッシュを読み込み  */
+		rc = pagecache_get(sbp->dev, mod_page, &pc);
+		if ( rc != 0 ) 
+			goto error_out;
+
+		for(i = 0; pgsiz / MINIX_ZONE_NUM_SIZE(sbp) > i; ++i) {
+
+			/* 間接参照ブロック中のゾーン番号配列の
+			 * 全てのエントリが空であることを確認する
+			 */
+			if ( MINIX_SB_IS_V2(sbp) ||  MINIX_SB_IS_V3(sbp) ) {
+
+				if ( sbp->swap_needed )
+					ref_zone =
+						__bswap32( *(minixv2_zone *)
+							   ( pc->pc_data
+							     + MINIX_ZONE_NUM_SIZE(sbp) * i) );
+				else
+					ref_zone = *(minixv2_zone *)
+						(pc->pc_data + MINIX_ZONE_NUM_SIZE(sbp) * i);
+			} else if ( MINIX_SB_IS_V1(sbp) ) {
+
+				if ( sbp->swap_needed )
+					ref_zone =
+						__bswap32( *(minixv1_zone *)
+							   ( pc->pc_data
+							     + MINIX_ZONE_NUM_SIZE(sbp) * i) );
+				else
+					ref_zone = *(minixv1_zone *)
+						(pc->pc_data + MINIX_ZONE_NUM_SIZE(sbp) * i);
+			}
+
+			if ( ref_zone != MINIX_NO_ZONE(sbp) )
+				goto put_pcache_out;  /* 空でないゾーン */
+		}
+		pagecache_put(pc);  /* ページキャッシュを解放する  */
+	}
+
+	return true;
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する  */
+
+error_out:
+	return false;
+}
+
+/**
    間接参照ブロックを解析し間接参照ブロックから参照されているゾーンのゾーン番号を得る
    @param[in]  sbp            Minixスーパブロック情報
    @param[in]  ind_blk_znum   間接参照ブロックのゾーン番号
