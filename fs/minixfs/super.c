@@ -275,7 +275,10 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 				*v3ptr = __bswap32(v3val);  /* バイトスワップ */
 			else
 				*v3ptr = v3val;
-			break;
+
+			*idxp = found_num;  /* 見つかったビットを返却 */
+
+			goto success;
 		} 
 	} else { /* MinixV1, MinixV2ファイルシステム */
 
@@ -315,13 +318,11 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 					*v12ptr = __bswap16(v12val);  /* バイトスワップ */
 				else
 					*v12ptr = v12val;
-				break;
+
+				*idxp = found_num;  /* 見つかったビットを返却 */
+				goto success;
 			}
 	}
-
-	*idxp = found_num;  /* 見つかったビットを返却 */
-	goto success;
-	
 
 put_pcache_out:
 	pagecache_put(pc);  /* ページキャッシュを解放する     */
@@ -329,7 +330,6 @@ put_pcache_out:
 
 success:
 	pagecache_put(pc);  /* ページキャッシュを解放する     */	
-
 	return 0;
 }
 
