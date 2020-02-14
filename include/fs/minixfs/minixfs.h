@@ -84,8 +84,9 @@
 /**
    読み書き種別
  */
-#define MINIX_RW_READING    (0)      /**< 読取り */
-#define MINIX_RW_WRITING    (1)      /**< 書込み */
+#define MINIX_RW_NONE       (0)      /**< I-node更新不要 */
+#define MINIX_RW_READING    (1)      /**< 読取り         */
+#define MINIX_RW_WRITING    (2)      /**< 書込み         */
 
 /**
    I-node番号/ゾーン番号型
@@ -470,6 +471,12 @@ typedef struct _minix_dentry{
 		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
 	}while(0)
 
+/**
+   無効I-node番号を得る
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */
+#define MINIX_NO_INUM(_sbp)				\
+	( MINIX_SB_IS_V3((_sbp) ) ? ((minixv3_ino)0) : ((minixv1_ino)0))
 
 /**
    ディレクトリエントリのファイル名長を取得する
@@ -494,6 +501,7 @@ typedef struct _minix_dentry{
 		( ((_sbp))->s_magic == MINIX_V2_SUPER_MAGIC ) ) ?	\
 		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv1_ino) ) :	\
 		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv2_ino) ) ) )
+
 
 int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
 int minix_write_super(struct _minix_super_block *_sbp);

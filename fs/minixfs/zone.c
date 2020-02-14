@@ -975,9 +975,13 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 
 		rc = minix_read_mapped_block(dip, cur_pos, &zone);
 		if ( rc != 0 ) {
-
+			
 			/* ゾーンが割り当てられていない場合は, 
 			 * 新たにゾーンを割り当てる 
+			 * @note 読取りの場合, 上記で転送サイズをファイルサイズ内に
+			 * 収めるように補正しているので, 読取りの場合で, かつ, 
+			 * ゾーンが割り当てられていない場合でも, ゼロクリアした
+			 * ゾーンを割り当てればよい(パンチホールアクセスケース)
 			 */
 			rc = minix_alloc_zone(dip->sbp, &zone);  /* データゾーンを割当てる */
 			if ( rc != 0 ) 
@@ -1022,29 +1026,34 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 
 		pagecache_put(pc);  /* ページキャッシュを解放  */	
 	}
-	if ( total != remains ) { /* 読み書きを行った場合 */
 
-		if ( rw_flag == MINIX_RW_WRITING ) {
+	if ( total != remains ) {  /* 読み書きを行った場合 */
 
-			/* サイズ更新 */
-			if ( ( off + total - remains ) > ( MINIX_D_INODE(dip, i_size) ) ) 
-				MINIX_D_INODE_SET(dip, i_size, off + ( total - remains ) ); 
+		if ( rw_flag != MINIX_RW_NONE ) {  /* I-nodeの更新を行う場合 */
 
-			/* TODO: 更新時刻更新 */
-		} else {
+			if ( rw_flag == MINIX_RW_WRITING ) {
+
+				/* サイズ更新 */
+				if ( ( off + total - remains ) 
+				    > ( MINIX_D_INODE(dip, i_size) ) ) 
+					MINIX_D_INODE_SET(dip, i_size,
+					    off + ( total - remains ) ); 
+
+				/* TODO: 更新時刻更新 */
+			} else {
 			
-			/* TODO: 参照時刻更新 */
-		}
+				/* TODO: 参照時刻更新 */
+			}
 
-		/* I-node情報を更新 */
-		rc = minix_rw_disk_inode(dip->sbp, i_num, MINIX_RW_WRITING, dip);
-		if ( rc != 0 ) 
-			goto error_out;	
+			/* I-node情報を更新 */
+			rc = minix_rw_disk_inode(dip->sbp, i_num, MINIX_RW_WRITING, dip);
+			if ( rc != 0 ) 
+				goto error_out;	
+		}
 
 		if ( rwlenp != NULL )
 			*rwlenp = total - remains;  /* 読み書きを行えたサイズを返却 */
 	}
-
 success:
 	return 0;
 
