@@ -19,10 +19,6 @@
    インデクス種別
  */
 #define MINIX_ZONE_INDEX_NONE    (-1)  /**< 未定義  */
-#define MINIX_ZONE_ADDR_NONE     (0)
-#define MINIX_ZONE_ADDR_DIRECT   (1)
-#define MINIX_ZONE_ADDR_SINGLE   (2)
-#define MINIX_ZONE_ADDR_DOUBLE   (3)
 
 /**
    ゾーンをクリアする
@@ -445,6 +441,8 @@ minix_alloc_indirect_block(minix_super_block *sbp, int index, minix_zone new_zon
 	if ( rc != 0 )
 		goto free_blk_out;
 
+	*newblkp = new_indblk;
+
 	return 0;
 
 free_blk_out:
@@ -765,8 +763,8 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 
 				if ( new_zone == MINIX_NO_ZONE(dip->sbp) )
 					goto success; /* 正常終了 */
-				else
-					goto error_out; /* エラー復帰する */
+
+				goto error_out; /* エラー復帰する */
 			} else {
 
 				/* 2重間接ブロックの場合は, 
@@ -973,7 +971,7 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 
 	remains = total; /* 残転送サイズ */
 
-	for(cur_pos = off; remains > 0; remains -= rwsiz ){
+	for(cur_pos = off; remains > 0; remains -= rwsiz, cur_pos += rwsiz ){
 
 		rc = minix_read_mapped_block(dip, cur_pos, &zone);
 		if ( rc != 0 ) {

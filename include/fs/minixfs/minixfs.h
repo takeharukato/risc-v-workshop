@@ -39,6 +39,11 @@
 #define MINIX_V2_DIRSIZ2       (30)  /**< MinixV2でのファイル名長(30バイト) */
 #define MINIX_V3_DIRSIZ	       (60)  /**< MinixV3でのファイル名長(60バイト) */
 
+#define MINIX_ZONE_ADDR_NONE   (0)   /**< 未定義            */
+#define MINIX_ZONE_ADDR_DIRECT (1)   /**< 直接参照ゾーン    */
+#define MINIX_ZONE_ADDR_SINGLE (2)   /**< 単間接参照ゾーン  */
+#define MINIX_ZONE_ADDR_DOUBLE (3)   /**< 2重間接参照ゾーン */
+
 #define MINIX_V1_NR_TZONES     (9)  /**< MinixV1でのゾーン配列総数        */
 #define MINIX_V1_NR_DZONES     (7)  /**< MinixV1での直接参照ブロック数    */
 #define MINIX_V1_NR_IND_ZONES  (1)  /**< MinixV1での間接参照ブロック数    */
