@@ -22,6 +22,7 @@ int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, in
 
 #define ROOT_INO  (1)
 #define TST_INO   (2)
+#define TST_BIG   (3)
 static void
 minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
@@ -29,6 +30,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	minix_bitmap_idx idx;
 	minix_inode     din1;
 	minix_inode     din2;
+	minix_inode     din3;
 	minix_ino        ino;
 	int             type;
 	int             didx;
@@ -231,6 +233,23 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	
+	/* 2重間接ブロック
+	 */
+	rc = minix_rw_disk_inode(&sb, TST_BIG, MINIX_RW_READING, &din3);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/*
+	 * ゾーンの開放
+	 */
+	rc = minix_unmap_zone(ino, &din3, 0, MINIX_D_INODE(&din3, i_size));
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 }
 
 void

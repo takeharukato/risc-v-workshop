@@ -184,12 +184,13 @@ minix_free_zone(minix_super_block *sbp, minix_zone znum){
 bool
 minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 	int                      rc; /* 返り値 */
-	int                       i; /* ゾーン配列インデクス                  */
-	page_cache              *pc; /* ページキャッシュ                      */
-	size_t                pgsiz; /* ページキャッシュサイズ                */
-	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)   */
-	obj_cnt_type     first_page; /* 開始ページアドレス(単位:バイト)       */
-	obj_cnt_type       end_page; /* 終了ページアドレス(単位:バイト)       */
+	int                       i; /* ゾーン配列インデクス                    */
+	page_cache              *pc; /* ページキャッシュ                        */
+	size_t                pgsiz; /* ページキャッシュサイズ                  */
+	obj_cnt_type       mod_page; /* 操作対象ページアドレス(単位:バイト)     */
+	obj_cnt_type     first_page; /* 開始ページアドレス(単位:バイト)         */
+	obj_cnt_type       end_page; /* 終了ページアドレス(単位:バイト)         */
+	off_t               cur_pos; /* 参照先アドレス(単位:バイト)             */
 	minix_zone         ref_zone; /* 参照先ゾーン */
 
 	/* ゾーン番号の健全性を確認 */
@@ -199,12 +200,15 @@ minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
 	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
 
+	/* 参照先アドレスを算出 */
+	cur_pos = ind_blk_znum * MINIX_ZONE_SIZE(sbp);
+
 	/* 先頭ページアドレスを算出  */
-	first_page = truncate_align(ind_blk_znum, pgsiz);
+	first_page = truncate_align(cur_pos, pgsiz);
 
 	/* 最終ページアドレスを算出  */
-	end_page = first_page + MINIX_ZONE_SIZE(sbp);
-
+	end_page =  roundup_align(cur_pos + MINIX_ZONE_SIZE(sbp), pgsiz);
+	
 	/* 参照先アドレス */
 	for(mod_page = first_page; end_page > mod_page; mod_page += pgsiz){
 
@@ -212,7 +216,7 @@ minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 		rc = pagecache_get(sbp->dev, mod_page, &pc);
 		if ( rc != 0 ) 
 			goto error_out;
-
+		
 		for(i = 0; pgsiz / MINIX_ZONE_NUM_SIZE(sbp) > i; ++i) {
 
 			/* 間接参照ブロック中のゾーン番号配列の
@@ -223,25 +227,25 @@ minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 				if ( sbp->swap_needed )
 					ref_zone =
 						__bswap32( *(minixv2_zone *)
-							   ( pc->pc_data
-							     + MINIX_ZONE_NUM_SIZE(sbp) * i) );
+							   ( pc->pc_data + cur_pos % pgsiz ) );
 				else
 					ref_zone = *(minixv2_zone *)
-						(pc->pc_data + MINIX_ZONE_NUM_SIZE(sbp) * i);
+						( pc->pc_data + cur_pos % pgsiz );
 			} else if ( MINIX_SB_IS_V1(sbp) ) {
 
 				if ( sbp->swap_needed )
 					ref_zone =
 						__bswap32( *(minixv1_zone *)
-							   ( pc->pc_data
-							     + MINIX_ZONE_NUM_SIZE(sbp) * i) );
+							   ( pc->pc_data + cur_pos % pgsiz) );
 				else
 					ref_zone = *(minixv1_zone *)
-						(pc->pc_data + MINIX_ZONE_NUM_SIZE(sbp) * i);
+						( pc->pc_data + cur_pos % pgsiz );
+
 			}
 
 			if ( ref_zone != MINIX_NO_ZONE(sbp) )
 				goto put_pcache_out;  /* 空でないゾーン */
+			cur_pos += MINIX_ZONE_NUM_SIZE(sbp); /* 次の要素へ */
 		}
 		pagecache_put(pc);  /* ページキャッシュを解放する  */
 	}
@@ -1078,7 +1082,9 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 		 */
 		if ( rc == 0 ) {
 
-			rc = minix_write_mapped_block(dip, remove_zone, MINIX_NO_ZONE(dip->sbp));
+			rc = minix_write_mapped_block(dip, 
+						      cur_rel_zone * MINIX_ZONE_SIZE(dip->sbp), 
+						      MINIX_NO_ZONE(dip->sbp));
 			if ( rc != 0 )
 				continue;  /* 解放できなかったブロックをスキップする */
 			minix_free_zone(dip->sbp, remove_zone);
@@ -1104,8 +1110,10 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 				/* 割当てられているデータゾーンを解放する
 				 */
 				/* ゾーンへの参照を解放する */
-				rc = minix_write_mapped_block(dip, remove_zone, 
-							 MINIX_NO_ZONE(dip->sbp));
+				rc = minix_write_mapped_block(dip, 
+							      end_rel_zone *
+							      MINIX_ZONE_SIZE(dip->sbp),
+							      MINIX_NO_ZONE(dip->sbp));
 				if ( rc == 0 ) /* ゾーンを解放する */
 					minix_free_zone(dip->sbp, remove_zone); 
 			} else {

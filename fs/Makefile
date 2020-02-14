@@ -24,6 +24,9 @@ ${lib}: ${objects}
 
 gcov:
 ifeq ($(CONFIG_PROFILE),y)
+	for dir in ${subdirs} ; do \
+	${MAKE} -C $${dir} $@;\
+	done
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
 
@@ -35,13 +38,12 @@ fsimg.S: fsimg.S.in ${FSIMG}
 	       -e 's|__PAGE_SIZE__|${CONFIG_HAL_PAGE_SIZE}|g' 		\
 	fsimg.S.in > $@
 
-
-
 ${FSIMG}:
 	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
 	mkfs.mfs $@
 	fuse-mfs ${top}/fsimg.img ${top}/rfs
 	echo "Hello World" > ${top}/rfs/hello.txt
+	${DD} if=/dev/urandom of=${top}/rfs/second-zone.dat bs=4K count=8
 	ls -lai ${top}/rfs
 	fusermount -u ${top}/rfs
 
