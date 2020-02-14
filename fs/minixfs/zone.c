@@ -47,7 +47,6 @@ minix_clear_zone(minix_super_block *sbp, minix_zone znum, off_t offset, off_t si
 	off_t               clr_off; /* ページ内オフセット (単位:バイト) */
 	off_t               clr_len; /* ページ内クリアサイズ (単位:バイト) */
 
-
 	/* ゾーン番号の健全性を確認 */
 	kassert( ( znum >= MINIX_D_SUPER_BLOCK(sbp, s_firstdatazone) ) &&
 	    ( MINIX_SB_ZONES_NR(sbp) > znum ) );
@@ -1077,8 +1076,13 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 
 		/* 割当てられているデータゾーンを解放する
 		 */
-		if ( rc == 0 )		
-			minix_free_zone(dip->sbp, remove_zone); 
+		if ( rc == 0 ) {
+
+			rc = minix_write_mapped_block(dip, remove_zone, MINIX_NO_ZONE(dip->sbp));
+			if ( rc != 0 )
+				continue;  /* 解放できなかったブロックをスキップする */
+			minix_free_zone(dip->sbp, remove_zone);
+		}
 		cur_pos += MINIX_ZONE_SIZE(dip->sbp);
 	}
 
@@ -1099,7 +1103,11 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 
 				/* 割当てられているデータゾーンを解放する
 				 */
-				minix_free_zone(dip->sbp, remove_zone);
+				/* ゾーンへの参照を解放する */
+				rc = minix_write_mapped_block(dip, remove_zone, 
+							 MINIX_NO_ZONE(dip->sbp));
+				if ( rc == 0 ) /* ゾーンを解放する */
+					minix_free_zone(dip->sbp, remove_zone); 
 			} else {
 
 				/* 最終ゾーン内にデータが残っている場合は指定された
