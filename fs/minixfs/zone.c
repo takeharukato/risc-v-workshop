@@ -724,12 +724,11 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 	new_2nd_indblk = MINIX_NO_ZONE(dip->sbp);
 	cur_2nd_indblk = MINIX_NO_ZONE(dip->sbp);
 
-	if ( ( new_zone != MINIX_NO_ZONE(dip->sbp) ) &&
-	     ( MINIX_D_INODE(dip, i_zone[zindex]) == MINIX_NO_ZONE(dip->sbp) ) ) {
+	if ( MINIX_D_INODE(dip, i_zone[zindex]) == MINIX_NO_ZONE(dip->sbp) ) {
 
 		/* 単間接参照ブロック, 2重間接ブロックの1段目のブロックが
 		 * 未割当ての場合
-		 */
+		 */		
 		if ( index_type == MINIX_ZONE_ADDR_SINGLE ) {
 
 			/*
@@ -755,15 +754,19 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 			rc = minix_alloc_indirect_block(dip->sbp, first_ind_index, 
 			    new_2nd_indblk, &new_1st_indblk);
 		}
-		if ( ( new_zone != MINIX_NO_ZONE(dip->sbp) ) && ( rc != 0 ) ) {
+		if ( rc != 0 ) {
 			
 			/*
 			 * 単間接参照ブロック, 2重間接ブロックの1段目のブロックの
 			 * 割当てに失敗した
 			 */
-			if ( index_type == MINIX_ZONE_ADDR_SINGLE ) 
-				goto error_out; /* エラー復帰する */
-			else {
+			if ( index_type == MINIX_ZONE_ADDR_SINGLE ) {
+
+				if ( new_zone == MINIX_NO_ZONE(dip->sbp) )
+					goto success; /* 正常終了 */
+				else
+					goto error_out; /* エラー復帰する */
+			} else {
 
 				/* 2重間接ブロックの場合は, 
 				 * 2段目のブロックを開放してから
@@ -779,19 +782,19 @@ minix_write_mapped_block(minix_inode *dip, off_t position, minix_zone new_zone){
 		MINIX_D_INODE_SET(dip, i_zone[zindex], new_1st_indblk); 
 	} else {  /* 単間接参照ブロック, 2重間接ブロックの1段目のブロックが割当済み  */
 
-		if ( new_zone != MINIX_NO_ZONE(dip->sbp) ) {
-			/* 単間接参照ブロック中のデータブロック/2段目のブロックへの参照を取得 */
-			rc = minix_rd_indir(dip->sbp, MINIX_D_INODE(dip, i_zone[zindex]), 
-					    first_ind_index, &cur_2nd_indblk);
-			/* 不正スーパブロック情報が引き渡されることはない */
-			kassert( rc != -EINVAL ); 
-			if ( rc != 0 )
-				goto error_out;  /* ページキャッシュ読み取りに失敗した */
-		}
+		/* 単間接参照ブロック中のデータブロック/2段目のブロックへの参照を取得 */
+		rc = minix_rd_indir(dip->sbp, MINIX_D_INODE(dip, i_zone[zindex]), 
+				    first_ind_index, &cur_2nd_indblk);
+		/* 不正スーパブロック情報が引き渡されることはない */
+		kassert( rc != -EINVAL ); 
+		if ( rc != 0 )
+			goto error_out;  /* ページキャッシュ読み取りに失敗した */
+
 		if ( index_type == MINIX_ZONE_ADDR_SINGLE ) {
 			
 			/*  データブロックへの参照を記録 */
-			kassert( cur_2nd_indblk == MINIX_NO_ZONE(dip->sbp) );
+			kassert( ( cur_2nd_indblk == MINIX_NO_ZONE(dip->sbp) ) ||
+				 ( new_zone == MINIX_NO_ZONE(dip->sbp) ) );
 			minix_wr_indir(dip->sbp, MINIX_D_INODE(dip, i_zone[zindex]), 
 				       first_ind_index, new_zone);
 
