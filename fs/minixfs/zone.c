@@ -218,7 +218,7 @@ minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 			/* 間接参照ブロック中のゾーン番号配列の
 			 * 全てのエントリが空であることを確認する
 			 */
-			if ( MINIX_SB_IS_V2(sbp) ||  MINIX_SB_IS_V3(sbp) ) {
+			if ( MINIX_SB_IS_V2(sbp) || MINIX_SB_IS_V3(sbp) ) {
 
 				if ( sbp->swap_needed )
 					ref_zone =
@@ -1029,7 +1029,7 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t 
 
 	if ( total != remains ) {  /* 読み書きを行った場合 */
 
-		if ( rw_flag != MINIX_RW_NONE ) {  /* I-nodeの更新を行う場合 */
+		if ( i_num != MINIX_NO_INUM(dip->sbp) ) {  /* I-nodeの更新を行う場合 */
 
 			if ( rw_flag == MINIX_RW_WRITING ) {
 

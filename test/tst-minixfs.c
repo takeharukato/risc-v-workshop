@@ -233,8 +233,8 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		    MINIX_RW_READING, &rdlen);
 		if ( rc != 0 )
 			break;
-		len -= sizeof(ent);
-		pos +=sizeof(ent);
+		len -= MINIX_D_DENT_SIZE(din1.sbp);
+		pos += MINIX_D_DENT_SIZE(din1.sbp);
 	}
 
 	memset(&rwbuf[0], 0, TST_BUFSIZ);
@@ -569,6 +569,16 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	rc = minix_unmap_zone(TST_INO, &din3, MINIX_ZONE_SIZE(din3.sbp)/4, 
 	    MINIX_ZONE_SIZE(din3.sbp)/2 );
 	if ( ( rc == 0 ) && ( MINIX_D_INODE(&din3, i_size) == old_siz ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 
+	 * ディレクトリエントリ
+	 */
+	/* 検索 */
+	rc = minix_lookup_dentry_by_name(&din1, "hello.txt", &ent);
+	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );

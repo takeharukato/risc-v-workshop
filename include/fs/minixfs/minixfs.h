@@ -84,9 +84,8 @@
 /**
    読み書き種別
  */
-#define MINIX_RW_NONE       (0)      /**< I-node更新不要 */
-#define MINIX_RW_READING    (1)      /**< 読取り         */
-#define MINIX_RW_WRITING    (2)      /**< 書込み         */
+#define MINIX_RW_READING       (0)      /**< 読取り         */
+#define MINIX_RW_WRITING       (1)      /**< 書込み         */
 
 /**
    I-node番号/ゾーン番号型
@@ -491,6 +490,14 @@ typedef struct _minix_dentry{
 		( MINIX_V2_DIRSIZ2 ) ) )
 
 /**
+   ディレクトリエントリのファイル名オフセットを得る
+   @param[in] _sbp メモリ中のスーパブロック情報
+ */
+#define MINIX_D_DIRNAME_OFFSET(_sbp)					\
+	( ( ((_sbp))->s_magic == MINIX_V3_SUPER_MAGIC ) ?		\
+	    ( sizeof(minixv3_ino) ) : ( sizeof(minixv2_ino) ) )
+
+/**
    ディレクトリエントリのサイズを取得する
    @param[in] _sbp メモリ中のスーパブロック情報
  */
@@ -518,6 +525,8 @@ int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position,
 int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off_t _off, 
     size_t _len, int _rw_flag, size_t *_rwlenp);
 int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, size_t _len);
+int minix_lookup_dentry_by_name(struct _minix_inode *dirip, const char *name, 
+    struct _minix_dentry *de);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 
