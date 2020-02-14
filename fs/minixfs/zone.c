@@ -1157,9 +1157,8 @@ minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
 		    end_rel_zone * MINIX_ZONE_SIZE(dip->sbp), &remove_zone);
 		if ( rc == 0 ) {
 
-			/* 全データをクリアする場合は, ゾーンを開放する
-			 * ゾーン解放処理の延長でブロックをクリアしてから
-			 * 解放するのでブロックのクリアは不要。
+			/* ゾーン内の全データが削除対象となる場合は, 
+			 * ゾーン内のブロックを解放する。
 			 */
 			if ( ( !addr_not_aligned(off, MINIX_ZONE_SIZE(dip->sbp) ) )
 			    && ( ( off + len ) == MINIX_D_INODE(dip, i_size) ) ) {
