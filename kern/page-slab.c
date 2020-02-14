@@ -298,19 +298,26 @@ alloc_slab_obj(kmem_cache *cache, slab *sinfo, void **objp){
 	/*  空きオブジェクトリストのロックを獲得  */
 	spinlock_lock_disable_intr(&sinfo->lock, &iflags);  
 
+	/* ON SLABの場合は, kmem_s_bufctl分後の領域から
+	 * オブジェクトが配置されている
+	 */
+	s_bctl = container_of(slist_ref_top(&sinfo->objects), kmem_s_bufctl, link);
+
+	/* OFF SLABの場合は, kmem_bufctlからオブジェクトのアドレスを求める
+	 */
+	bctl = container_of(slist_ref_top(&sinfo->objects), kmem_bufctl, link);	
 	if ( KMEM_CACHE_IS_ON_SLAB(cache) ) {  
 
-		/* ON SLABの場合は, kmem_s_bufctl分後の領域から
-		 * オブジェクトが配置されている
+		/* ON SLABの場合
 		 */
-		s_bctl = container_of(slist_get_top(&sinfo->objects), kmem_s_bufctl, link);
+		slist_del(&sinfo->objects, &s_bctl->link);
 		kassert(s_bctl->link.next == NULL);  /*  リンクを外したことを確認  */
 		ptr = (void *)(&s_bctl[1]);  /*  ペイロードへのポインタを取得  */
 	} else {
 
-		/* OFF SLABの場合は, kmem_bufctlからオブジェクトのアドレスを求める
+		/* OFF SLABの場合
 		 */
-		bctl = container_of(slist_get_top(&sinfo->objects), kmem_bufctl, link);
+		slist_del(&sinfo->objects, &bctl->link);
 		kassert(bctl->link.next == NULL);  /*  リンクを外したことを確認  */
 		ptr = bctl->obj;    /*  ペイロードへのポインタを取得  */
 	}
