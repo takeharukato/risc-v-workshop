@@ -24,20 +24,41 @@ int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, in
 #define TST_BIG   (3)
 #define TST_BUFSIZ (1024)
 #define TST_WRPTN  (0x5a)
+#define TST_INIPTN (0xde)
 
-static char rdbuf[TST_BUFSIZ];
+static char rwbuf[TST_BUFSIZ];
+static char  vbuf[TST_BUFSIZ];
 
 static int
 write_test(minix_ino ino, minix_inode *dip, off_t off, size_t size, size_t *wrp){
-	int rc;
+	int       rc;
+	int      vrc;
+	size_t rdlen;
 	size_t wrlen;
 
-	memset(&rdbuf[0], TST_WRPTN, TST_BUFSIZ);
-	rc = minix_rw_zone(ino, dip, &rdbuf[0], off, size, MINIX_RW_WRITING, &wrlen);
+	memset(&vbuf[0], TST_INIPTN, TST_BUFSIZ);
+	memset(&rwbuf[0], TST_WRPTN, TST_BUFSIZ);
+
+	rc = minix_rw_zone(ino, dip, &rwbuf[0], off, size, MINIX_RW_WRITING, &wrlen);
+
+	if ( rc == 0 ) {
+
+		vrc = minix_rw_zone(ino, dip, &vbuf[0], off, 
+				    MIN(wrlen, TST_BUFSIZ), MINIX_RW_READING, &rdlen);
+		if ( vrc != 0 )
+			return vrc;
+
+		if ( memcmp(&rwbuf[0], &vbuf[0], MIN(wrlen, TST_BUFSIZ)) != 0 ) 
+			return -ENXIO;
+	}
+
 	if ( wrp != NULL )
 		*wrp = wrlen;
+
 	return rc;
 }
+
+
 static void
 minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
@@ -63,6 +84,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	size_t       max_ind;
 	size_t      min_dind;
 	size_t      max_dind;
+	off_t        old_siz;
 
 	rc = minix_read_super(FS_FSIMG_DEVID, &sb);
 	if ( rc == 0 )
@@ -215,32 +237,32 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		pos +=sizeof(ent);
 	}
 
-	memset(&rdbuf[0], 0, TST_BUFSIZ);
-	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, TST_BUFSIZ, MINIX_RW_READING, &rdlen);
+	memset(&rwbuf[0], 0, TST_BUFSIZ);
+	rc = minix_rw_zone(ino, &din2, &rwbuf[0], 0, TST_BUFSIZ, MINIX_RW_READING, &rdlen);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rdbuf[MIN(MINIX_D_INODE(&din2, i_size), TST_BUFSIZ - 1)]='\0';
-	kprintf("Read:%s", rdbuf);
+	rwbuf[MIN(MINIX_D_INODE(&din2, i_size), TST_BUFSIZ - 1)]='\0';
+	kprintf("Read:%s", rwbuf);
 
-	memset(&rdbuf[0], 0, TST_BUFSIZ);
+	memset(&rwbuf[0], 0, TST_BUFSIZ);
 	dtlen = strlen("Hello RISC-V\n");
-	strcpy(&rdbuf[0], "Hello RISC-V\n");
-	rdbuf[dtlen]='\0';
-	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, dtlen + 1,MINIX_RW_WRITING, &wrlen);
+	strcpy(&rwbuf[0], "Hello RISC-V\n");
+	rwbuf[dtlen]='\0';
+	rc = minix_rw_zone(ino, &din2, &rwbuf[0], 0, dtlen + 1,MINIX_RW_WRITING, &wrlen);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	memset(&rdbuf[0], 0, TST_BUFSIZ);
-	rc = minix_rw_zone(ino, &din2, &rdbuf[0], 0, TST_BUFSIZ, MINIX_RW_READING, &rdlen);
+	memset(&rwbuf[0], 0, TST_BUFSIZ);
+	rc = minix_rw_zone(ino, &din2, &rwbuf[0], 0, TST_BUFSIZ, MINIX_RW_READING, &rdlen);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rdbuf[MIN(MINIX_D_INODE(&din2, i_size), TST_BUFSIZ - 1)]='\0';
-	kprintf("Read:%s", rdbuf);
+	rwbuf[MIN(MINIX_D_INODE(&din2, i_size), TST_BUFSIZ - 1)]='\0';
+	kprintf("Read:%s", rwbuf);
 
 	/*
 	 * ゾーンの開放
@@ -285,9 +307,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
-			 max_direct+1,
-			 &wrlen);
+	rc = write_test( TST_INO, &din3, 0, max_direct+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -296,18 +316,14 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* 単間接参照ブロック */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
-			 min_ind+1,
-			 &wrlen);
+	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
-			 max_ind+1,
-			 &wrlen);
+	rc = write_test( TST_INO, &din3, 0, max_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -316,15 +332,56 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* 2重間接参照ブロック */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
-			 min_dind+1,
-			 &wrlen);
+	rc = write_test( TST_INO, &din3, 0, min_dind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/*
+	 * サイズ縮小
+	 */
+	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
+	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
+	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 開始: ゾーン境界, ファイル先頭 
+	   終了: ゾーン境界, ファイル末尾残
+	 */
+	old_siz = MINIX_D_INODE(&din3, i_size);
+	rc = minix_unmap_zone(TST_INO, &din3, 0, 
+			      truncate_align(MINIX_D_INODE(&din3, i_size),
+					     MINIX_ZONE_SIZE(din3.sbp))
+			      - MINIX_ZONE_SIZE(din3.sbp));
+	if ( ( rc == 0 ) && ( old_siz == MINIX_D_INODE(&din3, i_size) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* データ作成 */
+	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
+	kassert( rc == 0 );
+	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
+	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 開始: ゾーン境界, ファイル先頭 
+	   終了: ゾーン非境界, ファイル末尾残
+	 */
+	old_siz = MINIX_D_INODE(&din3, i_size);
+	rc = minix_unmap_zone(TST_INO, &din3, 0, 
+			      truncate_align(MINIX_D_INODE(&din3, i_size),
+					     MINIX_ZONE_SIZE(din3.sbp))
+			      - MINIX_ZONE_SIZE(din3.sbp)/2);
+	if ( ( rc == 0 ) && ( old_siz == MINIX_D_INODE(&din3, i_size) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 
 }
 
