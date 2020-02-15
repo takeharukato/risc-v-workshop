@@ -1,0 +1,44 @@
+# -*- mode: makefile-gmake; coding:utf-8 -*-
+# OS kernel sample
+# Copyright 2019 Takeharu KATO
+#
+top=../..
+include ${top}/Makefile.inc
+HOST_CFLAGS=${OPT_FLAGS} -Wall ${PROF_OPT_FLAGS} ${INC_FLAGS}
+HOST_CFLAGS += -I.
+
+tools=mkfs.minixfs
+
+mkfs_minixfs_objects=utils.o
+
+objects=mkfs.minixfs.o ${mkfs_minixfs_objects}
+
+all: mkfs.minixfs
+
+mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects}
+
+gcov:
+ifeq ($(CONFIG_PROFILE),y)
+	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
+endif
+
+clean: 
+	${RM} ${CLEAN_FILES} ${objects} ${tools}
+
+distclean: clean
+	${RM} ${DIST_CLEAN_FILES}
+
+mkfs.minixfs.o: mkfs.minixfs.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+mkfs.minixfs.d: mkfs.minixfs.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+utils.o: utils.c 
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+utils.d: utils.c 
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+-include *.d
