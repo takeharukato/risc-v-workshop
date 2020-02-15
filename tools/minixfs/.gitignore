@@ -1,0 +1,5 @@
+#
+#Minixfs Tools
+#
+mkfs.minixfs
+*.img

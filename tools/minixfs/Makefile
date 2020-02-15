@@ -9,11 +9,12 @@ HOST_CFLAGS += -I.
 
 tools=mkfs.minixfs
 
-mkfs_minixfs_objects=utils.o
+mkfs_minixfs_objects=utils.o fsimg-pcache.o
 
 objects=mkfs.minixfs.o ${mkfs_minixfs_objects}
+objects_depends=$(patsubst %.o,%.d,${objects})
 
-all: mkfs.minixfs
+all: ${objects_depends} mkfs.minixfs
 
 mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
 	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects}
@@ -39,6 +40,12 @@ utils.o: utils.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
 utils.d: utils.c 
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+fsimg-pcache.o: fsimg-pcache.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+fsimg-pcache.d: fsimg-pcache.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
 -include *.d

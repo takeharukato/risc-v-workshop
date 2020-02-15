@@ -1,3 +1,11 @@
+/* -*- mode: C; coding:utf-8 -*- */
+/**********************************************************************/
+/*  OS kernel sample                                                  */
+/*  Copyright 2019 Takeharu KATO                                      */
+/*                                                                    */
+/*  Utility functions                                                 */
+/*                                                                    */
+/**********************************************************************/
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -6,7 +14,7 @@
 #include <errno.h>
 #include <limits.h>
 
-#include "utils.h"
+#include <utils.h>
 
 
 static int
@@ -30,7 +38,7 @@ safe_open_common(int link_is_ok, const char *pathname, int flags){
 		goto error_out;
 	}
  
-	fd = open(pathname, O_RDWR, 0);
+	fd = open(pathname, O_RDWR);
 
 	if ( fd < 0 ) {
 

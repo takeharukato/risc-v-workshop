@@ -18,20 +18,11 @@
 #include <kern/kern-types.h>
 #include <kern/page-macros.h>
 #include <fs/minixfs/minixfs.h>
-#include <kern/fs-fsimg.h>
 
 #include <string.h>
 
+#include <minixfs-tools.h>
 #include <utils.h>
-
-/** デフォルトではバージョン3のファイルシステムを生成 */
-#define MKFS_MINIXFS_DEFAULT_VERSION (3)
-/** デフォルトでは8MiBのファイルシステムを生成 */
-#define MKFS_MINIXFS_DEFAULT_SIZE_MB (8)
-
-#define MKFS_MINIXFS_FSIMG_NAME_FMT "minixfs-v%d-fsimg.img"
-
-#define MKFS_MINIXFS_ROOT_INO        (1)
 
 /**
    ヘルプを表示する
@@ -120,6 +111,14 @@ main(int argc, char *argv[]){
 	printf("nr_inodes : %d\n", nr_inodes);
 	printf("version   : %d\n", version);
 	printf("size=%lld\n", (long long)imgsize);
+
+	rc = fsimg_create(imagefile, imgsize);
+	if ( rc != 0 ) 
+		exit(1);
+
+	rc = fsimg_pagecache_init(imagefile);
+	if ( rc != 0 ) 
+		exit(1);
 
 	return 0;
 }
