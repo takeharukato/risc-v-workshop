@@ -944,18 +944,18 @@ error_out:
    @note TODO: 更新時間更新
  */
 int
-minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, size_t len, 
-    int rw_flag, size_t *rwlenp){
-	int          rc;
-	size_t  remains;
-	size_t    total;
-	page_cache  *pc;
-	off_t   cur_pos;
-	off_t    pg_pos;
-	off_t    pg_off;
-	size_t    pgsiz;
-	size_t    rwsiz;
-	minix_zone zone;
+minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, ssize_t len, 
+    int rw_flag, ssize_t *rwlenp){
+	int           rc;
+	ssize_t  remains;
+	ssize_t    total;
+	page_cache   *pc;
+	off_t    cur_pos;
+	off_t     pg_pos;
+	off_t     pg_off;
+	size_t     pgsiz;
+	ssize_t    rwsiz;
+	minix_zone  zone;
 
 	if ( ( off > MINIX_D_INODE(dip, i_size) ) || ( ( off + len ) < off ) ) {
 
@@ -1076,7 +1076,7 @@ error_out:
    @note TODO: 更新時間更新
  */
 int
-minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, size_t len){
+minix_unmap_zone(minix_ino i_num, minix_inode *dip, off_t off, ssize_t len){
 	int                    rc;
 	size_t              pgsiz;
 	size_t            clr_siz;

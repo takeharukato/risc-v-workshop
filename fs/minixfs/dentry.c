@@ -12,6 +12,7 @@
 
 #include <kern/spinlock.h>
 #include <kern/dev-pcache.h>
+#include <kern/vfs-if.h>
 
 #include <fs/minixfs/minixfs.h>
 
@@ -92,7 +93,7 @@ lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *na
 	minix_dentry    m_ent;  /* メモリ上のディレクトリエントリ                */
 	obj_cnt_type      pos;  /* ディレクトリエントリ読み取り位置(単位:個)     */
 	obj_cnt_type  nr_ents;  /* ディレクトリエントリ総数(単位:個)             */
-	size_t          rdlen;  /* 読み込んだディレクトリエントリ長(単位:バイト) */
+	ssize_t         rdlen;  /* 読み込んだディレクトリエントリ長(単位:バイト) */
 
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
@@ -177,8 +178,8 @@ minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 	minix_dentry  new_ent;  /* 書き込みディレクトリエントリ                   */
 	obj_cnt_type      pos;  /* ディレクトリエントリ読み取り位置(単位:個)      */
 	obj_cnt_type  nr_ents;  /* ディレクトリエントリ総数(単位:個)              */
-	size_t          rdlen;  /* 読み込んだディレクトリエントリ長(単位:バイト)  */
-	size_t          wrlen;  /* 書き込んだディレクトリエントリ長(単位:バイト)  */
+	ssize_t         rdlen;  /* 読み込んだディレクトリエントリ長(単位:バイト)  */
+	ssize_t         wrlen;  /* 書き込んだディレクトリエントリ長(単位:バイト)  */
 
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
@@ -282,3 +283,13 @@ minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 error_out:
 	return rc;
 }
+/**
+   
+ */
+int
+minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf, 
+    ssize_t len, ssize_t *rdlen){
+
+	return 0;
+}
+    

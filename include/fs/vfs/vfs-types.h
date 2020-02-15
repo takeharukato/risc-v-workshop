@@ -26,11 +26,11 @@ typedef uint32_t    vfs_fd_flags;  /**< ファイルディスクリプタフラ�
 typedef uint32_t  vfs_vstat_mask;  /**< ファイル属性マスク           */
 typedef uint32_t   vfs_mnt_flags;  /**< マウントフラグ               */
 
-typedef void *    vfs_fs_private;  /**< ファイルシステム固有の管理情報 (例: ボリューム管理情報) */
-typedef void *   vfs_dir_private;  /**< ディレクトリ探査時のファイルシステム固有情報  */
+typedef void *    vfs_fs_private;  /**< ファイルシステム固有のスーパブロック情報          */
+typedef void *   vfs_dir_private;  /**< ディレクトリ探査時のファイルシステム固有情報      */
 typedef void *  vfs_file_private;  /**< ファイルディスクリプタのファイルシステム固有情報  */
-typedef void *      vfs_fs_vnode;  /**< ファイルシステム固有のvnode情報 (例: ディスクinode情報) */
+typedef void *      vfs_fs_vnode;  /**< ファイルシステム固有のvnode情報 (ディスクI-node)  */
 
 
-#endif  /* ASM_FILE */
+#endif  /*  !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_TYPES_H  */

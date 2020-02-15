@@ -533,8 +533,8 @@ int minix_read_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zo
 int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, 
     minix_zone _new_zone);
 int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off_t _off, 
-    size_t _len, int _rw_flag, size_t *_rwlenp);
-int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, size_t _len);
+    ssize_t _len, int _rw_flag, ssize_t *_rwlenp);
+int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, ssize_t _len);
 int minix_lookup_dentry_by_name(struct _minix_super_block *_sbp, struct _minix_inode *dirip,
     const char *name, struct _minix_dentry *de);
 int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum, 
