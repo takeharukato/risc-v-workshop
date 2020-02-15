@@ -29,12 +29,15 @@ int minix_calc_indexes(minix_super_block *_sbp, off_t _position, int *_typep, in
 static char rwbuf[TST_BUFSIZ];
 static char  vbuf[TST_BUFSIZ];
 
+static uint8_t dentbuf[TST_BUFSIZ];
+
 static int
-write_test(minix_ino ino, minix_inode *dip, off_t off, size_t size, size_t *wrp){
+write_test(minix_super_block *sbp, minix_ino ino, minix_inode *dip, off_t off, 
+    size_t size, ssize_t *wrp){
 	int       rc;
 	int      vrc;
-	size_t rdlen;
-	size_t wrlen;
+	ssize_t rdlen;
+	ssize_t wrlen;
 
 	memset(&vbuf[0], TST_INIPTN, TST_BUFSIZ);
 	memset(&rwbuf[0], TST_WRPTN, TST_BUFSIZ);
@@ -73,8 +76,8 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	int             idx1;
 	int             idx2;
 	size_t           len;
-	size_t         rdlen;
-	size_t         wrlen;
+	ssize_t        rdlen;
+	ssize_t        wrlen;
 	size_t         dtlen;
 	minix_dentry     ent;
 	off_t            pos;
@@ -304,7 +307,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0, 
 			 min_direct+1,
 			 &wrlen);
 	if  ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
@@ -313,7 +316,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, max_direct+1, &wrlen);
+	rc = write_test(&sb,  TST_INO, &din3, 0, max_direct+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -322,14 +325,14 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* 単間接参照ブロック */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
+	rc = write_test(&sb,  TST_INO, &din3, 0, min_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, max_ind+1, &wrlen);
+	rc = write_test(&sb,  TST_INO, &din3, 0, max_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -338,7 +341,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* 2重間接参照ブロック */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_dind+1, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, min_dind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -350,7 +353,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, min_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -371,7 +374,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_ind + 1, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, min_ind + 1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -392,7 +395,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0, 
 	    roundup_align(min_ind + 1, MINIX_ZONE_SIZE(&sb))
 	    - MINIX_ZONE_SIZE(&sb) / 2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
@@ -412,7 +415,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_ind+1, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, min_ind+1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -433,7 +436,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, min_ind + 1, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, min_ind + 1, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -454,7 +457,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0, 
 	    roundup_align(min_ind + 1, MINIX_ZONE_SIZE(&sb))
 	    - MINIX_ZONE_SIZE(&sb) / 2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
@@ -478,7 +481,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb)*2, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb)*2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -497,7 +500,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb)*2, &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb)*2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -519,7 +522,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -538,7 +541,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -556,7 +559,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/* データ作成 */
 	rc = minix_unmap_zone(TST_INO, &din3, 0, MINIX_D_INODE(&din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test( TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
+	rc = write_test(&sb, TST_INO, &din3, 0, MINIX_ZONE_SIZE(&sb), &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&din3, i_size) ) )
 		ktest_pass( sp );
 	else
@@ -621,6 +624,16 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		else
 			ktest_fail( sp );
 	}
+
+	/*
+	 * ディレクトリエントリ情報取得
+	 */
+	rc = minix_getdents(&sb, &din1, &dentbuf[0], 0, TST_BUFSIZ, &rdlen); 
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 }
 
 void

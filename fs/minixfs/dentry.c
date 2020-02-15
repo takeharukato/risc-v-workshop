@@ -284,12 +284,96 @@ error_out:
 	return rc;
 }
 /**
-   
+   ディレクトリ・エントリを取得する
+   @param[in]  sbp    メモリ上のスーパブロック情報
+   @param[in]  dirip  検索するディレクトリのI-node情報
+   @param[in]  buf    ディレクトリエントリ情報書き込み先カーネルアドレス
+   @param[in]  off    ディレクトリエントリ読み出しオフセット(単位:バイト)
+   @param[in]  len    ディレクトリエントリ情報読み出し長(単位:バイト)
+   @param[out] rdlenp 書き込んだディレクトリエントリ情報のサイズ(単位:バイト)を返却する領域
+   @retval     0      正常終了
+   @retval    -ESRCH  ディレクトリエントリが見つからなかった
+   @retval    -ENOENT ゾーンが割り当てられていない
+   @retval    -E2BIG  ファイルサイズの上限を超えている
+   @retval    -EIO    ページキャッシュアクセスに失敗した
+   @retval    -ENOSPC 空きゾーンがない
+   @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
 minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf, 
-    ssize_t len, ssize_t *rdlen){
+    off_t off, ssize_t len, ssize_t *rdlenp){
+	int                rc;  /* 返り値                                         */
+	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ               */
+	minix_dentry    m_ent;  /* メモリ上のディレクトリエントリ                 */
+	obj_cnt_type      pos;  /* ディレクトリエントリ読み取り位置 (単位:個)     */
+	obj_cnt_type  nr_ents;  /* ディレクトリエントリ総数 (単位:個)             */
+	ssize_t         rdlen;  /* 読み込んだディレクトリエントリ長 (単位:バイト) */
+	void            *curp;  /* バッファ内の書き込み先アドレス                 */
+	void         *buf_end;  /* バッファの最終アドレス                         */
+	void            *term;  /* ファイル名中のヌル文字のアドレス               */
+	size_t        namelen;  /* ファイル名長 (単位: バイト)                    */
+	vfs_dirent     *v_ent;  /* VFSディレクトリエントリ                        */
 
+	if ( ( off >= MINIX_D_INODE(dirip, i_size) ) || ( off >= ( off + len ) ) ) {
+
+		if ( rdlenp != NULL )
+			*rdlenp = 0;
+		return 0;  /* 最終エントリ */
+	}
+
+	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
+	 */
+	nr_ents = MINIX_D_INODE(dirip, i_size) / MINIX_D_DENT_SIZE(sbp); /* エントリ数算出 */
+
+	curp = buf;                    /* 書き込み先アドレスを初期化 */
+	buf_end = buf + ( off + len ); /* 最終アドレスを算出         */
+
+	/* 読み取り開始ディレクトリエントリ位置(連番)を算出 */
+	pos = roundup_align(off, MINIX_D_DENT_SIZE(sbp)) / MINIX_D_DENT_SIZE(sbp);
+
+	for( ; ( nr_ents > pos ) && ( buf_end > curp ); 
+	    ++pos, curp += VFS_DIRENT_DENT_SIZE(namelen) ) {
+
+		v_ent = (vfs_dirent *)curp;  /* 次に書き込むVFSディレクトリエントリ */
+
+		rc = minix_rw_zone(MINIX_NO_INUM(sbp), dirip, 
+		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
+		    MINIX_RW_READING, &rdlen);
+
+		if ( rc != 0 )
+			continue; /* パンチホールが存在しうるので読み飛ばす */
+
+		if ( rdlen != MINIX_D_DENT_SIZE(sbp) )
+			break;  /* ディレクトリエントリの終了 */
+		
+		swap_diskdent(sbp, &d_ent, &m_ent); /* ネイティブエンディアンに変換 */
+		
+		/*
+		 * ファイル名長を算出
+		 */
+		term = memchr((void *)&m_ent + MINIX_D_DIRNAME_OFFSET(sbp),
+		    (int)'\0', MINIX_D_DIRSIZ(sbp));
+		if ( term != NULL )
+			namelen = term - ((void *)&m_ent + MINIX_D_DIRNAME_OFFSET(sbp));
+		else
+			namelen = MINIX_D_DIRSIZ(sbp);
+
+		v_ent->d_ino = MINIX_D_DENT_INUM(sbp, &m_ent); /* I-node番号 */
+		/* 次のエントリのオフセットアドレス */
+		v_ent->d_off = ( pos + 1 ) * MINIX_D_DENT_SIZE(sbp); 
+		v_ent->d_reclen = VFS_DIRENT_DENT_SIZE(namelen);
+		memmove(&v_ent->d_name[0], ((void *)&m_ent + MINIX_D_DIRNAME_OFFSET(sbp)),
+		    namelen);
+		v_ent->d_name[namelen] = '\0'; /* ヌルターミネートする */
+		/* d_typeメンバを設定 */
+		*(uint8_t *)((void *)v_ent + VFS_DIRENT_DENT_TYPE_OFF(namelen)) 
+			= DT_UNKNOWN;
+	}
+
+	kassert( curp >= buf );
+	if ( rdlenp != NULL )
+		*rdlenp = (ssize_t)( curp - buf );
+	
 	return 0;
 }
     

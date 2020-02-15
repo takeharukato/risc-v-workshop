@@ -541,6 +541,8 @@ int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum,
     struct _minix_inode *_dirip, const char *_name, minix_ino _inum);
 int minix_del_dentry(struct _minix_super_block *sbp, minix_ino _dir_inum, 
     struct _minix_inode *dirip, const char *_name, minix_ino *_inump);
+int minix_getdents(struct _minix_super_block *_sbp, struct _minix_inode *_dirip, void *_buf, 
+    off_t _off, ssize_t _len, ssize_t *_rdlenp);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 

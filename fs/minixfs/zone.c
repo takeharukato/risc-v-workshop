@@ -957,7 +957,7 @@ minix_rw_zone(minix_ino i_num, minix_inode *dip, void *kpage, off_t off, ssize_t
 	ssize_t    rwsiz;
 	minix_zone  zone;
 
-	if ( ( off > MINIX_D_INODE(dip, i_size) ) || ( ( off + len ) < off ) ) {
+	if ( ( off > MINIX_D_INODE(dip, i_size) ) || ( off > ( off + len ) ) ) {
 
 		if ( rwlenp != NULL )
 			*rwlenp = 0;
