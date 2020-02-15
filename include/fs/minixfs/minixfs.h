@@ -379,14 +379,6 @@ typedef struct _minix_dentry{
 		(MINIX_V1_DBL_INDIRECT_ZONE_IDX) ) )
 	
 /**
-   ゾーン番号型のサイズを得る(単位:バイト)
-   @param[in] _sbp メモリ中のスーパブロック情報
- */      
-#define MINIX_ZONE_NUM_SIZE(_sbp) \
-	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_zone)) :	\
-	    ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv2_zone)) : (sizeof(minixv1_zone)) ) )
-
-/**
    スーパブロック中の総ゾーン数を得る
    @param[in] _sbp メモリ中のスーパブロック情報
  */

@@ -206,11 +206,11 @@ error_out:
    ページキャッシュ中のビットマップからビットを割当てる(内部関数)
    @param[in] sbp      スーパブロック情報
    @param[in] cur_page 検索対象ページ番号 (単位: デバイス先頭からのページ数)
-   @param[in] bit_off  検索開始ビット位置 (単位: ビット)
-   @param[in] nt_bits  ビットマップ中の総ビット数 (単位: ビット)
    @param[in] map_type 検索対象ビットマップ種別
    INODE_MAP ... I-nodeビットマップ
    ZONE_MAP  ... ゾーンビットマップ
+   @param[in] bit_off  検索開始ビット位置 (単位: ビット)
+   @param[in] nr_bits  ビットマップ中の総ビット数 (単位: ビット)
    @param[out] idxp 割り当てたビットのインデクスを返却する領域
 */
 static int
