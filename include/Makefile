@@ -1,7 +1,11 @@
+# -*- mode: makefile-gmake; coding:utf-8 -*-
+# OS kernel sample
+# Copyright 2019 Takeharu KATO
+#
 top=..
 include ${top}/Makefile.inc
 
-subdirs=klib kern dev hal
+subdirs=klib kern dev fs hal
 
 all: hal
 
@@ -20,4 +24,4 @@ distclean:hal clean
 	${MAKE} -C $${dir} distclean ;\
 	done
 	${RM} hal
-	${RM} ${DIST_CLEAN_FILES} *~ autoconf.h
+	${RM} ${DIST_CLEAN_FILES} autoconf.h

@@ -6,8 +6,8 @@
 /*  Virtual file system type definitions                              */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_KERN_TYPES_H)
-#define  _KERN_KERN_TYPES_H 
+#if !defined(_FS_VFS_VFS_TYPES_H)
+#define  _FS_VFS_VFS_TYPES_H 
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
@@ -33,4 +33,4 @@ typedef void *      vfs_fs_vnode;  /**< ファイルシステム固有のvnode�
 
 
 #endif  /* ASM_FILE */
-#endif  /*  _KERN_KERN_TYPES_H  */
+#endif  /*  _FS_VFS_VFS_TYPES_H  */

@@ -139,8 +139,6 @@ minix_alloc_zone(minix_super_block *sbp, minix_zone *zp){
    ゾーンを解放する
    @param[in]  sbp    Minixスーパブロック情報
    @param[in]  znum   ゾーン番号
-   @retval     0      正常終了
-   @retval    -ENOSPC 空きゾーンがない
  */
 void
 minix_free_zone(minix_super_block *sbp, minix_zone znum){
@@ -231,7 +229,7 @@ minix_is_empty_indir(minix_super_block *sbp, minix_zone ind_blk_znum){
 
 				if ( sbp->swap_needed )
 					ref_zone =
-						__bswap32( *(minixv1_zone *)
+						__bswap16( *(minixv1_zone *)
 							   ( pc->pc_data + cur_pos % pgsiz) );
 				else
 					ref_zone = *(minixv1_zone *)
@@ -938,6 +936,11 @@ error_out:
    - MINIX_RW_WRITING 書き込み
    @param[in]   rwlenp     読み書きした長さ(単位: バイト)
    @retval      0          正常終了
+   @retval     -ENOENT     ゾーンが割り当てられていない
+   @retval     -E2BIG      ファイルサイズの上限を超えている
+   @retval     -EIO        ページキャッシュアクセスに失敗した
+   @retval     -ENOSPC     空きゾーンがない
+   @retval     -EINVAL     不正なスーパブロックを指定した
    @note TODO: 更新時間更新
  */
 int

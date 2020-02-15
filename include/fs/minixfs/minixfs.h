@@ -98,6 +98,7 @@ typedef uint16_t     minixv1_zone;  /**< MinixV1でのゾーン番号型 */
 typedef uint32_t     minixv2_zone;  /**< MinixV2でのゾーン番号型 */
 typedef minixv2_zone minixv3_zone;  /**< MinixV3でのゾーン番号型 */
 typedef uint32_t       minix_zone;  /**< メモリ中のゾーン番号    */
+
 /**
    ビットマップチャンク
  */
@@ -509,6 +510,15 @@ typedef struct _minix_dentry{
 		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv1_ino) ) :	\
 		( MINIX_D_DIRSIZ((_sbp)) + sizeof(minixv2_ino) ) ) )
 
+/**
+   ディレクトリエントリ中のI-node番号を取得する
+   @param[in] _sbp   メモリ中のスーパブロック情報
+   @param[in] _dentp ディレクトリエントリへのポインタ
+ */
+#define MINIX_D_DENT_INUM(_sbp, _dentp)					\
+	( ( MINIX_SB_IS_V3( (_sbp) ) ) 					\
+	    ? ((minix_ino)(((minix_dentry *)(_dentp))->d_dentry.v3.inode))	\
+	    : ((minix_ino)(((minix_dentry *)(_dentp))->d_dentry.v12.inode)) )
 
 int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
 int minix_write_super(struct _minix_super_block *_sbp);
@@ -525,8 +535,10 @@ int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position,
 int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off_t _off, 
     size_t _len, int _rw_flag, size_t *_rwlenp);
 int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, size_t _len);
-int minix_lookup_dentry_by_name(struct _minix_inode *dirip, const char *name, 
-    struct _minix_dentry *de);
+int minix_lookup_dentry_by_name(struct _minix_super_block *_sbp, struct _minix_inode *dirip,
+    const char *name, struct _minix_dentry *de);
+int minix_add_dentry(struct _minix_super_block *_sbp, struct _minix_inode *_dirip, 
+    const char *_name, minix_ino _inum);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 
