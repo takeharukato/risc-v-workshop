@@ -537,8 +537,10 @@ int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off
 int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, size_t _len);
 int minix_lookup_dentry_by_name(struct _minix_super_block *_sbp, struct _minix_inode *dirip,
     const char *name, struct _minix_dentry *de);
-int minix_add_dentry(struct _minix_super_block *_sbp, struct _minix_inode *_dirip, 
-    const char *_name, minix_ino _inum);
+int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum, 
+    struct _minix_inode *_dirip, const char *_name, minix_ino _inum);
+int minix_del_dentry(struct _minix_super_block *sbp, minix_ino _dir_inum, 
+    struct _minix_inode *dirip, const char *_name, minix_ino *_inump);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */
 

@@ -590,18 +590,30 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("Allocated new I-node num: %d\n", idx);
 	if ( rc == 0 ) {
 
-		rc = minix_add_dentry(&sb, &din1, "hello.txt", idx);
+		rc = minix_add_dentry(&sb, ROOT_INO, &din1, "hello.txt", idx);
 		if ( rc == -EEXIST )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
 
-		rc = minix_add_dentry(&sb, &din1, "newfile.txt", idx);
+		rc = minix_add_dentry(&sb, ROOT_INO, &din1, "newfile.txt", idx);
 		if ( rc == 0 )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
 		
+		rc = minix_del_dentry(&sb, ROOT_INO, &din1, "no-file", &idx);
+		if ( rc != 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		rc = minix_del_dentry(&sb, ROOT_INO, &din1, "newfile.txt", &idx);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
 		kprintf("free I-node num: %d\n", idx);
 		rc = minix_bitmap_free(&sb, INODE_MAP, idx);
 		if ( rc == 0 )

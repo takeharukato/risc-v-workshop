@@ -69,13 +69,13 @@ fill_minix_dent(minix_super_block *sbp, const char *name, minix_ino inum,
 	memset((void *)out_de + MINIX_D_DIRNAME_OFFSET(sbp) + namelen,
 	    0, MINIX_D_DIRSIZ(sbp) - namelen); /* 余り領域を0で埋める */
 }
-
 /**
-   ディレクトリエントリ中から所定の名前を持ったエントリを検索する
+   ディレクトリエントリ中から所定の名前を持ったエントリを検索する(内部関数)
    @param[in]  sbp    メモリ上のスーパブロック情報
    @param[in]  dirip  検索するディレクトリのI-node情報
    @param[in]  name   検索キーとなる名前
-   @param[out] de     ディレクトリエントリ返却領域
+   @param[out] dep    ディレクトリ返却域 (ネイティブエンディアンに変換して返却)
+   @param[out] offp   ディレクトリエントリのオフセット位置(単位:バイト)返却域
    @retval     0      正常終了
    @retval    -ESRCH  ディレクトリエントリが見つからなかった
    @retval    -ENOENT ゾーンが割り当てられていない
@@ -85,8 +85,8 @@ fill_minix_dent(minix_super_block *sbp, const char *name, minix_ino inum,
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name, 
-    minix_dentry *de){
+lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name, 
+    minix_dentry *dep, off_t *offp){
 	int                rc;  /* 返り値                                        */
 	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ              */
 	minix_dentry    m_ent;  /* メモリ上のディレクトリエントリ                */
@@ -117,7 +117,13 @@ minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const ch
 			MINIX_D_DIRSIZ(sbp)) == 0 ) { /* ディレクトリエントリが見つかった */
 
 			/* ディレクトリエントリの内容をコピー */
-			memmove(de, &m_ent, sizeof(minix_dentry));
+			if ( dep != NULL )
+				memmove(dep, &m_ent, sizeof(minix_dentry));
+
+			/* オフセット位置を返却 */
+			if ( offp != NULL )
+				*offp = pos*MINIX_D_DENT_SIZE(sbp);
+
 			return 0;
 		}
 	}
@@ -126,11 +132,34 @@ minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const ch
 }
 
 /**
-   ディレクトリエントリにエントリを追加する
+   ディレクトリエントリ中から所定の名前を持ったエントリを検索する
    @param[in]  sbp    メモリ上のスーパブロック情報
    @param[in]  dirip  検索するディレクトリのI-node情報
-   @param[in]  name   ファイル名
-   @param[in]  inum   I-node番号
+   @param[in]  name   検索キーとなる名前
+   @param[out] de     ディレクトリエントリ返却領域
+   @retval     0      正常終了
+   @retval    -ESRCH  ディレクトリエントリが見つからなかった
+   @retval    -ENOENT ゾーンが割り当てられていない
+   @retval    -E2BIG  ファイルサイズの上限を超えている
+   @retval    -EIO    ページキャッシュアクセスに失敗した
+   @retval    -ENOSPC 空きゾーンがない
+   @retval    -EINVAL 不正なスーパブロックを指定した
+ */
+int
+minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name, 
+    minix_dentry *de){
+	
+	/* ディレクトリエントリを検索し, その内容を返却する */
+	return lookup_dentry_by_name(sbp, dirip, name, de, NULL);
+}
+
+/**
+   ディレクトリエントリにエントリを追加する
+   @param[in]  sbp      メモリ上のスーパブロック情報
+   @param[in]  dir_inum 追加対象ディレクトリのI-node番号
+   @param[in]  dirip    追加対象ディレクトリのI-node情報
+   @param[in]  name     ファイル名
+   @param[in]  inum     I-node番号
    @retval     0      正常終了
    @retval    -EEXIST ディレクトリエントリが見つからなかった
    @retval    -ENOENT ゾーンが割り当てられていない
@@ -140,8 +169,8 @@ minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const ch
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_add_dentry(minix_super_block *sbp, minix_inode *dirip, const char *name, 
-    minix_ino inum){
+minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip, 
+    const char *name, minix_ino inum){
 	int                rc;  /* 返り値                                         */
 	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ               */
 	minix_dentry    m_ent;  /* ネイティブエンディアンでのディレクトリエントリ */
@@ -154,7 +183,7 @@ minix_add_dentry(minix_super_block *sbp, minix_inode *dirip, const char *name,
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
 
-	rc = minix_lookup_dentry_by_name(sbp, dirip, name, &m_ent);
+	rc = lookup_dentry_by_name(sbp, dirip, name, &m_ent, NULL);
 	if ( rc == 0 ) {
 
 		if ( MINIX_D_DENT_INUM(sbp, &m_ent) == inum )
@@ -190,7 +219,7 @@ write_dent:
 	fill_minix_dent(sbp, name, inum, &new_ent); /* ディレクトリエントリを生成 */
 	/* ディスク上のディレクトリエントリに変換 */
 	swap_diskdent(sbp, &new_ent, &d_ent);
-	rc = minix_rw_zone(MINIX_NO_INUM(sbp), dirip, 
+	rc = minix_rw_zone(dir_inum, dirip, 
 	    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
 	    MINIX_RW_WRITING, &wrlen);
 	if ( rc != 0 )
@@ -199,13 +228,55 @@ write_dent:
 	if ( wrlen != MINIX_D_DENT_SIZE(sbp) ) { /* 書き込みが途中で失敗した場合 */
 
 		/* 書き込んだ内容をクリアする */
-		rc = minix_unmap_zone(MINIX_NO_INUM(sbp), dirip, 
+		rc = minix_unmap_zone(dir_inum, dirip, 
 		    pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp));
 		if ( rc != 0 )
 			goto error_out;
 	}
 
 success:
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ディレクトリエントリからエントリを削除する
+   @param[in]  sbp    メモリ上のスーパブロック情報
+   @param[in]  dir_inum 追加対象ディレクトリのI-node番号
+   @param[in]  dirip  検索するディレクトリのI-node情報
+   @param[in]  name   ファイル名
+   @param[out] inump  削除したディレクトリエントリのI-node番号返却域
+   @retval     0      正常終了
+   @retval    -ESRCH  ディレクトリエントリが見つからなかった
+   @retval    -ENOENT ゾーンが割り当てられていない
+   @retval    -E2BIG  ファイルサイズの上限を超えている
+   @retval    -EIO    ページキャッシュアクセスに失敗した
+   @retval    -ENOSPC 空きゾーンがない
+   @retval    -EINVAL 不正なスーパブロックを指定した
+ */
+int
+minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip, 
+    const char *name, minix_ino *inump){
+	int             rc; /* 返り値                                         */
+	minix_dentry m_ent; /* ネイティブエンディアンでのディレクトリエントリ */
+	off_t          off; /* ファイル内でのオフセット位置(単位:バイト)      */
+
+	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
+	 */
+	rc = lookup_dentry_by_name(sbp, dirip, name, &m_ent, &off);
+	if ( rc != 0 ) 
+		goto error_out; /* ディレクトリエントリが見つからなかった */
+
+	/* ディレクトリエントリを消去する */
+	rc = minix_unmap_zone(dir_inum, dirip, off, MINIX_D_DENT_SIZE(sbp));
+	if ( rc != 0 )
+		goto error_out;
+
+	if ( inump != NULL )
+		*inump = MINIX_D_DENT_INUM(sbp, &m_ent); /* I-node番号を返却 */
+
 	return 0;
 
 error_out:
