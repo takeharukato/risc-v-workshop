@@ -1,7 +1,11 @@
+# -*- mode: makefile-gmake; coding:utf-8 -*-
+# OS kernel sample
+# Copyright 2019 Takeharu KATO
+#
 top=..
 include ${top}/Makefile.inc
 CFLAGS += -I${top}/include
-subdirs-build=asmoffset
+subdirs-build=asmoffset minixfs
 subdirs=${subdirs-build} kconfig
 
 all: kconfig/mconf

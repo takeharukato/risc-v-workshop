@@ -1,3 +1,7 @@
+# -*- mode: makefile-gmake; coding:utf-8 -*-
+# OS kernel sample
+# Copyright 2019 Takeharu KATO
+#
 top=.
 include Makefile.inc
 targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map

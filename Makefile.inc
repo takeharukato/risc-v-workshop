@@ -51,10 +51,11 @@ endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 PIC_OPT_FLAGS=-fno-pie -nopie -fno-PIC
 endif
-CFLAGS=${OPT_FLAGS} ${WARN_FLAGS} ${PIC_OPT_FLAGS} ${PROF_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS}) ${INC_FLAGS}
+HOST_CFLAGS=${OPT_FLAGS} ${WARN_FLAGS} ${PROF_OPT_FLAGS} ${INC_FLAGS}
+HOST_LDFLAGS=
+CFLAGS=${HOST_CFLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS})
 # CFLAGS for asm-offset.c
-ASM_OFFSET_CFLAGS = $(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
-
+ASM_OFFSET_CFLAGS=$(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 LDFLAGS=
 
 GIT=git
