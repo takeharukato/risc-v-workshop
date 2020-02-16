@@ -68,13 +68,7 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	if ( rc != 0 )
 		goto free_tmppath_out;
 
-	rc = minix_rw_disk_inode(&handle->msb, MKFS_MINIXFS_ROOT_INO, MINIX_RW_READING, 
-	    &dirinode); /* ディレクトリのI-nodeを取得する */
-	if ( rc != 0 )
-		goto free_tmppath_out;
-	
-	rc = create_regular_file(handle, MKFS_MINIXFS_ROOT_INO, &dirinode, 
-	    name, MKFS_MINIXFS_REGFILE_MODE, &new_inum);
+	rc = create_regular_file(handle, name, MKFS_MINIXFS_REGFILE_MODE, &new_inum);
 	if ( rc != 0 )
 		goto free_tmppath_out;
 

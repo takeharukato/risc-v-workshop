@@ -74,7 +74,8 @@ GCOV_CLEAN_FILES=*.gcda *.gcno *.gcov
 LCOV_CLEAN_FILES=*.linfo
 LCOV_DIR=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(shell date +%F))-lcov
 CLEAN_FILES=${OBJ_CLEAN_FILES} ${GCOV_CLEAN_FILES} ${LCOV_CLEAN_FILES}
-DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz ${GTAGS_CLEAN_FILES}
+DIST_CLEAN_FILES=\\\#* *~ .*.sw* .config* ..config.* *.log *.tar.gz *.tgz \
+	${GTAGS_CLEAN_FILES} *.img
 DOXYGEN_ARCHIVE_NAME=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(shell date +%F))
 
 .PHONY: clean distclean hal tools gtags dist doxygen subsystem

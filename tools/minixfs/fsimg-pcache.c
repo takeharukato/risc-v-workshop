@@ -144,6 +144,9 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 		exit(1);
 	}
 
+	/*
+	 * ルートI-node, カレントワーキングディレクトリの初期化
+	 */
 	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO, 
 	    MINIX_RW_READING, &g_fsimg.root);
 	if ( rc != 0 ) {
@@ -152,6 +155,18 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 		exit(1);
 	}
 
+	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO, 
+	    MINIX_RW_READING, &g_fsimg.cwd);
+
+	if ( rc != 0 ) {
+
+		fprintf(stderr, "Can not read root I-node for cwd\n");
+		exit(1);
+	}
+
+	g_fsimg.root_inum = MKFS_MINIXFS_ROOT_INO;
+	g_fsimg.cwd_inum =  MKFS_MINIXFS_ROOT_INO;
+	
 	*handlep = &g_fsimg;
 
 	return 0;

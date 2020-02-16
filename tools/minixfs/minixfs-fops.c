@@ -35,8 +35,7 @@
 #include <utils.h>
 
 int
-create_regular_file(fs_image *handle, minix_ino dir_inum, minix_inode *dirip, 
-    const char *name, uint32_t mode, minix_ino *new_inum){
+create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino *new_inum){
 	int                rc;
 	minix_bitmap_idx inum;
 	minix_inode new_inode;
@@ -45,7 +44,8 @@ create_regular_file(fs_image *handle, minix_ino dir_inum, minix_inode *dirip,
 	if ( rc != 0 )
 		return -ENOSPC;  /*  ビットマップに空きがない  */
 
-	rc = minix_add_dentry(&handle->msb, dir_inum, dirip, name, inum);
+	/* TODO: パス解析をすること */
+	rc = minix_add_dentry(&handle->msb, handle->cwd_inum, &handle->cwd, name, inum);
 	if ( rc != 0 )
 		goto free_inum_out;  /*  ディレクトリエントリ作成失敗  */
 
@@ -66,12 +66,14 @@ create_regular_file(fs_image *handle, minix_ino dir_inum, minix_inode *dirip,
 	    &new_inode);
 	if ( rc != 0 )
 		goto free_inum_out;  /*  I-node更新失敗  */
-
-	MINIX_D_INODE_SET(&handle->msb, dirip, i_mtime,
+	/*
+	 * ディレクトリの更新時間を更新
+	 */
+	MINIX_D_INODE_SET(&handle->msb, &handle->cwd, i_mtime,
 	    (uint32_t)((uint64_t)tim_get_fs_time() & 0xffffffff));
 
-	rc = minix_rw_disk_inode(&handle->msb, dir_inum, MINIX_RW_WRITING, 
-	    dirip); /* ディレクトリの更新時刻を更新する */
+	rc = minix_rw_disk_inode(&handle->msb, handle->cwd_inum, MINIX_RW_WRITING, 
+	    &handle->cwd); /* ディレクトリの更新時刻を更新する */
 	if ( rc != 0 )
 		goto free_inum_out;  /* ディレクトリの更新失敗 */
 

@@ -37,11 +37,14 @@
    ファイルシステムイメージ情報
  */
 typedef struct _fs_image{
-	char                     *file;  /**< ファイル名               */
-	size_t                    size;  /**< ファイルサイズ           */
-	void                     *addr;  /**< ファイルマップ先アドレス */
-	struct _minix_super_block  msb;  /**< スーパブロック情報       */
-	struct _minix_inode       root;  /**< ルートI-node情報         */
+	char                     *file;  /**< ファイル名                                */
+	size_t                    size;  /**< ファイルサイズ                            */
+	void                     *addr;  /**< ファイルマップ先アドレス                  */
+	struct _minix_super_block  msb;  /**< スーパブロック情報                        */
+	minix_ino            root_inum;  /**< ルートI-node番号                          */
+	struct _minix_inode       root;  /**< ルートI-node情報                          */
+	minix_ino             cwd_inum;  /**< カレントワーキングディレクトリI-node番号  */
+	struct _minix_inode        cwd;  /**< カレントワーキングディレクトリI-node      */
 }fs_image;
 int fsimg_create(char *filename, int _version, int _nr_inodes, size_t _imgsiz, 
     fs_image **_handlep);
@@ -50,6 +53,6 @@ int create_superblock(struct _fs_image *img, int _version, int _nr_inodes);
 int path_get_basename(char *_path, char **_dir, char **_name);
 int path_to_minix_inode(struct _minix_super_block *_sbp, struct _minix_inode *_root, 
     char *_path, struct _minix_inode *_outv);
-int create_regular_file(struct _fs_image *_handle, minix_ino _dir_inum,
-    struct _minix_inode *_dirip, const char *_name, uint32_t _mode, minix_ino *_new_inum);
+int create_regular_file(struct _fs_image *_handle, const char *_name, uint32_t _mode,
+    minix_ino *_new_inum);
 #endif  /*  TOOLS_MINIXFS_MINIXFS_TOOLS_H  */
