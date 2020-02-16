@@ -31,7 +31,17 @@
 void
 show_help(char *cmd){
 
-	printf("%s [-h] [-v version] [-s size] fsimg-file\n", cmd);
+	printf("%s [-h] [-v version] [-i nr_files] [-s size] fsimg-file\n", cmd);
+	printf("\t-h show this help.\n");
+	printf("\t-v Minix file system version.\n");
+	printf("\t\t1 Minix Version1 14 byte filename.\n");
+	printf("\t\t2 Minix Version2 30 byte filename.\n");
+	printf("\t\t3 Minix Version3 60 byte filename (default).\n");
+	printf("\t-i max number of files (I-node table size).\n");
+	printf("\t\t(default: %d files)\n", MKFS_MINIXFS_DEFAULT_NR_INODES);
+	printf("\t-s File system image file size in MiB.\n");
+	printf("\t\t(default: %d MiB)\n", MKFS_MINIXFS_DEFAULT_SIZE_MB);
+	printf("\tfsimg-file the filepath of the file system image file.\n");
 	exit(0);
 }
 

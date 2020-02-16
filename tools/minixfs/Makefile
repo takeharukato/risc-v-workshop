@@ -32,10 +32,10 @@ distclean: clean
 	${RM} ${DIST_CLEAN_FILES} *.img
 
 ${top}/fs/minixfs/libminixfs.a:
-	${MAKE} -C ${top}/fs/minixfs
+	${MAKE} -C ${dir $@}
 
 ${top}/klib/libklib.a:
-	${MAKE} -C ${top}/${top}/klib
+	${MAKE} -C ${dir $@}
 
 mkfs.minixfs.o: mkfs.minixfs.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
