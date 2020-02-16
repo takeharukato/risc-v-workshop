@@ -80,7 +80,7 @@ menuconfig: configs/Config.in ${mconf}
 	${mconf} $< || :
 
 ${mconf}: 
-	${MAKE} -C tools
+	${MAKE} -C tools kconfig/mconf
 
 configs/Config.in: configs/hal/Config.in
 
@@ -91,7 +91,7 @@ subsystem: hal
 	${MAKE} -C $${dir} ;\
 	done
 
-mkfsimg:
+mkfsimg: include/kern/autoconf.h
 ${fsimg_objfile}:
 	${MAKE} -C fs ${fsimg_obj} ;
 
