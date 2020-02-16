@@ -13,6 +13,7 @@
 
 int safe_open(const char *_pathname, int _flags);
 int safe_open_nolink(const char *_pathname, int _flags);
+int64_t tim_get_fs_time(void);
 
 int str2int(const char *_str, int *_rcp);
 unsigned int str2uint(const char *_str, int *_rcp);

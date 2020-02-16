@@ -116,15 +116,9 @@ main(int argc, char *argv[]){
 	printf("version   : %d\n", version);
 	printf("size=%lld\n", (long long)imgsize);
 
-	rc = fsimg_create(imagefile, imgsize);
+	rc = fsimg_create(imagefile, version, nr_inodes, imgsize, &handle);
 	if ( rc != 0 ) 
 		exit(1);
 
-	rc = fsimg_pagecache_init(imagefile, &handle);
-	if ( rc != 0 ) 
-		exit(1);
-	rc = create_superblock(handle, version, nr_inodes);
-	if ( rc != 0 ) 
-		exit(1);
 	return 0;
 }

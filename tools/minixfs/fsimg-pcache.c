@@ -79,33 +79,7 @@ pagecache_mark_dirty(page_cache __unused *pc){
 }
 
 int
-fsimg_create(char *filename, size_t imgsiz){
-	int fd;
-	int rc;
-
-	fd = open(filename,O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-	if ( 0 > fd ) {
-
-		fprintf(stderr, "Can not create image-file:%s", filename);
-		exit(1);
-	}
-
-	imgsiz = roundup_align(imgsiz, PAGE_SIZE);
-	rc = ftruncate(fd, imgsiz);
-	if ( rc != 0 ){
-
-		fprintf(stderr, "Can not setup image-file:%s len=%lu", filename, 
-		    (unsigned long)imgsiz);
-		exit(1);
-	}
-
-	close(fd);
-
-	return 0;
-}
-
-int
-fsimg_pagecache_init(char *filename, fs_image **handlep){
+map_fsimage(char *filename){
 	int  rc;
 	int  fd;
 	void *m;
@@ -149,11 +123,71 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 
 	close(fd);
 
-	if ( handlep != NULL )
-		*handlep = &g_fsimg;
-
 	return 0;
 close_fd_out:
 	close(fd);
 	return rc;
 }
+
+int
+fsimg_pagecache_init(char *filename, fs_image **handlep){
+	int rc;
+
+	rc = map_fsimage(filename);
+	if ( rc != 0 ) 
+		exit(1);
+
+	rc = minix_read_super(MKFS_MINIX_FS_DEVID, &g_fsimg.msb);
+	if ( rc != 0 ) {
+
+		fprintf(stderr, "Can not read superblock\n");
+		exit(1);
+	}
+
+	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO, 
+	    MINIX_RW_READING, &g_fsimg.root);
+	if ( rc != 0 ) {
+
+		fprintf(stderr, "Can not read root I-node\n");
+		exit(1);
+	}
+
+	*handlep = &g_fsimg;
+
+	return 0;
+}
+
+int
+fsimg_create(char *filename, int version, int nr_inodes, size_t imgsiz, fs_image **handlep){
+	int fd;
+	int rc;
+
+	fd = open(filename,O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+	if ( 0 > fd ) {
+
+		fprintf(stderr, "Can not create image-file:%s", filename);
+		exit(1);
+	}
+
+	imgsiz = roundup_align(imgsiz, PAGE_SIZE);
+	rc = ftruncate(fd, imgsiz);
+	if ( rc != 0 ){
+
+		fprintf(stderr, "Can not setup image-file:%s len=%lu", filename, 
+		    (unsigned long)imgsiz);
+		exit(1);
+	}
+
+	close(fd);
+
+	rc = map_fsimage(filename);
+	if ( rc != 0 ) 
+		exit(1);
+
+	rc = create_superblock(&g_fsimg, version, nr_inodes);
+	if ( rc != 0 ) 
+		exit(1);
+
+	return 0;
+}
+

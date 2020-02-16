@@ -7,17 +7,21 @@ include ${top}/Makefile.inc
 HOST_CFLAGS=${OPT_FLAGS} -Wall ${PROF_OPT_FLAGS} ${INC_FLAGS}
 HOST_CFLAGS += -I.
 minix_libs=${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
-tools=mkfs.minixfs
+tools=mkfs.minixfs copyfile.minixfs
 
-mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o
+copyfile_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o mkfs-path.o minixfs-fops.o
+mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o mkfs-path.o
 
-objects=mkfs.minixfs.o ${mkfs_minixfs_objects}
+objects=mkfs.minixfs.o copyfile.minixfs.o ${mkfs_minixfs_objects} ${copyfile_minixfs_objects}
 objects_depends=$(patsubst %.o,%.d,${objects})
 
-all: ${objects_depends} mkfs.minixfs
+all: ${objects_depends} ${tools}
 
 mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects} ${minix_libs}
 	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects} \
+					  	       ${minix_libs}
+copyfile.minixfs: copyfile.minixfs.o ${copyfile_minixfs_objects}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ copyfile.minixfs.o ${copyfile_minixfs_objects} \
 					  	       ${minix_libs}
 
 gcov:
@@ -43,6 +47,12 @@ mkfs.minixfs.o: mkfs.minixfs.c
 mkfs.minixfs.d: mkfs.minixfs.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
+copyfile.minixfs.o: copyfile.minixfs.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+copyfile.minixfs.d: copyfile.minixfs.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
 utils.o: utils.c 
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
@@ -59,6 +69,18 @@ mkfs-super.o: mkfs-super.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
 mkfs-super.d: mkfs-super.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+mkfs-path.o: mkfs-path.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+mkfs-path.d: mkfs-path.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+minixfs-fops.o: minixfs-fops.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+minixfs-fops.d: minixfs-fops.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
 -include *.d

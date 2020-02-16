@@ -35,7 +35,7 @@
 #include <utils.h>
 
 int
-create_root_dir(void){
+create_root_dir(minix_inode *rootp){
 	int rc;
 	minix_super_block sb;
 	minix_inode     root;
@@ -101,6 +101,8 @@ create_root_dir(void){
 		fprintf(stderr, "Can not add dot-dot dentry.\n");
 		exit(1);
 	}
+
+	memmove(rootp, &root, sizeof(minix_inode));
 
 	return 0;
 }
@@ -257,15 +259,17 @@ create_superblock(fs_image *img, int version, int nr_inodes){
 
 		v3 = (minixv3_super_block *)(pc->pc_data + addr);
 		fill_minixv3_superblock(img, nr_inodes, v3);
+		memmove(&img->msb.d_super, v3, sizeof(minixv3_super_block));
 	} else {
 
 		v12 = (minixv12_super_block *)(pc->pc_data + addr);
 		fill_minixv12_superblock(img, version, nr_inodes, v12);
+		memmove(&img->msb.d_super, v12, sizeof(minixv12_super_block));
 	}
 
 	pagecache_put(pc);
 
-	create_root_dir();
+	create_root_dir(&img->root);
 
 	return 0;
 }

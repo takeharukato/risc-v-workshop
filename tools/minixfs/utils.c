@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
+#include <time.h>
 
 #include <utils.h>
 
@@ -38,7 +39,7 @@ safe_open_common(int link_is_ok, const char *pathname, int flags){
 		goto error_out;
 	}
  
-	fd = open(pathname, O_RDWR);
+	fd = open(pathname, O_RDWR|flags);
 
 	if ( fd < 0 ) {
 
@@ -71,6 +72,11 @@ error_out:
 	    return rc;
 }
 
+int64_t
+tim_get_fs_time(void){
+
+	return (int64_t)time(NULL);
+}
 int
 safe_open(const char *pathname, int flags){
 
