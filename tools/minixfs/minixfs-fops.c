@@ -36,7 +36,7 @@
 
 int
 create_regular_file(fs_image *handle, minix_ino dir_inum, minix_inode *dirip, 
-    const char *name, uint32_t mode){
+    const char *name, uint32_t mode, minix_ino *new_inum){
 	int                rc;
 	minix_bitmap_idx inum;
 	minix_inode new_inode;
@@ -74,7 +74,10 @@ create_regular_file(fs_image *handle, minix_ino dir_inum, minix_inode *dirip,
 	    dirip); /* ディレクトリの更新時刻を更新する */
 	if ( rc != 0 )
 		goto free_inum_out;  /* ディレクトリの更新失敗 */
-	
+
+	if ( new_inum != NULL )
+		*new_inum = inum;
+
 	return 0;
 
 free_inum_out:

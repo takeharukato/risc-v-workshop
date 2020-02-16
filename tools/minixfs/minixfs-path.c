@@ -33,6 +33,27 @@
 #include <minixfs-tools.h>
 #include <utils.h>
 
+/**
+   パスをディレクトリ部とファイル名部に分離する
+ */
+int
+path_get_basename(char *path, char **dir, char **name){
+	char *delim_pos;
+
+	delim_pos = strrchr((const char *)path, MKFS_MINIX_PATH_DELIMITER);
+	if ( delim_pos == NULL ) {
+
+		*dir = NULL;  /* ディレクトリ部は存在しない */
+		*name = path; /* ファイル名を返却           */
+	} else {
+
+		*delim_pos++ = '\0';
+		*dir = path;  /* ディレクトリ部を返却 */
+		*name = delim_pos; /* ファイル名を返却 */
+	}
+
+	return 0;
+}
 /** 
     指定されたパスのMinix I-nodeを獲得する
     @param[in] sbp    Minix スーパブロック情報

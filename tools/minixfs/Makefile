@@ -9,8 +9,8 @@ HOST_CFLAGS += -I.
 minix_libs=${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
 tools=mkfs.minixfs copyfile.minixfs
 
-copyfile_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o mkfs-path.o minixfs-fops.o
-mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o mkfs-path.o
+copyfile_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o minixfs-path.o minixfs-fops.o
+mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o minixfs-path.o
 
 objects=mkfs.minixfs.o copyfile.minixfs.o ${mkfs_minixfs_objects} ${copyfile_minixfs_objects}
 objects_depends=$(patsubst %.o,%.d,${objects})
@@ -71,10 +71,10 @@ mkfs-super.o: mkfs-super.c
 mkfs-super.d: mkfs-super.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
-mkfs-path.o: mkfs-path.c
+minixfs-path.o: minixfs-path.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
-mkfs-path.d: mkfs-path.c
+minixfs-path.d: minixfs-path.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
 minixfs-fops.o: minixfs-fops.c

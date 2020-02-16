@@ -11,10 +11,10 @@
 #include <klib/string.h>
 
 /**
-   文字列s中の末尾c文字目以内の最初に文字cが現れた位置へのポインタを返す。
+   文字列s中の末尾c文字目以内の最後に文字cが現れた位置へのポインタを返す。
     @param[in] s 調査対象文字列
     @param[in] c 探査する文字
-    @return 文字列s中の最初に文字cが現れた位置
+    @return 文字列s中の最後に文字cが現れた位置
  */
 char *
 strrchr(const char *s, int c){

@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #include <klib/freestanding.h>
 #include <klib/klib-consts.h>
@@ -39,16 +42,45 @@ show_help(char *cmd){
 	exit(0);
 }
 int
-copy_regular_file_from_host_to_image(char *hostpath, char *imagepath){
+copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *imagepath){
 	int                    fd;
 	int                   rc;
 	ssize_t            rdlen;
+	ssize_t            wrlen;
+	off_t                off;
 	struct stat fstat_result;
 	uint8_t      buf[BUFSIZ];
+	char                *dir;
+	char               *name;
+	char            *tmppath;
+	minix_inode     dirinode;
+	minix_inode     newinode;
+	minix_ino       new_inum;
+	minix_ino       del_inum;
+
+	tmppath = strdup(hostpath);
+	if ( tmppath == NULL ) {
+
+		rc = -ENOMEM;
+		goto error_out;
+	}
+	rc = path_get_basename(tmppath, &dir, &name);
+	if ( rc != 0 )
+		goto free_tmppath_out;
+
+	rc = minix_rw_disk_inode(&handle->msb, MKFS_MINIXFS_ROOT_INO, MINIX_RW_READING, 
+	    &dirinode); /* ディレクトリのI-nodeを取得する */
+	if ( rc != 0 )
+		goto free_tmppath_out;
+	
+	rc = create_regular_file(handle, MKFS_MINIXFS_ROOT_INO, &dirinode, 
+	    name, MKFS_MINIXFS_REGFILE_MODE, &new_inum);
+	if ( rc != 0 )
+		goto free_tmppath_out;
 
 	fd = safe_open(hostpath, 0);
 	if ( 0 > fd )
-		goto error_out;
+		goto free_newfile_out;
 
 	rc = fstat(fd, &fstat_result); 	  /*  ファイル記述子が示す対象の属性を得る。 */
 	if ( 0 > rc ) {
@@ -56,15 +88,33 @@ copy_regular_file_from_host_to_image(char *hostpath, char *imagepath){
 		rc = -errno;
 		goto close_fd_out;
 	}
-
+	minix_rw_disk_inode(&handle->msb, new_inum, MINIX_RW_READING, &newinode);
 	rdlen = read(fd, &buf[0], BUFSIZ);
-	while( rdlen > 0 ) {
+	for(off = 0; rdlen > 0; ) {
 		
-		
+		rc = minix_rw_zone(&handle->msb, new_inum, &newinode, &buf[0], off, 
+		    rdlen, MINIX_RW_WRITING, &wrlen);
+		off += wrlen;
 		rdlen = read(fd, &buf[0], BUFSIZ);
 	}
+	minix_rw_disk_inode(&handle->msb, new_inum, MINIX_RW_WRITING, &newinode);
+
+	close(fd);
+
+	free(tmppath);
+
+	return 0;
+
 close_fd_out:
 	close(fd);
+
+free_newfile_out:
+	rc = minix_del_dentry(&handle->msb, MKFS_MINIXFS_ROOT_INO, 
+				      &dirinode, name, &del_inum);
+	minix_bitmap_free(&handle->msb, MKFS_MINIXFS_ROOT_INO, del_inum);
+	
+free_tmppath_out:
+	free(tmppath);
 
 error_out:
 	return -errno;
@@ -120,6 +170,9 @@ main(int argc, char *argv[]){
 	printf("Image file: %s\n", imagefile);
 
 	rc = fsimg_pagecache_init(imagefile, &handle);
+	if ( rc != 0 ) 
+		exit(1);
+	rc = copy_regular_file_from_host_to_image(handle, hostfile, imagefile);
 	if ( rc != 0 ) 
 		exit(1);
 
