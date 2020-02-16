@@ -120,3 +120,8 @@ asm-offset.s
 configs/hal
 fsimg.img
 fsimg.S
+#
+#Minixfs Tools
+#
+mkfs.minixfs
+*.img
