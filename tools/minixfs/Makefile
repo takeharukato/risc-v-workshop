@@ -9,7 +9,7 @@ HOST_CFLAGS += -I.
 
 tools=mkfs.minixfs
 
-mkfs_minixfs_objects=utils.o fsimg-pcache.o
+mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o
 
 objects=mkfs.minixfs.o ${mkfs_minixfs_objects}
 objects_depends=$(patsubst %.o,%.d,${objects})
@@ -28,7 +28,7 @@ clean:
 	${RM} ${CLEAN_FILES} ${objects} ${tools}
 
 distclean: clean
-	${RM} ${DIST_CLEAN_FILES}
+	${RM} ${DIST_CLEAN_FILES} *.img
 
 mkfs.minixfs.o: mkfs.minixfs.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
@@ -46,6 +46,12 @@ fsimg-pcache.o: fsimg-pcache.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
 fsimg-pcache.d: fsimg-pcache.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+
+mkfs-super.o: mkfs-super.c
+	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
+
+mkfs-super.d: mkfs-super.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
 -include *.d

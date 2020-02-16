@@ -147,8 +147,8 @@ typedef struct _minixv3_super_block {
 				    * (単位:個, ブロック長: s_blocksize)
 				    */
 	uint16_t s_log_zone_size;  /**< ゾーン長のブロックオーダ
-				    * (単位:シフト値, ブロック長: 1KiB)
-				    * バイト単位でのゾーン長: 1024 << s_log_zone_size
+				    * (単位:シフト値, ブロック長: s_blocksize)
+				    * バイト単位でのゾーン長: s_blocksize << s_log_zone_size
 				    */
 	uint16_t          s_pad1;  /**< パディング領域                          */
 	uint32_t      s_max_size;  /**< 最大ファイルサイズ(単位: バイト)        */

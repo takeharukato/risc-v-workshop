@@ -97,7 +97,7 @@ fsimg_create(char *filename, size_t imgsiz){
 }
 
 int
-fsimg_pagecache_init(char *filename){
+fsimg_pagecache_init(char *filename, fs_image **handlep){
 	int  rc;
 	int  fd;
 	void *m;
@@ -140,6 +140,9 @@ fsimg_pagecache_init(char *filename){
 	g_fsimg.addr = m;
 
 	close(fd);
+
+	if ( handlep != NULL )
+		*handlep = &g_fsimg;
 
 	return 0;
 close_fd_out:

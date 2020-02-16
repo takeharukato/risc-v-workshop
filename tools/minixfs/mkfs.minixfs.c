@@ -45,10 +45,11 @@ main(int argc, char *argv[]){
 	char     buff[1024];
 	int         version;
 	int64_t     imgsize;
-	
+	fs_image    *handle;
+
 	version = MKFS_MINIXFS_DEFAULT_VERSION;               /* バージョン     */
 	imgsize = MIB_TO_BYTE(MKFS_MINIXFS_DEFAULT_SIZE_MB);  /* ファイルサイズ */
-	nr_inodes = PAGE_SIZE*BITS_PER_BYTE;
+	nr_inodes = MKFS_MINIXFS_DEFAULT_NR_INODES;
 
 	opt = getopt(argc, argv, "hi:s:v:");
 	while ( opt != -1 ) {
@@ -99,14 +100,6 @@ main(int argc, char *argv[]){
 		exit(1);
 	}
 
-	if ( version == 3 ) {
-		
-		nr_inodes = roundup_align(nr_inodes, PAGE_SIZE*BITS_PER_BYTE);
-	} else {
-
-		nr_inodes = roundup_align(nr_inodes, MINIX_OLD_BLOCK_SIZE*BITS_PER_BYTE);
-	}
-
 	printf("Image file: %s\n", imagefile);
 	printf("nr_inodes : %d\n", nr_inodes);
 	printf("version   : %d\n", version);
@@ -116,11 +109,11 @@ main(int argc, char *argv[]){
 	if ( rc != 0 ) 
 		exit(1);
 
-	rc = fsimg_pagecache_init(imagefile);
+	rc = fsimg_pagecache_init(imagefile, &handle);
 	if ( rc != 0 ) 
 		exit(1);
-
+	rc = create_superblock(handle, version, nr_inodes);
+	if ( rc != 0 ) 
+		exit(1);
 	return 0;
 }
-
-
