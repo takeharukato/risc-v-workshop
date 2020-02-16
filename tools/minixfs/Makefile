@@ -17,7 +17,7 @@ objects_depends=$(patsubst %.o,%.d,${objects})
 all: ${objects_depends} mkfs.minixfs
 
 mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
-	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects} ${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
 
 gcov:
 ifeq ($(CONFIG_PROFILE),y)

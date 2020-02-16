@@ -18,6 +18,7 @@
 #include <errno.h>
 
 #include <klib/freestanding.h>
+#include <kern/kern-consts.h>
 #include <klib/klib-consts.h>
 #include <klib/misc.h>
 #include <klib/align.h>
@@ -25,12 +26,28 @@
 #include <kern/kern-types.h>
 #include <kern/page-macros.h>
 
+#include <kern/dev-pcache.h>
+
 #include <fs/minixfs/minixfs.h>
+
 
 #include <minixfs-tools.h>
 #include <utils.h>
 
+int
+create_root_dir(void){
+	int rc;
+	minix_super_block sb;
 
+	rc = minix_read_super(MKFS_MINIX_FS_DEVID, &sb);
+	if ( rc != 0 ) {
+
+		fprintf(stderr, "Can not read superblock\n");
+		exit(1);
+	}
+
+	return 0;
+}
 int
 create_superblock(fs_image *img, int version, int nr_inodes){
 	off_t                    addr;
@@ -67,6 +84,8 @@ create_superblock(fs_image *img, int version, int nr_inodes){
 		v3->s_zones = nr_blocks;
 		v3->s_disk_version = 0;
 	}
+
+	create_root_dir();
 
 	pagecache_put(pc);
 

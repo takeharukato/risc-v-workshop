@@ -18,15 +18,20 @@
 #include <errno.h>
 
 #include <klib/freestanding.h>
+#include <kern/kern-consts.h>
 #include <klib/klib-consts.h>
 #include <klib/misc.h>
 #include <klib/align.h>
 #include <klib/compiler.h>
 #include <kern/kern-types.h>
 #include <kern/page-macros.h>
+
 #include <fs/minixfs/minixfs.h>
 
 #include <minixfs-tools.h>
+
+#include <kern/dev-pcache.h>
+
 #include <utils.h>
 
 static fs_image g_fsimg;

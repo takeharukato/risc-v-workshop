@@ -25,15 +25,6 @@
 
 #define MKFS_MINIXFS_ROOT_INO        (1)  /**< ルートディレクトリ I-node番号 */
 
-/**
-   疑似ページキャッシュ
- */
-typedef struct _page_cache{
-	dev_id                       bdevid;  /**< デバイスID                           */
-	size_t                        pgsiz;  /**< ページサイズ                   */
-	off_t                        offset;  /**< オフセット (単位:バイト)             */
-	void                       *pc_data;  /**< ページキャッシュデータへのポインタ   */
-}page_cache;
 
 /**
    ファイルシステムイメージ情報
@@ -46,6 +37,4 @@ typedef struct _fs_image{
 int fsimg_create(char *_filename, size_t _imgsiz);
 int fsimg_pagecache_init(char *_filename, fs_image **_handlep);
 int create_superblock(struct _fs_image *img, int _version, int _nr_inodes);
-void pagecache_put(page_cache *pc);
-int pagecache_get(dev_id _dev, off_t _offset, struct _page_cache **_pcp);
 #endif  /*  TOOLS_MINIXFS_MINIXFS_TOOLS_H  */
