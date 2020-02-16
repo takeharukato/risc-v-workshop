@@ -33,17 +33,26 @@
 #define MINIX_V2_SUPER_MAGIC2  (0x2478)       /* minix V2 30 バイトファイル名 */
 #define MINIX_V3_SUPER_MAGIC   (0x4d5a)       /* minix V3 60 バイトファイル名 */
 
+/**
+   ファイル名長
+ */
 #define MINIX_V1_DIRSIZ        (14)  /**< MinixV1でのファイル名長(14バイト) */
 #define MINIX_V1_DIRSIZ2       (30)  /**< MinixV1でのファイル名長(30バイト) */
 #define MINIX_V2_DIRSIZ        (14)  /**< MinixV2でのファイル名長(14バイト) */
 #define MINIX_V2_DIRSIZ2       (30)  /**< MinixV2でのファイル名長(30バイト) */
 #define MINIX_V3_DIRSIZ	       (60)  /**< MinixV3でのファイル名長(60バイト) */
 
+/**
+   ブロック参照種別
+ */
 #define MINIX_ZONE_ADDR_NONE   (0)   /**< 未定義            */
 #define MINIX_ZONE_ADDR_DIRECT (1)   /**< 直接参照ゾーン    */
 #define MINIX_ZONE_ADDR_SINGLE (2)   /**< 単間接参照ゾーン  */
 #define MINIX_ZONE_ADDR_DOUBLE (3)   /**< 2重間接参照ゾーン */
 
+/**
+   ブロック参照関連定義
+ */
 #define MINIX_V1_NR_TZONES     (9)  /**< MinixV1でのゾーン配列総数        */
 #define MINIX_V1_NR_DZONES     (7)  /**< MinixV1での直接参照ブロック数    */
 #define MINIX_V1_NR_IND_ZONES  (1)  /**< MinixV1での間接参照ブロック数    */
@@ -86,6 +95,12 @@
  */
 #define MINIX_RW_READING       (0)      /**< 読取り         */
 #define MINIX_RW_WRITING       (1)      /**< 書込み         */
+
+/**
+   マウント状態
+ */
+#define MINIX_SUPER_S_STATE_DIRTY (0)   /**< アンマウントされていない */
+#define MINIX_SUPER_S_STATE_CLEAN (1)   /**< 正常にアンマウントされた */
 
 /**
    I-node番号/ゾーン番号型
@@ -150,7 +165,7 @@ typedef struct _minixv3_super_block {
 				    * (単位:シフト値, ブロック長: s_blocksize)
 				    * バイト単位でのゾーン長: s_blocksize << s_log_zone_size
 				    */
-	uint16_t          s_pad1;  /**< パディング領域                          */
+	uint16_t         s_state;  /**< マウント状態                            */
 	uint32_t      s_max_size;  /**< 最大ファイルサイズ(単位: バイト)        */
 	uint32_t         s_zones;  /**< 総ゾーン数(単位:個)                     */
 	uint16_t         s_magic;  /**< スーパブロックのマジック番号            */
@@ -338,7 +353,7 @@ typedef struct _minix_dentry{
 /**
    ビットマップチャンクのサイズを得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
-   @note 使用しない?
+   @note 使用しない
  */      
 #define MINIX_BMAPCHUNK_SIZE(_sbp)				    \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_bitchunk)) :	    \
@@ -519,6 +534,8 @@ typedef struct _minix_dentry{
 
 int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
 int minix_write_super(struct _minix_super_block *_sbp);
+int minix_bitmap_alloc_at(struct _minix_super_block *_sbp, int _map_type, 
+    minix_bitmap_idx _idx);
 int minix_bitmap_alloc(struct _minix_super_block *_sbp, int _map_type, 
     minix_bitmap_idx *_idxp);
 int minix_bitmap_free(struct _minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);

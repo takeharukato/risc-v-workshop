@@ -40,7 +40,10 @@ static page_cache  g_pc;
 int
 pagecache_pagesize(dev_id __unused dev, size_t *pgsizp){
 	
-	return PAGE_SIZE;
+	if ( pgsizp != NULL )
+		*pgsizp = PAGE_SIZE;
+
+	return 0;
 }
 int
 pagecache_get(dev_id dev, off_t offset, page_cache **pcp){

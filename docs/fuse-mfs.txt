@@ -3,7 +3,7 @@ fuse-mfs /path/to/image_file /path/to/mountpoint/
 
 rm -fr rfs
 mkdir -p rfs
-/usr/local/bin/fuse-mfs -o allow_other `pwd`/fsimg.img `pwd`/rfs
+/usr/local/bin/fuse-mfs `pwd`/fsimg.img `pwd`/rfs
 
 アンマウント
 fusermount -u /path/to/mountpoint/

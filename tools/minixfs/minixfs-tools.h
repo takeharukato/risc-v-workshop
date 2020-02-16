@@ -24,7 +24,10 @@
 #define MKFS_MINIXFS_FSIMG_NAME_FMT "minixfs-v%d-fsimg.img"  /**< イメージファイル名 */
 
 #define MKFS_MINIXFS_ROOT_INO        (1)  /**< ルートディレクトリ I-node番号 */
-
+#define MKFS_MINIXFS_ROOT_INO_LINKS  (2)  /**< ルートディレクトリ の参照数("."と"..") */
+#define MKFS_MINIXFS_ROOT_INO_UID    (2)  /**< daemonのユーザID */
+#define MKFS_MINIXFS_ROOT_INO_GID    (2)  /**< daemonのグループID */
+#define MKFS_MINIXFS_ROOT_INO_MODE   (0040777)  /**< ルートディレクトリのi_mode */
 
 /**
    ファイルシステムイメージ情報

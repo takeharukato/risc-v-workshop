@@ -240,7 +240,7 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 
 	end_ptr = (void *)pc->pc_data + pgsiz;
 
-	if ( MINIX_SB_IS_V3(sbp) ) {
+	if ( MINIX_SB_IS_V3(sbp) ) {  /* MinixV3ファイルシステム */
 
 		for( v3ptr = (minixv3_bitchunk *)pc->pc_data; end_ptr > (void *)v3ptr; ++v3ptr) {
 
@@ -334,6 +334,120 @@ success:
 }
 
 /** 
+    ビットマップ中の指定したビットを割り当て済みにする
+    @param[in] sbp      スーパブロック情報
+    @param[in] map_type 検索対象ビットマップ種別
+      INODE_MAP ... I-nodeビットマップ
+      ZONE_MAP  ... ゾーンビットマップ
+    @param[in] idx      割り当て済みにするビットのインデクス
+    @retval  0       正常終了
+    @retval -EBUSY   指定したビットが既に使用されている
+ */
+int
+minix_bitmap_alloc_at(minix_super_block *sbp, int map_type, minix_bitmap_idx idx) {
+	int                     rc;  /* 返り値 */
+	page_cache             *pc;  /* ページキャッシュ */
+	size_t               pgsiz;  /* ページキャッシュのページ長 (単位: バイト) */
+	obj_cnt_type    first_page;  /* 検索開始ページ   */
+	off_t             off_page;  /* ビットマップブロック内でのオフセット(単位:バイト) */
+	off_t             off_byte;  /* ページ内でのオフセット(単位:バイト) */
+	off_t              off_bit;  /* ビットマップチャンク内でのオフセット(単位:ビット) */
+	off_t            off_chunk;  /* ページ内でのオフセット(単位:ビットマップチャンク数) */
+	minixv12_bitchunk  *v12ptr;  /* MinixV1, MinixV2ビットマップチャンクポインタ */
+	minixv12_bitchunk   v12val;  /* MinixV1, MinixV2ビットマップチャンク */
+	minixv3_bitchunk    *v3ptr;  /* MinixV3ビットマップチャンクポインタ */
+	minixv3_bitchunk     v3val;  /* MinixV3ビットマップチャンク */
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	if (map_type == INODE_MAP) { /* I-nodeビットマップから空きビットを探す */
+
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
+	} else { /* ゾーンビットマップから空きビットを探す */
+
+		/* ゾーンビットマップのデバイス上のページ番号 */
+		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
+		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
+	}
+
+	/* ビットマップの先頭から対象のビットが存在するページへのオフセット(ページ数) */
+	off_page = idx / (pgsiz * BITS_PER_BYTE);
+	/* ページ内でのバイトオフセット */
+	off_byte = (idx % (pgsiz * BITS_PER_BYTE)) / BITS_PER_BYTE;
+
+	/*
+	 * ビットマップを読込む
+	 */
+	rc = pagecache_get(sbp->dev, (first_page + off_page) * pgsiz, &pc);
+	if ( rc != 0 )
+		return rc;
+
+	if ( MINIX_SB_IS_V3(sbp) ) {  /* MinixV3ファイルシステム */
+
+		v3ptr = (minixv3_bitchunk *)pc->pc_data;
+
+		/* ビットチャンクのインデクス */
+		off_chunk = off_byte / sizeof(minixv3_bitchunk); 
+		off_bit = idx % ( sizeof(minixv3_bitchunk) * BITS_PER_BYTE ); 
+		kassert( ( pgsiz / sizeof(minixv3_bitchunk) ) > off_chunk );
+
+		/* ビットマップチャンクを読み込み */
+		if ( sbp->swap_needed )
+			v3val = __bswap32(v3ptr[off_chunk]);  /* バイトスワップ */
+		else
+			v3val = v3ptr[off_chunk];  
+
+		if ( (v3val & (1 << off_bit) ) != 0 )
+			goto put_pcache_out;  /* すでに使用中 */
+
+		v3val |= 1 << off_bit; /* 使用中に設定 */
+
+		/* ビットマップチャンクを更新 */
+		if ( sbp->swap_needed )
+			v3ptr[off_chunk] = __bswap32(v3val);  /* バイトスワップ */
+		else
+			v3ptr[off_chunk] = v3val;
+	} else {  /* MinixV1, MinixV2ファイルシステム */
+
+
+		v12ptr = (minixv12_bitchunk *)pc->pc_data;
+
+		/* ビットチャンクのインデクス */
+		off_chunk = off_byte / sizeof(minixv12_bitchunk); 
+		off_bit = idx % ( sizeof(minixv12_bitchunk) * BITS_PER_BYTE ); 
+		kassert( ( pgsiz / sizeof(minixv12_bitchunk) ) > off_chunk );
+
+		/* ビットマップチャンクを読み込み */
+		if ( sbp->swap_needed )
+			v12val = __bswap16(v12ptr[off_chunk]);  /* バイトスワップ */
+		else
+			v12val = v12ptr[off_chunk];  
+
+		if ( (v12val & (1 << off_bit) ) != 0 )
+			goto put_pcache_out;  /* すでに使用中 */
+
+		v12val |= 1 << off_bit; /* 使用中に設定 */
+
+		/* ビットマップチャンクを更新 */
+		if ( sbp->swap_needed )
+			v12ptr[off_chunk] = __bswap16(v12val);  /* バイトスワップ */
+		else
+			v12ptr[off_chunk] = v12val;
+	}	
+
+	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+
+	return 0;
+
+put_pcache_out:
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
+
+	return -EBUSY;
+}
+
+/** 
     ビットマップ中の空きビットを割り当てる
     @param[in] sbp      スーパブロック情報
     @param[in] map_type 検索対象ビットマップ種別
@@ -401,7 +515,7 @@ error_out:
 }
 
 /**
-    ビットマップ中の空きビットを割り当てる
+    ビットマップにビットを返却する
     @param[in] sbp      スーパブロック情報
     @param[in] map_type 検索対象ビットマップ種別
       INODE_MAP ... I-nodeビットマップ
