@@ -210,7 +210,6 @@ typedef struct _minixv2_inode minixv3_inode;
    メモリ上のMinix I-node
  */
 typedef struct _minix_inode {
-	minix_super_block     *sbp;  /**< Minixスーパブロック情報   */
 	union  _d_inode{
 		minixv1_inode   v1;  /**< MinixV1 I-node            */
 		minixv2_inode  v23;  /**< MinixV2 V3 I-node         */
@@ -404,22 +403,24 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を得る
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _m   メンバ名
  */
-#define MINIX_D_INODE(_inodep, _m)					\
-	( MINIX_SB_IS_V1((_inodep)->sbp )				\
+#define MINIX_D_INODE(_sbp, _inodep, _m)				\
+	( MINIX_SB_IS_V1((_sbp))					\
 	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->_m)		\
 	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->_m) )
 
 /**
    メモリ中のMinixディスクI-nodeからI-nodeのメンバ変数の値を更新する
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _m   メンバ名
    @param[in] _v   設定値
  */
-#define MINIX_D_INODE_SET(_inodep, _m, _v) do{				         \
-		if ( MINIX_SB_IS_V1((_inodep)->sbp) )			         \
+#define MINIX_D_INODE_SET(_sbp, _inodep, _m, _v) do{			\
+		if ( MINIX_SB_IS_V1( (_sbp) ) )				\
 			(((minixv1_inode *)(&((_inodep)->d_inode)))->_m) = (_v); \
 		else							         \
 			(((minixv2_inode *)(&((_inodep)->d_inode)))->_m) = (_v); \
@@ -427,39 +428,43 @@ typedef struct _minix_dentry{
 
 /**
    メモリ中のMinixディスクI-nodeから最終アクセス時刻を得る
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
  */
-#define MINIX_D_INODE_ATIME(_inodep)					\
-	( MINIX_SB_IS_V1((_inodep)->sbp )				\
+#define MINIX_D_INODE_ATIME(_sbp, _inodep)				\
+	( MINIX_SB_IS_V1( (_sbp) )					\
 	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->i_mtime)	\
 	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->i_atime) )
 
 /**
    メモリ中のMinixディスクI-nodeの最終アクセス時刻を更新する
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のI-node情報へのポインタ
    @param[in] _v   設定値
  */
-#define MINIX_D_INODE_ATIME_SET(_inodep, _v) do{			  \
-	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
+#define MINIX_D_INODE_ATIME_SET(_sbp, _inodep, _v) do{		\
+	if ( !MINIX_SB_IS_V1((_sbp)) )				\
 		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
 	}while(0)
 
 /**
    メモリ中のMinixディスクI-nodeから属性更新時刻を得る
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
  */
-#define MINIX_D_INODE_CTIME(_inodep)					\
-	( MINIX_SB_IS_V1((_inodep)->sbp )				\
+#define MINIX_D_INODE_CTIME(_sbp, _inodep)				\
+	( MINIX_SB_IS_V1((_sbp))					\
 	    ? (((minixv1_inode *)(&((_inodep)->d_inode)))->i_mtime)	\
 	    : (((minixv2_inode *)(&((_inodep)->d_inode)))->i_ctime) )
 
 /**
    メモリ中のMinixディスクI-nodeの最終属性更新時刻を更新する
+   @param[in] _sbp メモリ中のスーパブロック情報
    @param[in] _inodep メモリ中のMinixディスクI-node情報へのポインタ
    @param[in] _v   設定値
  */
-#define MINIX_D_INODE_CTIME_SET(_inodep, _v) do{			  \
-	if ( !MINIX_SB_IS_V1((_inodep)->sbp) )			          \
+#define MINIX_D_INODE_CTIME_SET(_sbp, _inodep, _v) do{		\
+	if ( !MINIX_SB_IS_V1((_sbp)) )				\
 		(minixv2_inode *)(&((_inodep)->d_inode))->i_atime = (_v); \
 	}while(0)
 
@@ -521,12 +526,15 @@ int minix_rw_disk_inode(struct _minix_super_block *_sbp, minix_ino _i_num, int _
     struct _minix_inode *_dip);
 int minix_alloc_zone(struct _minix_super_block *_sbp, minix_zone *_zp);
 void minix_free_zone(struct _minix_super_block *_sbp, minix_zone _znum);
-int minix_read_mapped_block(struct _minix_inode *_dip, off_t _position, minix_zone *_zonep);
-int minix_write_mapped_block(struct _minix_inode *_dip, off_t _position, 
-    minix_zone _new_zone);
-int minix_rw_zone(minix_ino _i_num, struct _minix_inode *_dip, void *_kpage, off_t _off, 
-    ssize_t _len, int _rw_flag, ssize_t *_rwlenp);
-int minix_unmap_zone(minix_ino _i_num, struct _minix_inode *_dip, off_t _off, ssize_t _len);
+int minix_read_mapped_block(struct _minix_super_block *_sbp, struct _minix_inode *_dip,
+    off_t _position, minix_zone *_zonep);
+int minix_write_mapped_block(struct _minix_super_block *_sbp, struct _minix_inode *_dip,
+    off_t _position, minix_zone _new_zone);
+int minix_rw_zone(struct _minix_super_block *_sbp, minix_ino _i_num, 
+    struct _minix_inode *_dip, void *_kpage, off_t _off, ssize_t _len, int _rw_flag, 
+    ssize_t *_rwlenp);
+int minix_unmap_zone(struct _minix_super_block *_sbp, minix_ino _i_num, 
+    struct _minix_inode *_dip, off_t _off, ssize_t _len);
 int minix_lookup_dentry_by_name(struct _minix_super_block *_sbp, struct _minix_inode *dirip,
     const char *name, struct _minix_dentry *de);
 int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum, 

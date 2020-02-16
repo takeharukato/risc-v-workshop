@@ -145,7 +145,6 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 			else
 				memmove((void *)&dip->d_inode, (void *)dinode, 
 				    sizeof(minixv1_inode));
-			dip->sbp = sbp;  /* 読み出し元スーパブロック情報を記録する */
 		}
 	} else if ( ( MINIX_SB_IS_V2(sbp) ) || ( MINIX_SB_IS_V3(sbp) ) ) {
 
@@ -171,7 +170,6 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 			else
 				memmove((void *)&dip->d_inode, (void *)dinode, 
 				    sizeof(minixv2_inode));
-			dip->sbp = sbp;  /* 読み出し元スーパブロック情報を記録する */
 		}
 
 	} else {

@@ -97,11 +97,11 @@ lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *na
 
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
-	nr_ents = MINIX_D_INODE(dirip, i_size) / MINIX_D_DENT_SIZE(sbp);
+	nr_ents = MINIX_D_INODE(sbp, dirip, i_size) / MINIX_D_DENT_SIZE(sbp);
 
 	for(pos = 0; nr_ents > pos; ++pos) {
 
-		rc = minix_rw_zone(MINIX_NO_INUM(sbp), dirip, 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
 		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
 		    MINIX_RW_READING, &rdlen);
 
@@ -196,10 +196,10 @@ minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 
 	/* 空きエントリを探す
 	 */
-	nr_ents = MINIX_D_INODE(dirip, i_size) / MINIX_D_DENT_SIZE(sbp);
+	nr_ents = MINIX_D_INODE(sbp, dirip, i_size) / MINIX_D_DENT_SIZE(sbp);
 	for(pos = 0; nr_ents > pos; ++pos) {
 
-		rc = minix_rw_zone(MINIX_NO_INUM(sbp), dirip, 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
 		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
 		    MINIX_RW_READING, &rdlen);
 
@@ -220,7 +220,7 @@ write_dent:
 	fill_minix_dent(sbp, name, inum, &new_ent); /* ディレクトリエントリを生成 */
 	/* ディスク上のディレクトリエントリに変換 */
 	swap_diskdent(sbp, &new_ent, &d_ent);
-	rc = minix_rw_zone(dir_inum, dirip, 
+	rc = minix_rw_zone(sbp, dir_inum, dirip, 
 	    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
 	    MINIX_RW_WRITING, &wrlen);
 	if ( rc != 0 )
@@ -229,7 +229,7 @@ write_dent:
 	if ( wrlen != MINIX_D_DENT_SIZE(sbp) ) { /* 書き込みが途中で失敗した場合 */
 
 		/* 書き込んだ内容をクリアする */
-		rc = minix_unmap_zone(dir_inum, dirip, 
+		rc = minix_unmap_zone(sbp, dir_inum, dirip, 
 		    pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp));
 		if ( rc != 0 )
 			goto error_out;
@@ -271,7 +271,7 @@ minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 		goto error_out; /* ディレクトリエントリが見つからなかった */
 
 	/* ディレクトリエントリを消去する */
-	rc = minix_unmap_zone(dir_inum, dirip, off, MINIX_D_DENT_SIZE(sbp));
+	rc = minix_unmap_zone(sbp, dir_inum, dirip, off, MINIX_D_DENT_SIZE(sbp));
 	if ( rc != 0 )
 		goto error_out;
 
@@ -314,7 +314,7 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 	size_t        namelen;  /* ファイル名長 (単位: バイト)                    */
 	vfs_dirent     *v_ent;  /* VFSディレクトリエントリ                        */
 
-	if ( ( off >= MINIX_D_INODE(dirip, i_size) ) || ( off >= ( off + len ) ) ) {
+	if ( ( off >= MINIX_D_INODE(sbp, dirip, i_size) ) || ( off >= ( off + len ) ) ) {
 
 		if ( rdlenp != NULL )
 			*rdlenp = 0;
@@ -323,7 +323,7 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
-	nr_ents = MINIX_D_INODE(dirip, i_size) / MINIX_D_DENT_SIZE(sbp); /* エントリ数算出 */
+	nr_ents = MINIX_D_INODE(sbp, dirip, i_size) / MINIX_D_DENT_SIZE(sbp); /* エントリ数算出 */
 
 	curp = buf;                    /* 書き込み先アドレスを初期化 */
 	buf_end = buf + ( off + len ); /* 最終アドレスを算出         */
@@ -336,7 +336,7 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 		v_ent = (vfs_dirent *)curp;  /* 次に書き込むVFSディレクトリエントリ */
 
-		rc = minix_rw_zone(MINIX_NO_INUM(sbp), dirip, 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
 		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
 		    MINIX_RW_READING, &rdlen);
 
