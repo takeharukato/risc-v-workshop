@@ -80,6 +80,7 @@ main(int argc, char *argv[]){
 			show_help(argv[0]);
 			break;
 		}
+		opt = getopt(argc, argv, "hi:s:v:");
 	}
 	if ( ( 1 > version) || ( version > 3 ) ) {
 

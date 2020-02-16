@@ -6,7 +6,7 @@ top=../..
 include ${top}/Makefile.inc
 HOST_CFLAGS=${OPT_FLAGS} -Wall ${PROF_OPT_FLAGS} ${INC_FLAGS}
 HOST_CFLAGS += -I.
-
+minix_libs=${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
 tools=mkfs.minixfs
 
 mkfs_minixfs_objects=utils.o fsimg-pcache.o mkfs-super.o
@@ -16,8 +16,9 @@ objects_depends=$(patsubst %.o,%.d,${objects})
 
 all: ${objects_depends} mkfs.minixfs
 
-mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
-	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects} ${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
+mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects} ${minix_libs}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects} \
+					  	       ${minix_libs}
 
 gcov:
 ifeq ($(CONFIG_PROFILE),y)
@@ -29,6 +30,12 @@ clean:
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES} *.img
+
+${top}/fs/minixfs/libminixfs.a:
+	${MAKE} -C ${top}/fs/minixfs
+
+${top}/klib/libklib.a:
+	${MAKE} -C ${top}/${top}/klib
 
 mkfs.minixfs.o: mkfs.minixfs.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
