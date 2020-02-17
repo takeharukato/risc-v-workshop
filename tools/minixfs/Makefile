@@ -4,7 +4,6 @@
 #
 top=../..
 include ${top}/Makefile.inc
-HOST_CFLAGS=${OPT_FLAGS} -Wall ${PROF_OPT_FLAGS} ${INC_FLAGS}
 HOST_CFLAGS += -I.
 minix_libs=${top}/fs/minixfs/libminixfs.a  ${top}/klib/libklib.a
 tools=mkfs.minixfs copyfile.minixfs

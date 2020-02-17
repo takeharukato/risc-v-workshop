@@ -48,7 +48,6 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	ssize_t            rdlen;
 	ssize_t            wrlen;
 	off_t                off;
-	struct stat fstat_result;
 	uint8_t      buf[BUFSIZ];
 	char                *dir;
 	char               *name;
@@ -68,7 +67,8 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	if ( rc != 0 )
 		goto free_tmppath_out;
 
-	rc = create_regular_file(handle, name, MKFS_MINIXFS_REGFILE_MODE, &new_inum);
+	rc = create_regular_file(handle, name, MINIX_TOOLS_REG_MODE|MINIX_TOOLS_ACS_MODE,
+				 &new_inum);
 	if ( rc != 0 )
 		goto free_tmppath_out;
 
@@ -76,12 +76,6 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	if ( 0 > fd )
 		goto free_newfile_out;
 
-	rc = fstat(fd, &fstat_result); 	  /*  ファイル記述子が示す対象の属性を得る。 */
-	if ( 0 > rc ) {
-
-		rc = -errno;
-		goto close_fd_out;
-	}
 	minix_rw_disk_inode(&handle->msb, new_inum, MINIX_RW_READING, &newinode);
 	rdlen = read(fd, &buf[0], BUFSIZ);
 	for(off = 0; rdlen > 0; ) {
@@ -98,9 +92,6 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	free(tmppath);
 
 	return 0;
-
-close_fd_out:
-	close(fd);
 
 free_newfile_out:
 	rc = minix_del_dentry(&handle->msb, MKFS_MINIXFS_ROOT_INO, 

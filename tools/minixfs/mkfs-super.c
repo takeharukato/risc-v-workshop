@@ -76,10 +76,10 @@ create_root_dir(minix_inode *rootp){
 		exit(1);
 	}
 
-	MINIX_D_INODE_SET(&sb, &root, i_uid, MKFS_MINIXFS_ROOT_INO_UID);
-	MINIX_D_INODE_SET(&sb, &root, i_gid, MKFS_MINIXFS_ROOT_INO_UID);
-	MINIX_D_INODE_SET(&sb, &root, i_nlinks, MKFS_MINIXFS_ROOT_INO_LINKS);
-	MINIX_D_INODE_SET(&sb, &root, i_mode, MKFS_MINIXFS_ROOT_INO_MODE);
+	MINIX_D_INODE_SET(&sb, &root, i_uid, MINIX_TOOLS_ROOT_INO_UID);
+	MINIX_D_INODE_SET(&sb, &root, i_gid, MINIX_TOOLS_ROOT_INO_GID);
+	MINIX_D_INODE_SET(&sb, &root, i_nlinks, MINIX_TOOLS_ROOT_INO_LINKS);
+	MINIX_D_INODE_SET(&sb, &root, i_mode, MINIX_TOOLS_DIR_MODE|MINIX_TOOLS_ACS_MODE);
 
 	rc = minix_rw_disk_inode(&sb, MKFS_MINIXFS_ROOT_INO, MINIX_RW_WRITING, &root);
 	if ( rc != 0 ) {

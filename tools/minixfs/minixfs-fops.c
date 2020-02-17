@@ -51,8 +51,8 @@ create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino
 
 	memset(&new_inode, 0, sizeof(minix_inode));  /* I-node情報をクリア */
 
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_uid, MKFS_MINIXFS_ROOT_INO_UID);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_gid, MKFS_MINIXFS_ROOT_INO_UID);
+	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_uid, handle->uid);
+	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_gid, handle->gid);
 	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_nlinks, 1);
 	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_mode, mode);
 	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_size, 0);

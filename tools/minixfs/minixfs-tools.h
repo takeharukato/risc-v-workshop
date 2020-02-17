@@ -27,12 +27,18 @@
 #define MKFS_MINIXFS_FSIMG_NAME_FMT "minixfs-v%d-fsimg.img"  /**< イメージファイル名 */
 
 #define MKFS_MINIXFS_ROOT_INO        (1)  /**< ルートディレクトリ I-node番号 */
-#define MKFS_MINIXFS_ROOT_INO_LINKS  (2)  /**< ルートディレクトリ の参照数("."と"..") */
-#define MKFS_MINIXFS_ROOT_INO_UID    (2)  /**< daemonのユーザID */
-#define MKFS_MINIXFS_ROOT_INO_GID    (2)  /**< daemonのグループID */
-#define MKFS_MINIXFS_ROOT_INO_MODE   (0040777)  /**< ルートディレクトリのi_mode */
-#define MKFS_MINIXFS_REGFILE_MODE    (0100777)  /**< 通常ファイルのi_mode */
 
+#define MINIX_TOOLS_ROOT_INO_LINKS   (2)  /**< ルートディレクトリ の参照数("."と"..") */
+#define MINIX_TOOLS_ROOT_INO_UID     (2)  /**< daemonのユーザID */
+#define MINIX_TOOLS_ROOT_INO_GID     (2)  /**< daemonのグループID */
+#define MINIX_TOOLS_ROOT_UID         (0)  /**< rootのユーザID */
+#define MINIX_TOOLS_ROOT_GID         (0)  /**< rootのグループID */
+#define MINIX_TOOLS_REG_MODE         (0100000)  /**< 通常ファイルのi_mode */
+#define MINIX_TOOLS_BLK_MODE         (0060000)  /**< ブロックデバイスのi_mode */
+#define MINIX_TOOLS_DIR_MODE         (0040000)  /**< ルートディレクトリのi_mode */
+#define MINIX_TOOLS_CHR_MODE         (0020000)  /**< 通常ファイルのi_mode */
+#define MINIX_TOOLS_FIFO_MODE        (0010000)  /**< FIFOのi_mode */
+#define MINIX_TOOLS_ACS_MODE         (0000777)  /**< アクセス権   */
 /**                                  
    ファイルシステムイメージ情報
  */
@@ -40,6 +46,8 @@ typedef struct _fs_image{
 	char                     *file;  /**< ファイル名                                */
 	size_t                    size;  /**< ファイルサイズ                            */
 	void                     *addr;  /**< ファイルマップ先アドレス                  */
+	uint16_t                   uid;  /**< ユーザID                                  */
+	uint16_t                   gid;  /**< グループID                                */
 	struct _minix_super_block  msb;  /**< スーパブロック情報                        */
 	minix_ino            root_inum;  /**< ルートI-node番号                          */
 	struct _minix_inode       root;  /**< ルートI-node情報                          */

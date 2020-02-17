@@ -166,6 +166,8 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 
 	g_fsimg.root_inum = MKFS_MINIXFS_ROOT_INO;
 	g_fsimg.cwd_inum =  MKFS_MINIXFS_ROOT_INO;
+	g_fsimg.uid = MINIX_TOOLS_ROOT_UID;
+	g_fsimg.gid = MINIX_TOOLS_ROOT_GID;
 	
 	*handlep = &g_fsimg;
 
