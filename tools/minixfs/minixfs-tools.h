@@ -38,6 +38,7 @@
 #define MINIX_TOOLS_DIR_MODE         (0040000)  /**< ルートディレクトリのi_mode */
 #define MINIX_TOOLS_CHR_MODE         (0020000)  /**< 通常ファイルのi_mode */
 #define MINIX_TOOLS_FIFO_MODE        (0010000)  /**< FIFOのi_mode */
+#define MINIX_TOOLS_IFMT_MODE        (0170000)  /**< ファイル種別のi_modeマスク */
 #define MINIX_TOOLS_ACS_MODE         (0000777)  /**< アクセス権   */
 /**                                  
    ファイルシステムイメージ情報

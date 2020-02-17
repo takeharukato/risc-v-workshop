@@ -34,6 +34,19 @@
 #include <minixfs-tools.h>
 #include <utils.h>
 
+void
+fill_minix_inode(fs_image *handle, minix_inode *ip, uint32_t mode){
+
+	memset(ip, 0, sizeof(minix_inode));  /* I-node情報をクリア */
+
+	MINIX_D_INODE_SET(&handle->msb, ip, i_uid, handle->uid);
+	MINIX_D_INODE_SET(&handle->msb, ip, i_gid, handle->gid);
+	MINIX_D_INODE_SET(&handle->msb, ip, i_nlinks, 1);
+	MINIX_D_INODE_SET(&handle->msb, ip, i_mode, mode);
+	MINIX_D_INODE_SET(&handle->msb, ip, i_size, 0);
+	MINIX_D_INODE_SET(&handle->msb, ip, i_mtime,
+	    (uint32_t)((uint64_t)tim_get_fs_time() & 0xffffffff));
+}
 int
 create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino *new_inum){
 	int                rc;
@@ -49,16 +62,8 @@ create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino
 	if ( rc != 0 )
 		goto free_inum_out;  /*  ディレクトリエントリ作成失敗  */
 
-	memset(&new_inode, 0, sizeof(minix_inode));  /* I-node情報をクリア */
-
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_uid, handle->uid);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_gid, handle->gid);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_nlinks, 1);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_mode, mode);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_size, 0);
-	MINIX_D_INODE_SET(&handle->msb, &new_inode, i_mtime,
-	    (uint32_t)((uint64_t)tim_get_fs_time() & 0xffffffff));
-
+	fill_minix_inode(handle, &new_inode, 
+			 (mode & ~MINIX_TOOLS_IFMT_MODE)|MINIX_TOOLS_REG_MODE);
 	/*
 	 * I-node情報を書き出す
 	 */
