@@ -192,28 +192,28 @@ typedef struct _minix_super_block {
    MinixV1 ディスク I-node
  */
 typedef struct _minixv1_inode {	
-	uint16_t                     i_mode;  /** ファイル種別/保護属性        */
-	uint16_t                      i_uid;  /** ファイル所有者のユーザID     */
-	uint32_t                     i_size;  /** ファイルサイズ (単位:バイト) */
-	uint32_t                    i_mtime;  /** 最終更新時刻 (単位:UNIX時刻) */
-	uint8_t                       i_gid;  /** ファイル所有者のグループID   */
-	uint8_t                    i_nlinks;  /** ファイルのリンク数 (単位:個) */
-	uint16_t i_zone[MINIX_V1_NR_TZONES];  /** 順ファイル構成ブロック番号   */
+	uint16_t                     i_mode;  /**< ファイル種別/保護属性        */
+	uint16_t                      i_uid;  /**< ファイル所有者のユーザID     */
+	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト) */
+	uint32_t                    i_mtime;  /**< 最終更新時刻 (単位:UNIX時刻) */
+	uint8_t                       i_gid;  /**< ファイル所有者のグループID   */
+	uint8_t                    i_nlinks;  /**< ファイルのリンク数 (単位:個) */
+	uint16_t i_zone[MINIX_V1_NR_TZONES];  /**< 順ファイル構成ブロック番号   */
 } __packed minixv1_inode;
 
 /**
    MinixV2 ディスク I-node
  */
 typedef struct _minixv2_inode {
-	uint16_t                     i_mode;  /** ファイル種別/保護属性            */
-	uint16_t                   i_nlinks;  /** ファイルのリンク数 (単位:個)     */
-	uint16_t                      i_uid;  /** ファイル所有者のユーザID         */
-	uint16_t                      i_gid;  /** ファイル所有者のグループID       */
-	uint32_t                     i_size;  /** ファイルサイズ (単位:バイト)     */
-	uint32_t                    i_atime;  /** 最終アクセス時刻 (単位:UNIX時刻) */
-	uint32_t                    i_mtime;  /** 最終更新時刻 (単位:UNIX時刻)     */
-	uint32_t                    i_ctime;  /** 最終属性更新時刻 (単位:UNIX時刻) */
-	uint32_t i_zone[MINIX_V2_NR_TZONES];  /** 順ファイル構成ブロック番号       */
+	uint16_t                     i_mode;  /**< ファイル種別/保護属性            */
+	uint16_t                   i_nlinks;  /**< ファイルのリンク数 (単位:個)     */
+	uint16_t                      i_uid;  /**< ファイル所有者のユーザID         */
+	uint16_t                      i_gid;  /**< ファイル所有者のグループID       */
+	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト)     */
+	uint32_t                    i_atime;  /**< 最終アクセス時刻 (単位:UNIX時刻) */
+	uint32_t                    i_mtime;  /**< 最終更新時刻 (単位:UNIX時刻)     */
+	uint32_t                    i_ctime;  /**< 最終属性更新時刻 (単位:UNIX時刻) */
+	uint32_t i_zone[MINIX_V2_NR_TZONES];  /**< 順ファイル構成ブロック番号       */
 } __packed minixv2_inode;
 
 /**
