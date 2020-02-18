@@ -188,4 +188,5 @@ void tst_thread(void);
 void tst_mutex(void);
 void tst_bswap(void);
 void tst_minixfs(void);
+void tst_vfs_path(void);
 #endif  /*  _KERN_KTEST_H  */

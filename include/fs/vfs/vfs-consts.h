@@ -3,15 +3,17 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Virtual File System Interface                                     */
+/*  Virtual file system constant values                               */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_VFS_IF_H)
-#define  _KERN_VFS_IF_H 
+#if !defined(_FS_VFS_VFS_CONSTS_H)
+#define  _FS_VFS_VFS_CONSTS_H 
 
-#include <fs/vfs/vfs-types.h>
-#include <fs/vfs/vfs-consts.h>
-#include <fs/vfs/vfs-dirent.h>
-#include <fs/vfs/vfs-path.h>
+#if !defined(ASM_FILE)
+#include <klib/freestanding.h>
+#include <klib/misc.h>
 
-#endif  /* _KERN_VFS_IF_H */
+#define VFS_PATH_MAX     ULONGLONG_C(1024)  /**< パス長        */
+#define VFS_PATH_DELIM   '/'                /**< パスデリミタ  */
+#endif  /*  !ASM_FILE */
+#endif  /*  _FS_VFS_VFS_CONSTS_H  */

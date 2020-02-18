@@ -50,6 +50,7 @@ kern_common_tests(void){
 	tst_thread();
 	tst_mutex();
 	tst_minixfs();
+	tst_vfs_path();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);

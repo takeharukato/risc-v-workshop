@@ -11,7 +11,9 @@
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
+#include <klib/misc.h>
 
+#define VFS_PATH_MAX     ULONGLONG_C(1024)  /**< パス長 */
 /*
  * VFS基本型
  */

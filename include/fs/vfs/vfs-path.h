@@ -3,15 +3,16 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Virtual File System Interface                                     */
+/*  Virtual file system path operations                               */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_VFS_IF_H)
-#define  _KERN_VFS_IF_H 
+#if !defined(_FS_VFS_VFS_PATH_H)
+#define  _FS_VFS_VFS_PATH_H 
 
-#include <fs/vfs/vfs-types.h>
-#include <fs/vfs/vfs-consts.h>
-#include <fs/vfs/vfs-dirent.h>
-#include <fs/vfs/vfs-path.h>
+#if !defined(ASM_FILE)
 
-#endif  /* _KERN_VFS_IF_H */
+#include <klib/freestanding.h>
+
+int vfs_new_path(const char *_path, char *_conv);
+#endif  /*  !ASM_FILE  */
+#endif  /* _FS_VFS_VFS_PATH_H  */

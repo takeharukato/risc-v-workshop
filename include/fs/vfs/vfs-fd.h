@@ -6,8 +6,8 @@
 /*  Virtual file system file descriptor                               */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_FS_VFS_VFS_DIRENT_H)
-#define  _FS_VFS_VFS_DIRENT_H 
+#if !defined(_FS_VFS_VFS_FD_H)
+#define  _FS_VFS_VFS_FD_H 
 
 #if !defined(ASM_FILE)
 
@@ -28,4 +28,4 @@ struct _file_descriptor{
 }file_descriptor;
 
 #endif  /*  !ASM_FILE  */
-#endif  /* _FS_VFS_VFS_DIRENT_H  */
+#endif  /* _FS_VFS_VFS_FD_H  */
