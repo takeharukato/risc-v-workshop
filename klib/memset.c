@@ -62,10 +62,10 @@ retry64:
 		 * 領域を埋める
 		 */
 retry32:
-		for( cp32 = (uint32_t *)cp8; len >= sizeof(uint32_t); 
-		     len -= sizeof(uint32_t)) {
+		for( cp32 = (uint32_t *)cp8; len >= sizeof(uint32_t); ) {
 
 			*cp32++ = c32;
+			len -= sizeof(uint32_t);
 
 			if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
 			    && ( len >= sizeof(uint64_t) ) ) {
@@ -74,13 +74,15 @@ retry32:
 				goto retry64; /* 8バイト境界の場合8バイト単位フィルする */
 			}
 		}
+
+		cp8 = (uint8_t *)cp32; /* 残りバイトの先頭を指す */
 	}
 
 	/* バイト単位でフィルする */
 	while ( len-- > 0 ) {
 
 		*cp8++ = (uint8_t)(c & 0xff);
-	
+		
 		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
 		    && ( len >= sizeof(uint64_t) ) ) 
 			goto retry64;  /* 8バイト境界の場合8バイト単位でフィルをする */
@@ -88,6 +90,7 @@ retry32:
 		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 ) 
 		    && ( len >= sizeof(uint32_t) ) ) 
 			goto retry32;  /* 4バイト境界に到達したら, 4バイト単位でフィルする */
+
 	}
 	return s;
 }
