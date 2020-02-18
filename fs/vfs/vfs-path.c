@@ -37,16 +37,20 @@ vfs_new_path(const char *path, char *conv){
 		return -ENAMETOOLONG;  /* パス長が長すぎる */
 	
 	sp = path;
+
 	/*
-	 * 先頭の'/'を読み飛ばす
+	 * 先頭の連続した'/'を消去する
 	 */
 	while( *sp == VFS_PATH_DELIM )
 		++sp;
 	if ( *sp == '\0' )
 		return -ENOENT;  /* パスが含まれていない */
 
+	/*
+	 * 末尾の連続した'/'を消去する
+	 */
 	conv_len = strlen(sp);
-	while( sp[conv_len - 1] == VFS_PATH_DELIM )
+	while( ( conv_len > 0 ) && ( sp[conv_len - 1] == VFS_PATH_DELIM ) )
 		--conv_len;
 
 	if ( ( conv_len + 2 ) >= VFS_PATH_MAX )
@@ -76,10 +80,15 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	size_t     len;
 	char       *ep;
 	char       *sp;
-	
-	len1 = strlen(path1);
-	len2 = strlen(path2);
 
+	len1 = len2 = 0;
+
+	if ( path1 != NULL ) 		
+		len1 = strlen(path1);
+	
+	if ( path2 != NULL ) 
+		len2 = strlen(path2);
+	
 	if ( ( len1 == 0 ) && ( len2 == 0 ) )
 		return -ENOENT;  /* 両者にパスが含まれていない */
 
@@ -112,7 +121,24 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	/*
 	 * 文字列間にパスデリミタを付与して結合する
 	 */
-	len = len1 + len2  + 2;
+	len = len1 + len2;
+
+	if ( len >= VFS_PATH_MAX ) 
+		return -ENAMETOOLONG;
+
+	if ( len1 == 0 ) { /* 二つ目のパスを返却 */
+
+		strcpy(conv, path2);
+		return 0;
+	}
+
+	if ( len2 == 0 ) { /* 一つ目のパスを返却 */
+
+		strcpy(conv, path1);
+		return 0;
+	}
+
+	len += 2;  /* パスデリミタとヌル終端分の長さを追加 */
 	if ( len >= VFS_PATH_MAX ) 
 		return -ENAMETOOLONG;
 
