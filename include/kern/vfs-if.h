@@ -16,4 +16,5 @@
 #include <fs/vfs/vfs-fstbl.h>
 #include <fs/vfs/vfs-fd.h>
 
+void vfs_init(void);
 #endif  /* _KERN_VFS_IF_H */
