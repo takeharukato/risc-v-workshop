@@ -10,6 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/spinlock.h>
+#include <kern/mutex.h>
 
 /**
    参照カウンタを減算し, 減算後の参照カウンタの状態と値を返却する(内部関数)
@@ -216,5 +217,24 @@ refcnt_dec_and_lock_disable_intr(refcounter *counterp, spinlock *lock, intrflags
 		return true; /* カウンタが0になったらロックを保持したまま抜ける  */
 
 	spinlock_unlock_restore_intr(lock, iflags);  /* カウンタが0でないのでロックを解放する  */
+	return false;
+}
+
+/**
+   参照カウンタがデクリメントし0になった場合は, 指定されたミューテックスロックを獲得する
+   参照カウンタが0にならなければそのまま復帰する
+   @param[in] counterp 参照カウンタ
+   @param[in] mtx      獲得するmutex
+   @retval    真       参照カウンタが0になった
+   @retval    偽       参照カウンタが0以上
+ */
+bool
+refcnt_dec_and_mutex_lock(refcounter *counterp, mutex *mtx){
+
+	mutex_lock(mtx);
+	if ( refcnt_dec_and_test(counterp) )
+		return true; /* カウンタが0になったらロックを保持したまま抜ける  */
+
+	mutex_unlock(mtx);  /* カウンタが0でないのでロックを解放する  */
 	return false;
 }
