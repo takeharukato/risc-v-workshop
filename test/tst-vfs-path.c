@@ -173,7 +173,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	rc = vfs_cat_paths(NULL, NULL, path3);
-	if ( rc == 0 )
+	if ( rc == -ENOENT )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
