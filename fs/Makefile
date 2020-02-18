@@ -41,6 +41,8 @@ fsimg.S: fsimg.S.in ${FSIMG}
 ${FSIMG}:
 	${DD} if=/dev/zero of=${FSIMG} bs=1M count=${FSSIZE}
 	mkfs.mfs $@
+	${RM} -r ${top}/rfs
+	mkdir ${top}/rfs
 	fuse-mfs ${top}/fsimg.img ${top}/rfs
 	echo "Hello World" > ${top}/rfs/hello.txt
 	${DD} if=/dev/urandom of=${top}/rfs/second-zone.dat bs=1M count=5

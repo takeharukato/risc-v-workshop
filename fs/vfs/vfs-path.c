@@ -10,10 +10,6 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <kern/spinlock.h>
-#include <kern/wqueue.h>
-#include <kern/mutex.h>
-
 #include <kern/vfs-if.h>
 
 /**
@@ -66,18 +62,61 @@ vfs_new_path(const char *path, char *conv){
 }
 /**
    パスを結合する
+   @param[in]  path1入力パス1
+   @param[in]  path2入力パス2
+   @param[out] conv 変換後のパス
+   @retval  0             正常終了
+   @retval -ENOENT        パスが含まれていない
+   @retval -ENAMETOOLONG  パス名が長すぎる
  */
 int
-vfs_cat_paths(char *a, char *b, char *result){
-    char        *p;
-    size_t     len;
+vfs_cat_paths(char *path1, char *path2, char *conv){
+	size_t    len1;
+	size_t    len2;
+	size_t     len;
+	char       *ep;
+	char       *sp;
+	
+	len1 = strlen(path1);
+	len2 = strlen(path2);
 
-    len = strlen(a) + strlen(b) + 2;
+	if ( ( len1 == 0 ) && ( len2 == 0 ) )
+		return -ENOENT;  /* 両者にパスが含まれていない */
 
-    if ( len >= VFS_PATH_MAX ) 
-	    return -ENOMEM;
-    
-    snprintf(result, VFS_PATH_MAX, "%s/%s", a, b);
+	/*
+	 *一つ目のパスの終端のパスデリミタを取り除く
+	 */
+	if ( len1 > 0 ) {
+		
+		ep = &path1[len1 - 1];
+		while( *ep == VFS_PATH_DELIM ) {
+			
+			*ep-- = '\0';
+			--len1;
+		}
+	}
+	
+	/*
+	 *二つ目のパスの先頭のパスデリミタを取り除く
+	 */
+	if ( len2 > 0 ) {
+		
+		sp = path2;
+		while( *sp == VFS_PATH_DELIM ) {
+			
+			++sp;
+			--len2;
+		}
+	}
 
-    return 0;
+	/*
+	 * 文字列間にパスデリミタを付与して結合する
+	 */
+	len = len1 + len2  + 2;
+	if ( len >= VFS_PATH_MAX ) 
+		return -ENAMETOOLONG;
+
+	ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
+	
+	return 0;
 }

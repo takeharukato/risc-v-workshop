@@ -14,5 +14,6 @@
 #include <klib/freestanding.h>
 
 int vfs_new_path(const char *_path, char *_conv);
+int vfs_cat_paths(char *_a, char *_b, char *_result);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_PATH_H  */
