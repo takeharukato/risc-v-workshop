@@ -27,5 +27,21 @@ struct _file_descriptor{
 	vfs_file_private *private; /**< ファイル操作時の固有情報            */
 }file_descriptor;
 
+/**
+   I/Oコンテキスト
+ */
+struct _ioctx {
+	struct _mutex                                  mtx;  /**< 排他用mutex          */
+	struct _refcounter                            rcnt;  /**< 参照カウンタ         */
+	int                                          errno;  /**< エラー番号           */
+	struct                            _vfs_vnode *root;  /**< ルートディレクトリ   */
+	struct                             _vfs_vnode *cwd;  /**< カレントディレクトリ */
+	BITMAP_TYPE(, uint64_t, MAX_FD_TABLE_SIZE)    bmap;  /**< 割当てIDビットマップ */
+	/** テーブルエントリ数(単位:個)           */
+	size_t                                  table_size; 
+	/** プロセスのファイルディスクリプタ配列  */
+	struct _file_descriptor                      **fds;
+}ioctx;
+
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_FD_H  */

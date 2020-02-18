@@ -13,5 +13,7 @@
 #include <fs/vfs/vfs-consts.h>
 #include <fs/vfs/vfs-dirent.h>
 #include <fs/vfs/vfs-path.h>
+#include <fs/vfs/vfs-fstbl.h>
+#include <fs/vfs/vfs-fd.h>
 
 #endif  /* _KERN_VFS_IF_H */

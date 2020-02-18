@@ -33,6 +33,17 @@ typedef struct _mutex{
 	mutex_counter     resources; /*< 利用可能資源数 (単位:個)   */ 
 }mutex;
 
+/**
+   ミューテックス初期化子
+   @param _mtx ミューテックスへのポインタ
+ */
+#define __MUTEX_INITIALIZER(_mtx) {		               \
+	.lock = __SPINLOCK_INITIALIZER,		               \
+	.owner  = NULL,	                                       \
+	.wque = __WQUE_WAITQUEUE_INITIALIZER(&((_mtx)->wque)), \
+	.resources = MUTEX_INITIAL_VALUE,                      \
+}
+
 void mutex_init(struct _mutex *_mtx);
 void mutex_destroy(struct _mutex *_mtx);
 bool mutex_locked_by_self(struct _mutex *_mtx);

@@ -68,7 +68,7 @@ struct _proc;
  */
 typedef struct _vm_asid_map{
 	spinlock                                      lock;  /**< ビットマップ操作用lock */
-	BITMAP_TYPE(, uint64_t, HAL_PGTBL_MAX_ASID)  idmap;  /**< アドレスIDビットマップ */	
+	BITMAP_TYPE(, uint64_t, HAL_PGTBL_MAX_ASID)  idmap;  /**< アドレスIDビットマップ */
 }vm_asid_map;
 /**
    ページテーブル

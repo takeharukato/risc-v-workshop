@@ -19,6 +19,7 @@
 #include <klib/queue.h>
 #include <kern/kern-types.h>
 #include <kern/vm-if.h>
+#include <kern/vfs-if.h>
 #include <hal/hal-memlayout.h>
 
 struct _thread;
@@ -55,6 +56,7 @@ typedef struct _proc{
 	pid                             id; /**< プロセスID               */
 	proc_segment segments[PROC_SEG_NR]; /**< セグメント               */
 	char           name[PROC_NAME_LEN]; /**< プロセス名               */
+	struct _ioctx                ioctx; /**< I/Oコンテキスト          */
 }proc;
 
 /**
