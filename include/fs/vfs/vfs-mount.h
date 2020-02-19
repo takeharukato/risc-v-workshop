@@ -45,7 +45,8 @@ typedef struct _fs_mount {
 */
 typedef struct _mount_table{
 	mutex                                mt_mtx;  /**< マウントテーブル排他用mutex */
-	RB_HEAD(_mount_tree, _fs_mount)     mt_head;  /**< マウントテーブルエントリ    */
+	RB_HEAD(_fs_mount_tree, _fs_mount)  mt_head;  /**< マウントテーブルエントリ    */
+	mnt_id                           mt_last_id;  /**< 最後に割り当てたマウントID  */
 }mount_table;
 
 /** 
@@ -55,6 +56,7 @@ typedef struct _mount_table{
 #define __MNTTBL_INITIALIZER(_mnttbl) {			        \
 	.mt_mtx = __MUTEX_INITIALIZER(&((_mnttbl)->mt_mtx)),	\
 	.mt_head  = RB_INITIALIZER(&((_mnttbl)->mt_head)),	\
+	.mt_last_id = VFS_INVALID_MNTID,	                \
 }
 
 #endif  /*  !ASM_FILE  */

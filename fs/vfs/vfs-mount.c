@@ -22,6 +22,32 @@ static mount_table   g_mnttbl = __MNTTBL_INITIALIZER(&g_mnttbl);
 static kmem_cache fs_mount_cache; /**< マウントポイントのSLABキャッシュ */
 
 /**
+   マウントポイント比較処理
+ */
+static int _fs_mount_cmp(struct _fs_mount *_key, struct _fs_mount *_ent);
+RB_GENERATE_STATIC(_fs_mount_tree, _fs_mount, m_ent, _fs_mount_cmp);
+
+/** 
+    マウントポイント比較関数
+    @param[in] key 比較対象マウントポイント
+    @param[in] ent マウントポイントテーブル内の各エントリ
+    @retval 正  keyのm_idが entのm_idより前にある
+    @retval 負  keyのm_idが entのm_idより後にある
+    @retval 0   keyのm_idが entのm_idに等しい
+ */
+static int 
+_fs_mount_cmp(struct _fs_mount *key, struct _fs_mount *ent){
+	
+	if ( key->m_id < ent->m_id )
+		return 1;
+
+	if ( key->m_id > ent->m_id )
+		return -1;
+
+	return 0;
+}
+
+/**
    マウント情報の初期化 (内部関数)
    @param[in] mount 初期化するマウント情報
    @param[in] path  マウントポイントパス
@@ -31,7 +57,7 @@ static kmem_cache fs_mount_cache; /**< マウントポイントのSLABキャッ�
 */
 static int
 init_mount(fs_mount *mount, char *path, fs_container *fs) {
-	int rc;
+	int        rc;
 
 	memset(mount, 0, sizeof(fs_mount));  /*  ゼロクリア */
 
@@ -131,6 +157,61 @@ free_fsmount(fs_mount *mount){
 	kfree(mount->m_mount_path);  /*  マウントポイント文字列を解放  */
 	slab_kmem_cache_free(mount); /*  マウント情報を解放  */
 }
+/**
+   マウントIDを割り当てる
+   @param[out] m_idp   マウントID返却領域
+   @retval     0       正常終了
+   @retval    -ENOSPC  マウントIDに空きがない
+ */
+static __unused int
+alloc_new_mntid_nolock(mnt_id *idp){
+	mnt_id      new_id;
+	fs_mount  *cur_mnt;
+	fs_mount       key;
+
+	for(new_id = g_mnttbl.mt_last_id + 1; new_id != g_mnttbl.mt_last_id; ++new_id) {
+
+		if ( new_id == VFS_INVALID_MNTID )
+			continue;  /* 無効なIDを飛ばす */
+
+		key.m_id = new_id;  /* 検索対象マウントID */
+		/* マウント情報を検索 */
+		cur_mnt = RB_FIND(_fs_mount_tree, &g_mnttbl.mt_head, &key); 
+		if ( cur_mnt == NULL ) { /* 空きIDを検出 */
+
+			*idp = new_id; /* IDを返却 */
+			g_mnttbl.mt_last_id = new_id; /* 最後に検出したIDを記録 */
+			return 0;
+		}
+	}
+
+	return -ENOSPC;
+}
+
+/**
+   マウントIDを解放する
+   @param[in] id   マウントID返却領域
+   @retval     0       正常終了
+   @retval    -EBUSY   対象のマウントポイントが登録されている
+ */
+static __unused int
+free_mntid_nolock(mnt_id id){
+	fs_mount  *cur_mnt;
+	fs_mount       key;
+
+	kassert( id != VFS_INVALID_MNTID ); /* 有効なマウントポイントIDを指定する */
+
+	key.m_id = id;  /* 検索対象マウントID */
+	cur_mnt = RB_FIND(_fs_mount_tree, &g_mnttbl.mt_head, &key); 
+	if ( cur_mnt != NULL )   /* 登録済みのマウント情報 */
+		return -EBUSY;
+
+	/* 最後に割り当てたIDと等しい場合は次回の検索IDを再設定する */
+	if ( g_mnttbl.mt_last_id == id )
+		g_mnttbl.mt_last_id = id - 1; 
+	
+	return 0;
+}
 
 /**
    マウントテーブルの初期化
@@ -142,4 +223,5 @@ vfs_init_mount_table(void){
 	rc = slab_kmem_cache_create(&fs_mount_cache, "vfs mount point", 
 	    sizeof(fs_mount), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
+	
 }
