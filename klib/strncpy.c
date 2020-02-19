@@ -28,9 +28,12 @@ strncpy(char *dest, char const *src, size_t count){
 
 	for(tmp = dest; ; ++src, ++dest, --count) {
 
-		if ( ( count == 0 ) || ( *src == '\0' ) )
-			break;
 		*dest = *src;
+		if ( (*src == '\0') || (count == 0) ) {
+
+			*dest = '\0';
+			break;
+		}
 	}
 
 	return tmp;

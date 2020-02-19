@@ -84,15 +84,57 @@ error_out:
  * ファイルシステム情報IF
  */
 
+/**
+   ファイルシステムの参照カウンタをインクリメントする
+   @param[in] container ファイルシステムコンテナ
+   @retval    真 プロセスへの参照を獲得できた
+   @retval    偽 プロセスへの参照を獲得できなかった
+ */
+bool
+vfs_fs_ref_inc(fs_container *container){
+
+	/* ファイルシステム終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
+	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	 */
+	return ( refcnt_inc_if_valid(&container->refs) != 0 ); /* 以前の値が0の場合加算できない */
+}
+
+/**
+   ファイルシステムの参照カウンタをデクリメントする
+   @param[in] container ファイルシステムコンテナ
+   @retval    真 ファイルシステムへの最終参照者だった
+   @retval    偽 ファイルシステムへの最終参照者でない
+ */
+bool
+vfs_fs_ref_dec(fs_container *container){
+	int   rc;
+	bool res;
+
+	/*  ファイルシステムの利用カウンタをさげる  */
+	res = refcnt_dec_and_mutex_lock(&container->refs, &g_fstbl.mtx);
+	if ( res ) { /* ファイルシステムの最終参照者だった場合 */
+
+		rc = free_filesystem(container->name);
+
+		mutex_unlock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをアンロック  */
+		if ( rc != 0 )
+			goto error_out;
+	}
+
+	return res;
+
+error_out:
+	return false;
+}
+
 /** ファイルシステムへの参照を得る
-    @param[in] fstbl 操作対象のファイルシステムテーブル
     @param[in] fs_name キーとなるファイルシステム名を表す文字列
     @param[in] containerp ファイルシステムコンテナへのポインタのアドレス
     @retval  0      正常終了
     @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
  */
 int 
-vfs_fs_get(fs_table *fstbl, const char *fs_name, fs_container **containerp){
+vfs_fs_get(const char *fs_name, fs_container **containerp){
 	int           rc;
 	fs_container *fs;
 	fs_container key;
@@ -122,41 +164,22 @@ unlock_out:
 }
 
 /** ファイルシステムへの参照を返却する
-    @param[in] fs    ファイルシステムコンテナへのポインタ
-    @retval  0      正常終了
-    @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
+    @param[in] container    ファイルシステムコンテナへのポインタ
  */
-int 
-vfs_fs_put(fs_container *fs){
-	int   rc;
-	bool res;
+void
+vfs_fs_put(fs_container *container){
 
-	/*  ファイルシステムの利用カウンタをさげる  */
-	res = refcnt_dec_and_mutex_lock(&fs->ref_count, &g_fstbl.mtx);
-	if ( res ) { /* ファイルシステムの最終参照者だった場合 */
-
-		rc = free_filesystem(fs->name);
-
-		mutex_unlock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをアンロック  */
-		if ( rc != 0 )
-			goto error_out;
-	}
-
-	return 0;
-
-error_out:
-	return rc;
+	 vfs_fs_ref_dec(container) ;
 }
 
 /** ファイルシステムの登録
-    @param[in] fstbl 操作対象のファイルシステムテーブル
     @param[in] name  ファイルシステム名を表す文字列
     @param[in] calls ファイルシステム固有のファイルシステムコールハンドラ
     @retval  0        正常終了
     @retval -ENOMEM   メモリ不足    
  */
 int
-vfs_register_filesystem(fs_table *fstbl, const char *name, fs_calls *calls){
+vfs_register_filesystem(const char *name, fs_calls *calls){
 	int                  rc;
 	fs_container *container;
 	fs_container       *res;
@@ -169,7 +192,7 @@ vfs_register_filesystem(fs_table *fstbl, const char *name, fs_calls *calls){
 	 * ファイルシステムコンテナを割当て
 	 */
 	rc = slab_kmem_cache_alloc(&fstbl_container_cache, KMALLOC_NORMAL, 
-	    (void **)&container);
+				   (void **)&container);
 	if ( rc != 0 )
 		return -ENOMEM;
 
@@ -177,9 +200,9 @@ vfs_register_filesystem(fs_table *fstbl, const char *name, fs_calls *calls){
 	strncpy(container->name, name, VFS_FSNAME_MAX);
 	container->name[VFS_FSNAME_MAX - 1] = '\0';
 
-	refcnt_init(&container->ref_count);
+	refcnt_init(&container->refs);
 	container->calls = calls;
-	container->fstbl = fstbl;
+	container->fstbl = &g_fstbl;
 
 	mutex_lock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをロック  */
 	res = RB_INSERT(_fstbl_tree, &g_fstbl.head, container);

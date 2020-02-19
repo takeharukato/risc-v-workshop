@@ -26,7 +26,7 @@ struct _file_stat;
 typedef struct _fs_container {
 	RB_ENTRY(_fs_container)  ent;  /**< ファイルシステムテーブルのリンク    */	
 	struct _fs_calls      *calls;  /**< ファイルシステム固有のファイル操作  */
-	struct _refcounter ref_count;  /**< ファイルシステム参照カウンタ        */
+	struct _refcounter      refs;  /**< ファイルシステム参照カウンタ        */
 	/** 登録されているファイルシステムテーブルへのポインタ                  */
 	struct _fs_table      *fstbl;  
 	char    name[VFS_FSNAME_MAX];  /**< ファイルシステム名を表す文字列      */
@@ -101,11 +101,11 @@ typedef struct _fs_calls {
 	    && ( (_calls)->fs_lookup != NULL )			 \
 	    && ( (_calls)->fs_seek != NULL ) )
 
-int vfs_fs_get(struct _fs_table *fstbl, const char *fs_name, 
-    struct _fs_container **containerp);
-int vfs_fs_put(struct _fs_container *_fs);
-int vfs_register_filesystem(struct _fs_table *_fstbl, const char *_name, 
-    struct _fs_calls *_calls);
+bool vfs_fs_ref_inc(fs_container *_container);
+bool vfs_fs_ref_dec(fs_container *_container);
+int vfs_fs_get(const char *_fs_name, struct _fs_container **_containerp);
+void vfs_fs_put(struct _fs_container *_fs);
+int vfs_register_filesystem(const char *_name, struct _fs_calls *_calls);
 void vfs_init_filesystem_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_FSTBL_H   */
