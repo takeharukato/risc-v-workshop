@@ -27,6 +27,7 @@ struct  _mount_table;
  */
 typedef struct _fs_mount {
 	mutex                         m_mtx;  /**< マウントテーブル排他用mutex              */
+	struct _refcounter           m_refs;  /**< マウントポイント参照カウンタ         */
 	RB_ENTRY(_fs_mount)           m_ent;  /**< マウントテーブルのリンク                 */
 	mnt_id                         m_id;  /**< マウントポイントID                       */
 	dev_id                        m_dev;  /**< マウントデバイスのデバイスID             */
@@ -58,6 +59,8 @@ typedef struct _mount_table{
 	.mt_head  = RB_INITIALIZER(&((_mnttbl)->mt_head)),	\
 	.mt_last_id = VFS_INVALID_MNTID,	                \
 }
-
+bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
+bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
+void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */

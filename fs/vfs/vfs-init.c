@@ -24,4 +24,5 @@ void
 vfs_init(void){
 
 	vfs_init_filesystem_table();
+	vfs_init_mount_table();
 }
