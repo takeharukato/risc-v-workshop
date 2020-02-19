@@ -54,6 +54,6 @@ size_t strnlen(char const *_s, size_t _count);
 /*
  * 複製関数 strdup
  */
-char *strdup(const char *_src);
+char *kstrdup(const char *_src);
 
 #endif  /*  _KLIB_STRING_H  */

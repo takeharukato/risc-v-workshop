@@ -11,6 +11,7 @@
 
 #include <kern/kern-autoconf.h>
 #include <klib/misc.h>
+
 #define KC_KSTACK_ORDER (CONFIG_KSTACK_PAGE_ORDER)
 #define KC_ISTACK_ORDER (CONFIG_ISTACK_PAGE_ORDER)
 #define KC_KSTACK_SIZE  ( CONFIG_HAL_PAGE_SIZE * (ULONGLONG_C(1) << KC_KSTACK_ORDER) )
@@ -27,4 +28,6 @@
 #define KC_PHYSMEM_MB (64)
 #endif  /*  CONFIG_HAL_MEMORY_SIZE_MB  */
 #define KC_THR_MAX    (CONFIG_THR_MAX)
+
+#define FS_INVALID_DEVID          (0)             /* 無効デバイスID  */
 #endif  /* KERN_KERN_CONSTS_H */

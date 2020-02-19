@@ -13,12 +13,14 @@
 #include <klib/freestanding.h>
 #include <klib/misc.h>
 
-#define VFS_PATH_MAX     ULONGLONG_C(1024)  /**< パス長        */
-#define VFS_FSNAME_MAX   (256)              /**< ファイルシステム名(ヌル終端含む) */
-#define VFS_PATH_DELIM   '/'                /**< パスデリミタ  */
+#define VFS_PATH_MAX            ULONGLONG_C(1024)  /**< パス長        */
+#define VFS_FSNAME_MAX          (256)   /**< ファイルシステム名(ヌル終端含む) */
+#define VFS_PATH_DELIM          '/'     /**< パスデリミタ  */
 #define MAX_FD_TABLE_SIZE       (2048)  /**<  最大ファイルディスクリプタテーブルエントリ数  */
 /**<  デフォルトファイルディスクリプタテーブルエントリ数 */
 #define DEFAULT_FD_TABLE_SIZE   (128)   
+#define VFS_INVALID_MNTID       (0)     /**< 無効マウントID */
 
+#define VFS_FSMNT_NONE          (0)     /**< マウントフラグ */
 #endif  /*  !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_CONSTS_H  */
