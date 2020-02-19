@@ -14,7 +14,6 @@
 #include <klib/misc.h>
 
 #define VFS_PATH_MAX            ULONGLONG_C(1024)  /**< パス長        */
-#define VFS_FSNAME_MAX          (256)   /**< ファイルシステム名(ヌル終端含む) */
 #define VFS_PATH_DELIM          '/'     /**< パスデリミタ  */
 #define MAX_FD_TABLE_SIZE       (2048)  /**<  最大ファイルディスクリプタテーブルエントリ数  */
 /**<  デフォルトファイルディスクリプタテーブルエントリ数 */

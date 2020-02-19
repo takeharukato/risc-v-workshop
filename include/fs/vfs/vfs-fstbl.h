@@ -24,12 +24,11 @@ struct _file_stat;
    ファイルシステム情報
  */
 typedef struct _fs_container {
-	RB_ENTRY(_fs_container)  c_ent;  /**< ファイルシステムテーブルのリンク    */
-	struct _fs_calls      *c_calls;  /**< ファイルシステム固有のファイル操作  */
-	struct _refcounter      c_refs;  /**< ファイルシステム参照カウンタ        */
-	/** 登録されているファイルシステムテーブルへのポインタ                    */
-	struct _fs_table      *c_fstbl;  
-	char    c_name[VFS_FSNAME_MAX];  /**< ファイルシステム名を表す文字列      */
+	RB_ENTRY(_fs_container)  c_ent;  /**< ファイルシステムテーブルのリンク     */
+	struct _fs_calls      *c_calls;  /**< ファイルシステム固有のファイル操作   */
+	struct _refcounter      c_refs;  /**< ファイルシステム参照カウンタ         */
+	struct _fs_table      *c_fstbl;  /**< ファイルシステムテーブルへのポインタ */
+	char                   *c_name;  /**< ファイルシステム名を表す文字列       */
 }fs_container;
 
 /**

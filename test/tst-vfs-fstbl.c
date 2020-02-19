@@ -78,19 +78,13 @@ vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	res = vfs_fs_ref_inc(container);
-	if ( res ) 
+	res = vfs_fs_ref_dec(container);
+	if ( !res )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
 	vfs_fs_put(container);
-	res = vfs_fs_ref_dec(container);
-	if ( res )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-	
 }
 
 void

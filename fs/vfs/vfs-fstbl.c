@@ -54,8 +54,9 @@ free_filesystem(const char *fs_name){
 	fs_container     key;
 	fs_container *fs_res;
 
-	strncpy(key.c_name, fs_name, VFS_FSNAME_MAX);
-	key.c_name[VFS_FSNAME_MAX - 1] = '\0';
+	kassert( fs_name != NULL );
+
+	key.c_name = (char *)fs_name;
 
 	fs = RB_FIND(_fstbl_tree, &g_fstbl.c_head, &key); /* ファイルシステムテーブルを検索 */
 	if ( fs == NULL ) {
@@ -76,7 +77,6 @@ free_filesystem(const char *fs_name){
 	return 0;
 
 error_out:
-
 	return rc;
 }
 
@@ -140,8 +140,7 @@ vfs_fs_get(const char *fs_name, fs_container **containerp){
 	fs_container *fs;
 	fs_container key;
 
-	strncpy(key.c_name, fs_name, VFS_FSNAME_MAX);
-	key.c_name[VFS_FSNAME_MAX - 1] = '\0';
+	key.c_name = (char *)fs_name;
 
 	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
 
@@ -151,6 +150,8 @@ vfs_fs_get(const char *fs_name, fs_container **containerp){
 		rc = -ENOENT;
 		goto unlock_out;
 	}
+
+	vfs_fs_ref_inc(fs);  /* ファイルシステムへの参照を加算 */
 
 	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
@@ -195,27 +196,41 @@ vfs_register_filesystem(const char *name, fs_calls *calls){
 	rc = slab_kmem_cache_alloc(&fstbl_container_cache, KMALLOC_NORMAL, 
 				   (void **)&container);
 	if ( rc != 0 )
-		return -ENOMEM;
+		goto error_out;
 
-	/* 各パラメータをセットする  */
-	strncpy(container->c_name, name, VFS_FSNAME_MAX);
-	container->c_name[VFS_FSNAME_MAX - 1] = '\0';
+	/*
+	 * 各パラメータをセットする
+	 */
+	container->c_name = kstrdup(name); /* ファイルシステム名 */
+	if ( container->c_name == NULL ) {
 
-	refcnt_init(&container->c_refs);
-	container->c_calls = calls;
-	container->c_fstbl = &g_fstbl;
+		rc = -ENOMEM;
+		goto free_container_out;
+	}
 
+	refcnt_init(&container->c_refs);  /*  参照カウンタ             */
+	container->c_calls = calls;       /*  ファイルオペレーション   */
+	container->c_fstbl = &g_fstbl;    /*  ファイルシステムテーブル */
+
+	/*
+	 * ファイルシステムテーブルに登録する
+	 */
 	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
 	res = RB_INSERT(_fstbl_tree, &g_fstbl.c_head, container);
+	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
+
 	if ( res != NULL )
 		goto free_out;
-
-	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
 	return 0;
 
 free_out:
+	kfree(container->c_name);        /* ファイルシステム名を解放する       */
+
+free_container_out:
 	slab_kmem_cache_free(container); /* ファイルシステムコンテナを解放する */
+
+error_out:
 	return rc;
 }
 
