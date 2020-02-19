@@ -17,7 +17,7 @@
 /*
  * VFS基本型
  */
-typedef uint64_t           fs_id;  /**< FS ID                        */
+typedef uint64_t          mnt_id;  /**< マウントポイントID           */
 typedef uint64_t        vnode_id;  /**< Vnode ID                     */
 typedef uint64_t        ioctx_id;  /**< I/OコンテキストID            */
 typedef int32_t         fs_nlink;  /**< リンク数                     */

@@ -14,6 +14,7 @@
 #include <fs/vfs/vfs-dirent.h>
 #include <fs/vfs/vfs-path.h>
 #include <fs/vfs/vfs-fstbl.h>
+#include <fs/vfs/vfs-mount.h>
 #include <fs/vfs/vfs-fd.h>
 
 void vfs_init(void);

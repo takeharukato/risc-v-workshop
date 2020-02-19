@@ -25,7 +25,7 @@ static kmem_cache fstbl_container_cache; /**< ファイルシステムコンテ�
    ファイルシステムコンテナ比較処理
  */
 static int _fs_container_cmp(struct _fs_container *_key, struct _fs_container *_ent);
-RB_GENERATE_STATIC(_fstbl_tree, _fs_container, ent, _fs_container_cmp);
+RB_GENERATE_STATIC(_fstbl_tree, _fs_container, c_ent, _fs_container_cmp);
 
 /** 
     ファイルシステムコンテナ比較関数
@@ -38,7 +38,7 @@ RB_GENERATE_STATIC(_fstbl_tree, _fs_container, ent, _fs_container_cmp);
 static int 
 _fs_container_cmp(struct _fs_container *key, struct _fs_container *ent){
 	
-	return strcmp(key->name, ent->name);
+	return strcmp(key->c_name, ent->c_name);
 }
 
 /** ファイルシステムの登録抹消(内部関数)
@@ -54,10 +54,10 @@ free_filesystem(const char *fs_name){
 	fs_container     key;
 	fs_container *fs_res;
 
-	strncpy(key.name, fs_name, VFS_FSNAME_MAX);
-	key.name[VFS_FSNAME_MAX - 1] = '\0';
+	strncpy(key.c_name, fs_name, VFS_FSNAME_MAX);
+	key.c_name[VFS_FSNAME_MAX - 1] = '\0';
 
-	fs = RB_FIND(_fstbl_tree, &g_fstbl.head, &key); /* ファイルシステムテーブルを検索 */
+	fs = RB_FIND(_fstbl_tree, &g_fstbl.c_head, &key); /* ファイルシステムテーブルを検索 */
 	if ( fs == NULL ) {
 
 		rc = -ENOENT;
@@ -65,7 +65,7 @@ free_filesystem(const char *fs_name){
 	}
 
 	 /*  ファイルシステム情報の登録抹消  */
-	fs_res = RB_REMOVE(_fstbl_tree, &g_fstbl.head, fs);
+	fs_res = RB_REMOVE(_fstbl_tree, &g_fstbl.c_head, fs);
 	kassert( fs_res != NULL );
 
 	/*
@@ -96,7 +96,7 @@ vfs_fs_ref_inc(fs_container *container){
 	/* ファイルシステム終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
 	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
 	 */
-	return ( refcnt_inc_if_valid(&container->refs) != 0 ); /* 以前の値が0の場合加算できない */
+	return ( refcnt_inc_if_valid(&container->c_refs) != 0 ); 
 }
 
 /**
@@ -111,12 +111,13 @@ vfs_fs_ref_dec(fs_container *container){
 	bool res;
 
 	/*  ファイルシステムの利用カウンタをさげる  */
-	res = refcnt_dec_and_mutex_lock(&container->refs, &g_fstbl.mtx);
+	res = refcnt_dec_and_mutex_lock(&container->c_refs, &g_fstbl.c_mtx);
 	if ( res ) { /* ファイルシステムの最終参照者だった場合 */
 
-		rc = free_filesystem(container->name);
+		/* ファイルシステムコンテナを解放する */
+		rc = free_filesystem(container->c_name);
 
-		mutex_unlock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをアンロック  */
+		mutex_unlock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをアンロック  */
 		if ( rc != 0 )
 			goto error_out;
 	}
@@ -139,26 +140,26 @@ vfs_fs_get(const char *fs_name, fs_container **containerp){
 	fs_container *fs;
 	fs_container key;
 
-	strncpy(key.name, fs_name, VFS_FSNAME_MAX);
-	key.name[VFS_FSNAME_MAX - 1] = '\0';
+	strncpy(key.c_name, fs_name, VFS_FSNAME_MAX);
+	key.c_name[VFS_FSNAME_MAX - 1] = '\0';
 
-	mutex_lock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをロック  */
+	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
 
-	fs = RB_FIND(_fstbl_tree, &g_fstbl.head, &key); /* ファイルシステムテーブルを検索 */
+	fs = RB_FIND(_fstbl_tree, &g_fstbl.c_head, &key); /* ファイルシステムテーブルを検索 */
 	if ( fs == NULL ) {
 
 		rc = -ENOENT;
 		goto unlock_out;
 	}
 
-	mutex_unlock(&g_fstbl.mtx); /*  ファイルシステムテーブルをアンロック  */
+	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
 	*containerp = fs;  /* ファイルシステムコンテナを返却する */
 
 	return 0;
 
 unlock_out:
-	mutex_unlock(&g_fstbl.mtx); /*  ファイルシステムテーブルをアンロック  */
+	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
 	return rc;
 }
@@ -197,19 +198,19 @@ vfs_register_filesystem(const char *name, fs_calls *calls){
 		return -ENOMEM;
 
 	/* 各パラメータをセットする  */
-	strncpy(container->name, name, VFS_FSNAME_MAX);
-	container->name[VFS_FSNAME_MAX - 1] = '\0';
+	strncpy(container->c_name, name, VFS_FSNAME_MAX);
+	container->c_name[VFS_FSNAME_MAX - 1] = '\0';
 
-	refcnt_init(&container->refs);
-	container->calls = calls;
-	container->fstbl = &g_fstbl;
+	refcnt_init(&container->c_refs);
+	container->c_calls = calls;
+	container->c_fstbl = &g_fstbl;
 
-	mutex_lock(&g_fstbl.mtx);  /*  ファイルシステムテーブルをロック  */
-	res = RB_INSERT(_fstbl_tree, &g_fstbl.head, container);
+	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
+	res = RB_INSERT(_fstbl_tree, &g_fstbl.c_head, container);
 	if ( res != NULL )
 		goto free_out;
 
-	mutex_unlock(&g_fstbl.mtx); /*  ファイルシステムテーブルをアンロック  */
+	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
 	return 0;
 

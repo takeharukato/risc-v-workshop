@@ -24,26 +24,26 @@ struct _file_stat;
    ファイルシステム情報
  */
 typedef struct _fs_container {
-	RB_ENTRY(_fs_container)  ent;  /**< ファイルシステムテーブルのリンク    */	
-	struct _fs_calls      *calls;  /**< ファイルシステム固有のファイル操作  */
-	struct _refcounter      refs;  /**< ファイルシステム参照カウンタ        */
-	/** 登録されているファイルシステムテーブルへのポインタ                  */
-	struct _fs_table      *fstbl;  
-	char    name[VFS_FSNAME_MAX];  /**< ファイルシステム名を表す文字列      */
+	RB_ENTRY(_fs_container)  c_ent;  /**< ファイルシステムテーブルのリンク    */
+	struct _fs_calls      *c_calls;  /**< ファイルシステム固有のファイル操作  */
+	struct _refcounter      c_refs;  /**< ファイルシステム参照カウンタ        */
+	/** 登録されているファイルシステムテーブルへのポインタ                    */
+	struct _fs_table      *c_fstbl;  
+	char    c_name[VFS_FSNAME_MAX];  /**< ファイルシステム名を表す文字列      */
 }fs_container;
 
 /**
    ファイルシステムテーブル
 */
 typedef struct _fs_table{
-	mutex                                mtx;  /**< ファイルシステムテーブル排他用mutex */
-	RB_HEAD(_fstbl_tree, _fs_container) head;  /**< ファイルシステムテーブルエントリ    */
+	mutex                                c_mtx; /**< ファイルシステムテーブル排他     */
+	RB_HEAD(_fstbl_tree, _fs_container) c_head; /**< ファイルシステムテーブルエントリ */
 }fs_table;
 
 /** ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
-	int (*fs_mount)(vfs_fs_private *fs_priv, fs_id id, const char *device, 
+	int (*fs_mount)(vfs_fs_private *fs_priv, mnt_id id, const char *device, 
 	    void *args, vnode_id *root_vnid);
 	int (*fs_unmount)(vfs_fs_private fs_priv);
 	int (*fs_sync)(vfs_fs_private fs_priv);
@@ -85,9 +85,9 @@ typedef struct _fs_calls {
     ファイルシステムテーブル初期化子
     @param[in] _fstbl ファイルシステムテーブルへのポインタ
  */
-#define __FSTBL_INITIALIZER(_fstbl) {		        \
-	.mtx = __MUTEX_INITIALIZER(&((_fstbl)->mtx)),   \
-	.head  = RB_INITIALIZER(&((procdb)->head)),	\
+#define __FSTBL_INITIALIZER(_fstbl) {		         \
+	.c_mtx = __MUTEX_INITIALIZER(&((_fstbl)->c_mtx)),  \
+	.c_head  = RB_INITIALIZER(&((_fstbl)->c_head)),	 \
 }
 
 /**
