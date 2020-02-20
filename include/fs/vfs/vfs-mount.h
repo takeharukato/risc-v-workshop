@@ -27,9 +27,9 @@ struct  _mount_table;
  */
 typedef struct _fs_mount {
 	mutex                         m_mtx;  /**< マウントテーブル排他用mutex              */
-	struct _refcounter           m_refs;  /**< マウントポイント参照カウンタ         */
+	struct _refcounter           m_refs;  /**< マウントポイント参照カウンタ             */
 	RB_ENTRY(_fs_mount)           m_ent;  /**< マウントテーブルのリンク                 */
-	mnt_id                         m_id;  /**< マウントポイントID                       */
+	vfs_mnt_id                     m_id;  /**< マウントポイントID                       */
 	dev_id                        m_dev;  /**< マウントデバイスのデバイスID             */
 	struct _fs_container          *m_fs;  /**< ファイルシステム                         */
 	struct _mount_table       *m_mnttbl;  /**< 登録先マウントテーブル                   */
@@ -47,7 +47,7 @@ typedef struct _fs_mount {
 typedef struct _mount_table{
 	mutex                                mt_mtx;  /**< マウントテーブル排他用mutex */
 	RB_HEAD(_fs_mount_tree, _fs_mount)  mt_head;  /**< マウントテーブルエントリ    */
-	mnt_id                           mt_last_id;  /**< 最後に割り当てたマウントID  */
+	vfs_mnt_id                       mt_last_id;  /**< 最後に割り当てたマウントID  */
 }mount_table;
 
 /** 

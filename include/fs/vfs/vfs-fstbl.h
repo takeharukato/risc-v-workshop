@@ -42,13 +42,13 @@ typedef struct _fs_table{
 /** ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
-	int (*fs_mount)(vfs_fs_private *fs_priv, mnt_id id, const char *device, 
-	    void *args, vnode_id *root_vnid);
+	int (*fs_mount)(vfs_fs_private *fs_priv, vfs_mnt_id id, const char *device, 
+	    void *args, vfs_vnode_id *root_vnid);
 	int (*fs_unmount)(vfs_fs_private fs_priv);
 	int (*fs_sync)(vfs_fs_private fs_priv);
 	int (*fs_lookup)(vfs_fs_private fs_priv, vfs_fs_vnode dir,
-			 const char *name, vnode_id *id, fs_mode *modep);
-	int (*fs_getvnode)(vfs_fs_private fs_priv, vnode_id id, vfs_fs_vnode *v);
+			 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep);
+	int (*fs_getvnode)(vfs_fs_private fs_priv, vfs_vnode_id id, vfs_fs_vnode *v);
 	int (*fs_putvnode)(vfs_fs_private fs_priv, vfs_fs_vnode v);
 	int (*fs_removevnode)(vfs_fs_private fs_priv, vfs_fs_vnode v);
 	int (*fs_getdents)(vfs_fs_private fs_priv, vfs_fs_vnode dir_priv, void *_buf, 
@@ -68,7 +68,7 @@ typedef struct _fs_calls {
 	int (*fs_ioctl)(vfs_fs_private fs_priv, vfs_fs_vnode v, vfs_file_private file_priv,
 	    int op, void *buf, size_t len);
 	int (*fs_create)(vfs_fs_private fs_priv, vfs_fs_vnode dir, const char *name, 
-	    struct _file_stat *fstat, vnode_id *new_vnid);
+	    struct _file_stat *fstat, vfs_vnode_id *new_vnid);
 	int (*fs_unlink)(vfs_fs_private fs_priv, vfs_fs_vnode dir, const char *name);
 	int (*fs_rename)(vfs_fs_private fs_priv, vfs_fs_vnode olddir, const char *oldname, 
 	    vfs_fs_vnode newdir, const char *newname);

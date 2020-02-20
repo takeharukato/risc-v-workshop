@@ -6,51 +6,36 @@
 /*  Virtual file system v-node                                        */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_FS_VFS_VFS_MOUNT_H)
-#define  _FS_VFS_VFS_MOUNT_H 
+#if !defined(_FS_VFS_VFS_VNODE_H)
+#define  _FS_VFS_VFS_VNODE_H 
 
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
 #include <fs/vfs/vfs-types.h>
 #include <fs/vfs/vfs-consts.h>
+#include <fs/vfs/vfs-mount.h>
 #include <klib/refcount.h>
 #include <kern/mutex.h>
+#include <kern/wqueue.h>
 #include <klib/rbtree.h>
 
 /**
    V-node(仮想I-node)
  */
-typedef struct _fs_mount {
-	mutex                       v_mtx;  /**< マウントテーブル排他用mutex              */
-	RB_ENTRY(_fs_mount)           ent;  /**< マウントテーブルのリンク                 */
-	mnt_id                         id;  /**< マウントポイントID                       */
-	dev_id                        dev;  /**< マウントデバイスのデバイスID             */
-	srtuct _fs_container          *fs;  /**< ファイルシステム                         */
-	struct _mount_table       *mnttbl;  /**< 登録先マウントテーブル                   */
-	RB_HEAD(_vnode_tree, _vnode) head;  /**< vnodeテーブル                            */
-	vfs_fs_private           fs_super;  /**< ファイルシステム固有のスーパブロック情報 */
-	struct _vnode               *root;  /**< ルートディレクトリのvnode                */
-	struct _vnode        *mount_point;  /**< マウントポイントのvnode                  */
-	vfs_mnt_flags        fs_mnt_flags;  /**< マウントフラグ                           */
-}fs_mount;
+typedef struct _vnode{
+	mutex                    v_mtx;  /**< v-nodeの参照カウンタ用mutex       */
+	struct _refcounter      v_refs;  /**< v-node参照カウンタ                */
+	vfs_fs_vnode        v_fs_vnode;  /**< ファイルシステム固有v-node        */
+	RB_ENTRY(_vnode)   v_vntbl_ent;  /**< Mountポイント内のv-nodeテーブルへのエントリ */
+	struct _wque_waitqueue waiters;  /**< Vnodeを待ち合わせているスレッド  */
+	vfs_mnt_id             v_mntid;  /**< マウント ID                      */
+	vfs_vnode_id              v_id;  /**< Vnode ID                         */
+	struct _fs_mount      *v_mount;  /**< Mount 情報                       */
+	vfs_fs_mode             v_mode;  /**< ファイル種別/アクセス フラグ     */
+	vfs_vnode_flags        v_flags;  /**< v-nodeのステータスフラグ         */
+}vnode;
 
-/**
-   マウントテーブル
-*/
-typedef struct _mount_table{
-	mutex                                mtx;  /**< マウントテーブル排他用mutex */
-	RB_HEAD(_mount_tree, _fs_mount)     head;  /**< マウントテーブルエントリ    */
-}mount_table;
-
-/** 
-    マウントテーブル初期化子
-    @param[in] _mnttbl マウントテーブルへのポインタ
- */
-#define __MNTTBL_INITIALIZER(_mnttbl) {		        \
-	.mtx = __MUTEX_INITIALIZER(&((_mnttbl)->mtx)),   \
-	.head  = RB_INITIALIZER(&((_mnttbl)->head)),	\
-}
 
 #endif  /*  !ASM_FILE  */
-#endif  /* _FS_VFS_VFS_MOUNT_H   */
+#endif  /* _FS_VFS_VFS_VNODE_H   */

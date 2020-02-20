@@ -16,7 +16,7 @@
 
 static ktest_stats tstat_vfs_fstbl=KTEST_INITIALIZER;
 
-int dummy_getvnode(vfs_fs_private fs_priv, vnode_id id, vfs_fs_vnode *v){
+int dummy_getvnode(vfs_fs_private fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
 
 	return 0;
 }
@@ -25,7 +25,7 @@ int dummy_putvnode(vfs_fs_private fs_priv, vfs_fs_vnode v){
 	return 0;
 }
 int dummy_lookup(vfs_fs_private fs_priv, vfs_fs_vnode dir,
-		 const char *name, vnode_id *id, fs_mode *modep){
+		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
 
 	return 0;
 }

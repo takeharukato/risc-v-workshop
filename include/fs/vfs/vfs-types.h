@@ -17,16 +17,16 @@
 /*
  * VFS基本型
  */
-typedef uint64_t          mnt_id;  /**< マウントポイントID           */
-typedef uint64_t        vnode_id;  /**< Vnode ID                     */
-typedef uint64_t        ioctx_id;  /**< I/OコンテキストID            */
-typedef int32_t         fs_nlink;  /**< リンク数                     */
-typedef uint32_t         fs_mode;  /**< ファイル種別/アクセスモード  */
-typedef uint32_t  vfs_open_flags;  /**< open  フラグ                 */
-typedef fs_mode      vnode_flags;  /**< Vnode フラグ                 */
-typedef uint32_t    vfs_fd_flags;  /**< ファイルディスクリプタフラグ */
-typedef uint32_t  vfs_vstat_mask;  /**< ファイル属性マスク           */
-typedef uint32_t   vfs_mnt_flags;  /**< マウントフラグ               */
+typedef uint64_t         vfs_mnt_id;  /**< マウントポイントID           */
+typedef uint64_t       vfs_vnode_id;  /**< Vnode ID                     */
+typedef uint64_t       vfs_ioctx_id;  /**< I/OコンテキストID            */
+typedef int32_t        vfs_fs_nlink;  /**< リンク数                     */
+typedef uint32_t        vfs_fs_mode;  /**< ファイル種別/アクセスモード  */
+typedef uint32_t     vfs_open_flags;  /**< open  フラグ                 */
+typedef vfs_fs_mode vfs_vnode_flags;  /**< Vnode フラグ                 */
+typedef uint32_t       vfs_fd_flags;  /**< ファイルディスクリプタフラグ */
+typedef uint32_t     vfs_vstat_mask;  /**< ファイル属性マスク           */
+typedef uint32_t      vfs_mnt_flags;  /**< マウントフラグ               */
 
 typedef void *    vfs_fs_private;  /**< ファイルシステム固有のスーパブロック情報          */
 typedef void *   vfs_dir_private;  /**< ディレクトリ探査時のファイルシステム固有情報      */

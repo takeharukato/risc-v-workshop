@@ -71,7 +71,7 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	mount->m_mnttbl = NULL;          /*  登録先マウントテーブルの初期化          */
 	mount->m_root = NULL;            /*  ルートvnodeの初期化                     */
 	mount->m_mount_point = NULL;     /*  マウントポイント文字列の初期化          */
-	mount->m_mount_flags = VFS_FSMNT_NONE;  /*  マウントフラグの初期化           */
+	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化           */
 	mount->m_mount_path = kstrdup(path);    /*  マウントポイントパスの複製       */
 
 	rc = -ENOMEM;
@@ -164,9 +164,9 @@ free_fsmount(fs_mount *mount) {
    @retval     0       正常終了
    @retval    -ENOSPC  マウントIDに空きがない
  */
-static __unused int
-alloc_new_mntid_nolock(mnt_id *idp){
-	mnt_id      new_id;
+static int
+alloc_new_mntid_nolock(vfs_mnt_id *idp){
+	vfs_mnt_id  new_id;
 	fs_mount  *cur_mnt;
 	fs_mount       key;
 
@@ -196,7 +196,7 @@ alloc_new_mntid_nolock(mnt_id *idp){
    @retval    -EBUSY   対象のマウントポイントが登録されている
  */
 static __unused int
-free_mntid_nolock(mnt_id id){
+free_mntid_nolock(vfs_mnt_id id){
 	fs_mount  *cur_mnt;
 	fs_mount       key;
 
@@ -223,7 +223,7 @@ free_mntid_nolock(mnt_id id){
 static __unused int
 add_fsmount_to_mnttbl(fs_mount *mount) {
 	int             rc;
-	mnt_id      new_id;
+	vfs_mnt_id  new_id;
 	fs_mount  *cur_mnt;
 
 	mutex_lock(&g_mnttbl.mt_mtx);

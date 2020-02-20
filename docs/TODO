@@ -5,6 +5,7 @@
 * mutex/waitキュー操作を実装
   - スレッド管理実装後にTODOを消化し, mutexのテストを追加する
 
+* mnt_id/vnode_id/ioctx_idにvfs_プレフィックスをつける[済み]
 * minixのディスクI-nodeからスーパブロック情報を参照している箇所を引数でスーパブロック情報
   を引き渡すように修正[済み]
 * unmap_zoneでinode中のゾーン割り当てを解放する[済み]

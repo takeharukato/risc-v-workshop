@@ -24,10 +24,10 @@
    最後の1バイトにd_typeエントリが入る
  */
 typedef struct _vfs_dirent{
-	vnode_id    d_ino;  /* vnode番号 */
-	off_t       d_off;  /* 次のディレクトリエントリのオフセット位置(単位:バイト) */
-	uint16_t d_reclen;  /* エントリ長(単位: バイト)  */
-	char    d_name[1];  /* ファイル名 (ヌル終端を含む文字列の先頭) */
+	vfs_vnode_id  d_ino;  /* vnode番号 */
+	off_t         d_off;  /* 次のディレクトリエントリのオフセット位置(単位:バイト) */
+	uint16_t   d_reclen;  /* エントリ長(単位: バイト)  */
+	char      d_name[1];  /* ファイル名 (ヌル終端を含む文字列の先頭) */
 }vfs_dirent;
 
 /**
