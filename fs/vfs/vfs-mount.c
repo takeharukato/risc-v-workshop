@@ -7,7 +7,6 @@
 /*                                                                    */
 /**********************************************************************/
 
-
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
@@ -292,6 +291,7 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 	free_mntid_nolock(mount->m_id);          /* マウントIDを解放      */
 	mount->m_id = VFS_INVALID_MNTID;         /* 無効マウントIDを設定  */
 }
+
 /** 
     マウント情報にvnodeを追加 (実処理関数)
     @param[in] mount  vnode格納先ボリュームのマウント情報
@@ -305,6 +305,7 @@ add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
 
 	if ( mount->m_mount_flags & VFS_MNT_UNMOUNTING ) /* アンマウント中は登録不能 */
 		return -EBUSY;
+
 	cur_v = RB_INSERT(_vnode_tree, &mount->m_head, v); 
 	kassert( cur_v == NULL );  /* v-nodeの多重登録 */
 	v->v_mount = mount;
@@ -315,16 +316,105 @@ add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
 }
 
 /**
-   マウント情報からvnodeを除去 (実処理関数)  
-   @param[in] v      除去するvnode
+   mntid, vnidをキーとしてvnodeを検索する (内部関数)
+   @param[in] mntid マウントポイントID
+   @param[in] vnid  vnode ID
+   @param[out] vpp vnodeを指し示すポインタのアドレス
+   @retval  0       正常終了
+   @return -EINVAL  不正なマウントポイントIDを指定した
+   @return -ENOENT  指定されたfsid, vnidに対応するvnodeが見つからなかった
  */
-static __unused void 
-remove_vnode_from_mount_nolock(vnode *v){
-	vnode *cur_v;
+static __unused int
+lookup_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
+	int           rc;
+	fs_mount    *mnt;
+	vnode         *v;
+	vnode      v_key;
 
-	cur_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
-	kassert( cur_v != NULL );  /* v-nodeの多重解放 */
-	vfs_fs_mount_ref_dec(mount);  /* v-nodeからの参照を減算 */
+	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
+	if ( rc != 0 )
+		return -EINVAL;
+
+	mutex_lock(&mnt->m_mtx);  /* マウントポイントのロックを獲得 */
+	v_key.v_id = vnid;  /* 検索対象マウントID */
+	v = RB_FIND(_vnode_tree, &mnt->m_head, &v_key); 
+
+	if ( v == NULL ) {  
+
+		rc = -ENOENT;  /* vnodeが見つからなかった */
+		goto unlock_out;
+	}
+	if ( vpp != NULL ) {
+
+		vfs_vnode_ref_inc(v); /* vnodeの参照カウンタを増加 */
+		*vpp = v;             /* vnodeを返却               */
+	}
+
+	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
+
+	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
+	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+
+	return rc;
+}
+
+/**
+   マウントポイント情報への参照を得る
+   @param[in]  mntid   マウントID
+   @param[out] mountp  マウントポイント情報を指し示すポインタのアドレス
+   @retval    0      正常終了
+   @retval   -ENOENT マウントIDに対応するマウントポイント情報が見つからなかった
+ */
+int
+vfs_fs_mount_get(vfs_mnt_id mntid, fs_mount **mountp) {
+	int           rc;
+	bool         res;
+	fs_mount    *mnt;
+	fs_mount   m_key;
+
+	m_key.m_id = mntid;  /* 検索対象マウントID */
+
+	mutex_lock(&g_mnttbl.mt_mtx);  /* マウントテーブルをロックする */
+
+	/* マウント情報を検索 */
+	mnt = RB_FIND(_fs_mount_tree, &g_mnttbl.mt_head, &m_key); 
+	if ( mnt == NULL ) {
+
+		rc = -ENOENT;  /* マウントポイント情報が見つからなかった */
+		goto unlock_out;
+	}
+
+	if ( mountp != NULL ) {
+
+		res = vfs_fs_mount_ref_inc(mnt);  /* 操作用に参照を加算 */
+		kassert( res );
+		*mountp = mnt;  /* マウントポイントを返却 */
+	}
+
+	mutex_unlock(&g_mnttbl.mt_mtx);   /* マウントテーブルをアンロックする */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&g_mnttbl.mt_mtx);   /* マウントテーブルをアンロックする */
+	return rc;
+}
+
+/**
+   マウントポイント情報への参照を返却する
+   @param[in] mount  マウントポイント情報
+ */
+void
+vfs_fs_mount_put(fs_mount *mount) {
+
+	vfs_fs_mount_ref_dec(mount);  /* 操作用の参照を減算 */
+
+	return ;
 }
 
 /**
@@ -336,8 +426,7 @@ remove_vnode_from_mount_nolock(vnode *v){
 bool
 vfs_fs_mount_ref_inc(fs_mount *mount) {
 
-	/* ファイルシステム終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
-	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	/* アンマウント中でなければ, 利用カウンタを加算し, 加算前の値を返す  
 	 */
 	return ( refcnt_inc_if_valid(&mount->m_refs) != 0 ); 
 }
@@ -360,6 +449,51 @@ vfs_fs_mount_ref_dec(fs_mount *mount){
 		remove_fs_mount_from_mnttbl_nolock(mount);
 		free_fsmount(mount); /* マウントポイントを解放する */
 		mutex_unlock(&g_mnttbl.mt_mtx);  /*  マウントテーブルをアンロック  */
+	}
+
+	return res;
+}
+/**
+   v-nodeの参照カウンタをインクリメントする
+   @param[in] vn v-node情報
+   @retval    真 v-nodeの参照を獲得できた
+   @retval    偽 v-nodeの参照を獲得できなかった
+ */
+bool
+vfs_vnode_ref_inc(vnode *vn) {
+
+	/* vnode解放中でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	 */
+	return ( refcnt_inc_if_valid(&vn->v_refs) != 0 ); 
+}
+
+/**
+   v-nodeの参照カウンタをデクリメントする
+   @param[in] vn v-node情報
+   @retval    真 v-nodeの最終参照者だった
+   @retval    偽 v-nodeの最終参照者でない
+ */
+bool
+vfs_vnode_ref_dec(vnode *vn){
+	bool     res;
+	vnode *res_v;
+
+	kassert( vn->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
+
+	/*  マウントポイントの参照カウンタをさげる  */
+	res = refcnt_dec_and_mutex_lock(&vn->v_refs, &vn->v_mount->m_mtx);
+	if ( res ) { /* マウントポイントの最終参照者だった場合 */
+		
+		/* v-nodeをv-nodeテーブルから外す */
+		res_v = RB_REMOVE(_vnode_tree, &vn->v_mount->m_head, vn); 
+		kassert( res_v != NULL );  /* v-nodeの多重解放 */
+
+		mutex_unlock(&vn->v_mount->m_mtx);  /* v-nodeテーブルをアンロック  */
+		
+		vfs_fs_mount_ref_dec(vn->v_mount);  /* v-nodeからの参照を減算 */
+		vn->v_mount = NULL;
+		/* TODO: v-nodeを解放する */
+		
 	}
 
 	return res;

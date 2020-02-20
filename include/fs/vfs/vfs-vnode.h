@@ -24,7 +24,7 @@
    V-node(仮想I-node)
  */
 typedef struct _vnode{
-	mutex                    v_mtx;  /**< v-nodeの参照カウンタ用mutex       */
+	mutex                    v_mtx;  /**< v-nodeの状態更新用mutex           */
 	struct _refcounter      v_refs;  /**< v-node参照カウンタ                */
 	vfs_fs_vnode        v_fs_vnode;  /**< ファイルシステム固有v-node        */
 	RB_ENTRY(_vnode)   v_vntbl_ent;  /**< Mountポイント内のv-nodeテーブルへのエントリ */

@@ -28,5 +28,16 @@
 
 #define VFS_MNT_MNTFLAGS_NONE   (0)     /**< マウントフラグデフォルト値 */
 #define VFS_MNT_UNMOUNTING      (1)     /**< アンマウント中 */
+
+#define VFS_VFLAGS_SHIFT          (16)  /**< Vnodeフラグ情報へのシフト値  */
+/**  空きvnodeフラグ値  */
+#define VFS_VFLAGS_FREE           ( (0x0) << VFS_VFLAGS_SHIFT )
+/**  使用中vnodeフラグ値  */
+#define VFS_VFLAGS_BUSY           ( (0x1) << VFS_VFLAGS_SHIFT )
+/**  Close On Exec vnodeフラグ値  */
+#define VFS_VFLAGS_COE            ( (VFS_O_CLOEXEC) << VFS_VFLAGS_SHIFT )
+/**  削除対象vnodeフラグ値  */
+#define VFS_VFLAGS_DELETE         ( (0x2000) << VFS_VFLAGS_SHIFT )
+
 #endif  /*  !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_CONSTS_H  */
