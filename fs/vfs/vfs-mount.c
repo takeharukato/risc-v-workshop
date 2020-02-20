@@ -27,6 +27,12 @@ static kmem_cache fs_mount_cache; /**< マウントポイントのSLABキャッ�
 static int _fs_mount_cmp(struct _fs_mount *_key, struct _fs_mount *_ent);
 RB_GENERATE_STATIC(_fs_mount_tree, _fs_mount, m_ent, _fs_mount_cmp);
 
+/**
+   v-node比較処理
+ */
+static int _vnode_cmp(struct _vnode *_key, struct _vnode *_ent);
+RB_GENERATE_STATIC(_vnode_tree, _vnode, v_vntbl_ent, _vnode_cmp);
+
 /** 
     マウントポイント比較関数
     @param[in] key 比較対象マウントポイント
@@ -44,6 +50,32 @@ _fs_mount_cmp(struct _fs_mount *key, struct _fs_mount *ent){
 	if ( key->m_id > ent->m_id )
 		return -1;
 
+	return 0;
+}
+
+/** 
+    v-node比較関数
+    @param[in] key 比較対象v-node
+    @param[in] ent マウントポイント内の各v-nodeエントリ
+    @retval 正  keyのm_id, v_idが entのm_id, v_idより前にある
+    @retval 負  keyのm_id, v_idが entのm_id, v_idより後にある
+    @retval 0   keyのm_id, v_idが entのm_id, v_idに等しい
+ */
+static int 
+_vnode_cmp(struct _vnode *key, struct _vnode *ent){
+	
+	if ( key->v_mount->m_id < ent->v_mount->m_id )
+		return 1;
+
+	if ( key->v_mount->m_id > ent->v_mount->m_id )
+		return -1;
+
+	if ( key->v_id < ent->v_id )
+		return 1;
+
+	if ( key->v_id > ent->v_id )
+		return -1;
+	
 	return 0;
 }
 
@@ -146,7 +178,7 @@ error_out:
    マウント情報を解放する (内部関数)
    @param[in] mount マウント情報
    @pre ファイルシステムへの参照を獲得済みであること
- */
+*/
 static void 
 free_fsmount(fs_mount *mount) {
 
@@ -195,7 +227,7 @@ alloc_new_mntid_nolock(vfs_mnt_id *idp){
    @retval     0       正常終了
    @retval    -EBUSY   対象のマウントポイントが登録されている
  */
-static __unused int
+static int
 free_mntid_nolock(vfs_mnt_id id){
 	fs_mount  *cur_mnt;
 	fs_mount       key;
@@ -259,6 +291,37 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 
 	free_mntid_nolock(mount->m_id);          /* マウントIDを解放      */
 	mount->m_id = VFS_INVALID_MNTID;         /* 無効マウントIDを設定  */
+}
+/** 
+    マウント情報にvnodeを追加 (実処理関数)
+    @param[in] mount  vnode格納先ボリュームのマウント情報
+    @param[in] v      追加するvnode
+    @retval    0      正常終了
+    @retval    -EBUSY  アンマウント中
+ */
+static __unused int
+add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
+	vnode *cur_v;
+
+	if ( mount->m_mount_flags & VFS_MNT_UNMOUNTING ) /* アンマウント中は登録不能 */
+		return -EBUSY;
+	cur_v = RB_INSERT(_vnode_tree, &mount->m_head, v); 
+	kassert( cur_v == NULL );  /* v-nodeの多重登録 */
+	v->v_mount = mount;
+
+	return 0;
+}
+
+/**
+   マウント情報からvnodeを除去 (実処理関数)  
+   @param[in] v      除去するvnode
+ */
+static __unused void 
+remove_vnode_from_mount_nolock(vnode *v){
+	vnode *cur_v;
+
+	cur_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
+	kassert( cur_v != NULL );  /* v-nodeの多重解放 */
 }
 
 /**

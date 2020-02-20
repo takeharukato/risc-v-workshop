@@ -27,5 +27,6 @@
 #define VFS_INVALID_IOCTXID     (0)     /**<  無効なI/OコンテキストID       */
 
 #define VFS_MNT_MNTFLAGS_NONE   (0)     /**< マウントフラグデフォルト値 */
+#define VFS_MNT_UNMOUNTING      (1)     /**< アンマウント中 */
 #endif  /*  !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_CONSTS_H  */
