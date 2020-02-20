@@ -34,7 +34,7 @@ typedef struct _fs_mount {
 	struct _fs_container          *m_fs;  /**< ファイルシステム                         */
 	struct _mount_table       *m_mnttbl;  /**< 登録先マウントテーブル                   */
 	RB_HEAD(_vnode_tree, _vnode) m_head;  /**< vnodeテーブル                            */
-	vfs_fs_private           m_fs_super;  /**< ファイルシステム固有のスーパブロック情報 */
+	vfs_fs_super             m_fs_super;  /**< ファイルシステム固有のスーパブロック情報 */
 	struct _vnode               *m_root;  /**< ルートディレクトリのvnode                */
 	struct _vnode        *m_mount_point;  /**< マウントポイントのvnode                  */
 	char                  *m_mount_path;  /**< マウントパス文字列                       */

@@ -16,20 +16,20 @@
 
 static ktest_stats tstat_vfs_fstbl=KTEST_INITIALIZER;
 
-int dummy_getvnode(vfs_fs_private fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
+int dummy_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
 
 	return 0;
 }
-int dummy_putvnode(vfs_fs_private fs_priv, vfs_fs_vnode v){
+int dummy_putvnode(vfs_fs_super fs_priv, vfs_fs_vnode v){
 
 	return 0;
 }
-int dummy_lookup(vfs_fs_private fs_priv, vfs_fs_vnode dir,
+int dummy_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
 		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
 
 	return 0;
 }
-int dummy_seek(vfs_fs_private fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
+int dummy_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
 	       off_t pos, off_t *new_posp, int whence){
 
 	return 0;
