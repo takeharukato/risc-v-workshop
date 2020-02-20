@@ -309,6 +309,8 @@ add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
 	kassert( cur_v == NULL );  /* v-nodeの多重登録 */
 	v->v_mount = mount;
 
+	vfs_fs_mount_ref_inc(mount);  /* v-nodeからの参照を加算 */
+
 	return 0;
 }
 
@@ -322,6 +324,7 @@ remove_vnode_from_mount_nolock(vnode *v){
 
 	cur_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
 	kassert( cur_v != NULL );  /* v-nodeの多重解放 */
+	vfs_fs_mount_ref_dec(mount);  /* v-nodeからの参照を減算 */
 }
 
 /**
