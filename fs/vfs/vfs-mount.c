@@ -19,7 +19,7 @@
 /** グローバルマウントテーブル */
 static mount_table   g_mnttbl = __MNTTBL_INITIALIZER(&g_mnttbl);
 static kmem_cache fs_mount_cache; /**< マウントポイントのSLABキャッシュ */
-
+static kmem_cache    vnode_cache; /**< v-nodeのSLABキャッシュ */
 /**
    マウントポイント比較処理
  */
@@ -96,11 +96,11 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	refcnt_init(&mount->m_refs);     /*  参照カウンタの初期化                    */
 	mount->m_id = VFS_INVALID_MNTID; /*  マウントIDの初期化                      */
 	mount->m_dev = FS_INVALID_DEVID; /*  デバイスIDの初期化                      */
-	RB_INIT(&mount->m_head);         /*  マウントテーブル内のvnodeリストの初期化 */
+	RB_INIT(&mount->m_head);         /*  マウントテーブル内のv-nodeリストの初期化 */
 	mount->m_fs_super = NULL;        /*  ファイルシステム固有情報の初期化        */
 	mount->m_fs = fs;                /*  ファイルシステム情報の初期化            */
 	mount->m_mnttbl = NULL;          /*  登録先マウントテーブルの初期化          */
-	mount->m_root = NULL;            /*  ルートvnodeの初期化                     */
+	mount->m_root = NULL;            /*  ルートv-nodeの初期化                     */
 	mount->m_mount_point = NULL;     /*  マウントポイント文字列の初期化          */
 	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化           */
 	mount->m_mount_path = kstrdup(path);    /*  マウントポイントパスの複製       */
@@ -293,9 +293,9 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 }
 
 /** 
-    マウント情報にvnodeを追加 (実処理関数)
-    @param[in] mount  vnode格納先ボリュームのマウント情報
-    @param[in] v      追加するvnode
+    マウント情報にv-nodeを追加 (実処理関数)
+    @param[in] mount  v-node格納先ボリュームのマウント情報
+    @param[in] v      追加するv-node
     @retval    0      正常終了
     @retval    -EBUSY  アンマウント中
  */
@@ -316,13 +316,128 @@ add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
 }
 
 /**
-   mntid, vnidをキーとしてvnodeを検索する (内部関数)
+   v-nodeを使用中にする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused void
+mark_busy_vnode_nolock(vnode *v) {
+
+	v->v_flags |= VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
+}
+
+/**
+   v-nodeの使用中フラグを落とす (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused void
+unmark_busy_vnode_nolock(vnode *v) {
+
+	v->v_flags &= ~VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
+	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
+		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
+}
+/**
+   v-nodeが使用中であることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused int
+is_busy_vnode_nolock(vnode *v) {
+	
+	return ( v->v_flags & VFS_VFLAGS_BUSY );  
+}
+
+/**
+   v-nodeの初期化
+   @param[in] v 初期化対象のv-node
+ */
+static __unused void
+init_vnode(vnode *v){
+
+	/*
+	 * メンバを初期化
+	 */
+	mutex_init(&v->v_mtx);               /*  状態更新用mutexの初期化                    */
+	refcnt_init(&v->v_refs);             /*  参照カウンタの初期化                       */
+	v->v_fs_vnode = NULL;                /*  ファイルシステム固有v-nodeの初期化         */
+	wque_init_wait_queue(&v->v_waiters); /*  v-nodeウエイトキューの初期化               */
+	v->v_mntid = VFS_INVALID_MNTID;      /*  fsidの初期化                               */
+	v->v_id = VFS_INVALID_VNID;          /*  vnidの初期化                               */
+	v->v_mount = NULL;                   /*  マウント情報の初期化                       */
+	v->v_mode = VFS_VNODE_MODE_NONE;     /*  ファイルモードの初期化                     */
+	mark_busy_vnode_nolock(v);           /*  使用中に設定する                           */ 
+
+	return ;
+}
+
+/**
+   v-nodeを新規に生成する (内部関数)
+   @return 新設したv-node
+   @return NULL メモリ不足
+ */
+static __unused vnode *
+alloc_new_vnode(void){
+	int           rc;
+	vnode *new_vnode;
+
+	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
+	    (void **)&new_vnode);
+	if ( rc != 0 ) {
+
+		rc = -ENOMEM;
+		goto error_out;  /* メモリ不足 */
+	}
+
+	init_vnode(new_vnode);   /* v-nodeを初期化  */
+
+	return new_vnode;  /* 獲得したv-nodeを返却 */
+
+error_out:
+	return NULL;
+}
+
+/**
+   参照されていないv-nodeを開放する (実処理関数)
+   @param[in] v 操作対象のv-node
+   @pre v-nodeテーブルに登録済みのv-nodeであること
+   @pre マウントテーブルに登録済みのv-nodeであること
+   @pre v-nodeを参照しているスレッドが他にいないこと
+ */
+static __unused void
+release_vnode(vnode *v){
+
+	kassert( v->v_mount != NULL );  /* マウントポイントに登録済み */
+	kassert( v->v_mount->m_fs != NULL );
+	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+	kassert( refcnt_read(&v->v_refs) == 0 );
+
+	/* 
+	 * TODO: vm_cacheを実装した場合は, 本関数の最初にvm_cacheを開放すること
+	 */
+
+	/*
+	 * ファイルシステム固有のremove/putvnode操作を呼出し
+	 *  実ファイルシステム上のv-node(disk inode)を削除する場合 
+	 *    fs_removevnodeを呼び出す
+	 *  実ファイルシステム上のv-node(disk inode)をv-nodeの内容で更新する場合, または, 
+	 *    fs_removevnodeが定義されていない場合fs_putvnodeを呼び出す
+	 */
+	if ( ( v->v_flags & VFS_VFLAGS_DELETE ) &&
+	    ( v->v_mount->m_fs->c_calls->fs_removevnode != NULL ) )
+		v->v_mount->m_fs->c_calls->fs_removevnode(v->v_mount->m_fs_super, v->v_fs_vnode);
+	else 
+		v->v_mount->m_fs->c_calls->fs_putvnode(v->v_mount->m_fs_super, v->v_fs_vnode);
+
+	vfs_vnode_ref_dec(v);  /* v-nodeを解放する */
+}
+
+/**
+   mntid, vnidをキーとしてv-nodeを検索する (内部関数)
    @param[in] mntid マウントポイントID
-   @param[in] vnid  vnode ID
-   @param[out] vpp vnodeを指し示すポインタのアドレス
+   @param[in] vnid  v-node ID
+   @param[out] vpp v-nodeを指し示すポインタのアドレス
    @retval  0       正常終了
    @return -EINVAL  不正なマウントポイントIDを指定した
-   @return -ENOENT  指定されたfsid, vnidに対応するvnodeが見つからなかった
+   @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
  */
 static __unused int
 lookup_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
@@ -341,13 +456,13 @@ lookup_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
 
 	if ( v == NULL ) {  
 
-		rc = -ENOENT;  /* vnodeが見つからなかった */
+		rc = -ENOENT;  /* v-nodeが見つからなかった */
 		goto unlock_out;
 	}
 	if ( vpp != NULL ) {
 
-		vfs_vnode_ref_inc(v); /* vnodeの参照カウンタを増加 */
-		*vpp = v;             /* vnodeを返却               */
+		vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
+		*vpp = v;             /* v-nodeを返却               */
 	}
 
 	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
@@ -362,6 +477,10 @@ unlock_out:
 
 	return rc;
 }
+
+/*
+ * 外部IF
+ */
 
 /**
    マウントポイント情報への参照を得る
@@ -462,7 +581,7 @@ vfs_fs_mount_ref_dec(fs_mount *mount){
 bool
 vfs_vnode_ref_inc(vnode *vn) {
 
-	/* vnode解放中でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	/* v-node解放中でなければ, 利用カウンタを加算し, 加算前の値を返す  
 	 */
 	return ( refcnt_inc_if_valid(&vn->v_refs) != 0 ); 
 }
@@ -474,26 +593,31 @@ vfs_vnode_ref_inc(vnode *vn) {
    @retval    偽 v-nodeの最終参照者でない
  */
 bool
-vfs_vnode_ref_dec(vnode *vn){
+vfs_vnode_ref_dec(vnode *v){
 	bool     res;
 	vnode *res_v;
 
-	kassert( vn->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
+	kassert( v->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
 
 	/*  マウントポイントの参照カウンタをさげる  */
-	res = refcnt_dec_and_mutex_lock(&vn->v_refs, &vn->v_mount->m_mtx);
+	res = refcnt_dec_and_mutex_lock(&v->v_refs, &v->v_mount->m_mtx);
 	if ( res ) { /* マウントポイントの最終参照者だった場合 */
 		
 		/* v-nodeをv-nodeテーブルから外す */
-		res_v = RB_REMOVE(_vnode_tree, &vn->v_mount->m_head, vn); 
+		res_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
 		kassert( res_v != NULL );  /* v-nodeの多重解放 */
 
-		mutex_unlock(&vn->v_mount->m_mtx);  /* v-nodeテーブルをアンロック  */
+		mutex_unlock(&v->v_mount->m_mtx);  /* v-nodeテーブルをアンロック  */
 		
-		vfs_fs_mount_ref_dec(vn->v_mount);  /* v-nodeからの参照を減算 */
-		vn->v_mount = NULL;
-		/* TODO: v-nodeを解放する */
-		
+		vfs_fs_mount_ref_dec(v->v_mount);  /* v-nodeからの参照を減算 */
+		v->v_mount = NULL;
+
+		/*
+		 *  v-nodeを解放する
+		 */
+		mutex_destroy(&v->v_mtx);    /* 待ちスレッドを起床  */
+		wque_wakeup(&v->v_waiters, WQUE_DESTROYED); /* v-node待ちスレッドを起床 */
+		slab_kmem_cache_free(v);  /*  v-nodeを開放  */
 	}
 
 	return res;
@@ -511,4 +635,8 @@ vfs_init_mount_table(void){
 	    sizeof(fs_mount), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
 	
+	/* v-node用SLABキャッシュの初期化 */
+	rc = slab_kmem_cache_create(&vnode_cache, "vfs v-node", 
+	    sizeof(vnode), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
+	kassert( rc == 0 );
 }
