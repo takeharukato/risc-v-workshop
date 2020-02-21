@@ -371,13 +371,12 @@ init_vnode(vnode *v){
 
 /**
    v-nodeを新規に生成する (内部関数)
-   @retval 0 正常終了
-   @retval -ENOMEM メモリ不足
+   @return 新設したv-node
+   @return NULL メモリ不足
  */
-static int
-alloc_new_vnode(vfs_mnt_id mntid, vnode **outv){
+static __unused vnode *
+alloc_new_vnode(void){
 	int           rc;
-	fs_mount    *mnt;
 	vnode *new_vnode;
 
 	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
@@ -390,47 +389,7 @@ alloc_new_vnode(vfs_mnt_id mntid, vnode **outv){
 
 	init_vnode(new_vnode);   /* v-nodeを初期化  */
 
-	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
-	if ( rc != 0 ) {
-		
-		rc = -EINVAL;
-		goto free_vnode_out;
-	}
-
-	mutex_lock(&mnt->m_mtx);  /* マウントポイントのロックを獲得 */
-
-	/*
-	 *  マウント情報にv-nodeを登録する  
-	 *  Note: v-nodeの状態がVFS_VFLAGS_BUSYで他のスレッドから更新
-	 *        されない状態で登録することで2重にロックを取らないようにする
-	 */
-	rc = add_vnode_to_mount_nolock(v->v_mount, v);
-	if ( rc != 0 ) {
-
-		kassert( rc == -EBUSY );  /*  アンマウント中だった  */
-		goto free_vnode_out;
-	}
-
-	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
-	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
-
-	if ( outv != NULL ){
-
-		*outv = new_vnode;
-		
-	}
-	return 0;  /* 獲得したv-nodeを返却 */
-
-free_vnode_out:
-		mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
-		vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
-
-		/*
-		 *  v-nodeを解放する
-		 */
-		mutex_destroy(&v->v_mtx);    /* 待ちスレッドを起床  */
-		wque_wakeup(&v->v_waiters, WQUE_DESTROYED); /* v-node待ちスレッドを起床 */
-		slab_kmem_cache_free(v);  /*  v-nodeを開放  */
+	return new_vnode;  /* 獲得したv-nodeを返却 */
 
 error_out:
 	return NULL;
@@ -451,6 +410,10 @@ release_vnode(vnode *v){
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 	kassert( refcnt_read(&v->v_refs) == 0 );
 
+	/* 
+	 * TODO: vm_cacheを実装した場合は, 本関数の最初にvm_cacheを開放すること
+	 */
+
 	/*
 	 * ファイルシステム固有のremove/putvnode操作を呼出し
 	 *  実ファイルシステム上のv-node(disk inode)を削除する場合 
@@ -468,22 +431,16 @@ release_vnode(vnode *v){
 }
 
 /**
-   mntid, vnidをキーとしてv-nodeを検索しロックする (内部関数)
+   mntid, vnidをキーとしてv-nodeを検索し, 参照を得る (実処理関数) 
    @param[in] mntid マウントポイントID
    @param[in] vnid  v-node ID
    @param[out] vpp v-nodeを指し示すポインタのアドレス
    @retval  0       正常終了
    @return -EINVAL  不正なマウントポイントIDを指定した
    @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
-   @note find_vnode_from_vnode_table_nolock相当
-   マウントポイント中にvnodeテーブルを用意して, mntidをマウントポイント中のmntidを参照する
-   形式にしたので, path_to_vnodeでvfs_get_vnodeする時点でnext_vを更新すればよく, 
-   vfs_lookup_vnodeを呼びなおす必要がなくなったので, vfs_lookup_vnodeを廃止。
-   lookup_vnode_nolockは, RB木を検索(RB_FIND)してNULL判定をするだけの処理なので
-   本関数とvfs_put_vnode, vfs_remove_vnodeに統合
  */
-static __unused int
-lock_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
+static int
+find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
 	fs_mount      *mnt;
 	vnode           *v;
@@ -506,10 +463,16 @@ lock_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
 		 * 指定されたvnode IDに対応するvnodeを指定されたマウントポイントから検索
 		 */
 		v = RB_FIND(_vnode_tree, &mnt->m_head, &v_key);
-		if ( v == NULL ) {
-
-			rc = -ENOENT;   /* v-nodeが見つからなかった */
-			goto unlock_out;
+		if ( v == NULL ) {  /* v-nodeが登録されていない */
+			
+			/*
+			 * v-nodeを割当て, 実ファイルシステムからディスクI-nodeを読み込む
+			 */
+			
+			/* マウントポイントのロックを解放 */
+			mutex_unlock(&mnt->m_mtx);
+			vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+			break;
 		}
 
 		if ( !is_busy_vnode_nolock(v) ) {
@@ -522,7 +485,9 @@ lock_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
 				vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
 				mark_busy_vnode_nolock(v); /*  使用中に設定する */ 
 				*vpp = v;             /* v-nodeを返却               */
-				mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
+
+				/* マウントポイントのロックを解放 */
+				mutex_unlock(&mnt->m_mtx);
 				vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 				break;
 			}
@@ -548,106 +513,6 @@ unlock_out:
 error_out:
 	return rc;
 }
-
-/**
-   vnodeを取得する (実処理関数)
-   @param[in]  mntid  マウントポイントID
-   @param[in]  vnid   v-node ID
-   @param[out] outv  見つかったv-nodeを指すポインタのアドレス
-   @retval  0      正常終了
-   @retval -ENOENT vnodeが見つからなかった
-   @retval -ENOMEM メモリ不足
-   @retval -EBUSY  アンマウント中だった
-*/
-static int 
-get_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
-	vnode        *v;
-	int      is_new;
-	int          rc;
-
-	/*
-	 * マウントポイントのv-nodeテーブルからの検索を試みる
-	 */
-	rc = lock_vnode_with_mntid(mntid, vnid, &v);
-	if ( rc == 0 )
-		goto found;  /*  v-nodeテーブル内から見つかった場合  */
-
-	if ( rc == -ENOENT ) { /* 見つからなかった場合は新規にv-nodeを割当てる */
-
-		v = alloc_new_vnode();
-		if ( v == NULL ) {
-
-			rc = -ENOMEM;
-			goto error_out;
-		}
-	}
-
-	kassert(v != NULL);
-	kassert(v->v_mount != NULL);
-	kassert(v->v_mount->m_fs != NULL);
-	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
-
-
-	/*
-	 * ファイルシステム固有のvnode情報を割り当てる
-	 */
-	rc = v->mount->fs->calls->fs_getvnode(v->mount->fs_entity, vnid, &v->fsvnp);
-
-	mutex_lock(&vntbl->mtx);    /*  vnodeテーブルをロック     */
-
-	if ( ( rc != 0 ) || ( v->fsvnp == NULL ) ) {
-		
-		if ( rc == 0 )
-			rc = -ENOENT;  /*  下位のファイルシステムがvnodeを割り当てなかった */
-
-		/*  ファイルシステム固有のvnode情報割当てに失敗した場合  
-		 *  マウント情報とvnodeテーブルから登録を抹消して, vnodeを開放する
-		 */
-		goto remove_vnode_mnttbl_out;
-	}
-
-	unmark_busy_vnode_nolock(v);  /* vnodeのロック(BUSY)を解放  */
-
-	mutex_unlock(&vntbl->mtx);    /*  vnodeテーブルをアンロック     */
-
-found:
-	/*
-	 * 見つかった/生成したvnodeを返却する
-	 */
-	if ( outv != NULL) 
-		*outv = v;
-
-	return 0;
-
-remove_vnode_mnttbl_out:
-	/*  マウント情報から登録を抹消
-	 *  @note この時点では既にvnodeテーブルにvnodeが登録されているため
-	 *        vnodeテーブルをロックした状態で呼び出す必要がある
-	 */
-	_vfs_fsmnt_remove_vnode_from_mount(v->mount, v); 
-
-free_vnode_out:
-	kassert( v != NULL );
-	kassert( v->ref_count == 1);
-	kassert( is_busy_vnode_nolock(v) );  /*  既にマウント情報からは外れているため
-					      *  他のスレッドにvnodeを獲得されないように
-					      *  使用中にしてvnodeテーブルをアンロックする
-					      */
-	/*  release_vnodeから呼ばれる_vfs_vntbl_remove_vnode_from_vntblで
-	 *  vnodeテーブルをロックするのでvnodeテーブルロックを先に解放する
-	 */
-	_vfs_dec_vnode_ref_count_no_release(v);  /*  参照カウンタを0にしてから
-						  *  _vfs_release_vnodeを呼ぶために
-						  *  参照カウンタを落とす
-						  */
-	mutex_unlock(&vntbl->mtx);   /*  vnodeテーブルをアンロック     */
-
-	_vfs_release_vnode(v);    /*  vnodeテーブルから登録を抹消  */
-
-error_out:
-	return rc;
-}
-
 /*
  * 外部IF
  */
