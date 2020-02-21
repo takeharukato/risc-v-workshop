@@ -431,7 +431,7 @@ release_vnode(vnode *v){
 }
 
 /**
-   mntid, vnidをキーとしてv-nodeを検索する (内部関数)
+   mntid, vnidをキーとしてv-nodeを検索しロックする (内部関数)
    @param[in] mntid マウントポイントID
    @param[in] vnid  v-node ID
    @param[out] vpp v-nodeを指し示すポインタのアドレス
@@ -446,7 +446,7 @@ release_vnode(vnode *v){
    本関数とvfs_put_vnode, vfs_remove_vnodeに統合
  */
 static __unused int
-find_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
+lock_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
 	int             rc;
 	fs_mount      *mnt;
 	vnode           *v;
@@ -483,6 +483,7 @@ find_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
 			if ( vpp != NULL ) {
 
 				vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
+				mark_busy_vnode_nolock(v); /*  使用中に設定する */ 
 				*vpp = v;             /* v-nodeを返却               */
 				mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
 				vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
