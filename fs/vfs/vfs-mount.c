@@ -438,36 +438,68 @@ release_vnode(vnode *v){
    @retval  0       正常終了
    @return -EINVAL  不正なマウントポイントIDを指定した
    @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
+   @note find_vnode_from_vnode_table_nolock相当
+   マウントポイント中にvnodeテーブルを用意して, mntidをマウントポイント中のmntidを参照する
+   形式にしたので, path_to_vnodeでvfs_get_vnodeする時点でnext_vを更新すればよく, 
+   vfs_lookup_vnodeを呼びなおす必要がなくなったので, vfs_lookup_vnodeを廃止。
+   lookup_vnode_nolockは, RB木を検索(RB_FIND)してNULL判定をするだけの処理なので
+   本関数とvfs_put_vnode, vfs_remove_vnodeに統合
  */
 static __unused int
-lookup_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
-	int           rc;
-	fs_mount    *mnt;
-	vnode         *v;
-	vnode      v_key;
+find_vnode_with_mntid(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **vpp){
+	int             rc;
+	fs_mount      *mnt;
+	vnode           *v;
+	vnode        v_key;
+	wque_reason reason;
 
-	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
-	if ( rc != 0 )
-		return -EINVAL;
+	v_key.v_id = vnid;  /* 検索対象v-node ID */
+	for( ; ; ) {
 
-	mutex_lock(&mnt->m_mtx);  /* マウントポイントのロックを獲得 */
-	v_key.v_id = vnid;  /* 検索対象マウントID */
-	v = RB_FIND(_vnode_tree, &mnt->m_head, &v_key); 
+		rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
+		if ( rc != 0 ) {
 
-	if ( v == NULL ) {  
+			rc = -EINVAL;
+			goto error_out;
+		}
 
-		rc = -ENOENT;  /* v-nodeが見つからなかった */
-		goto unlock_out;
+		mutex_lock(&mnt->m_mtx);  /* マウントポイントのロックを獲得 */
+
+		/*
+		 * 指定されたvnode IDに対応するvnodeを指定されたマウントポイントから検索
+		 */
+		v = RB_FIND(_vnode_tree, &mnt->m_head, &v_key);
+		if ( v == NULL ) {
+
+			rc = -ENOENT;   /* v-nodeが見つからなかった */
+			goto unlock_out;
+		}
+
+		if ( !is_busy_vnode_nolock(v) ) {
+		
+			/* 他に対象のvnodeを更新しているスレッドいなければ
+			 * 見つかったvnodeを返却する
+			 */
+			if ( vpp != NULL ) {
+
+				vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
+				*vpp = v;             /* v-nodeを返却               */
+				mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
+				vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+				break;
+			}
+		}
+
+		/*  vnodeの更新完了を待ち合わせる */
+		reason = wque_wait_on_event_with_mutex(&v->v_waiters, &mnt->m_mtx);
+		if ( reason == WQUE_DESTROYED ) {
+
+			rc = -ENOENT;   /* v-nodeが見つからなかった */
+			goto unlock_out;
+		}
+		mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
+		vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 	}
-	if ( vpp != NULL ) {
-
-		vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
-		*vpp = v;             /* v-nodeを返却               */
-	}
-
-	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
-
-	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
 	return 0;
 
@@ -475,6 +507,7 @@ unlock_out:
 	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
+error_out:
 	return rc;
 }
 
