@@ -5,7 +5,10 @@
 top=..
 include ${top}/Makefile.inc
 CFLAGS += -I${top}/include
-subdirs-build=asmoffset minixfs
+subdirs-build=asmoffset
+ifeq ($(CONFIG_HAL),n)
+subdirs-build += minixfs
+endif
 subdirs=${subdirs-build} kconfig
 
 all: kconfig/mconf

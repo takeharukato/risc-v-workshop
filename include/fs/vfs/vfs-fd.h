@@ -19,7 +19,7 @@
 /**
    ファイルディスクリプタ
  */
-struct _file_descriptor{
+typedef struct _file_descriptor{
 	vfs_open_flags      flags; /**< ファイルディスクリプタの状態フラグ  */
 	struct _refcounter   rcnt; /**< 参照カウンタ                        */
 	struct _vnode         *vn; /**< 開いたファイルに対応したvnode       */
@@ -30,7 +30,7 @@ struct _file_descriptor{
 /**
    I/Oコンテキスト
  */
-struct _ioctx {
+typedef struct _ioctx {
 	struct _mutex                                  mtx;  /**< 排他用mutex          */
 	struct _refcounter                            rcnt;  /**< 参照カウンタ         */
 	int                                          errno;  /**< エラー番号           */

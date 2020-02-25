@@ -439,7 +439,7 @@ release_vnode(vnode *v){
    @return -EINVAL  不正なマウントポイントIDを指定した
    @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
  */
-static int
+static __unused int
 find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
 	fs_mount      *mnt;
@@ -480,11 +480,11 @@ find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 			/* 他に対象のvnodeを更新しているスレッドいなければ
 			 * 見つかったvnodeを返却する
 			 */
-			if ( vpp != NULL ) {
+			if ( outv != NULL ) {
 
 				vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
 				mark_busy_vnode_nolock(v); /*  使用中に設定する */ 
-				*vpp = v;             /* v-nodeを返却               */
+				*outv = v;             /* v-nodeを返却               */
 
 				/* マウントポイントのロックを解放 */
 				mutex_unlock(&mnt->m_mtx);
