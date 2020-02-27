@@ -17,6 +17,7 @@
 #include <hal/hal-pgtbl.h>
 
 //#define RV64_SHOW_PAGE_MAP
+//#define RV64_MAP_KERNEL_LOWER_MEMORY
 
 static vm_pgtbl kpgtbl = NULL; /* カーネルページテーブル */
 
@@ -809,6 +810,24 @@ hal_map_kernel_space(void){
 	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR, 
 	    RV64_VIRTIO0_SIZE);
 	show_page_map(pgtbl, RV64_VIRTIO0, RV64_VIRTIO0_SIZE);
+
+#if defined(RV64_MAP_KERNEL_LOWER_MEMORY)
+	/* マップ範囲の仮想アドレスと開始物理アドレスを算出
+	 */
+	vaddr_sta = HAL_KERN_PHY_BASE;  /* 開始仮想アドレス */
+	/* 終了仮想アドレス */
+	paddr = HAL_KERN_PHY_BASE; /* 開始物理アドレス */
+
+	/* デバッグ用に下位アドレス範囲に物理メモリをマップ
+	 */
+	rc = hal_pgtbl_enter(pgtbl, vaddr_sta, paddr, 
+	    VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE, 
+	    VM_FLAGS_WIRED | VM_FLAGS_UNMANAGED | VM_FLAGS_SUPERVISOR, 
+	    MIB_TO_BYTE(KC_PHYSMEM_MB) );
+	kassert( rc == 0 );
+	show_page_map(pgtbl, HAL_PHY_TO_KERN_STRAIGHT(HAL_KERN_PHY_BASE), 
+	    MIB_TO_BYTE(KC_PHYSMEM_MB) );
+#endif  /* MAP_KERNEL_LOWER_MEMORY */
 
 	rv64_write_satp(md->satp);  /* ページテーブル読み込み */
 
