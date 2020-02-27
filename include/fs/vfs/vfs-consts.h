@@ -55,8 +55,12 @@
 #define VFS_VFLAGS_SHIFT          (16)  /**< Vnodeフラグ情報へのシフト値  */
 /**  空きvnodeフラグ値  */
 #define VFS_VFLAGS_FREE           ( (0x0) << VFS_VFLAGS_SHIFT )
+/**  ロード済みvnodeフラグ値  */
+#define VFS_VFLAGS_VALID          ( (0x1) << VFS_VFLAGS_SHIFT )
+/**  更新済みvnodeフラグ値  */
+#define VFS_VFLAGS_DIRTY          ( (0x2) << VFS_VFLAGS_SHIFT )
 /**  使用中vnodeフラグ値  */
-#define VFS_VFLAGS_BUSY           ( (0x1) << VFS_VFLAGS_SHIFT )
+#define VFS_VFLAGS_BUSY           ( (0x4) << VFS_VFLAGS_SHIFT )
 /**  Close On Exec vnodeフラグ値  */
 #define VFS_VFLAGS_COE            ( (VFS_O_CLOEXEC) << VFS_VFLAGS_SHIFT )
 /**  削除対象vnodeフラグ値  */

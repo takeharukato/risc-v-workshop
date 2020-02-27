@@ -336,6 +336,7 @@ unmark_busy_vnode_nolock(vnode *v) {
 	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
 		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
 }
+
 /**
    v-nodeが使用中であることを確認する (内部関数)
    @param[in] v 操作対象のv-node
@@ -344,6 +345,25 @@ static __unused int
 is_busy_vnode_nolock(vnode *v) {
 	
 	return ( v->v_flags & VFS_VFLAGS_BUSY );  
+}
+
+/**
+   v-nodeが使用中であることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused int
+is_busy_vnode_nolock(vnode *v) {
+	
+	return ( v->v_flags & VFS_VFLAGS_BUSY );  
+}
+/**
+   v-nodeが未読み込み済みであることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused int
+is_valid_vnode_nolock(vnode *v) {
+	
+	return ( v->v_flags & ( VFS_VFLAGS_VALID | VFS_VFLAGS_DIRTY ) );  
 }
 
 /**
@@ -440,7 +460,7 @@ release_vnode(vnode *v){
    @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
  */
 static __unused int
-find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
+get_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
 	fs_mount      *mnt;
 	vnode           *v;
@@ -468,12 +488,23 @@ find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 			/*
 			 * v-nodeを割当て, 実ファイルシステムからディスクI-nodeを読み込む
 			 */
+			v = alloc_new_vnode();
+			if ( v == NULL ) {
+
+				rc = -ENOMEM;
+				goto unlock_out;
+			}
 			
+		}
+		kassert( v != NULL );
+
+		if ( is_valid_vnode_nolock(v) ) {
+		}
+
 			/* マウントポイントのロックを解放 */
 			mutex_unlock(&mnt->m_mtx);
 			vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 			break;
-		}
 
 		if ( !is_busy_vnode_nolock(v) ) {
 		
@@ -482,10 +513,7 @@ find_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 			 */
 			if ( outv != NULL ) {
 
-				vfs_vnode_ref_inc(v); /* v-nodeの参照カウンタを増加 */
-				mark_busy_vnode_nolock(v); /*  使用中に設定する */ 
 				*outv = v;             /* v-nodeを返却               */
-
 				/* マウントポイントのロックを解放 */
 				mutex_unlock(&mnt->m_mtx);
 				vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
