@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#define KLIB_PRFBUFLEN  (256)  /*< printf内部バッファ長  */
+
 int safe_open(const char *_pathname, int _flags);
 int safe_open_nolink(const char *_pathname, int _flags);
 int64_t tim_get_fs_time(void);

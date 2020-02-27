@@ -6,6 +6,9 @@
 /*  Utility functions                                                 */
 /*                                                                    */
 /**********************************************************************/
+
+#include <stdio.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -177,3 +180,25 @@ str2uint64(const char *str, int *rcp) {
 	return str2int_common(str, ULLONG_MAX, 10, rcp);
 }
 
+/**
+   書式付きカーネル内出力関数 (minixfsライブラリから呼び出すダミー関数)
+   @param[in] fmt 書式指定文字列
+   @param[in] ... 可変個引数
+   @retval 出力した文字列長
+   @note 文字列長は, KLIB_PRFBUFLEN(255)文字までに制限される
+ */
+int
+kprintf(const char *fmt, ...) {
+	va_list ap;
+	int     rc;
+	char buff[KLIB_PRFBUFLEN];
+
+	va_start(ap, fmt);
+	rc = vsnprintf(buff, KLIB_PRFBUFLEN, fmt, ap);
+	va_end(ap);
+	buff[rc] = '\0';
+
+	printf("%s", buff);
+
+	return rc;
+}
