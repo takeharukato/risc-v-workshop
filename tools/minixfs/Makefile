@@ -6,28 +6,26 @@ top=../..
 include ${top}/Makefile.inc
 HOST_CFLAGS += -I.
 tools=mkfs.minixfs copyfile.minixfs
-
-copyfile_minixfs_objects=utils.o bswap.o fsimg-pcache.o \
-	mkfs-super.o minixfs-path.o minixfs-fops.o
-mkfs_minixfs_objects=utils.o  bswap.o fsimg-pcache.o mkfs-super.o minixfs-path.o
-libminixfs_sources=$(wildcard ${top}/fs/minixfs/*.c)
-libminixfs_objects=$(patsubst %.c,%.o,$(notdir ${libminixfs_sources}))
+minixfs_objects=super.o inode.o zone.o dentry.o
+libklib_objects=bswap.o
+libminixfs_dir=${top}/fs/minixfs
+libklib_dir=${top}/klib
+kern_objects=${minixfs_objects} ${libklib_objects}
+copyfile_minixfs_objects=utils.o fsimg-pcache.o \
+	mkfs-super.o minixfs-path.o minixfs-fops.o ${kern_objects}
+mkfs_minixfs_objects=utils.o  fsimg-pcache.o mkfs-super.o minixfs-path.o ${kern_objects}
 objects=mkfs.minixfs.o copyfile.minixfs.o \
-	${mkfs_minixfs_objects} ${copyfile_minixfs_objects} \
-	${libminixfs_objects} ${libklib_objects}
+	${mkfs_minixfs_objects} ${copyfile_minixfs_objects} ${kern_objects}
+
 objects_depends=$(patsubst %.o,%.d,${objects})
 
 all: ${objects_depends} ${tools}
 
-mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects} \
-	${libminixfs_objects} ${libklib_objects}
-	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects} \
-						       ${libminixfs_objects} 
+mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ mkfs.minixfs.o ${mkfs_minixfs_objects}
 
-copyfile.minixfs: copyfile.minixfs.o ${copyfile_minixfs_objects} \
-	${libminixfs_objects} 
-	${HOST_CC} ${HOST_CFLAGS} -o $@ copyfile.minixfs.o ${copyfile_minixfs_objects} \
-						       ${libminixfs_objects}
+copyfile.minixfs: copyfile.minixfs.o ${copyfile_minixfs_objects}
+	${HOST_CC} ${HOST_CFLAGS} -o $@ copyfile.minixfs.o ${copyfile_minixfs_objects}
 
 gcov:
 ifeq ($(CONFIG_PROFILE),y)
@@ -39,9 +37,6 @@ clean:
 
 distclean: clean
 	${RM} ${DIST_CLEAN_FILES} *.img
-
-${top}/fs/minixfs/libminixfs.a:
-	${MAKE} -C ${dir $@}
 
 mkfs.minixfs.o: mkfs.minixfs.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
@@ -61,11 +56,11 @@ utils.o: utils.c
 utils.d: utils.c 
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
-bswap.o: bswap.c 
+bswap.o: ${libklib_dir}/bswap.c 
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
-bswap.d: bswap.c 
-	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+bswap.d: ${libklib_dir}/bswap.c
+	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$@" $< 
 
 fsimg-pcache.o: fsimg-pcache.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
@@ -91,28 +86,28 @@ minixfs-fops.o: minixfs-fops.c
 minixfs-fops.d: minixfs-fops.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
 
-inode.d: ${top}/fs/minixfs/inode.c
+inode.d: ${libminixfs_dir}/inode.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$@" $< 
 
-inode.o: ${top}/fs/minixfs/inode.c
+inode.o: ${libminixfs_dir}/inode.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
-super.d: ${top}/fs/minixfs/super.c
+super.d: ${libminixfs_dir}/super.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$@" $< 
 
-super.o: ${top}/fs/minixfs/super.c
+super.o: ${libminixfs_dir}/super.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
-zone.d: ${top}/fs/minixfs/zone.c
+zone.d: ${libminixfs_dir}/zone.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$@" $< 
 
-zone.o: ${top}/fs/minixfs/zone.c
+zone.o: ${libminixfs_dir}/zone.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
-dentry.d: ${top}/fs/minixfs/dentry.c
+dentry.d: ${libminixfs_dir}/dentry.c
 	${HOST_CC} -E ${HOST_CFLAGS} -MM -MF"$@" $< 
 
-dentry.o: ${top}/fs/minixfs/dentry.c
+dentry.o: ${libminixfs_dir}/dentry.c
 	${HOST_CC} ${HOST_CFLAGS} -c -o $@ $<
 
 -include *.d
