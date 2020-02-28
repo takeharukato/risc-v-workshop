@@ -338,7 +338,27 @@ unmark_busy_vnode_nolock(vnode *v) {
 }
 
 /**
-   v-nodeが未読み込み済みであることを確認する (内部関数)
+   v-nodeをロード済みにする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused void
+mark_valid_vnode_nolock(vnode *v) {
+
+	v->v_flags |= VFS_VFLAGS_VALID;      /*  ロード済みに設定する */	
+}
+
+/**
+   v-nodeのロード済みフラグを落とす (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused void
+unmark_valid_vnode_nolock(vnode *v) {
+
+	v->v_flags &= ~VFS_VFLAGS_VALID;      /*  有効ビットを落とす */	
+}
+
+/**
+   v-nodeがロード済みであることを確認する (内部関数)
    @param[in] v 操作対象のv-node
  */
 static __unused int
@@ -516,16 +536,33 @@ get_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 				goto unlock_out;
 			}
 			
+			/*
+			 * ファイルシステム固有のvnode情報を割り当てる
+			 */
+			rc = v->v_mount->m_fs->c_calls->fs_getvnode(v->v_mount->m_fs_super, 
+								    vnid, &v->v_fs_vnode);
+
+			if ( rc != 0 )
+				goto unlock_out;
+
+			if ( v->v_fs_vnode == NULL ) {
+		
+				/*  下位のファイルシステムがvnodeを割り当てなかった */
+				rc = -ENOENT;
+				goto unlock_out;
+			}
+			v->v_mntid = mntid;  /* マウントIDを設定 */
+			v->v_id = vnid;      /* v-node IDを設定 */
+			mark_valid_vnode_nolock(v); /* v-nodeをロード済みに設定する */
+
+			add_vnode_to_mount_nolock(v->v_mount, v); /* v-nodeを登録する */
+
+			unmark_busy_vnode_nolock(v);  /* v-nodeのロックを解除(BUSYを解除)  */
+
 		}
+
 		kassert( v != NULL );
-
-		if ( is_valid_vnode_nolock(v) ) {
-		}
-
-			/* マウントポイントのロックを解放 */
-			mutex_unlock(&mnt->m_mtx);
-			vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
-			break;
+		kassert( is_valid_vnode_nolock(v) );
 
 		if ( !is_busy_vnode_nolock(v) ) {
 		
