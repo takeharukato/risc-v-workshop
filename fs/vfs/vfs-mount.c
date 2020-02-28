@@ -338,13 +338,23 @@ unmark_busy_vnode_nolock(vnode *v) {
 }
 
 /**
-   v-nodeが使用中であることを確認する (内部関数)
+   v-nodeが未読み込み済みであることを確認する (内部関数)
    @param[in] v 操作対象のv-node
  */
 static __unused int
-is_busy_vnode_nolock(vnode *v) {
+is_valid_vnode_nolock(vnode *v) {
 	
-	return ( v->v_flags & VFS_VFLAGS_BUSY );  
+	return ( v->v_flags & ( VFS_VFLAGS_VALID | VFS_VFLAGS_DIRTY ) );  
+}
+
+/**
+   v-nodeが更新されていることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused int
+is_dirty_vnode_nolock(vnode *v) {
+	
+	return ( v->v_flags & VFS_VFLAGS_DIRTY );  
 }
 
 /**
@@ -356,14 +366,25 @@ is_busy_vnode_nolock(vnode *v) {
 	
 	return ( v->v_flags & VFS_VFLAGS_BUSY );  
 }
+
 /**
-   v-nodeが未読み込み済みであることを確認する (内部関数)
+   v-nodeにClose on Execが指定されていることを確認する (内部関数)
    @param[in] v 操作対象のv-node
  */
 static __unused int
-is_valid_vnode_nolock(vnode *v) {
+is_coe_vnode_nolock(vnode *v) {
 	
-	return ( v->v_flags & ( VFS_VFLAGS_VALID | VFS_VFLAGS_DIRTY ) );  
+	return ( v->v_flags & VFS_VFLAGS_COE );  
+}
+
+/**
+   削除対象v-nodeであることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static __unused int
+is_deleted_vnode_nolock(vnode *v) {
+	
+	return ( v->v_flags & VFS_VFLAGS_DELETE );  
 }
 
 /**
