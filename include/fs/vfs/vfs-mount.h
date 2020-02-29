@@ -63,8 +63,6 @@ int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
 void vfs_fs_mount_put(fs_mount *_mount);
 bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
 bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
-bool vfs_vnode_ref_inc(struct _vnode *_vn);
-bool vfs_vnode_ref_dec(struct _vnode *_vn);
 void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */
