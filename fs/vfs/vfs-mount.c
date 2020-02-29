@@ -20,6 +20,7 @@
 static mount_table   g_mnttbl = __MNTTBL_INITIALIZER(&g_mnttbl);
 static kmem_cache fs_mount_cache; /**< マウントポイントのSLABキャッシュ */
 static kmem_cache    vnode_cache; /**< v-nodeのSLABキャッシュ */
+
 /**
    マウントポイント比較処理
  */

@@ -6,7 +6,7 @@ top=../..
 include ${top}/Makefile.inc
 subdirs=
 
-objects=vfs-init.o vfs-path.o vfs-fstbl.o vfs-mount.o
+objects=vfs-init.o vfs-path.o vfs-fstbl.o vfs-mount.o vfs-fd.o vfs-ioctx.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=

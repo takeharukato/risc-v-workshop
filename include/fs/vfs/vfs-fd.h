@@ -30,18 +30,22 @@ typedef struct _file_descriptor{
 /**
    I/Oコンテキスト
  */
-typedef struct _ioctx {
-	struct _mutex                                  mtx;  /**< 排他用mutex          */
-	struct _refcounter                            rcnt;  /**< 参照カウンタ         */
-	int                                          errno;  /**< エラー番号           */
-	struct                            _vfs_vnode *root;  /**< ルートディレクトリ   */
-	struct                             _vfs_vnode *cwd;  /**< カレントディレクトリ */
-	BITMAP_TYPE(, uint64_t, MAX_FD_TABLE_SIZE)    bmap;  /**< 割当てIDビットマップ */
+typedef struct _vfs_ioctx {
+	struct _mutex                              ioc_mtx;  /**< 排他用mutex          */
+	struct _refcounter                        ioc_refs;  /**< 参照カウンタ         */
+	/** I/Oコンテキストテーブルのリンク  */
+	//RB_ENTRY(_vfs_ioctx)                        ioc_ent;
+	int                                       ioc_errno;  /**< エラー番号           */
+	struct _vfs_vnode                         *ioc_root;  /**< ルートディレクトリ   */
+	struct _vfs_vnode                          *ioc_cwd;  /**< カレントディレクトリ */
+	BITMAP_TYPE(, uint64_t, MAX_FD_TABLE_SIZE) ioc_bmap;  /**< 割当てIDビットマップ */
 	/** テーブルエントリ数(単位:個)           */
-	size_t                                  table_size; 
+	size_t                               ioc_table_size;  
 	/** プロセスのファイルディスクリプタ配列  */
-	struct _file_descriptor                      **fds;
-}ioctx;
+	struct _file_descriptor                   **ioc_fds;
+}vfs_ioctx;
 
+void vfs_filedescriptor_init(void);
+void vfs_init_ioctx(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_FD_H  */

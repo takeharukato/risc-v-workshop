@@ -19,11 +19,10 @@
 #include <klib/queue.h>
 #include <kern/kern-types.h>
 #include <kern/vm-if.h>
-#include <kern/vfs-if.h>
 #include <hal/hal-memlayout.h>
 
-struct _thread;
-
+struct    _thread;
+struct _vfs_ioctx;
 /**
    プロセスのセグメント種別
  */
@@ -43,6 +42,7 @@ typedef struct _proc_segment{
 	vm_prot              prot; /**< 保護属性         */
 	vm_flags            flags; /**< マップ属性       */
 }proc_segment;
+
 /**
    プロセス定義
  */
@@ -56,7 +56,7 @@ typedef struct _proc{
 	pid                             id; /**< プロセスID               */
 	proc_segment segments[PROC_SEG_NR]; /**< セグメント               */
 	char           name[PROC_NAME_LEN]; /**< プロセス名               */
-	struct _ioctx                ioctx; /**< I/Oコンテキスト          */
+	struct _vfs_ioctx           *ioctx; /**< I/Oコンテキスト          */
 }proc;
 
 /**
