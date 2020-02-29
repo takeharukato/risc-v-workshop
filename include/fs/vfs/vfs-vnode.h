@@ -38,8 +38,11 @@ bool vfs_vnode_ref_inc(struct _vnode *_v);
 bool vfs_vnode_ref_dec(struct _vnode *_v);
 int vfs_vnode_get(vfs_mnt_id _mntid, vfs_vnode_id _vnid, vnode **_outv);
 int vfs_vnode_put(vfs_mnt_id _mntid, vfs_vnode_id _vnid);
-int vfs_vnode_lock(struct _vnode *v);
-void vfs_vnode_unlock(struct _vnode *v);
+void vfs_mark_dirty_vnode_nolock(struct _vnode *v);
+void vfs_unmark_dirty_vnode_nolock(struct _vnode *v);
+bool vfs_is_dirty_vnode(struct _vnode *_v);
+int vfs_vnode_lock(struct _vnode *_v);
+void vfs_vnode_unlock(struct _vnode *_v);
 
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_VNODE_H   */
