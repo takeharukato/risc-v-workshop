@@ -53,7 +53,8 @@ kern_common_tests(void){
 	tst_minixfs();
 	tst_vfs_path();
 	tst_vfs_fstbl();
-	tst_vfs_ioctx();
+	//tst_vfs_ioctx();
+	tst_vfs_fd();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);

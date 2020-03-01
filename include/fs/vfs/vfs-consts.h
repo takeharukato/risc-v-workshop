@@ -16,10 +16,11 @@
 /*
  * 最大値
  */
+/**  最大ファイルディスクリプタテーブルエントリ数  */
+#define VFS_MAX_FD_TABLE_SIZE   ULONGLONG_C(2048)  
 #define VFS_PATH_MAX            ULONGLONG_C(1024)  /**< パス長 */
 #define VFS_PATH_DELIM          '/'                /**< パスデリミタ */
-/**  最大ファイルディスクリプタテーブルエントリ数  */
-#define MAX_FD_TABLE_SIZE       ULONGLONG_C(2048)  
+
 
 /**  デフォルトファイルディスクリプタテーブルエントリ数 */
 #define DEFAULT_FD_TABLE_SIZE   ULONGLONG_C(128)   
@@ -68,6 +69,11 @@
 #define VFS_VFLAGS_COE            ( (VFS_O_CLOEXEC) << VFS_VFLAGS_SHIFT )
 /**  削除対象vnodeフラグ値  */
 #define VFS_VFLAGS_DELETE         ( ULONGLONG_C(0x2000) << VFS_VFLAGS_SHIFT )
+
+/**  空きファイルディスクリプタフラグ値  */
+#define VFS_FDFLAGS_NONE         VFS_VFLAGS_FREE
+/**  Close On Exec ファイルディスクリプタフラグ値  */
+#define VFS_FDFLAGS_COE          VFS_VFLAGS_COE
 
 /**
    ファイル種別

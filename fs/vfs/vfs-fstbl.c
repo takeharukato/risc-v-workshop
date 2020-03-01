@@ -94,7 +94,7 @@ bool
 vfs_fs_ref_inc(fs_container *container){
 
 	/* ファイルシステム終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
-	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	 * でなければ, 利用カウンタを加算
 	 */
 	return ( refcnt_inc_if_valid(&container->c_refs) != 0 ); 
 }

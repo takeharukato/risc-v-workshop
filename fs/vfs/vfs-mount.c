@@ -627,7 +627,7 @@ unlock_out:
 bool
 vfs_vnode_ref_inc(vnode *v) {
 
-	/* v-node解放中でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	/* v-node解放中でなければ, 利用カウンタを加算  
 	 */
 	return ( refcnt_inc_if_valid(&v->v_refs) != 0 ); 
 }

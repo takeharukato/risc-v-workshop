@@ -16,7 +16,7 @@
 #include <kern/vfs-if.h>
 #include <kern/page-if.h>
 
-static kmem_cache            ioctx_cache; /**< I/OコンテキストのSLABキャッシュ        */
+static kmem_cache   ioctx_cache; /**< I/OコンテキストのSLABキャッシュ */
 
 /**
    I/Oコンテキストを新規に割り当てる (内部関数)
@@ -30,7 +30,7 @@ alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxpp) {
 	vfs_ioctx *ioctxp;
 	int        rc;
 
-	kassert( MAX_FD_TABLE_SIZE >= table_size );
+	kassert( VFS_MAX_FD_TABLE_SIZE >= table_size );
 
 	/*
 	 * I/Oコンテキストを新規に割り当てる
@@ -50,6 +50,7 @@ alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxpp) {
 	refcnt_init(&ioctxp->ioc_refs);      /* I/Oコンテキスト参照カウンタを初期化     */
 	ioctxp->ioc_table_size = table_size; /* I/Oテーブル長を設定                    */
 	bitops_zero(&ioctxp->ioc_bmap);      /* FD割り当てビットマップを初期化       */
+	//TODO: I/Oコンテキストを管理する
 	//RB_INIT(&ioctxp->ioc_ent);         /* I/Oコンテキストテーブルへのリンクを初期化 */
 	ioctxp->ioc_root = NULL;             /* ルートディレクトリを初期化             */
 	ioctxp->ioc_cwd = NULL;              /* カレントディレクトリを初期化           */
