@@ -316,6 +316,24 @@ add_vnode_to_mount_nolock(fs_mount *mount, vnode *v){
 	return 0;
 }
 
+/** 
+    マウント情報からv-nodeを削除 (実処理関数)
+    @param[in] v      削除するv-node
+    @retval    0      正常終了
+ */
+static void
+del_vnode_from_mount_nolock(vnode *v){
+	vnode *res_v;
+
+	/* v-nodeをマウントポイントのv-nodeテーブルから外す */
+	res_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
+	kassert( res_v != NULL );  /* v-nodeの多重解放 */
+	
+	vfs_fs_mount_ref_dec(v->v_mount);  /* v-nodeからの参照を減算 */
+
+	return ;
+}
+
 /**
    v-nodeを使用中にする (内部関数)
    @param[in] v 操作対象のv-node
@@ -641,7 +659,6 @@ vfs_vnode_ref_inc(vnode *v) {
 bool
 vfs_vnode_ref_dec(vnode *v){
 	bool     res;
-	vnode *res_v;
 
 	kassert( v->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
 
@@ -649,13 +666,9 @@ vfs_vnode_ref_dec(vnode *v){
 	res = refcnt_dec_and_mutex_lock(&v->v_refs, &v->v_mount->m_mtx);
 	if ( res ) { /* マウントポイントの最終参照者だった場合 */
 		
-		/* v-nodeをv-nodeテーブルから外す */
-		res_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
-		kassert( res_v != NULL );  /* v-nodeの多重解放 */
+		del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
 
 		mutex_unlock(&v->v_mount->m_mtx);  /* v-nodeテーブルをアンロック  */
-		
-		vfs_fs_mount_ref_dec(v->v_mount);  /* v-nodeからの参照を減算 */
 		v->v_mount = NULL;
 
 		/*
@@ -940,7 +953,6 @@ vfs_vnode_unlock(vnode *v) {
 	bool res;
 
 	/* マウントポイントの参照獲得 
-	 * TODO: vnode生成時にマウントポイントの参照を加算, 解放時に減算
 	 */
 
 	res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
