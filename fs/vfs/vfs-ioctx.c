@@ -77,6 +77,7 @@ free_ioctx_out:
 error_out:	
 	return rc;
 }
+
 /**
    I/Oコンテキストの破棄 (内部関数)
    @param[in] ioctxp   破棄するI/Oコンテキスト
@@ -121,6 +122,70 @@ free_ioctx(vfs_ioctx *ioctxp) {
 	return ;
 }
 
+/**
+   ファイルディスクリプタテーブルサイズを更新する (内部関数)
+   @param[in] ioctxp   I/Oコンテキスト
+   @param[in] new_size 更新後のファイルテーブルサイズ (単位: インデックス数)
+   @retval  0      正常終了
+   @retval -EINVAL 更新後のテーブルサイズが小さすぎるまたは大きすぎる
+   @retval -EBUSY  縮小されて破棄される領域中に使用中のファイルディスクリプタが存在する
+   @retval -ENOMEM メモリ不足
+*/
+static __unused int 
+resize_ioctx_fd_table(vfs_ioctx *ioctxp, const size_t new_size){
+	void       *new_fds;
+	size_t new_tbl_size;
+	int              rc;
+	size_t            i;
+
+	if ( ( 0 >= new_size ) || ( new_size > VFS_MAX_FD_TABLE_SIZE ) ) 
+		return -EINVAL;  /*  インデックス数0の配列は作れないので0以下をエラーとする */
+
+	/*
+	 * 新たにテーブルを獲得してクリアする
+	 */
+	new_tbl_size = sizeof(file_descriptor *) * new_size;
+	new_fds = kmalloc(sizeof(file_descriptor *) * new_tbl_size, KMALLOC_NORMAL);
+	if ( new_fds == NULL ) 		
+		return -ENOMEM;
+
+	memset(new_fds, 0, new_tbl_size);
+
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+
+	if ( ioctxp->ioc_table_size > new_size ) {  /*  テーブルを縮小する場合  */
+
+		/* 縮小される範囲に使用中のファイル記述子がないことを確認する */
+		for(i = new_size; ioctxp->ioc_table_size > i; ++i) {
+
+			if ( ioctxp->ioc_fds[i] != NULL ) {
+
+				rc = -EBUSY;
+				goto free_new_table_out;
+			}
+		}
+		/*  変更後も使用される範囲を既存のテーブルからコピーする  */
+		memcpy(new_fds, ioctxp->ioc_fds, new_tbl_size);
+	} else   /*  テーブルを拡大する場合, 既存のテーブルの内容をすべてコピーする  */
+		memcpy(new_fds, ioctxp->ioc_fds,
+		       sizeof(file_descriptor *) * ioctxp->ioc_table_size);
+
+	kfree(ioctxp->ioc_fds);              /*  元のテーブルを開放する  */
+	ioctxp->ioc_fds = new_fds;           /*  テーブルの参照を更新する  */
+	ioctxp->ioc_table_size = new_size;   /*  テーブルサイズを更新する  */
+
+	mutex_unlock(&ioctxp->ioc_mtx); /* I/Oコンテキストテーブルをアンロック  */
+
+	return 0;
+
+free_new_table_out:
+	kfree(new_fds);
+
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+
+	return rc;
+}
+
 /*
  * I/Oコンテキスト操作IF
  */
@@ -157,7 +222,83 @@ vfs_ioctx_ref_dec(vfs_ioctx  *ioctxp){
 }
 
 /**
-   I/Oコンテキストテーブルの初期化
+   ファイルディスクリプタをI/Oコンテキストに割り当てる
+   @param[in]  ioctxp I/Oコンテキスト
+   @param[in]  f      ファイルディスクリプタ
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0      正常終了
+   @retval -ENOSPC I/Oコンテキスト中に空きがない
+ */
+int 
+vfs_fd_add(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
+	size_t  i;
+	int    rc;
+
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+
+	i = bitops_ffs(&ioctxp->ioc_bmap);  /* 空きスロットを取得 */
+	if ( i == 0 ) {
+
+		rc = -ENOSPC;
+		goto unlock_out;
+	}
+	--i; /* 配列のインデクスに変換 */
+	kassert( ioctxp->ioc_fds[i] == NULL );
+
+	bitops_set(i, &ioctxp->ioc_bmap) ; /* 使用中ビットをセット */
+	ioctxp->ioc_fds[i] = f;    /*  ファイルディスクリプタを設定  */
+	vfs_ioctx_ref_inc(ioctxp); /*  ファイルディスクリプタからの参照を加算  */
+
+	*fdp = i;  /*  ユーザファイルディスクリプタを返却  */
+
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	return rc;
+}
+
+/**
+   ユーザファイルディスクリプタをキーにファイルディスクリプタを解放する
+   @param[in] ioctxp I/Oコンテキスト
+   @param[in] fd     ユーザファイルディスクリプタ
+   @retval  0     正常終了
+   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+ */
+int
+vfs_fd_del(vfs_ioctx *ioctxp, int fd){
+	file_descriptor *f;
+
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+	if ( ( 0 > fd ) ||
+	     ( ( (size_t)fd ) >= ioctxp->ioc_table_size ) ||
+	     ( ioctxp->ioc_fds[fd] == NULL ) ) 
+		goto unlock_out;
+
+	/*  有効なファイルディスクリプタの場合は
+	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
+	 */
+	f = ioctxp->ioc_fds[fd];
+
+	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
+	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
+	vfs_ioctx_ref_dec(ioctxp); /*  ファイルディスクリプタからの参照を減算  */
+
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+
+	vfs_fd_ref_dec(f); /*  ファイルディスクリプタへの参照を解放  */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	return -EBADF;
+}
+
+/**
+   I/Oコンテキストの初期化
  */
 void
 vfs_init_ioctx(void){

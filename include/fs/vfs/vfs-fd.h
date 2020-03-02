@@ -46,6 +46,8 @@ typedef struct _vfs_ioctx {
 }vfs_ioctx;
 bool vfs_ioctx_ref_inc(struct _vfs_ioctx  *_ioctxp);
 bool vfs_ioctx_ref_dec(struct _vfs_ioctx  *_ioctxp);
+int  vfs_fd_add(struct _vfs_ioctx *ioctxp, struct _file_descriptor *f, int *_fdp);
+int vfs_fd_del(struct _vfs_ioctx *_ioctxp, int _fd);
 bool vfs_fd_ref_inc(struct _file_descriptor *_f);
 bool vfs_fd_ref_dec(struct _file_descriptor *_f);
 void vfs_filedescriptor_init(void);
