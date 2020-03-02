@@ -16,6 +16,8 @@
 #include <klib/refcount.h>
 #include <kern/mutex.h>
 
+struct _vnode;
+
 /**
    ファイルディスクリプタ
  */
@@ -32,9 +34,6 @@ typedef struct _file_descriptor{
  */
 typedef struct _vfs_ioctx {
 	struct _mutex                                   ioc_mtx; /**< 排他用mutex          */
-	struct _refcounter                             ioc_refs; /**< 参照カウンタ         */
-	/** I/Oコンテキストテーブルのリンク  */
-	//RB_ENTRY(_vfs_ioctx)                        ioc_ent;
 	int                                           ioc_errno; /**< エラー番号           */
 	struct _vnode                                 *ioc_root; /**< ルートディレクトリ   */
 	struct _vnode                                  *ioc_cwd; /**< カレントディレクトリ */
@@ -44,12 +43,16 @@ typedef struct _vfs_ioctx {
 	/** プロセスのファイルディスクリプタ配列  */
 	struct _file_descriptor                       **ioc_fds;
 }vfs_ioctx;
-bool vfs_ioctx_ref_inc(struct _vfs_ioctx  *_ioctxp);
-bool vfs_ioctx_ref_dec(struct _vfs_ioctx  *_ioctxp);
-int  vfs_fd_add(struct _vfs_ioctx *ioctxp, struct _file_descriptor *f, int *_fdp);
+int  vfs_fd_add(struct _vfs_ioctx *_ioctxp, struct _file_descriptor *_f, int *_fdp);
 int vfs_fd_del(struct _vfs_ioctx *_ioctxp, int _fd);
+int vfs_fd_get(struct _vfs_ioctx *_ioctxp, int _fd, struct _file_descriptor **_fp);
+int vfs_fd_put(struct _vfs_ioctx *_ioctxp, struct _file_descriptor *_fp);
 bool vfs_fd_ref_inc(struct _file_descriptor *_f);
 bool vfs_fd_ref_dec(struct _file_descriptor *_f);
+int vfs_ioctx_resize_fd_table(struct _vfs_ioctx *_ioctxp, const size_t _new_size);
+int vfs_ioctx_alloc(struct _vnode *root_vnode, struct _vfs_ioctx *_parent_ioctx, 
+    struct _vfs_ioctx **_ioctxpp);
+void vfs_ioctx_free(struct _vfs_ioctx *_ioctxp);
 void vfs_filedescriptor_init(void);
 void vfs_init_ioctx(void);
 #endif  /*  !ASM_FILE  */

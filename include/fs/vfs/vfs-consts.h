@@ -23,8 +23,8 @@
 
 
 /**  デフォルトファイルディスクリプタテーブルエントリ数 */
-#define DEFAULT_FD_TABLE_SIZE   ULONGLONG_C(128)   
-#define VFS_INVALID_MNTID       ULONGLONG_C(0)     /**< 無効マウントID */
+#define VFS_DEFAULT_FD_TABLE_SIZE ULONGLONG_C(128)   
+#define VFS_INVALID_MNTID         ULONGLONG_C(0)     /**< 無効マウントID */
 
 #define VFS_INVALID_VNID        ULONGLONG_C(0)     /**<  無効なVNID                    */
 #define VFS_DEFAULT_ROOT_VNID   ULONGLONG_C(1)     /**<  デフォルトのルートノード vnid */

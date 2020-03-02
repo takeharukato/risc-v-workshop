@@ -19,9 +19,9 @@ int alloc_new_ioctx(size_t table_size, ioctx **ioctxpp);
 static void
 vfs_ioctx1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
-	ioctx *ctx;
+	vfs_ioctx *ctx;
 
-	rc = alloc_new_ioctx(DEFAULT_FD_TABLE_SIZE,  &ctx);
+	rc = alloc_new_ioctx(VFS_DEFAULT_FD_TABLE_SIZE,  &ctx);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
