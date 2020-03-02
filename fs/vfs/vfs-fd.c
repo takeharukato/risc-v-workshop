@@ -107,6 +107,7 @@ vfs_fd_ref_inc(file_descriptor *f){
 	 */
 	return ( refcnt_inc_if_valid(&f->f_refs) != 0 ); 
 }
+
 /**
    ファイルディスクリプタの参照カウンタを減算する 
    @param[in] f 操作対象のファイルディスクリプタ
@@ -135,5 +136,4 @@ vfs_filedescriptor_init(void){
 	rc = slab_kmem_cache_create(&file_descriptor_cache, "file descriptor cache",
 	    sizeof(file_descriptor), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
-
 }

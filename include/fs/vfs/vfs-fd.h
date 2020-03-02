@@ -36,15 +36,18 @@ typedef struct _vfs_ioctx {
 	/** I/Oコンテキストテーブルのリンク  */
 	//RB_ENTRY(_vfs_ioctx)                        ioc_ent;
 	int                                           ioc_errno; /**< エラー番号           */
-	struct _vfs_vnode                             *ioc_root; /**< ルートディレクトリ   */
-	struct _vfs_vnode                              *ioc_cwd; /**< カレントディレクトリ */
+	struct _vnode                                 *ioc_root; /**< ルートディレクトリ   */
+	struct _vnode                                  *ioc_cwd; /**< カレントディレクトリ */
 	BITMAP_TYPE(, uint64_t, VFS_MAX_FD_TABLE_SIZE) ioc_bmap; /**< 割当てIDビットマップ */
 	/** テーブルエントリ数(単位:個)           */
 	size_t                                   ioc_table_size;  
 	/** プロセスのファイルディスクリプタ配列  */
 	struct _file_descriptor                       **ioc_fds;
 }vfs_ioctx;
-
+bool vfs_ioctx_ref_inc(struct _vfs_ioctx  *_ioctxp);
+bool vfs_ioctx_ref_dec(struct _vfs_ioctx  *_ioctxp);
+bool vfs_fd_ref_inc(struct _file_descriptor *_f);
+bool vfs_fd_ref_dec(struct _file_descriptor *_f);
 void vfs_filedescriptor_init(void);
 void vfs_init_ioctx(void);
 #endif  /*  !ASM_FILE  */

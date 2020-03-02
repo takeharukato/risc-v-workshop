@@ -25,7 +25,7 @@ static kmem_cache   ioctx_cache; /**< I/OコンテキストのSLABキャッシ�
    @retval  0      正常終了
    @retval -ENOMEM メモリ不足
  */
-int
+static __unused int
 alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxpp) {
 	vfs_ioctx *ioctxp;
 	int        rc;
@@ -77,10 +77,84 @@ free_ioctx_out:
 error_out:	
 	return rc;
 }
+/**
+   I/Oコンテキストの破棄 (内部関数)
+   @param[in] ioctxp   破棄するI/Oコンテキスト
+ */
+static __unused void
+free_ioctx(vfs_ioctx *ioctxp) {
+	size_t i;
+
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+
+	kassert( ioctxp->ioc_root != NULL );
+	vfs_vnode_ref_dec( ioctxp->ioc_root );  /* ルートディレクトリの参照を返却  */
+
+	kassert( ioctxp->ioc_cwd != NULL );
+	vfs_vnode_ref_dec( ioctxp->ioc_cwd );  /* カレントディレクトリへの参照を返却  */
+
+	/*
+	 * ファイルディスクリプタへの参照を返却
+	 */
+	for( i = 0; ioctxp->ioc_table_size > i; ++i) {
+
+		if ( bitops_isset(i, &ioctxp->ioc_bmap) ) {
+
+			kassert( ioctxp->ioc_fds[i] != NULL );
+			bitops_clr(i, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
+			vfs_fd_ref_dec( ioctxp->ioc_fds[i] );  /* 参照を解放 */
+			ioctxp->ioc_fds[i] = NULL;  /* 未使用スロットに設定 */
+
+		}
+	}
+
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+
+	/*
+	 * I/Oコンテキストを破棄
+	 */
+	mutex_destroy(&ioctxp->ioc_mtx);  /* mutexを破棄 */
+
+	kfree(ioctxp->ioc_fds);   /* ファイルディスクリプタ配列を破棄 */
+	slab_kmem_cache_free(ioctxp);  /*  I/Oコンテキストを破棄  */
+
+	return ;
+}
 
 /*
  * I/Oコンテキスト操作IF
  */
+
+/**
+   I/Oコンテキストの参照カウンタを加算する 
+   @param[in] ioctxp 操作対象のI/Oコンテキスト
+   @retval    真     I/Oコンテキストの参照を獲得できた
+   @retval    偽     I/Oコンテキストの参照を獲得できなかった
+ */
+bool
+vfs_ioctx_ref_inc(vfs_ioctx  *ioctxp){
+
+	/* I/Oコンテキスト解放中でなければ利用カウンタを加算
+	 */
+	return ( refcnt_inc_if_valid(&ioctxp->ioc_refs) != 0 ); 
+}
+
+/**
+   I/Oコンテキストの参照カウンタを加算する 
+   @param[in] ioctxp 操作対象のI/Oコンテキスト
+   @retval    真     I/Oコンテキストの最終参照者だった
+   @retval    偽     I/Oコンテキストの最終参照者でない
+ */
+bool
+vfs_ioctx_ref_dec(vfs_ioctx  *ioctxp){
+	bool     res;
+
+	res = refcnt_dec_and_test(&ioctxp->ioc_refs);  /* 参照を減算 */
+	if ( res ) 
+		free_ioctx(ioctxp); /* 最終参照者だった場合はI/Oコンテキストを解放 */
+
+	return res;
+}
 
 /**
    I/Oコンテキストテーブルの初期化
