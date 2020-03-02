@@ -25,6 +25,5 @@ vfs_init(void){
 
 	vfs_init_filesystem_table();
 	vfs_init_mount_table();
-	vfs_filedescriptor_init();
 	vfs_init_ioctx();
 }

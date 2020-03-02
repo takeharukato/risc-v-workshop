@@ -46,14 +46,15 @@ typedef struct _vfs_ioctx {
 int  vfs_fd_add(struct _vfs_ioctx *_ioctxp, struct _file_descriptor *_f, int *_fdp);
 int vfs_fd_del(struct _vfs_ioctx *_ioctxp, int _fd);
 int vfs_fd_get(struct _vfs_ioctx *_ioctxp, int _fd, struct _file_descriptor **_fp);
-int vfs_fd_put(struct _vfs_ioctx *_ioctxp, struct _file_descriptor *_fp);
+int vfs_fd_remove(struct _vfs_ioctx *_ioctxp, struct _file_descriptor *_fp);
+int vfs_fd_alloc(struct _vfs_ioctx *_ioctxp, struct _vnode *_v, vfs_open_flags _omode,
+    int *_fdp);
 bool vfs_fd_ref_inc(struct _file_descriptor *_f);
 bool vfs_fd_ref_dec(struct _file_descriptor *_f);
 int vfs_ioctx_resize_fd_table(struct _vfs_ioctx *_ioctxp, const size_t _new_size);
 int vfs_ioctx_alloc(struct _vnode *root_vnode, struct _vfs_ioctx *_parent_ioctx, 
     struct _vfs_ioctx **_ioctxpp);
 void vfs_ioctx_free(struct _vfs_ioctx *_ioctxp);
-void vfs_filedescriptor_init(void);
 void vfs_init_ioctx(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_FD_H  */
