@@ -21,7 +21,7 @@
    @retval  -ENOENT  パスが見つからなかった
    @retval  -EIO     パス検索時にI/Oエラーが発生した
  */
-static __unused int 
+static int 
 path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 	char            *p;
 	char       *next_p;
@@ -156,6 +156,106 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 
 error_out:
 	return rc;
+}
+
+/**
+   指定されたディレクトリのvnodeの参照を獲得する (実処理関数)
+   @param[in]  ioctxp   パス検索に使用するI/Oコンテキスト
+   @param[in]  path     検索対象のパス文字列
+   @param[in]  pathlen  pathが指し示す領域の長さ
+   @param[out] outv     見つかったvnodeを指し示すポインタのアドレス
+   @param[out] filename パス中のファイル名部分を返却する領域のアドレス
+   @param[in]  fnamelen filenameが指し示す領域の長さ
+   @retval  0        正常終了
+   @retval  -ENOENT   パスが見つからなかった
+   @retval  -EIO      パス検索時にI/Oエラーが発生した
+*/
+static int 
+path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv, 
+    char *filename, size_t fnamelen){
+	char *p;
+
+	kassert( pathlen > 1 );
+	kassert( fnamelen > 1 );
+
+	p = strrchr(path, '/');
+	if ( p == NULL ) {
+
+		/* 引数pathが'/'を全く含まない場合 (例: "afile")は,
+		 * ./afile を指定されたとみなして, filenameには
+		 * "afile"をコピーして返却し, 検索パスには"."を引き渡す
+		 */
+		strncpy(filename, path, fnamelen);
+		filename[fnamelen - 1] = '\0';
+
+		strncpy(path, ".", pathlen);
+		filename[pathlen - 1] = '\0';
+	} else {
+		
+		/* ディレクトリのvnodeを獲得する
+		 * 末尾の/の後にカレントディレクトリを表す.だけを
+		 * 含むエレメントを作成して文字列を終端させることで
+		 * ディレクトリのvnodeを獲得する
+		 * e.g., path: "/xxx/yyy"の場合なら"xxx/."に置き換えて, 
+		 *             "/xxx/"のvnodeを獲得させる
+		 *       pathが'/'で終わる場合はpathを修正せずに検索パスに引き渡す
+		 * filenameには, path中の/の後に続く文字列をコピーして返却する
+		 */
+		strncpy(filename, p+1, fnamelen);
+		filename[fnamelen - 1] = '\0';
+
+		if(p[1] != '\0'){
+
+			p[1] = '.';
+			p[2] = '\0';
+		}
+	}
+	
+	/* 
+	 * パス中のディレクトリ部分(親ディレクトリ)のvnodeを得る
+	 */
+	return path_to_vnode(ioctxp, path, outv);  
+}
+
+/**
+   指定されたパスのvnodeの参照を獲得する
+   @param[in]  ioctxp  パス検索に使用するI/Oコンテキスト
+   @param[in]  path    検索対象のパス文字列
+   @param[out] outv    見つかったvnodeを指し示すポインタのアドレス
+   @retval  0        正常終了
+   @retval  -ENOENT   パスが見つからなかった
+   @retval  -EIO      パス検索時にI/Oエラーが発生した
+ */
+int 
+vfs_path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv) {
+
+	/*
+	 * パスのvnodeを得る
+	 */
+	return path_to_vnode(ioctxp, path, outv);
+}
+
+/**
+   指定されたディレクトリのvnodeの参照を獲得する
+   @param[in]  ioctxp   パス検索に使用するI/Oコンテキスト
+   @param[in]  path     検索対象のパス文字列
+   @param[in]  pathlen  検索対象のパス文字列領域の長さ
+   @param[out] outv     見つかったvnodeを指し示すポインタのアドレス
+   @param[out] filename パス中のファイル名部分を返却する領域のアドレス
+   @param[in]  fnamelen filenameが指し示す領域の長さ
+   @retval  0        正常終了
+   @retval  -ENOENT   パスが見つからなかった
+   @retval  -EIO      パス検索時にI/Oエラーが発生した
+   @note parenti相当のIF
+ */
+int  
+vfs_path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv, 
+    char *filename, size_t fnamelen) {
+
+	/*
+	 * ファイルの親ディレクトリのvnodeを得る  
+	 */
+	return path_to_dir_vnode(ioctxp, path, pathlen, outv, filename, fnamelen); 
 }
 
 /**
