@@ -127,7 +127,7 @@ error_out:
    @retval -ENOMEM メモリ不足
    @retval -ENOENT ファイルシステムが見つからなかった
  */
-static int __unused
+static int
 alloc_new_fsmount(char *path, const char *fs_name, fs_mount **mntp){
 	fs_mount         *new_mount;
 	fs_container            *fs;
@@ -252,7 +252,7 @@ free_mntid_nolock(vfs_mnt_id id){
     @retval    0      正常終了
     @retval   -ENOSPC マウントIDに空きがない
  */
-static __unused int
+static int
 add_fsmount_to_mnttbl(fs_mount *mount) {
 	int             rc;
 	vfs_mnt_id  new_id;
@@ -1062,6 +1062,165 @@ vfs_fs_mount_ref_dec(fs_mount *mount){
 	}
 
 	return res;
+}
+
+/**
+   ファイルシステムをマウントする
+   @param[in] ioctxp   I/Oコンテキスト
+   @param[in] path     マウント先のパス名
+   @param[in] device   マウントするボリュームのデバイス名
+   @param[in] fs_name  ファイルシステム名
+   @param[in] args     マウントオプション
+   @retval  0      正常終了
+   @retval -ENOMEM メモリ不足
+   @retval -ENOENT 指定された名前のファイルシステムまたはパスが見つからなかった
+   @retval -EINVAL ファイルシステムのマウントに失敗した(オプションが不正?)
+   引数で指定されたファイルパスがディレクトリを指していない
+   @retval -EIO    ファイルシステムマウント時にI/Oエラーが発生した
+   @retval -EBUSY  既に対象ボリュームのルートマウントポイントになっている
+   @retval -ENODEV 下位のファイルシステムがルートvnodeを設定しなかった
+*/
+int
+vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name, 
+	  void *args){
+	int                      rc;
+	fs_mount             *mount;
+	vnode        *covered_vnode;
+	vfs_vnode_id        root_id;
+	void              *mnt_args;
+
+	if ( ( ( g_mnttbl.mt_root == NULL ) || ( ioctxp == NULL ) ) 
+	    && ( strcmp(path, "/") != 0 ) ) {
+		
+		/* ルートディレクトリがマウントされていないため
+		 * パス検索不能
+		 */
+		rc = -ENOENT;
+		goto unlock_out;
+	}
+	
+	/*
+	 * マウント情報割当て
+	 */
+	rc = alloc_new_fsmount(path, fs_name, &mount);
+	if ( rc != 0 ) 
+		goto unlock_out;
+
+	kassert( is_valid_fs_calls( mount->m_fs->c_calls ) );
+
+	mnt_args = NULL;  /* ルートマウント時はマウントオプションにNULLを引き渡す */
+	if ( g_mnttbl.mt_root != NULL ) {
+
+		/*
+		 * 通常のマウント処理
+		 */
+		/* マウントディレクトリのパスを検索 */
+		covered_vnode = NULL;
+		rc = vfs_path_to_vnode(ioctxp, path, &covered_vnode);
+		if ( rc != 0 ) {
+
+			/* マウントディレクトリのパス検索に失敗した */
+			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )
+				rc = -EINVAL;
+			goto free_mount_out;
+		}
+
+		if ( covered_vnode == NULL ) {
+
+			/* マウントディレクトリのパスが見つからなかった */
+			rc = -EINVAL;
+			goto free_mount_out;
+		}
+
+		/* 対象のvnodeがディレクトリでない場合, 引数異常で復帰 */
+		if ( !( covered_vnode->v_mode & VFS_VNODE_MODE_DIR ) ) {
+		       
+			/* マウントディレクトリへのv-nodeの参照を解放  */
+			vfs_vnode_ref_dec(covered_vnode);
+			rc = -EINVAL;
+			goto free_mount_out;
+		}
+
+		/* システムルートディレクトリでなく, かつ, 
+		 * マウント対象ボリュームのルートになっている場合は,
+		 * 多重ルートマウントエラーで復帰
+		 */
+		if ( ( covered_vnode != g_mnttbl.mt_root ) &&
+		     ( covered_vnode->v_mount->m_root == covered_vnode ) ){
+
+			/* マウントディレクトリへのv-nodeの参照を解放  */
+			vfs_vnode_ref_dec(covered_vnode);
+			rc = -EBUSY;
+			goto free_mount_out;
+		}
+		
+		mount->m_mount_point = covered_vnode;  /* マウントポイントとなるv-nodeを記録 */
+		mnt_args = args;  /* マウントオプションを引き渡す */
+	} else {
+
+		/* ルートマウント時は, マウントポイントをNULLに設定 */
+		mount->m_mount_point = NULL; 
+	}
+
+	root_id = VFS_DEFAULT_ROOT_VNID;  /* デフォルトのroot v-node IDを仮に設定 */
+
+	/*
+	 * ファイルシステム固有のマウント処理を実施
+	 */
+	if ( mount->m_fs->c_calls->fs_mount != NULL ) {
+
+		rc = mount->m_fs->c_calls->fs_mount(&m_fs_super, mount->m_id, 
+		    device, mnt_args, &root_id);
+		if ( rc != 0 ) {
+		
+			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )
+				rc = -EINVAL;  /*  マウントオプション不正  */
+			goto unref_covers_vnode_out;
+		}
+	}
+
+	add_fsmount_to_mnttbl(mount);  /*  マウント情報をマウントテーブルに登録  */
+
+	/*  マウントポイントのvnodeへの参照を獲得  */
+	rc = vfs_vnode_get(mount->m_id, root_id, &mount->m_root);
+	if ( rc != 0 )
+		goto unmount_out;
+
+	/*
+	 * 下位のファイルシステムがルートvnodeを設定しなかった
+	 */
+	if ( mount->m_root == NULL ) {  
+
+		rc = -ENODEV;
+		goto unmount_out;
+	}
+		
+	if ( mount->m_mount_point == NULL ) { 
+
+		/* ルートマウント時は, マウントテーブルのルートディレクトリを更新 */
+		kassert( mnttbl->root_vnode == NULL );	
+		mnttbl->root_vnode = mount->root_vnode;
+	}
+
+	return 0;
+
+unmount_out:  /*  ファイルシステム固有のアンマウント処理を実施  */
+	if ( mount->fs->calls->fs_unmount != NULL )
+		mount->fs->calls->fs_unmount(mount->fs_entity);
+
+unref_covers_vnode_out: /* 通常マウント時はマウントポイントの参照を解放  */
+	remove_fs_mount_from_mnttbl(mnttbl, mount);  /*  マウント情報登録を抹消  */
+
+	if (mount->covers_vnode != NULL)  /* マウントポイントの参照を解放  */
+		_vfs_dec_vnode_ref_count(mount->covers_vnode);  
+
+free_mount_out:  /*  マウント情報を解放  */
+	free_mountfs(mount);
+
+unlock_out:  /*  ファイルシステムレイアウトのロックを解除 */
+	mutex_unlock(&mnttbl->op_mtx);
+
+	return rc;
 }
 
 /**
