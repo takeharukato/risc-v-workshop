@@ -42,13 +42,13 @@ alloc_asid(hal_asid *idp){
 	if ( newid == 0 ) 
 		return  -ENOSPC;  /* 空IDがない */
 
-	--newid;  /* スレッドIDに変換 */
+	--newid;  /* アドレス空間IDに変換 */
 
 	/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
 	bitops_set(newid, &g_asidmap.idmap); 
 
 	if ( idp != NULL )
-		*idp = newid;  /* スレッドIDを返却 */
+		*idp = newid;  /* アドレス空間IDを返却 */
 
 	return 0;
 }
