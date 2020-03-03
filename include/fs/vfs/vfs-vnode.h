@@ -40,7 +40,7 @@ typedef struct _vnode{
 }vnode;
 bool vfs_vnode_ref_inc(struct _vnode *_v);
 bool vfs_vnode_ref_dec(struct _vnode *_v);
-int vfs_vnode_get(vfs_mnt_id _mntid, vfs_vnode_id _vnid, vnode **_outv);
+int vfs_vnode_get(vfs_mnt_id _mntid, vfs_vnode_id _vnid, struct _vnode **_outv);
 int vfs_vnode_put(vfs_mnt_id _mntid, vfs_vnode_id _vnid);
 void vfs_mark_dirty_vnode_nolock(struct _vnode *v);
 void vfs_unmark_dirty_vnode_nolock(struct _vnode *v);

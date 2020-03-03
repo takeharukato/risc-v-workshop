@@ -118,8 +118,6 @@ error_out:
 
 /**
    マウント情報を割り当てる (内部関数)
-   @param[in] fstbl   ファイルシステムテーブル
-   @param[in] mnttbl  マウントテーブル
    @param[in] path    マウントポイントパス文字列
    @param[in] fs_name ファイルシステム名
    @param[out] mntp   マウント情報を指すポインタのアドレス
@@ -192,7 +190,7 @@ free_fsmount(fs_mount *mount) {
 }
 /**
    マウントIDを割り当てる
-   @param[out] m_idp   マウントID返却領域
+   @param[out] idp     マウントID返却領域
    @retval     0       正常終了
    @retval    -ENOSPC  マウントIDに空きがない
  */
@@ -553,12 +551,12 @@ trylock_vnode(vnode *v) {
 
 /**
    mntid, vnidをキーとしてv-nodeを検索する (実処理関数) 
-   @param[in] mnt   マウントポイント情報
-   @param[in] vnid  v-node ID
-   @param[out] vpp  v-nodeを指し示すポインタのアドレス
-   @retval  0       正常終了
-   @return -EINVAL  不正なマウントポイントIDを指定した
-   @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
+   @param[in]  mnt   マウントポイント情報
+   @param[in]  vnid  v-node ID
+   @param[out] outv  v-nodeを指し示すポインタのアドレス
+   @retval  0        正常終了
+   @return -EINVAL   不正なマウントポイントIDを指定した
+   @return -ENOENT   指定されたfsid, vnidに対応するv-nodeが見つからなかった
  */
 static int
 find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
@@ -710,8 +708,8 @@ vfs_vnode_ref_dec(vnode *v){
 /**
    mntid, vnidをキーとしてv-nodeを検索し, 参照を得る
    @param[in] mntid マウントポイントID
-   @param[in] vnid  v-node ID
-   @param[out] vpp v-nodeを指し示すポインタのアドレス
+   @param[in]  vnid v-node ID
+   @param[out] outv v-nodeを指し示すポインタのアドレス
    @retval  0       正常終了
    @return -EINVAL  不正なマウントポイントIDを指定した
    @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった

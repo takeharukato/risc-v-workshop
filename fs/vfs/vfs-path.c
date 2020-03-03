@@ -312,9 +312,9 @@ vfs_new_path(const char *path, char *conv){
 }
 /**
    パスを結合する
-   @param[in]  path1入力パス1
-   @param[in]  path2入力パス2
-   @param[out] conv 変換後のパス
+   @param[in]  path1 入力パス1
+   @param[in]  path2 入力パス2
+   @param[out] conv  変換後のパス
    @retval  0             正常終了
    @retval -ENOENT        パスが含まれていない
    @retval -ENAMETOOLONG  パス名が長すぎる
