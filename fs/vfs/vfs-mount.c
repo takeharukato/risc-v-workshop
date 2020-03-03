@@ -442,6 +442,7 @@ init_vnode(vnode *v){
 	wque_init_wait_queue(&v->v_waiters); /*  v-nodeウエイトキューの初期化               */
 	v->v_id = VFS_INVALID_VNID;          /*  vnidの初期化                               */
 	v->v_mount = NULL;                   /*  マウント情報の初期化                       */
+	v->v_mount_on = NULL;                /*  マウント先ボリュームのマウント情報を初期化 */
 	v->v_mode = VFS_VNODE_MODE_NONE;     /*  ファイルモードの初期化                     */
 	mark_busy_vnode_nolock(v);           /*  使用中に設定する                           */ 
 

@@ -30,7 +30,11 @@ typedef struct _vnode{
 	RB_ENTRY(_vnode)     v_vntbl_ent;  /**< Mountポイント内のv-nodeテーブルへのエントリ */
 	struct _wque_waitqueue v_waiters;  /**< v-nodeを待ち合わせているスレッド  */
 	vfs_vnode_id                v_id;  /**< v-node ID                         */
-	struct _fs_mount        *v_mount;  /**< Mount 情報                        */
+	struct _fs_mount        *v_mount;  /**< 自v-nodeを格納しているMount 情報  */
+	struct _fs_mount     *v_mount_on;  /**< 他のボリュームをマウントしている場合は, 
+					    * マウント先ボリュームのマウント情報
+					    * (マウントポイントでない場合は, NULL) 
+					    */
 	vfs_fs_mode               v_mode;  /**< ファイル種別/アクセス フラグ      */
 	vfs_vnode_flags          v_flags;  /**< v-nodeのステータスフラグ          */
 }vnode;
