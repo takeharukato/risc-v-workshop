@@ -80,6 +80,94 @@ _vnode_cmp(struct _vnode *key, struct _vnode *ent){
 }
 
 /**
+   v-nodeを使用中にする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+mark_busy_vnode_nolock(vnode *v) {
+
+	v->v_flags |= VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
+}
+
+/**
+   v-nodeの使用中フラグを落とす (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+unmark_busy_vnode_nolock(vnode *v) {
+
+	v->v_flags &= ~VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
+	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
+		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
+}
+
+/**
+   v-nodeをロード済みにする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+mark_valid_vnode_nolock(vnode *v) {
+
+	v->v_flags |= VFS_VFLAGS_VALID;      /*  ロード済みに設定する */	
+}
+
+/**
+   v-nodeのロード済みフラグを落とす (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+unmark_valid_vnode_nolock(vnode *v) {
+
+	v->v_flags &= ~VFS_VFLAGS_VALID;      /*  有効ビットを落とす */	
+}
+
+/**
+   有効なv-nodeであることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+   @retval    真 有効なv-nodeである
+   @retval    偽 無効なv-nodeである
+ */
+static bool
+is_valid_vnode_nolock(vnode *v) {
+	
+	return ( ( v->v_flags & ( VFS_VFLAGS_VALID | VFS_VFLAGS_DIRTY ) ) != 0 );  
+}
+
+/**
+   v-nodeが使用中であることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+   @retval    真 v-nodeが使用中である
+   @retval    偽 v-nodeが使用中でない
+ */
+static bool
+is_busy_vnode_nolock(vnode *v) {
+	
+	return ( ( v->v_flags & VFS_VFLAGS_BUSY ) != 0 );  
+}
+
+/**
+   v-nodeの削除フラグをセットする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+mark_delete_vnode_nolock(vnode *v) {
+
+	v->v_flags |= VFS_VFLAGS_DELETE;      /*  Close on Execに設定する */	
+}
+
+/**
+   削除対象v-nodeであることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+   @retval    真 削除対象v-nodeである
+   @retval    偽 削除対象v-nodeでない
+ */
+static bool
+is_deleted_vnode_nolock(vnode *v) {
+	
+	return ( ( v->v_flags & VFS_VFLAGS_DELETE ) != 0 );  
+}
+
+/**
    マウント情報の初期化 (内部関数)
    @param[in] mount 初期化するマウント情報
    @param[in] path  マウントポイントパス
@@ -288,13 +376,87 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 }
 
 /**
+   マウントポイント中のv-nodeを書き出してロックする (内部関数)
+   @param[in] mount マウント情報
+   @retval  0     正常終了
+   @retval -EBUSY 使用中のv-nodeがマウントテーブル中に残留している
+   @pre    マウントテーブルロックを獲得して呼び出すこと
+ */
+static __unused int
+sync_and_lock_vnodes(fs_mount *mount){
+	int           rc;
+	vnode         *v;
+
+	/* 他のスレッドがファイル操作を行わないようにv-nodeテーブルロックを獲得
+	 */
+	mutex_lock(&mount->m_mtx);    /*  v-nodeテーブルをロック     */
+
+	/*
+	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+		
+		if ( ( is_busy_vnode_nolock(v) ) || 
+		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) != 0 ) ) || 
+		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 2 ) ) ) {
+
+			     /* root v-node でない場合で参照中の場合または
+			      * root v-node の場合で参照数が2より大きい場合は,
+			      * エラー復帰する
+			      * 
+			      * 上記のvfs_path_to_vnodeで+1, マウント時に+1されているので
+			      * この時点でroot v-nodeの参照カウンタは2でなければ
+			      * アンマウントできない
+			      */
+			     rc = -EBUSY;
+			     goto unlock_out;
+		}
+	}
+
+	/*
+	 * ボリューム中の全vnodeの情報を書き出し後ロックする 
+	 * (vnodeの解放のためにvnodeのロックが必要となるため)
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+
+		kassert( v->v_mount != NULL);
+		kassert( v->v_mount->m_fs != NULL);
+		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+		if ( v != mount->m_root ) {
+
+			/*
+			 * v-nodeを書き戻す
+			 */
+			if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
+				rc = v->v_mount->m_fs->c_calls->fs_sync(v->v_mount->m_fs_super);
+
+			mark_busy_vnode_nolock(v);  /* v-nodeをロックする  */
+		}
+	}
+	
+	/* v-nodeの追加を避けるためにv-nodeテーブルロック中でフラグを更新し
+	 * アンマウント処理中に遷移
+	 */
+	mount->m_mount_flags |= VFS_MNT_UNMOUNTING; 
+	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
+
+	return rc;
+}
+
+/**
    ロックをとらずにマウントポイントの参照カウンタをデクリメントする
    @param[in] mount  マウント情報
    @retval    真 マウントポイントの最終参照者だった
    @retval    偽 マウントポイントの最終参照者でない
  */
 static bool
-vfs_fs_mount_ref_dec_nolock(fs_mount *mount){
+dec_fs_mount_ref_nolock(fs_mount *mount){
 	bool res;
 
 	/*  マウントポイントの参照カウンタをさげる  */
@@ -345,96 +507,8 @@ del_vnode_from_mount_nolock(vnode *v){
 	res_v = RB_REMOVE(_vnode_tree, &v->v_mount->m_head, v); 
 	kassert( res_v != NULL );  /* v-nodeの多重解放 */
 	
-	vfs_fs_mount_ref_dec_nolock(v->v_mount);  /* v-nodeからの参照を減算 */
+	dec_fs_mount_ref_nolock(v->v_mount);  /* v-nodeからの参照を減算 */
 	return ;
-}
-
-/**
-   v-nodeを使用中にする (内部関数)
-   @param[in] v 操作対象のv-node
- */
-static void
-mark_busy_vnode_nolock(vnode *v) {
-
-	v->v_flags |= VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
-}
-
-/**
-   v-nodeの使用中フラグを落とす (内部関数)
-   @param[in] v 操作対象のv-node
- */
-static void
-unmark_busy_vnode_nolock(vnode *v) {
-
-	v->v_flags &= ~VFS_VFLAGS_BUSY;      /*  使用中に設定する */	
-	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
-		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
-}
-
-/**
-   v-nodeをロード済みにする (内部関数)
-   @param[in] v 操作対象のv-node
- */
-static void
-mark_valid_vnode_nolock(vnode *v) {
-
-	v->v_flags |= VFS_VFLAGS_VALID;      /*  ロード済みに設定する */	
-}
-
-/**
-   v-nodeのロード済みフラグを落とす (内部関数)
-   @param[in] v 操作対象のv-node
- */
-static void
-unmark_valid_vnode_nolock(vnode *v) {
-
-	v->v_flags &= ~VFS_VFLAGS_VALID;      /*  有効ビットを落とす */	
-}
-
-/**
-   有効なv-nodeであることを確認する (内部関数)
-   @param[in] v 操作対象のv-node
-   @retval    真 有効なv-nodeである
-   @retval    偽 無効なv-nodeである
- */
-static bool
-is_valid_vnode_nolock(vnode *v) {
-	
-	return ( ( v->v_flags & ( VFS_VFLAGS_VALID | VFS_VFLAGS_DIRTY ) ) != 0 );  
-}
-
-/**
-   v-nodeが使用中であることを確認する (内部関数)
-   @param[in] v 操作対象のv-node
-   @retval    真 v-nodeが使用中である
-   @retval    偽 v-nodeが使用中でない
- */
-static bool
-is_busy_vnode_nolock(vnode *v) {
-	
-	return ( ( v->v_flags & VFS_VFLAGS_BUSY ) != 0 );  
-}
-
-/**
-   v-nodeの削除フラグをセットする (内部関数)
-   @param[in] v 操作対象のv-node
- */
-static void
-mark_delete_vnode_nolock(vnode *v) {
-
-	v->v_flags |= VFS_VFLAGS_DELETE;      /*  Close on Execに設定する */	
-}
-
-/**
-   削除対象v-nodeであることを確認する (内部関数)
-   @param[in] v 操作対象のv-node
-   @retval    真 削除対象v-nodeである
-   @retval    偽 削除対象v-nodeでない
- */
-static bool
-is_deleted_vnode_nolock(vnode *v) {
-	
-	return ( ( v->v_flags & VFS_VFLAGS_DELETE ) != 0 );  
 }
 
 /**
