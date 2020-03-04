@@ -376,80 +376,6 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 }
 
 /**
-   マウントポイント中のv-nodeを書き出してロックする (内部関数)
-   @param[in] mount マウント情報
-   @retval  0     正常終了
-   @retval -EBUSY 使用中のv-nodeがマウントテーブル中に残留している
-   @pre    マウントテーブルロックを獲得して呼び出すこと
- */
-static __unused int
-sync_and_lock_vnodes(fs_mount *mount){
-	int           rc;
-	vnode         *v;
-
-	/* 他のスレッドがファイル操作を行わないようにv-nodeテーブルロックを獲得
-	 */
-	mutex_lock(&mount->m_mtx);    /*  v-nodeテーブルをロック     */
-
-	/*
-	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
-	 */
-	RB_FOREACH(v, _vnode_tree, &mount->m_head){
-		
-		if ( ( is_busy_vnode_nolock(v) ) || 
-		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) != 0 ) ) || 
-		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 2 ) ) ) {
-
-			     /* root v-node でない場合で参照中の場合または
-			      * root v-node の場合で参照数が2より大きい場合は,
-			      * エラー復帰する
-			      * 
-			      * 上記のvfs_path_to_vnodeで+1, マウント時に+1されているので
-			      * この時点でroot v-nodeの参照カウンタは2でなければ
-			      * アンマウントできない
-			      */
-			     rc = -EBUSY;
-			     goto unlock_out;
-		}
-	}
-
-	/*
-	 * ボリューム中の全vnodeの情報を書き出し後ロックする 
-	 * (vnodeの解放のためにvnodeのロックが必要となるため)
-	 */
-	RB_FOREACH(v, _vnode_tree, &mount->m_head){
-
-		kassert( v->v_mount != NULL);
-		kassert( v->v_mount->m_fs != NULL);
-		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
-
-		if ( v != mount->m_root ) {
-
-			/*
-			 * v-nodeを書き戻す
-			 */
-			if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
-				rc = v->v_mount->m_fs->c_calls->fs_sync(v->v_mount->m_fs_super);
-
-			mark_busy_vnode_nolock(v);  /* v-nodeをロックする  */
-		}
-	}
-	
-	/* v-nodeの追加を避けるためにv-nodeテーブルロック中でフラグを更新し
-	 * アンマウント処理中に遷移
-	 */
-	mount->m_mount_flags |= VFS_MNT_UNMOUNTING; 
-	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
-
-	return 0;
-
-unlock_out:
-	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
-
-	return rc;
-}
-
-/**
    ロックをとらずにマウントポイントの参照カウンタをデクリメントする
    @param[in] mount  マウント情報
    @retval    真 マウントポイントの最終参照者だった
@@ -509,6 +435,37 @@ del_vnode_from_mount_nolock(vnode *v){
 	
 	dec_fs_mount_ref_nolock(v->v_mount);  /* v-nodeからの参照を減算 */
 	return ;
+}
+
+/**
+   マウントポイント情報への参照を得る(実処理関数)
+   @param[in]  mntid   マウントID
+   @param[out] mountp  マウントポイント情報を指し示すポインタのアドレス
+   @retval    0      正常終了
+   @retval   -ENOENT マウントIDに対応するマウントポイント情報が見つからなかった
+ */
+int
+get_fs_mount_nolock(vfs_mnt_id mntid, fs_mount **mountp) {
+	int           rc;
+	bool         res;
+	fs_mount    *mnt;
+	fs_mount   m_key;
+
+	m_key.m_id = mntid;  /* 検索対象マウントID */
+
+	/* マウント情報を検索 */
+	mnt = RB_FIND(_fs_mount_tree, &g_mnttbl.mt_head, &m_key); 
+	if ( mnt == NULL ) 
+		return -ENOENT; /* マウントポイント情報が見つからなかった */
+
+	if ( mountp != NULL ) {
+
+		res = vfs_fs_mount_ref_inc(mnt);  /* 操作用に参照を加算 */
+		kassert( res );
+		*mountp = mnt;  /* マウントポイントを返却 */
+	}
+
+	return 0;
 }
 
 /**
@@ -740,6 +697,163 @@ dec_vnode_ref_nolock(vnode *v){
 		release_vnode(v); /* v-nodeを解放する */		
 
 	return res;
+}
+
+/**
+   マウントポイント中のv-nodeを書き出してロックする (内部関数)
+   @param[in] mount マウント情報
+   @retval  0     正常終了
+   @retval -EBUSY 使用中のv-nodeがマウントテーブル中に残留している
+   @pre    マウントテーブルロックを獲得して呼び出すこと
+ */
+static int
+sync_and_lock_vnodes(fs_mount *mount){
+	int           rc;
+	vnode         *v;
+
+	/* 他のスレッドがファイル操作を行わないようにv-nodeテーブルロックを獲得
+	 */
+	mutex_lock(&mount->m_mtx);    /*  v-nodeテーブルをロック     */
+
+	/*
+	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+		
+		if ( ( is_busy_vnode_nolock(v) ) || 
+		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) != 0 ) ) || 
+		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 2 ) ) ) {
+
+			     /* root v-node でない場合で参照中の場合または
+			      * root v-node の場合で参照数が2より大きい場合は,
+			      * エラー復帰する
+			      * 
+			      * 上記のvfs_path_to_vnodeで+1, マウント時に+1されているので
+			      * この時点でroot v-nodeの参照カウンタは2でなければ
+			      * アンマウントできない
+			      */
+			     rc = -EBUSY;
+			     goto unlock_out;
+		}
+	}
+
+	/*
+	 * ボリューム中の全vnodeの情報を書き出し後ロックする 
+	 * (vnodeの解放のためにvnodeのロックが必要となるため)
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+
+		kassert( v->v_mount != NULL);
+		kassert( v->v_mount->m_fs != NULL);
+		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+		if ( v != mount->m_root ) {
+
+			/*
+			 * v-nodeを書き戻す
+			 */
+			if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
+				rc = v->v_mount->m_fs->c_calls->fs_sync(v->v_mount->m_fs_super);
+
+			mark_busy_vnode_nolock(v);  /* v-nodeをロックする  */
+		}
+	}
+	
+	/* v-nodeの追加を避けるためにv-nodeテーブルロック中でフラグを更新し
+	 * アンマウント処理中に遷移
+	 */
+	mount->m_mount_flags |= VFS_MNT_UNMOUNTING; 
+	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
+
+	return rc;
+}
+
+/**
+   ファイルシステムのアンマウント (内部関数)
+   @param[in] root_vnode アンマウントするボリュームのroot v-node
+   @retval  0      正常終了
+   @retval -ENOENT 指定されたパスが見つからなかった
+   @retval -EINVAL マウントポイントではないパスを指定した
+   @retval -EBUSY  ボリューム内のファイルが使用中
+ */
+static int
+unmount_common(vnode *root_vnode){
+	fs_mount  *mount;
+	vnode         *v;
+	int           rc;
+
+	mutex_lock(&g_mnttbl.mt_mtx);  /* マウントテーブルをロック  */
+
+	rc = get_fs_mount_nolock(root_vnode->v_mount->m_id, 
+				 &mount); /* マウントポイント情報の参照獲得 */
+	if ( rc != 0 ) {
+
+		rc = -ENOENT;   /* マウントポイント情報の参照が得られなかった */
+		goto unlock_out;
+	}
+
+	if ( mount == NULL ) {  /* マウントポイントが見つからなかった */
+
+		kprintf(KERN_ERR "vfs_unmount: mount id %u not on root v-node @%p\n", 
+		    (unsigned)root_vnode->fsid, root_vnode);
+		rc = -ENOENT;   /* マウントポイントの参照が得られなかった */
+		goto unlock_out;
+	}
+	kassert( mount->m_fs != NULL );
+	kassert( is_valid_fs_calls( mount->m_fs->c_calls ) );
+
+	/* 対象ボリュームのルートv-nodeと指定されたv-nodeが
+	 *  異なる場合は, 引数異常で復帰する
+	 */
+	if ( mount->m_root != root_vnode ) { 
+
+		rc = -EINVAL;
+		goto unlock_out;
+	}
+
+	/* ボリューム中のv-nodeを書き出し, 
+	 * v-nodeをロックする
+	 */
+	sync_and_lock_vnodes(mount);  
+
+	/*
+	 * ファイルシステム固有なアンマウント処理を実施
+	 */
+	if ( mount->fs->calls->fs_unmount != NULL )
+		mount->fs->calls->fs_unmount(mount->fs_entity); 
+
+	/*
+	 * root v-node以外のv-nodeを解放
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+
+		if ( v == mount->m_root )
+			continue; /* root v-nodeをスキップする */
+
+		kassert( is_busy_vnode_nolock(v) );  /* sync_and_lock_vnodesでロック済み */
+		kassert( refcnt_read(&v->v_refs) == 0 ); /* 解放可能なはず */
+		vfs_vnode_ref_dec(v);  /* 参照を解放 ( v-nodeを解放 ) */
+	}
+
+
+	/*
+	 * マウント情報の登録を抹消
+	 */
+	dec_fs_mount_ref_nolock(mount);
+	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+
+	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+	return rc;
 }
 
 /*
@@ -1317,6 +1431,44 @@ free_mount_out:  /*  マウント情報を解放  */
 unlock_out: 
 	mutex_unlock(&g_mnttbl.mt_mtx);
 
+	return rc;
+}
+/** ファイルシステムのアンマウント
+    @param[in] ioctxp   I/Oコンテキスト
+    @param[in] path     マウント先のパス名
+    @retval  0      正常終了
+    @retval -ENOENT 指定されたパスが見つからなかった
+    @retval -EINVAL マウントポイントではないパスを指定した
+    @retval -EBUSY  ボリューム内のファイルが使用中
+ */
+int
+vfs_unmount(vfs_ioctx *ioctxp, char *path){
+	vnode         *v;
+	int           rc;
+
+	/*
+	 * 指示されたパスのvnodeを獲得する
+	 */
+	rc = vfs_path_to_vnode(ioctxp, path, &v);
+	if ( rc != 0 ) {
+
+		rc = -ENOENT;
+		goto out;
+	}
+
+	/*
+	 * ボリュームをアンマウントする
+	 */
+	rc = unmount_common(v);
+	if ( rc != 0 ) 
+		goto unref_out;
+
+	return 0;
+
+unref_out:
+	vfs_vnode_ref_dec(v);   /* vfs_path_to_vnodeで獲得した参照を解放  */
+
+out:
 	return rc;
 }
 
