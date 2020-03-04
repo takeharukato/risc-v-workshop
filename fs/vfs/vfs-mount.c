@@ -371,6 +371,8 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 	cur_mnt = RB_REMOVE(_fs_mount_tree, &g_mnttbl.mt_head, mount); 
 	kassert( cur_mnt != NULL );  /* マウント情報の多重解放 */
 
+	vfs_vnode_ref_dec(mount->m_root);  /* root v-nodeの参照を解放 ( v-nodeを解放 ) */
+	vfs_vnode_ref_dec(mount->m_mount_point); /* マウントポイントの参照を解放  */
 	free_mntid_nolock(mount->m_id);          /* マウントIDを解放      */
 	mount->m_id = VFS_INVALID_MNTID;         /* 無効マウントIDを設定  */
 }
@@ -446,7 +448,6 @@ del_vnode_from_mount_nolock(vnode *v){
  */
 int
 get_fs_mount_nolock(vfs_mnt_id mntid, fs_mount **mountp) {
-	int           rc;
 	bool         res;
 	fs_mount    *mnt;
 	fs_mount   m_key;
@@ -721,15 +722,16 @@ sync_and_lock_vnodes(fs_mount *mount){
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 		
 		if ( ( is_busy_vnode_nolock(v) ) || 
-		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) != 0 ) ) || 
-		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 2 ) ) ) {
+		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) > 1 ) ) || 
+		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 3 ) ) ) {
 
 			     /* root v-node でない場合で参照中の場合または
-			      * root v-node の場合で参照数が2より大きい場合は,
+			      * root v-node の場合で参照数が3より大きい場合は,
 			      * エラー復帰する
 			      * 
-			      * 上記のvfs_path_to_vnodeで+1, マウント時に+1されているので
-			      * この時点でroot v-nodeの参照カウンタは2でなければ
+			      * v-nodeテーブルからの参照で+1, 上記の
+			      * vfs_path_to_vnodeで+1, マウント時に+1されているので
+			      * この時点でroot v-nodeの参照カウンタは3でなければ
 			      * アンマウントできない
 			      */
 			     rc = -EBUSY;
@@ -774,6 +776,43 @@ unlock_out:
 }
 
 /**
+   マウントポイント情報中のv-nodeを解放する (内部関数)
+   @param[in] mount マウントポイント情報
+ */
+static void
+free_vnodes_in_fs_mount(fs_mount *mount){
+	vnode         *v;
+
+	/* アンマウント処理中であることを確認 */
+	kassert( mount->m_mount_flags & VFS_MNT_UNMOUNTING );
+
+	/* 他のスレッドがファイル操作を行わないようにv-nodeテーブルロックを獲得
+	 */
+	mutex_lock(&mount->m_mtx);    /*  v-nodeテーブルをロック     */
+
+	/*
+	 * ボリューム中の全v-nodeを解放する
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+
+		kassert( v->v_mount != NULL);
+		kassert( v->v_mount->m_fs != NULL);
+		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+		if ( v != mount->m_root ) { /* root v-nodeを除いて解放する */
+			
+			kassert( is_busy_vnode_nolock(v) );
+			kassert( refcnt_read(&v->v_refs) == 1 ); /* 解放可能なはず */
+			vfs_vnode_ref_dec(v);  /* v-nodeの参照を解放 ( v-nodeを解放 ) */
+		}
+	}
+	
+	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
+
+	return ;
+}
+
+/**
    ファイルシステムのアンマウント (内部関数)
    @param[in] root_vnode アンマウントするボリュームのroot v-node
    @retval  0      正常終了
@@ -784,7 +823,6 @@ unlock_out:
 static int
 unmount_common(vnode *root_vnode){
 	fs_mount  *mount;
-	vnode         *v;
 	int           rc;
 
 	mutex_lock(&g_mnttbl.mt_mtx);  /* マウントテーブルをロック  */
@@ -800,7 +838,7 @@ unmount_common(vnode *root_vnode){
 	if ( mount == NULL ) {  /* マウントポイントが見つからなかった */
 
 		kprintf(KERN_ERR "vfs_unmount: mount id %u not on root v-node @%p\n", 
-		    (unsigned)root_vnode->fsid, root_vnode);
+		    (unsigned)root_vnode->v_mount->m_id, root_vnode);
 		rc = -ENOENT;   /* マウントポイントの参照が得られなかった */
 		goto unlock_out;
 	}
@@ -824,28 +862,19 @@ unmount_common(vnode *root_vnode){
 	/*
 	 * ファイルシステム固有なアンマウント処理を実施
 	 */
-	if ( mount->fs->calls->fs_unmount != NULL )
-		mount->fs->calls->fs_unmount(mount->fs_entity); 
+	if ( mount->m_fs->c_calls->fs_unmount != NULL )
+		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super); 
 
 	/*
 	 * root v-node以外のv-nodeを解放
 	 */
-	RB_FOREACH(v, _vnode_tree, &mount->m_head){
-
-		if ( v == mount->m_root )
-			continue; /* root v-nodeをスキップする */
-
-		kassert( is_busy_vnode_nolock(v) );  /* sync_and_lock_vnodesでロック済み */
-		kassert( refcnt_read(&v->v_refs) == 0 ); /* 解放可能なはず */
-		vfs_vnode_ref_dec(v);  /* 参照を解放 ( v-nodeを解放 ) */
-	}
-
+	free_vnodes_in_fs_mount(mount);
 
 	/*
 	 * マウント情報の登録を抹消
 	 */
 	dec_fs_mount_ref_nolock(mount);
-	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
 
 	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
 
