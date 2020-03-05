@@ -834,6 +834,49 @@ free_vnodes_in_fs_mount(fs_mount *mount){
 
 	return ;
 }
+/**
+   mntid, vnidをキーとしてv-nodeを検索し, 参照を得る(内部関数)
+   @param[in]  mnt  マウントポイント情報
+   @param[in]  vnid v-node ID
+   @param[out] outv v-nodeを指し示すポインタのアドレス
+   @retval  0       正常終了
+   @retval -EINVAL  不正なマウントポイントIDを指定した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ディスクI-node読み取りに失敗した
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY   アンマウント中のボリュームだった
+   @note   vfs_mountからマウントテーブルのロックを獲得した状態で呼び出すget_vnode関数
+ */
+static int
+get_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
+	int             rc;
+	bool           res;
+	vnode           *v;
+
+	for( ; ; ) {
+
+		rc = find_vnode(mnt, vnid, &v);  /* v-nodeを検索する */
+		if ( rc != 0 )
+			goto error_out;
+
+		/* 
+		 * 見つかったv-nodeを返却する
+		 */
+		if ( outv != NULL ) {
+
+			res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
+			if ( !res )
+				continue;  /* v-node破棄に伴い, v-nodeを再検索する */
+			*outv = v;   /* v-nodeを返却 */
+			break;
+		}
+	}
+
+	return 0;
+
+error_out:
+	return rc;
+}
 
 /**
    ファイルシステムのアンマウント (内部関数)
@@ -962,7 +1005,6 @@ vfs_vnode_ref_dec(vnode *v){
 int
 vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
-	bool           res;
 	fs_mount      *mnt;
 	vnode           *v;
 
@@ -973,24 +1015,10 @@ vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 		goto error_out;
 	}
 
-	for( ; ; ) {
+	rc = get_vnode(mnt, vnid, &v);  /* v-nodeの参照を得る */
+	if ( rc != 0 )
+		goto put_mount_out;  /* v-nodeが見つからなかった */
 
-		rc = find_vnode(mnt, vnid, &v);  /* v-nodeを検索する */
-		if ( rc != 0 )
-			goto put_mount_out;
-
-		/* 
-		 * 見つかったv-nodeを返却する
-		 */
-		if ( outv != NULL ) {
-
-			res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
-			if ( !res )
-				continue;  /* v-node破棄に伴い, v-nodeを再検索する */
-			*outv = v;   /* v-nodeを返却 */
-			break;
-		}
-	}
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
 	return 0;
@@ -1457,18 +1485,13 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 		}
 	}
 
-	add_fsmount_to_mnttbl_nolock(mount);  /*  マウント情報をマウントテーブルに登録  */
-	mutex_unlock(&g_mnttbl.mt_mtx);
-
-	/*  マウントポイントのv-nodeへの参照を獲得  */
-	rc = vfs_vnode_get(mount->m_id, root_id, &mount->m_root);
-	if ( rc != 0 ) {
-
-		mutex_lock(&g_mnttbl.mt_mtx);
+	/*  
+	 * マウントポイントのv-nodeへの参照を獲得
+	 */
+	rc = get_vnode(mount, root_id, &mount->m_root);
+	if ( rc != 0 ) 
 		goto unmount_out;
-	}
 
-	mutex_lock(&g_mnttbl.mt_mtx);
 	/*
 	 * 下位のファイルシステムがルートv-nodeを設定しなかった
 	 */
@@ -1485,6 +1508,8 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 		g_mnttbl.mt_root = mount->m_root;
 	}
 
+	add_fsmount_to_mnttbl_nolock(mount);  /*  マウント情報をマウントテーブルに登録  */
+
 	mutex_unlock(&g_mnttbl.mt_mtx);
 
 	return 0;
@@ -1494,9 +1519,9 @@ unmount_out:  /*  ファイルシステム固有のアンマウント処理を�
 		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
 
 unref_covers_vnode_out: /* 通常マウント時はマウントポイントの参照を解放  */
-	remove_fs_mount_from_mnttbl_nolock(mount);   /*  マウント情報登録を抹消  */
 	if ( mount->m_mount_point != NULL)  /* マウントポイントの参照を解放  */
 		dec_vnode_ref_nolock(covered_vnode);
+
 free_mount_out:  /*  マウント情報を解放  */
 	free_fsmount(mount);
 
