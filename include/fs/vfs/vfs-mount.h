@@ -61,12 +61,13 @@ typedef struct _mount_table{
 	.mt_head  = RB_INITIALIZER(&((_mnttbl)->mt_head)),	\
 	.mt_last_id = VFS_INVALID_MNTID,	                \
 }
-int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
-void vfs_fs_mount_put(fs_mount *_mount);
 bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
 bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
-int vfs_mount(struct _vfs_ioctx *_ioctxp, char *path, const char *device, 
-    const char *fs_name, void *args);
+int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
+void vfs_fs_mount_put(fs_mount *_mount);
+int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, const char *_device, 
+    const char *_fs_name, void *_args);
+int vfs_unmount(struct _vfs_ioctx *_ioctxp, char *_path);
 void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */
