@@ -78,8 +78,9 @@ _vnode_cmp(struct _vnode *key, struct _vnode *ent){
 	
 	return 0;
 }
+
 /**
-   v-nodeのフラグ値を設定する (内部関数)
+   v-node mutexを獲得せずにv-nodeのフラグ値を設定する (内部関数)
    @param[in] v     操作対象のv-node
    @param[in] flags 設定するフラグ値
  */
@@ -92,16 +93,73 @@ mark_vnode_flag_nolock(vnode *v, vfs_vnode_flags flags){
 }
 
 /**
-   v-nodeのフラグを落とす (内部関数)
+   v-node mutexを獲得せずにv-nodeのフラグをクリアする (内部関数)
    @param[in] v 操作対象のv-node
    @param[in] flags 設定するフラグ値
  */
 static void
 unmark_vnode_flag_nolock(vnode *v, vfs_vnode_flags flags) {
 
-	v->v_flags &= ~flags;      /*  フラグを落とす */	
+	v->v_flags &= ~flags;      /*  フラグをクリアする */	
 	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
 		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
+}
+
+/**
+   v-nodeのフラグ値を設定する (内部関数)
+   @param[in] v     操作対象のv-node
+   @param[in] flags 設定するフラグ値
+   @retval    真    フラグを設定できた
+   @retval    偽    フラグを設定できなかった
+   @note LO: v-nodeロック, ウエイトキューロックの順にロックを獲得する
+ */
+static bool
+mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
+	bool res;
+
+	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
+	if ( !res ) 
+		return false; /* すでに削除中のv-nodeだった */
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	mark_vnode_flag_nolock(v, flags);  /* フラグを設定 */
+
+	v->v_flags |= flags;      /*  フラグをセットする */	
+	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
+		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
+
+	return !res;      /* 最終参照ではなければフラグをセットできている  */
+}
+
+/**
+   v-nodeのフラグをクリアする (内部関数)
+   @param[in] v 操作対象のv-node
+   @param[in] flags クリアするフラグ値
+   @retval    真    フラグを設定できた
+   @retval    偽    フラグを設定できなかった
+ */
+static bool
+unmark_vnode_flag(vnode *v, vfs_vnode_flags flags) {
+	bool res;
+
+	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
+	if ( !res ) 
+		return false; /* すでに削除中のv-nodeだった */
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	unmark_vnode_flag_nolock(v, flags);  /* フラグをクリアする */
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
+
+	return !res;      /* 最終参照ではなければフラグをセットできている  */
 }
 
 /**
@@ -457,11 +515,8 @@ alloc_new_vnode(fs_mount *mnt){
 
 	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
 	    (void **)&new_vnode);
-	if ( rc != 0 ) {
-
-		rc = -ENOMEM;
+	if ( rc != 0 ) 
 		goto error_out;  /* メモリ不足 */
-	}
 
 	init_vnode(new_vnode);   /* v-nodeを初期化  */
 
@@ -515,18 +570,17 @@ release_vnode(vnode *v){
    @param[in] v 操作対象のv-node
    @retval  0      正常終了
    @retval -EBUSY  他スレッドがロックを獲得中
+   @pre マウントポイントのロックを獲得してから呼び出す
  */
 static int
 trylock_vnode(vnode *v) {
+	bool res;
 
 	if ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) )
-		return -EBUSY;
+		return -EBUSY; /* 他スレッドがロックを獲得中 */
 
-	mutex_lock(&v->v_mtx);
-
-	mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY);  /*  使用中に設定する */	
-
-	mutex_unlock(&v->v_mtx);
+	res = mark_vnode_flag(v, VFS_VFLAGS_BUSY);  /*  使用中に設定する */	
+	kassert( res );  /* trylock_vnode呼び出し前に参照を得ているのでフラグを設定可能 */
 
 	return 0;
 }
@@ -537,12 +591,17 @@ trylock_vnode(vnode *v) {
    @param[in]  vnid  v-node ID
    @param[out] outv  v-nodeを指し示すポインタのアドレス
    @retval  0        正常終了
-   @return -EINVAL   不正なマウントポイントIDを指定した
-   @return -ENOENT   指定されたfsid, vnidに対応するv-nodeが見つからなかった
+   @retval -EINVAL   不正なマウントポイントIDを指定した
+   @retval -ENOMEM   メモリ不足
+   @retval -ENOENT   ディスクI-node読み取りに失敗した
+   @retval -EINTR    v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY    アンマウント中のボリュームだった
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 static int
 find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
+	bool           res;
 	vnode           *v;
 	vnode        v_key;
 	wque_reason reason;
@@ -564,7 +623,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			v = alloc_new_vnode(mnt);
 			if ( v == NULL ) {
 
-				rc = -ENOMEM;
+				rc = -ENOMEM;  /* メモリ不足 */
 				goto unlock_out;
 			}
 
@@ -574,23 +633,24 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			rc = v->v_mount->m_fs->c_calls->fs_getvnode(v->v_mount->m_fs_super, 
 								    vnid, &v->v_fs_vnode);
 
-			if ( rc != 0 )
-				goto unlock_out;  /* ディスクI-nodeの読み取りに失敗した */
+			if ( ( rc != 0 ) || ( v->v_fs_vnode == NULL ) ) {
 
-			if ( v->v_fs_vnode == NULL ) {
-		
-				/*  下位のファイルシステムがv-nodeを割り当てられなかった */
-				rc = -ENOENT;
-				goto unlock_out;
+				rc = -ENOENT;  /* ディスクI-nodeの読み取りに失敗した */
+				goto unlock_out; 
 			}
 
 			v->v_id = vnid;      /* v-node IDを設定 */
 
 			/* v-nodeをロード済みに設定する */
-			mark_vnode_flag_nolock(v, VFS_VFLAGS_VALID); 
+			res = mark_vnode_flag(v, VFS_VFLAGS_VALID);
+			kassert( res );
+
 			rc = add_vnode_to_mount_nolock(v->v_mount, v); /* v-nodeを登録する */
 
-			unmark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY); /* v-nodeのロックを解除 */
+			/* v-nodeのロックを解除 */
+			res = unmark_vnode_flag(v, VFS_VFLAGS_BUSY);
+			kassert( res );
+
 			if ( rc != 0 )
 				goto unlock_out;  /* v-nodeを登録できなかった */
 		}
@@ -614,9 +674,9 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 
 		/*  v-nodeの更新完了を待ち合わせる */
 		reason = wque_wait_on_event_with_mutex(&v->v_waiters, &mnt->m_mtx);
-		if ( reason == WQUE_DESTROYED ) {
+		if ( reason == WQUE_DELIVEV ) {
 
-			rc = -ENOENT;   /* v-nodeが見つからなかった */
+			rc = -EINTR;   /* イベントを受信した */
 			goto unlock_out;
 		}
 
@@ -636,6 +696,7 @@ unlock_out:
    @param[in] v  v-node情報
    @retval    真 v-nodeの最終参照者だった
    @retval    偽 v-nodeの最終参照者でない
+   @pre マウントポイントロックを獲得してから呼び出すこと
  */
 static bool
 dec_vnode_ref_nolock(vnode *v){
@@ -657,6 +718,7 @@ dec_vnode_ref_nolock(vnode *v){
    @retval  0     正常終了
    @retval -EBUSY 使用中のv-nodeがマウントテーブル中に残留している
    @pre    マウントテーブルロックを獲得して呼び出すこと
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 static int
 sync_and_lock_vnodes(fs_mount *mount){
@@ -665,13 +727,14 @@ sync_and_lock_vnodes(fs_mount *mount){
 
 	/* 他のスレッドがファイル操作を行わないようにv-nodeテーブルロックを獲得
 	 */
-	mutex_lock(&mount->m_mtx);    /*  v-nodeテーブルをロック     */
+	mutex_lock(&mount->m_mtx);    /*  マウントポイントロックを獲得     */
 
 	/*
 	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
-		
+
+		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
 		if ( ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) ) || 
 		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) > 1 ) ) || 
 		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 3 ) ) ) {
@@ -684,10 +747,12 @@ sync_and_lock_vnodes(fs_mount *mount){
 			      * vfs_path_to_vnodeで+1, マウント時に+1されているので
 			      * この時点でroot v-nodeの参照カウンタは3でなければ
 			      * アンマウントできない
-			      */
+			      */			
 			     rc = -EBUSY;
+			     mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 			     goto unlock_out;
 		}
+		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 
 	/*
@@ -696,6 +761,7 @@ sync_and_lock_vnodes(fs_mount *mount){
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 
+		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
 		kassert( v->v_mount != NULL);
 		kassert( v->v_mount->m_fs != NULL);
 		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
@@ -708,9 +774,10 @@ sync_and_lock_vnodes(fs_mount *mount){
 			if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
 				rc = v->v_mount->m_fs->c_calls->fs_sync(
 					v->v_mount->m_fs_super);
-
-			mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY); /* v-nodeをロックする */
+			/* v-nodeをロックする */
+			mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY); 
 		}
+		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 	
 	/* v-nodeの追加を避けるためにv-nodeテーブルロック中でフラグを更新し
@@ -730,6 +797,7 @@ unlock_out:
 /**
    マウントポイント情報中のv-nodeを解放する (内部関数)
    @param[in] mount マウントポイント情報
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 static void
 free_vnodes_in_fs_mount(fs_mount *mount){
@@ -747,16 +815,20 @@ free_vnodes_in_fs_mount(fs_mount *mount){
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 
+		if ( v == mount->m_root )  /* root v-nodeを除いて解放する */
+			continue;
+
+		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
 		kassert( v->v_mount != NULL);
 		kassert( v->v_mount->m_fs != NULL);
 		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+		kassert( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) );
+		kassert( refcnt_read(&v->v_refs) == 1 ); /* 解放可能なはず */
 
-		if ( v != mount->m_root ) { /* root v-nodeを除いて解放する */
-			
-			kassert( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) );
-			kassert( refcnt_read(&v->v_refs) == 1 ); /* 解放可能なはず */
-			vfs_vnode_ref_dec(v);  /* v-nodeの参照を解放 ( v-nodeを解放 ) */
-		}
+		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+		vfs_vnode_ref_dec(v);  /* v-nodeの参照を解放 ( v-nodeを解放 ) */
+
 	}
 	
 	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
@@ -771,6 +843,8 @@ free_vnodes_in_fs_mount(fs_mount *mount){
    @retval -ENOENT 指定されたパスが見つからなかった
    @retval -EINVAL マウントポイントではないパスを指定した
    @retval -EBUSY  ボリューム内のファイルが使用中
+   @note LO: マウントテーブルロック, マウントポイントロック, 
+   v-nodeロックの順にロックを獲得する
  */
 static int
 unmount_common(vnode *root_vnode){
@@ -860,13 +934,13 @@ vfs_vnode_ref_inc(vnode *v) {
    @param[in] v  v-node情報
    @retval    真 v-nodeの最終参照者だった
    @retval    偽 v-nodeの最終参照者でない
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 bool
 vfs_vnode_ref_dec(vnode *v){
 	bool     res;
 
 	kassert( v->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
-
 
 	mutex_lock(&v->v_mount->m_mtx);  /* マウントポイントロックを獲得する */
 	res = dec_vnode_ref_nolock(v); /* 参照カウンタをデクリメントする */
@@ -880,8 +954,11 @@ vfs_vnode_ref_dec(vnode *v){
    @param[in]  vnid v-node ID
    @param[out] outv v-nodeを指し示すポインタのアドレス
    @retval  0       正常終了
-   @return -EINVAL  不正なマウントポイントIDを指定した
-   @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
+   @retval -EINVAL  不正なマウントポイントIDを指定した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ディスクI-node読み取りに失敗した
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY   アンマウント中のボリュームだった
  */
 int
 vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
@@ -897,21 +974,23 @@ vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 		goto error_out;
 	}
 
-	rc = find_vnode(mnt, vnid, &v);  /* v-nodeを取得する */
-	if ( rc != 0 )
-		goto put_mount_out;
+	for( ; ; ) {
 
-	/* 
-	 * 見つかったv-nodeを返却する
-	 */
-	if ( outv != NULL ) {
+		rc = find_vnode(mnt, vnid, &v);  /* v-nodeを検索する */
+		if ( rc != 0 )
+			goto put_mount_out;
 
-		res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
-		if ( !res )
-			goto put_mount_out;		
-		*outv = v;   /* v-nodeを返却 */
+		/* 
+		 * 見つかったv-nodeを返却する
+		 */
+		if ( outv != NULL ) {
+
+			res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
+			if ( !res )
+				continue;  /* v-node破棄に伴い, v-nodeを再検索する */
+			*outv = v;   /* v-nodeを返却 */
+		}
 	}
-
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
 	return 0;
@@ -928,9 +1007,12 @@ error_out:
    @param[in] mntid マウントポイントID
    @param[in] vnid  v-node ID
    @retval  0       正常終了
+   @retval -EINVAL  不正なマウントポイントIDを指定した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ディスクI-node読み取りに失敗した
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY   アンマウント中のボリュームだった
    @retval -EAGAIN  最終参照者ではなかった
-   @return -EINVAL  不正なマウントポイントIDを指定した
-   @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
  */
 int
 vfs_vnode_put(vfs_mnt_id mntid, vfs_vnode_id vnid){
@@ -942,19 +1024,29 @@ vfs_vnode_put(vfs_mnt_id mntid, vfs_vnode_id vnid){
 	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
 	if ( rc != 0 ) {
 		
-		rc = -EINVAL;
+		rc = -EINVAL;  /* 不正なマウントポイントIDを指定した */
 		goto error_out;
 	}
 
-	rc = find_vnode(mnt, vnid, &v);  /* v-nodeを取得する */
+	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
 	if ( rc != 0 )
 		goto put_mount_out;
 
 	/* 
-	 * 見つかったv-nodeを返却する
+	 * 見つかったv-nodeの参照を解放する
 	 */
-	res = vfs_vnode_ref_dec(v);  /* 参照を獲得する             */
-	
+	res = vfs_vnode_ref_inc(v);  /* 参照解放処理用に参照を獲得する */
+	if ( !res ) {
+
+		rc = 0; /* すでに削除中のv-nodeだった */
+		goto put_mount_out;
+	}
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	kassert( !res );      /* 最終参照ではないはず  */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
+
 	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
 
 	if ( res )
@@ -975,8 +1067,11 @@ error_out:
    @param[in] vnid  v-node ID
    @retval  0       正常終了
    @retval -EAGAIN  最終参照者ではなかった
-   @return -EINVAL  不正なマウントポイントIDを指定した
-   @return -ENOENT  指定されたfsid, vnidに対応するv-nodeが見つからなかった
+   @retval -EINVAL  不正なマウントポイントIDを指定した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ディスクI-node読み取りに失敗した
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY   アンマウント中のボリュームだった
  */
 int
 vfs_vnode_remove(vfs_mnt_id mntid, vfs_vnode_id vnid){
@@ -992,23 +1087,12 @@ vfs_vnode_remove(vfs_mnt_id mntid, vfs_vnode_id vnid){
 		goto error_out;
 	}
 
-	rc = find_vnode(mnt, vnid, &v);  /* v-nodeを取得する */
+	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
 	if ( rc != 0 )
 		goto put_mount_out;
 
-	/* 
-	 * 見つかったv-nodeの削除要求を立てる
-	 */
-	res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
-	kassert( !res );
-
-	mutex_lock(&v->v_mtx);
-
-	mark_vnode_flag_nolock(v, VFS_VFLAGS_DELETE);   /* ディスクI-nodeの削除予約をかける */
-
-	mutex_unlock(&v->v_mtx);
-
-	res = vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	res = mark_vnode_flag(v, VFS_VFLAGS_DELETE);   /* ディスクI-nodeの削除予約をかける */
+	kassert( res );
 
 	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
 	if ( res )
@@ -1031,17 +1115,8 @@ void
 vfs_mark_dirty_vnode(vnode *v) {
 	bool res;
 
-	res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
-	if ( !res )
-		return;  /* 削除中のv-node */
-
-	mutex_lock(&v->v_mtx);
-
-	mark_vnode_flag_nolock(v, VFS_VFLAGS_DIRTY); /* ダーティフラグをセットする */
-
-	mutex_unlock(&v->v_mtx);
-
-	vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	res = mark_vnode_flag(v, VFS_VFLAGS_DIRTY); /* ダーティフラグをセットする */
+	kassert( res );
 }
 
 /**
@@ -1052,17 +1127,8 @@ void
 vfs_unmark_dirty_vnode(vnode *v) {
 	bool res;
 
-	res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
-	if ( !res )
-		return;  /* 削除中のv-node */
-
-	mutex_lock(&v->v_mtx);
-
-	unmark_vnode_flag_nolock(v, VFS_VFLAGS_DIRTY);  /* ダーティフラグを落とす */
-
-	mutex_unlock(&v->v_mtx);
-
-	vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	res = unmark_vnode_flag(v, VFS_VFLAGS_DIRTY);  /* ダーティフラグを落とす */
+	kassert( res );
 }
 
 /**
@@ -1094,7 +1160,10 @@ vfs_is_dirty_vnode(vnode *v) {
    v-nodeをロックする
    @param[in] v 操作対象のv-node
    @retval  0       正常終了
-   @retval -ENOENT  v-nodeが破棄された
+   @retval -ENOENT  削除中のv-nodeをロックしようとした
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -ENOMEM  メモリ不足
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 int
 vfs_vnode_lock(vnode *v) {
@@ -1112,7 +1181,7 @@ vfs_vnode_lock(vnode *v) {
 		rc = trylock_vnode(v);  /*  v-nodeのロックを試みる  */
 
 		if ( rc != 0 ) {
-			
+
 			kassert( rc == -EBUSY );
 
 			/*  他のスレッドがv-nodeを使用中の場合は
@@ -1120,8 +1189,11 @@ vfs_vnode_lock(vnode *v) {
 			 */
 			reason = wque_wait_on_event_with_mutex(&v->v_waiters, 
 			    &v->v_mount->m_mtx);
-			if ( reason == WQUE_DESTROYED ) 
+			if ( reason == WQUE_DELIVEV ) {
+
+				rc = -EINTR;   /* イベントを受信した */
 				goto unlock_out;
+			}
 		}
 
 		mutex_unlock(&v->v_mount->m_mtx); /* マウントポイントのロックを解放 */
@@ -1135,12 +1207,13 @@ unlock_out:
 	mutex_unlock(&v->v_mount->m_mtx);  /* マウントポイントのロックを解放 */
 	vfs_vnode_ref_dec(v);  /* 参照を解放する */
 
-	return -ENOENT;
+	return rc;
 }
 
 /**
    v-nodeをアンロックする
    @param[in] v 操作対象のv-node
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 void
 vfs_vnode_unlock(vnode *v) {
@@ -1158,7 +1231,8 @@ vfs_vnode_unlock(vnode *v) {
 	/* ロック済みv-nodeであることを確認 */
 	kassert( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) );  
 
-	unmark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY); /* v-nodeのロックを解除する */	
+	res = unmark_vnode_flag(v, VFS_VFLAGS_BUSY); /* v-nodeのロックを解除する */
+	kassert( res );
 
 	mutex_unlock(&v->v_mount->m_mtx); /* マウントポイントのロックを解放 */
 
@@ -1233,7 +1307,11 @@ vfs_fs_mount_get(vfs_mnt_id mntid, fs_mount **mountp) {
 	if ( mountp != NULL ) {
 
 		res = vfs_fs_mount_ref_inc(mnt);  /* 操作用に参照を加算 */
-		kassert( res );
+		if ( !res ) {
+
+			rc = -ENOENT;  /* マウントポイント情報が見つからなかった(削除中) */
+			goto unlock_out;
+		}
 		*mountp = mnt;  /* マウントポイントを返却 */
 	}
 
@@ -1273,6 +1351,8 @@ vfs_fs_mount_put(fs_mount *mount) {
    @retval -EIO    ファイルシステムマウント時にI/Oエラーが発生した
    @retval -EBUSY  既に対象ボリュームのルートマウントポイントになっている
    @retval -ENODEV 下位のファイルシステムがルートv-nodeを設定しなかった
+   @note LO: マウントテーブルロック, マウントポイントロック, v-nodeロックの順に
+   ロックを獲得する
 */
 int
 vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name, 
@@ -1417,13 +1497,14 @@ unlock_out:
 
 	return rc;
 }
-/** ファイルシステムのアンマウント
-    @param[in] ioctxp   I/Oコンテキスト
-    @param[in] path     マウント先のパス名
-    @retval  0      正常終了
-    @retval -ENOENT 指定されたパスが見つからなかった
-    @retval -EINVAL マウントポイントではないパスを指定した
-    @retval -EBUSY  ボリューム内のファイルが使用中
+/**
+   ファイルシステムのアンマウント
+   @param[in] ioctxp   I/Oコンテキスト
+   @param[in] path     マウント先のパス名
+   @retval  0      正常終了
+   @retval -ENOENT 指定されたパスが見つからなかった
+   @retval -EINVAL マウントポイントではないパスを指定した
+   @retval -EBUSY  ボリューム内のファイルが使用中
  */
 int
 vfs_unmount(vfs_ioctx *ioctxp, char *path){
