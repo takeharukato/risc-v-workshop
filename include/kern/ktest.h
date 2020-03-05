@@ -192,4 +192,5 @@ void tst_vfs_path(void);
 void tst_vfs_fstbl(void);
 void tst_vfs_fd(void);
 void tst_vfs_ioctx(void);
+void tst_vfs_mount(void);
 #endif  /*  _KERN_KTEST_H  */

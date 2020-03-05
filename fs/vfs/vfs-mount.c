@@ -202,9 +202,11 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化           */
 	mount->m_mount_path = kstrdup(path);    /*  マウントポイントパスの複製       */
 
-	rc = -ENOMEM;
-	if ( mount->m_mount_path == NULL )
+	if ( mount->m_mount_path == NULL ) {
+
+		rc = -ENOMEM;  /* メモリ不足 */
 		goto error_out;
+	}
 
 	return 0;
 
@@ -601,7 +603,6 @@ trylock_vnode(vnode *v) {
 static int
 find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
-	bool           res;
 	vnode           *v;
 	vnode        v_key;
 	wque_reason reason;
@@ -642,14 +643,12 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			v->v_id = vnid;      /* v-node IDを設定 */
 
 			/* v-nodeをロード済みに設定する */
-			res = mark_vnode_flag(v, VFS_VFLAGS_VALID);
-			kassert( res );
+			mark_vnode_flag_nolock(v, VFS_VFLAGS_VALID);
 
 			rc = add_vnode_to_mount_nolock(v->v_mount, v); /* v-nodeを登録する */
 
 			/* v-nodeのロックを解除 */
-			res = unmark_vnode_flag(v, VFS_VFLAGS_BUSY);
-			kassert( res );
+			unmark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY);
 
 			if ( rc != 0 )
 				goto unlock_out;  /* v-nodeを登録できなかった */
@@ -668,8 +667,8 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 				*outv = v;             /* v-nodeを返却               */
 				/* マウントポイントのロックを解放 */
 				mutex_unlock(&mnt->m_mtx);
-				break;
 			}
+			break;
 		}
 
 		/*  v-nodeの更新完了を待ち合わせる */
@@ -989,6 +988,7 @@ vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 			if ( !res )
 				continue;  /* v-node破棄に伴い, v-nodeを再検索する */
 			*outv = v;   /* v-nodeを返却 */
+			break;
 		}
 	}
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
@@ -1363,6 +1363,8 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 	vfs_vnode_id        root_id;
 	void              *mnt_args;
 
+	kassert( path != NULL );
+
 	mutex_lock(&g_mnttbl.mt_mtx);
 
 	if ( ( ( g_mnttbl.mt_root == NULL ) || ( ioctxp == NULL ) ) 
@@ -1456,12 +1458,17 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 	}
 
 	add_fsmount_to_mnttbl_nolock(mount);  /*  マウント情報をマウントテーブルに登録  */
+	mutex_unlock(&g_mnttbl.mt_mtx);
 
 	/*  マウントポイントのv-nodeへの参照を獲得  */
 	rc = vfs_vnode_get(mount->m_id, root_id, &mount->m_root);
-	if ( rc != 0 )
-		goto unmount_out;
+	if ( rc != 0 ) {
 
+		mutex_lock(&g_mnttbl.mt_mtx);
+		goto unmount_out;
+	}
+
+	mutex_lock(&g_mnttbl.mt_mtx);
 	/*
 	 * 下位のファイルシステムがルートv-nodeを設定しなかった
 	 */
@@ -1470,13 +1477,14 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 		rc = -ENODEV;
 		goto unmount_out;
 	}
-		
+
 	if ( mount->m_mount_point == NULL ) { 
 
 		/* ルートマウント時は, マウントテーブルのルートディレクトリを更新 */
 		kassert( g_mnttbl.mt_root == NULL );	
 		g_mnttbl.mt_root = mount->m_root;
 	}
+
 	mutex_unlock(&g_mnttbl.mt_mtx);
 
 	return 0;

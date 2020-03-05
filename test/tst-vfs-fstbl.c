@@ -16,35 +16,39 @@
 
 static ktest_stats tstat_vfs_fstbl=KTEST_INITIALIZER;
 
-int dummy_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
+static int
+tst_vfs_fstbl_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
 
 	return 0;
 }
-int dummy_putvnode(vfs_fs_super fs_priv, vfs_fs_vnode v){
+static int
+tst_vfs_fstbl_putvnode(vfs_fs_super fs_priv, vfs_fs_vnode v){
 
 	return 0;
 }
-int dummy_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
+static int
+tst_vfs_fstbl_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
 		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
 
 	return 0;
 }
-int dummy_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
+static int
+tst_vfs_fstbl_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
 	       off_t pos, off_t *new_posp, int whence){
 
 	return 0;
 }
-static 	fs_calls dummy_calls={
-		.fs_getvnode = dummy_getvnode,
-		.fs_putvnode = dummy_putvnode,
-		.fs_lookup = dummy_lookup,
-		.fs_seek = dummy_seek,
+static 	fs_calls tst_vfs_fstbl_calls={
+		.fs_getvnode = tst_vfs_fstbl_getvnode,
+		.fs_putvnode = tst_vfs_fstbl_putvnode,
+		.fs_lookup = tst_vfs_fstbl_lookup,
+		.fs_seek = tst_vfs_fstbl_seek,
 };
 
 static 	fs_calls bad_calls={
-		.fs_getvnode = dummy_getvnode,
-		.fs_putvnode = dummy_putvnode,
-		.fs_lookup = dummy_lookup,
+		.fs_getvnode = tst_vfs_fstbl_getvnode,
+		.fs_putvnode = tst_vfs_fstbl_putvnode,
+		.fs_lookup = tst_vfs_fstbl_lookup,
 		.fs_seek = NULL,
 };
 
@@ -60,7 +64,7 @@ vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	rc = vfs_register_filesystem("dummy", &dummy_calls);
+	rc = vfs_register_filesystem("tst_vfs_fstbl", &tst_vfs_fstbl_calls);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -72,7 +76,7 @@ vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	rc = vfs_fs_get("dummy", &container);
+	rc = vfs_fs_get("tst_vfs_fstbl", &container);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
