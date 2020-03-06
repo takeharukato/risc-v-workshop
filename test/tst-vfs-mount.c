@@ -17,6 +17,7 @@
 #define TST_VFS_MOUNT_VN_MAX (3)
 #define TST_VFS_MOUNT_ROOT_VNID (0)
 #define TST_VFS_MOUNT_DEV_VNID  (1)
+#define TST_VFS_MOUNT_DEV       (2)
 
 static ktest_stats tstat_vfs_mount=KTEST_INITIALIZER;
 
@@ -118,11 +119,13 @@ vfs_mount1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rc = vfs_mount(NULL, "/", "/dev/fsimg", "tst_vfs_mount", NULL);
+	rc = vfs_mount(NULL, "/", TST_VFS_MOUNT_DEV, "tst_vfs_mount", NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	vfs_unmount_rootfs();  /* rootfsのアンマウント */
 }
 
 void

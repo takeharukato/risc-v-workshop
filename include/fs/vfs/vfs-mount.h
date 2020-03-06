@@ -45,10 +45,11 @@ typedef struct _fs_mount {
    マウントテーブル
 */
 typedef struct _mount_table{
-	mutex                                mt_mtx;  /**< マウントテーブル排他用mutex */
-	struct _vnode                      *mt_root;  /**< システムルートディレクトリ  */
-	RB_HEAD(_fs_mount_tree, _fs_mount)  mt_head;  /**< マウントテーブルエントリ    */
-	vfs_mnt_id                       mt_last_id;  /**< 最後に割り当てたマウントID  */
+	mutex                                mt_mtx;  /**< マウントテーブル排他用mutex   */
+	struct _vnode                      *mt_root;  /**< システムルートディレクトリ    */
+	RB_HEAD(_fs_mount_tree, _fs_mount)  mt_head;  /**< マウントテーブルエントリ      */
+	vfs_mnt_id                    mt_root_mntid;  /**< ルートディレクトリマウントID  */
+	vfs_mnt_id                       mt_last_id;  /**< 最後に割り当てたマウントID    */
 }mount_table;
 
 /** 
@@ -58,6 +59,7 @@ typedef struct _mount_table{
 #define __MNTTBL_INITIALIZER(_mnttbl) {			        \
 	.mt_mtx = __MUTEX_INITIALIZER(&((_mnttbl)->mt_mtx)),	\
 	.mt_root = NULL, 	                                \
+	.mt_root_mntid = VFS_INVALID_MNTID,                     \
 	.mt_head  = RB_INITIALIZER(&((_mnttbl)->mt_head)),	\
 	.mt_last_id = VFS_INVALID_MNTID,	                \
 }
@@ -65,9 +67,10 @@ bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
 bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
 int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
 void vfs_fs_mount_put(fs_mount *_mount);
-int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, const char *_device, 
-    const char *_fs_name, void *_args);
+int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev, const char *_fs_name,
+	      void *_args);
 int vfs_unmount(struct _vfs_ioctx *_ioctxp, char *_path);
+int vfs_unmount_rootfs(void);
 void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */

@@ -381,8 +381,6 @@ remove_fs_mount_from_mnttbl_nolock(fs_mount *mount) {
 	cur_mnt = RB_REMOVE(_fs_mount_tree, &g_mnttbl.mt_head, mount); 
 	kassert( cur_mnt != NULL );  /* マウント情報の多重解放 */
 
-	vfs_vnode_ref_dec(mount->m_root);  /* root v-nodeの参照を解放 ( v-nodeを解放 ) */
-	vfs_vnode_ref_dec(mount->m_mount_point); /* マウントポイントの参照を解放  */
 	free_mntid_nolock(mount->m_id);          /* マウントIDを解放      */
 	mount->m_id = VFS_INVALID_MNTID;         /* 無効マウントIDを設定  */
 }
@@ -456,7 +454,7 @@ del_vnode_from_mount_nolock(vnode *v){
    @retval    0      正常終了
    @retval   -ENOENT マウントIDに対応するマウントポイント情報が見つからなかった
  */
-int
+static int
 get_fs_mount_nolock(vfs_mnt_id mntid, fs_mount **mountp) {
 	bool         res;
 	fs_mount    *mnt;
@@ -938,13 +936,18 @@ unmount_common(vnode *root_vnode){
 	 */
 	free_vnodes_in_fs_mount(mount);
 
+	vfs_vnode_ref_dec( mount->m_root ); /*  root v-nodeの参照を解放する */
+	if ( mount->m_mount_point != NULL )
+		vfs_vnode_ref_dec( mount->m_mount_point ); /*  root v-nodeの参照を解放する */
+
 	/*
 	 * マウント情報の登録を抹消
 	 */
 	dec_fs_mount_ref_nolock(mount);
-	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
 
 	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
 
 	return 0;
 
@@ -976,7 +979,6 @@ vfs_vnode_ref_inc(vnode *v) {
    @param[in] v  v-node情報
    @retval    真 v-nodeの最終参照者だった
    @retval    偽 v-nodeの最終参照者でない
-   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
  */
 bool
 vfs_vnode_ref_dec(vnode *v){
@@ -984,9 +986,7 @@ vfs_vnode_ref_dec(vnode *v){
 
 	kassert( v->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
 
-	mutex_lock(&v->v_mount->m_mtx);  /* マウントポイントロックを獲得する */
 	res = dec_vnode_ref_nolock(v); /* 参照カウンタをデクリメントする */
-	mutex_unlock(&v->v_mount->m_mtx);  /* マウントポイントロックを解放する */
 	return res;
 }
 
@@ -1316,32 +1316,19 @@ vfs_fs_mount_ref_dec(fs_mount *mount){
 int
 vfs_fs_mount_get(vfs_mnt_id mntid, fs_mount **mountp) {
 	int           rc;
-	bool         res;
 	fs_mount    *mnt;
-	fs_mount   m_key;
-
-	m_key.m_id = mntid;  /* 検索対象マウントID */
 
 	mutex_lock(&g_mnttbl.mt_mtx);  /* マウントテーブルをロックする */
 
-	/* マウント情報を検索 */
-	mnt = RB_FIND(_fs_mount_tree, &g_mnttbl.mt_head, &m_key); 
-	if ( mnt == NULL ) {
+	rc = get_fs_mount_nolock(mntid, &mnt); 	/* マウント情報を検索 */
+	if ( rc != 0 ) {
 
 		rc = -ENOENT;  /* マウントポイント情報が見つからなかった */
 		goto unlock_out;
 	}
 
-	if ( mountp != NULL ) {
-
-		res = vfs_fs_mount_ref_inc(mnt);  /* 操作用に参照を加算 */
-		if ( !res ) {
-
-			rc = -ENOENT;  /* マウントポイント情報が見つからなかった(削除中) */
-			goto unlock_out;
-		}
+	if ( mountp != NULL ) 
 		*mountp = mnt;  /* マウントポイントを返却 */
-	}
 
 	mutex_unlock(&g_mnttbl.mt_mtx);   /* マウントテーブルをアンロックする */
 
@@ -1368,7 +1355,7 @@ vfs_fs_mount_put(fs_mount *mount) {
    ファイルシステムをマウントする
    @param[in] ioctxp   I/Oコンテキスト
    @param[in] path     マウント先のパス名
-   @param[in] device   マウントするボリュームのデバイス名
+   @param[in] dev      マウントするデバイス
    @param[in] fs_name  ファイルシステム名
    @param[in] args     マウントオプション
    @retval  0      正常終了
@@ -1383,7 +1370,7 @@ vfs_fs_mount_put(fs_mount *mount) {
    ロックを獲得する
 */
 int
-vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name, 
+vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name, 
 	  void *args){
 	int                      rc;
 	fs_mount             *mount;
@@ -1476,7 +1463,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 	if ( mount->m_fs->c_calls->fs_mount != NULL ) {
 
 		rc = mount->m_fs->c_calls->fs_mount(&mount->m_fs_super, mount->m_id, 
-		    mount->m_dev, device, mnt_args, &root_id);
+		    dev, mnt_args, &root_id);
 		if ( rc != 0 ) {
 		
 			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )
@@ -1486,7 +1473,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 	}
 
 	/*  
-	 * マウントポイントのv-nodeへの参照を獲得
+	 * root v-nodeへの参照を獲得
 	 */
 	rc = get_vnode(mount, root_id, &mount->m_root);
 	if ( rc != 0 ) 
@@ -1501,14 +1488,20 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, const char *device, const char *fs_name
 		goto unmount_out;
 	}
 
+	mount->m_dev = dev; /* デバイスIDを設定 */
+
+	/* マウント情報をマウントテーブルに登録し,
+	 * マウントIDを割当てる
+	 */
+	add_fsmount_to_mnttbl_nolock(mount);
+
 	if ( mount->m_mount_point == NULL ) { 
 
 		/* ルートマウント時は, マウントテーブルのルートディレクトリを更新 */
 		kassert( g_mnttbl.mt_root == NULL );	
 		g_mnttbl.mt_root = mount->m_root;
+		g_mnttbl.mt_root_mntid = mount->m_id;
 	}
-
-	add_fsmount_to_mnttbl_nolock(mount);  /*  マウント情報をマウントテーブルに登録  */
 
 	mutex_unlock(&g_mnttbl.mt_mtx);
 
@@ -1527,6 +1520,60 @@ free_mount_out:  /*  マウント情報を解放  */
 
 unlock_out: 
 	mutex_unlock(&g_mnttbl.mt_mtx);
+
+	return rc;
+}
+
+/**
+   ルートファイルシステムのアンマウント
+   @retval  0      正常終了
+   @retval -ENOENT 指定されたパスが見つからなかった
+   @retval -EINVAL マウントポイントではないパスを指定した
+   @retval -EBUSY  ボリューム内のファイルが使用中
+*/
+int
+vfs_unmount_rootfs(void){
+	fs_mount  *mount;
+	int           rc;
+
+	rc = get_fs_mount_nolock(g_mnttbl.mt_root_mntid, &mount); /* マウント情報への参照獲得 */
+	if ( rc != 0 ) {
+
+		rc = -ENOENT;  /* マウントポイント情報が見つからなかった */
+		goto put_mount_out;
+	}
+
+	mutex_lock(&g_mnttbl.mt_mtx); /* マウントテーブルをロック  */
+
+	if ( mount->m_root != g_mnttbl.mt_root ) {  /*  マウントポイントではない  */
+		
+		rc = -EINVAL;
+		goto unlock_out;
+	}
+
+	/*  アンマウント前に参照を獲得し,
+	 *  参照カウンタを3以上にして
+	 *  unmount_commonを呼び出す
+	 *  条件を整える
+	 */
+	vfs_vnode_ref_inc(g_mnttbl.mt_root);
+
+	mutex_unlock(&g_mnttbl.mt_mtx); /* マウントテーブルをアンロック  */
+
+	rc = unmount_common(g_mnttbl.mt_root);  /* アンマウント処理を実行  */
+
+	vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  v-node削除用に参照を解放する */
+
+	vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  参照を解放する */
+
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照を解放する */
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&g_mnttbl.mt_mtx); /* マウントテーブルをアンロック  */
+put_mount_out:
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照を解放する */
 
 	return rc;
 }
