@@ -42,7 +42,7 @@ typedef struct _fs_table{
 /** ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
-	int (*fs_mount)(vfs_fs_super *fs_priv, vfs_mnt_id id, dev_id dev, 
+	int (*fs_mount)(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, 
 			void *args, vfs_vnode_id *root_vnid);
 	int (*fs_unmount)(vfs_fs_super fs_super);
 	int (*fs_sync)(vfs_fs_super fs_super);

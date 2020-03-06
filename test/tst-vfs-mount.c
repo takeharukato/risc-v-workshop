@@ -14,10 +14,10 @@
 
 #include <kern/ktest.h>
 #define TST_VFS_MOUNT_MAGIC (0xfeedfeed)
-#define TST_VFS_MOUNT_VN_MAX (3)
-#define TST_VFS_MOUNT_ROOT_VNID (0)
-#define TST_VFS_MOUNT_DEV_VNID  (1)
-#define TST_VFS_MOUNT_DEV       (2)
+#define TST_VFS_MOUNT_VN_MAX (5)
+#define TST_VFS_MOUNT_ROOT_VNID (2)
+#define TST_VFS_MOUNT_DEV_VNID  (3)
+#define TST_VFS_MOUNT_DEV       (4)
 
 static ktest_stats tstat_vfs_mount=KTEST_INITIALIZER;
 
@@ -41,6 +41,34 @@ typedef struct _tst_vfs_mount_vnode{
 
 static tst_vfs_mount_super g_super;
 static tst_vfs_mount_vnode vn_array[TST_VFS_MOUNT_VN_MAX];
+
+static int
+tst_vfs_fs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *args, 
+		 vfs_vnode_id *root_vnid){
+
+	if ( dev != TST_VFS_MOUNT_DEV )
+		return -ENOENT;
+
+	*fs_super = (vfs_fs_super)&g_super;
+	*root_vnid = (vfs_vnode_id)TST_VFS_MOUNT_ROOT_VNID;
+
+	ktest_pass( &tstat_vfs_mount );
+
+	return 0;
+}
+
+static int
+tst_vfs_fs_unmount(vfs_fs_super fs_super){
+	tst_vfs_mount_super *super;
+
+	super = (tst_vfs_mount_super *)fs_super;
+	if ( super->s_magic == TST_VFS_MOUNT_MAGIC )
+		ktest_pass( &tstat_vfs_mount );
+	else
+		ktest_fail( &tstat_vfs_mount );
+
+	return 0;
+}
 
 static void
 tst_vfs_mount_init_vnodes(void){
@@ -102,10 +130,12 @@ tst_vfs_mount_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_p
 	return 0;
 }
 static fs_calls tst_vfs_mount_calls={
-		.fs_getvnode = tst_vfs_mount_getvnode,
-		.fs_putvnode = tst_vfs_mount_putvnode,
-		.fs_lookup = tst_vfs_mount_lookup,
-		.fs_seek = tst_vfs_mount_seek,
+	.fs_mount = tst_vfs_fs_mount,
+	.fs_unmount = tst_vfs_fs_unmount,
+	.fs_getvnode = tst_vfs_mount_getvnode,
+	.fs_putvnode = tst_vfs_mount_putvnode,
+	.fs_lookup = tst_vfs_mount_lookup,
+	.fs_seek = tst_vfs_mount_seek,
 };
 
 static void
