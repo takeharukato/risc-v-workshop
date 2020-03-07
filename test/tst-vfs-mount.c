@@ -156,6 +156,8 @@ vfs_mount1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	vfs_unmount_rootfs();  /* rootfsのアンマウント */
+
+	vfs_unregister_filesystem("tst_vfs_mount");  /* ファイルシステムの解放 */
 }
 
 void

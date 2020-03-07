@@ -27,7 +27,7 @@ static kmem_cache fstbl_container_cache; /**< ファイルシステムコンテ�
 static int _fs_container_cmp(struct _fs_container *_key, struct _fs_container *_ent);
 RB_GENERATE_STATIC(_fstbl_tree, _fs_container, c_ent, _fs_container_cmp);
 
-/** 
+/**
     ファイルシステムコンテナ比較関数
     @param[in] key 比較対象コンテナ
     @param[in] ent ファイルシステムテーブル内の各エントリ
@@ -41,11 +41,12 @@ _fs_container_cmp(struct _fs_container *key, struct _fs_container *ent){
 	return strcmp(key->c_name, ent->c_name);
 }
 
-/** ファイルシステムの登録抹消(内部関数)
-    @param[in] fs_name  ファイルシステム名を表す文字列
-    @retval  0        正常終了
-    @retval -EBUSY    ファイルシステム使用中
-    @retval -ENOENT   指定されたキーのファイルシステムが見つからなかった
+/**
+   ファイルシステムの登録抹消(内部関数)
+   @param[in] fs_name  ファイルシステム名を表す文字列
+   @retval  0        正常終了
+   @retval -EBUSY    ファイルシステム使用中
+   @retval -ENOENT   指定されたキーのファイルシステムが見つからなかった
  */
 static int
 free_filesystem(const char *fs_name){
@@ -68,6 +69,8 @@ free_filesystem(const char *fs_name){
 	 /*  ファイルシステム情報の登録抹消  */
 	fs_res = RB_REMOVE(_fstbl_tree, &g_fstbl.c_head, fs);
 	kassert( fs_res != NULL );
+
+	kfree(fs->c_name);  /* ファイルシステム名を解放 */
 
 	/*
 	 * ファイルシステム情報を開放
@@ -128,11 +131,12 @@ error_out:
 	return false;
 }
 
-/** ファイルシステムへの参照を得る
-    @param[in] fs_name キーとなるファイルシステム名を表す文字列
-    @param[in] containerp ファイルシステムコンテナへのポインタのアドレス
-    @retval  0      正常終了
-    @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
+/**
+   ファイルシステムへの参照を得る
+   @param[in] fs_name キーとなるファイルシステム名を表す文字列
+   @param[in] containerp ファイルシステムコンテナへのポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
  */
 int 
 vfs_fs_get(const char *fs_name, fs_container **containerp){
@@ -165,20 +169,23 @@ unlock_out:
 	return rc;
 }
 
-/** ファイルシステムへの参照を返却する
-    @param[in] container    ファイルシステムコンテナへのポインタ
+/**
+   ファイルシステムへの参照を返却する
+   @param[in] container    ファイルシステムコンテナへのポインタ
  */
 void
 vfs_fs_put(fs_container *container){
 
-	 vfs_fs_ref_dec(container) ;
+	 vfs_fs_ref_dec(container);
 }
 
-/** ファイルシステムの登録
-    @param[in] name  ファイルシステム名を表す文字列
-    @param[in] calls ファイルシステム固有のファイルシステムコールハンドラ
-    @retval  0        正常終了
-    @retval -ENOMEM   メモリ不足    
+/**
+   ファイルシステムの登録
+   @param[in] name  ファイルシステム名を表す文字列
+   @param[in] calls ファイルシステム固有のファイルシステムコールハンドラ
+   @retval  0        正常終了
+   @retval -EINVAL   システムコールハンドラが不正
+   @retval -ENOMEM   メモリ不足    
  */
 int
 vfs_register_filesystem(const char *name, fs_calls *calls){
@@ -210,7 +217,6 @@ vfs_register_filesystem(const char *name, fs_calls *calls){
 
 	refcnt_init(&container->c_refs);  /*  参照カウンタ             */
 	container->c_calls = calls;       /*  ファイルオペレーション   */
-	container->c_fstbl = &g_fstbl;    /*  ファイルシステムテーブル */
 
 	/*
 	 * ファイルシステムテーブルに登録する
@@ -232,6 +238,33 @@ free_container_out:
 
 error_out:
 	return rc;
+}
+
+/**
+   ファイルシステムの登録抹消
+   @param[in] name  ファイルシステム名を表す文字列
+   @retval  0        正常終了
+   @retval -EINVAL   ファイルシステム名にNULLを指定した
+   @retval -ENOMEM   メモリ不足
+   @retval -ENOENT   指定されたファイルシステムが見つからなかった
+ */
+int
+vfs_unregister_filesystem(const char *name){
+	int                  rc;
+	fs_container *container;
+
+	if ( name == NULL )
+		return -EINVAL;
+
+	rc = vfs_fs_get(name, &container);  /* ファイルシステムへの参照を得る */
+	if ( rc != 0 )
+		return -ENOENT;
+
+	vfs_fs_ref_dec(container); /* ファイルシステムへの参照をデクリメントする */
+
+	vfs_fs_put(container);   /* ファイルシステムへの参照を返却する */
+
+	return 0;
 }
 
 /**

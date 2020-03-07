@@ -54,8 +54,7 @@ static 	fs_calls bad_calls={
 
 static void
 vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
-	int rc;
-	bool res;
+	int                  rc;
 	fs_container *container;
 
 	rc = vfs_register_filesystem("bad", &bad_calls);
@@ -82,13 +81,25 @@ vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	res = vfs_fs_ref_dec(container);
-	if ( !res )
+	vfs_fs_put(container);
+	rc = vfs_unregister_filesystem(NULL);
+	if ( rc == -EINVAL )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	vfs_fs_put(container);
+	rc = vfs_unregister_filesystem("tst_vfs_fstbl");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_unregister_filesystem("tst_vfs_fstbl");
+	if ( rc == -ENOENT )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 }
 
 void
