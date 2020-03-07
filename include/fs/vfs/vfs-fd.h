@@ -52,8 +52,7 @@ int vfs_fd_alloc(struct _vfs_ioctx *_ioctxp, struct _vnode *_v, vfs_open_flags _
 bool vfs_fd_ref_inc(struct _file_descriptor *_f);
 bool vfs_fd_ref_dec(struct _file_descriptor *_f);
 int vfs_ioctx_resize_fd_table(struct _vfs_ioctx *_ioctxp, const size_t _new_size);
-int vfs_ioctx_alloc(struct _vnode *root_vnode, struct _vfs_ioctx *_parent_ioctx, 
-    struct _vfs_ioctx **_ioctxpp);
+int vfs_ioctx_alloc(struct _vfs_ioctx *_parent_ioctx, struct _vfs_ioctx **_ioctxpp);
 void vfs_ioctx_free(struct _vfs_ioctx *_ioctxp);
 void vfs_init_ioctx(void);
 #endif  /*  !ASM_FILE  */

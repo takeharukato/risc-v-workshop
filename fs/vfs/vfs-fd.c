@@ -557,21 +557,25 @@ free_new_table_out:
 
 /**
    I/Oコンテキストを生成する
-   @param[in]  root_vnode ルートディレクトリのvnode
    @param[in]  parent_ioctx 親プロセスのI/Oコンテキスト
    @param[out] ioctxpp      I/Oコンテキストを指し示すポインタのアドレス
    @retval  0      正常終了
    @retval -ENOMEM メモリ不足
+   @retval -ENODEV ルートディレクトリがマウントされていない
  */
 int
-vfs_ioctx_alloc(vnode *root_vnode, vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
+vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 	size_t   table_size;
 	vfs_ioctx   *ioctxp;
+	vnode   *root_vnode;
 	size_t            i;
 	int              rc;
 
-	kassert( root_vnode != NULL );
 	kassert( ioctxpp != NULL );
+
+	rc = vfs_fs_mount_system_root_vnode_get(&root_vnode);
+	if ( rc != 0 )
+		return -ENODEV;  /* ルートディレクトリがマウントされていない */
 
 	/* 親プロセスのI/Oコンテキストを指定した場合は, 
 	 * 親プロセスのI/Oコンテキストを引き継ぐ 
@@ -588,7 +592,7 @@ vfs_ioctx_alloc(vnode *root_vnode, vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp)
 	if ( rc != 0 ) {
 		
 		kassert( rc == -ENOMEM );
-		goto error_out;
+		goto put_rootvnode_out;
 	}
 
 	/*
@@ -660,11 +664,22 @@ vfs_ioctx_alloc(vnode *root_vnode, vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp)
 		vfs_vnode_ref_inc(ioctxp->ioc_cwd);
 	}
 
+	/* I/Oコンテキスト操作用に得た
+	 * システムルートディレクトリ v-nodeへの
+	 * 参照を解放する
+	 */
+	vfs_vnode_ref_dec(root_vnode);
+
 	*ioctxpp = ioctxp;  /* I/OコンテキストIDを返却  */
 
 	return 0;
 
-error_out:
+put_rootvnode_out:
+	/* I/Oコンテキスト操作用に得た
+	 * システムルートディレクトリ v-nodeへの
+	 * 参照を解放する
+	 */
+	vfs_vnode_ref_dec(root_vnode);	
 	return rc;
 }
 

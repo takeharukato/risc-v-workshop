@@ -67,10 +67,12 @@ bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
 bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
 int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
 void vfs_fs_mount_put(fs_mount *_mount);
+int vfs_fs_mount_system_root_vnode_get(struct _vnode **_rootp);
 int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev, const char *_fs_name,
 	      void *_args);
 int vfs_unmount(struct _vfs_ioctx *_ioctxp, char *_path);
 int vfs_unmount_rootfs(void);
+
 void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */

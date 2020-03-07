@@ -15,16 +15,18 @@
 #include <kern/ktest.h>
 
 static ktest_stats tstat_vfs_ioctx=KTEST_INITIALIZER;
-int alloc_new_ioctx(size_t table_size, ioctx **ioctxpp);
+
 static void
 vfs_ioctx1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
-	vfs_ioctx *ctx;
+	vfs_ioctx *ioctx1;
 
-	rc = alloc_new_ioctx(VFS_DEFAULT_FD_TABLE_SIZE,  &ctx);
-	if ( rc == 0 )
+	rc = vfs_ioctx_alloc(NULL, &ioctx1);
+	if ( rc == 0 ) {
+
 		ktest_pass( sp );
-	else
+		vfs_ioctx_free(ioctx1);
+	} else
 		ktest_fail( sp );
 }
 

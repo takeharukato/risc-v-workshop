@@ -1350,7 +1350,48 @@ vfs_fs_mount_put(fs_mount *mount) {
 
 	return ;
 }
+/**
+   システムルートディレクトリv-nodeへの参照を得る
+   @param[out] rootp     システムルートディレクトリv-nodeを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOMEM メモリ不足
+   @retval -ENOENT 指定された名前のファイルシステムまたはパスが見つからなかった
+   @retval -EBUSY  既に対象ボリュームのルートマウントポイントになっている
+   @retval -ENODEV システムルートディレクトリが存在しない
+   @note LO: マウントテーブルロック, マウントポイントロック, v-nodeロックの順に
+   ロックを獲得する
+*/
+int
+vfs_fs_mount_system_root_vnode_get(vnode **rootp){
+	int   rc;
+	bool res;
 
+	kassert( rootp != NULL );
+
+	mutex_lock(&g_mnttbl.mt_mtx);
+	
+	if ( g_mnttbl.mt_root == NULL ) {
+
+		rc = -ENODEV;  /* システムルートディレクトリが存在しない */
+		goto unlock_out;
+	}
+
+	res = vfs_vnode_ref_inc(g_mnttbl.mt_root); /* 参照をインクリメント */
+	if ( !res ) {
+
+		rc = -ENODEV;  /* システムルートディレクトリのアンマウント中 */
+		goto unlock_out;
+	}
+
+	*rootp = g_mnttbl.mt_root;  /* システムルートディレクトリのv-nodeを返却 */
+	mutex_unlock(&g_mnttbl.mt_mtx);
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&g_mnttbl.mt_mtx);
+	return rc;
+}
 /**
    ファイルシステムをマウントする
    @param[in] ioctxp   I/Oコンテキスト
