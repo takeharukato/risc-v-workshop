@@ -64,10 +64,10 @@ static int
 _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key, 
 				    struct _tst_vfs_tstfs_super *ent){	
 
-	if ( key->devid < ent->devid )
+	if ( key->s_devid < ent->s_devid )
 		return 1;
 
-	if ( ent->devid < key->devid )
+	if ( ent->s_devid < key->s_devid )
 		return -1;
 
 	return 0;	
@@ -134,6 +134,91 @@ _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key,
 		return -1;
 
 	return 0;	
+}
+
+static int
+tst_vfs_tstfs_superblock_find_nolock(dev_id devid, tst_vfs_tstfs_super **superp){
+	int                     rc;
+	tst_vfs_tstfs_super *super;
+	tst_vfs_tstfs_super    key;
+
+	key.s_devid = devid;
+
+	super = RB_FIND(_tst_vfs_tstfs_super_tree, &g_tstfs_db.supers, &key);
+
+	if ( super == NULL ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	if ( superp != NULL )
+		*superp = super;
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+int
+tst_vfs_tstfs_superblock_find(dev_id devid, tst_vfs_tstfs_super **superp){
+	int rc;
+
+	mutex_lock(&g_tstfs_db.mtx);
+	rc = tst_vfs_tstfs_superblock_find_nolock(devid, superp);
+	mutex_unlock(&g_tstfs_db.mtx);
+
+	return rc;
+}
+
+int
+tst_vfs_tstfs_superblock_alloc(dev_id devid){
+	int rc;
+	int                      i;
+	tst_vfs_tstfs_super *super;
+	tst_vfs_tstfs_super   *res;
+
+	rc = slab_kmem_cache_alloc(&tstfs_super, KMALLOC_NORMAL, (void **)&super);
+	if ( rc != 0 )
+		goto unlock_out;
+
+	super->s_devid = devid;
+	super->s_magic = TST_VFS_TSTFS_MAGIC;
+	super->s_state = TST_VFS_TSTFS_SSTATE_NONE;
+	RB_INIT(&super->s_inodes);
+	bitops_zero(&super->s_inode_map);
+	for(i = 0; TST_VFS_TSTFS_ROOT_VNID > i; ++i) 
+		bitops_set(i, &super->s_inode_map);
+
+	bitops_set(TST_VFS_TSTFS_ROOT_VNID, &super->s_inode_map);
+	/* TODO: ルートI-nodeの割当て, ディレクトリエントリの生成 */
+
+	mutex_lock(&g_tstfs_db.mtx);
+
+	rc = tst_vfs_tstfs_superblock_find_nolock(devid, NULL);
+	res = RB_INSERT(_tst_vfs_tstfs_super_tree, &g_tstfs_db.supers, super);
+	if ( res != NULL ) {
+
+		rc = -EBUSY;
+		goto free_super_out;
+	}
+
+	mutex_unlock(&g_tstfs_db.mtx);
+	
+	return 0;
+
+free_super_out:
+	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
+
+unlock_out:
+	mutex_unlock(&g_tstfs_db.mtx);
+	return rc;
+}
+void
+tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
+	
+	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
 }
 
 void

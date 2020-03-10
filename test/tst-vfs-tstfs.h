@@ -11,15 +11,13 @@
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
 
-#define TST_VFS_TSTFS_MAGIC (0xfeedfeed)
-#define TST_VFS_TSTFS_VN_MAX    (5)
-#define TST_VFS_TSTFS_ROOT_VNID (2)
-#define TST_VFS_TSTFS_DEV_VNID  (3)
-#define TST_VFS_TSTFS_DEV       (4)
-#define TST_VFS_TSTFS_NAME      "tstfs"
-#define TST_VFS_TSTFS_FNAME_LEN (60)
-#define TST_VFS_NR_INODES       (128)
-
+#define TST_VFS_TSTFS_MAGIC      (0xfeedfeed)
+#define TST_VFS_TSTFS_ROOT_VNID  (2)
+#define TST_VFS_TSTFS_DEV_MAJOR  (0xfffffffe)
+#define TST_VFS_TSTFS_NAME       "tstfs"
+#define TST_VFS_TSTFS_FNAME_LEN   (60)
+#define TST_VFS_NR_INODES        (128)
+#define TST_VFS_TSTFS_SSTATE_NONE (0)
 /**
    テスト用ファイルシステムディレクトリエントリ
  */
@@ -61,10 +59,10 @@ typedef struct _tst_vfs_tstfs_inode{
    テスト用ファイルシステムスーパブロック情報
  */
 typedef struct _tst_vfs_tstfs_super{
-	dev_id             devid;  /**< デバイスID                     */
+	dev_id           s_devid;  /**< デバイスID                     */
 	uint32_t         s_magic;  /**< スーパブロックのマジック番号   */
 	uint32_t         s_state;  /**< マウント状態                   */
-	BITMAP_TYPE(, uint64_t, TST_VFS_NR_INODES)  inode_map;  /**< I-nodeマップ */
+	BITMAP_TYPE(, uint64_t, TST_VFS_NR_INODES)  s_inode_map;  /**< I-nodeマップ */
 	RB_ENTRY(_tst_vfs_tstfs_super) ent; /**< ファイルシステムDBへのリンク */
 	RB_HEAD(_tst_vfs_tstfs_inode_tree, _tst_vfs_tstfs_inode) s_inodes; /**< I-node */
 }tst_vfs_tstfs_super;
