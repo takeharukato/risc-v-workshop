@@ -41,12 +41,13 @@ typedef struct _tst_vfs_tstfs_dpage{
    テスト用ファイルシステムI-node
  */
 typedef struct _tst_vfs_tstfs_inode{
+	struct _mutex                   mtx; /**< 排他用ミューテックス */
 	tst_vfs_tstfs_ino             i_ino;  /**< I-node番号                       */
 	uint16_t                     i_mode;  /**< ファイル種別/保護属性            */
 	uint16_t                   i_nlinks;  /**< ファイルのリンク数 (単位:個)     */
 	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト)     */
 	RB_ENTRY(_tst_vfs_tstfs_inode)  ent; /**< スーパブロック中のI-node情報のリンク */
-	RB_HEAD(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage) datas;  /**< データページ  */
+	RB_HEAD(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage) dpages;  /**< データページ  */
 	/** ディレクトリエントリ  */
 	RB_HEAD(_tst_vfs_tstfs_dent_tree, _tst_vfs_tstfs_dent) dents;  
 }tst_vfs_tstfs_inode;

@@ -3,11 +3,11 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Virtual file system directory entry definitions                   */
+/*  Virtual file system file statics definitions                      */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_FS_VFS_VFS_DIRENT_H)
-#define  _FS_VFS_VFS_DIRENT_H 
+#if !defined(_FS_VFS_VFS_STAT_H)
+#define  _FS_VFS_VFS_STAT_H 
 
 #if !defined(ASM_FILE)
 
@@ -76,6 +76,5 @@
 #define S_IWOTH   (UINT32_C(00002))		/* others: -------w- */
 #define S_IXOTH   (UINT32_C(00001))		/* others: --------x */
 
-
 #endif  /*  !ASM_FILE  */
-#endif /*  _FS_VFS_VFS_DIRENT_H   */
+#endif /*  _FS_VFS_VFS_STAT_H   */
