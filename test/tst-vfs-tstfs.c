@@ -183,6 +183,7 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid){
 	if ( rc != 0 )
 		goto unlock_out;
 
+	mutex_init(&super->mtx);
 	super->s_devid = devid;
 	super->s_magic = TST_VFS_TSTFS_MAGIC;
 	super->s_state = TST_VFS_TSTFS_SSTATE_NONE;
@@ -191,7 +192,6 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid){
 	for(i = 0; TST_VFS_TSTFS_ROOT_VNID > i; ++i) 
 		bitops_set(i, &super->s_inode_map);
 
-	bitops_set(TST_VFS_TSTFS_ROOT_VNID, &super->s_inode_map);
 	/* TODO: ルートI-nodeの割当て, ディレクトリエントリの生成 */
 
 	mutex_lock(&g_tstfs_db.mtx);
@@ -219,6 +219,81 @@ void
 tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	
 	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
+}
+
+int
+tst_vfs_tstfs_inode_find_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino, 
+    tst_vfs_tstfs_inode **inodep){
+	tst_vfs_tstfs_inode *inode;
+	tst_vfs_tstfs_inode    key;
+
+	inode = RB_FIND(_tst_vfs_tstfs_inode_tree, &super->s_inodes, &key);
+	if ( inode == NULL )
+		return -ENOENT;
+
+	if ( inodep != NULL )
+		*inodep = inode;
+
+	return 0;
+}
+
+int
+tst_vfs_tstfs_inode_alloc(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode **inodep){
+	int                     rc;
+	tst_vfs_tstfs_inode *inode;
+	tst_vfs_tstfs_inode   *res;
+	tst_vfs_tstfs_ino  new_ino;
+
+	mutex_lock(&super->mtx);
+
+	rc = slab_kmem_cache_alloc(&tstfs_inode, KMALLOC_NORMAL, (void **)&inode);
+	if ( rc != 0 ) 
+		goto unlock_out;
+
+	new_ino = bitops_ffs(&super->s_inode_map);
+
+	inode->i_ino = new_ino;
+	inode->i_mode = VFS_VNODE_MODE_NONE;
+	inode->i_nlinks = 1;
+	inode->i_size = 0;
+
+	res = RB_INSERT(_tst_vfs_tstfs_inode_tree, &super->s_inodes, inode);
+	kassert( res == NULL );
+
+	if ( inodep != NULL )
+		*inodep = inode;
+
+	mutex_unlock(&super->mtx);
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&super->mtx);
+	return rc;
+}
+
+int
+tst_vfs_tstfs_inode_free(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *inode){
+	int                     rc;
+	tst_vfs_tstfs_inode   *res;
+
+	mutex_lock(&super->mtx);
+
+	res = RB_REMOVE(_tst_vfs_tstfs_inode_tree, &super->s_inodes, inode);
+	if ( res == NULL ) {
+
+		rc = -ENOENT;
+		goto unlock_out;
+	}
+	/* TODO: I-node中のディレクトリエントリ/データブロックの解放 */
+	slab_kmem_cache_free((void *)inode);  /* I-node を解放    */
+	mutex_unlock(&super->mtx);
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&super->mtx);
+	return rc;
 }
 
 void
