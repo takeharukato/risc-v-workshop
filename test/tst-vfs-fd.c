@@ -23,6 +23,8 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
 	dev_id dev;
 	dev_id minor;
+	vfs_ioctx *parent_ioctx;
+	vfs_ioctx    *cur_ioctx;
 
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
@@ -35,6 +37,23 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	/*
+	 * I/Oコンテキスト生成
+	 */
+	rc = vfs_ioctx_alloc(NULL, &parent_ioctx);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_ioctx_alloc(parent_ioctx, &cur_ioctx);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	vfs_ioctx_free(cur_ioctx);
+	vfs_ioctx_free(parent_ioctx);
 
 	vfs_unmount_rootfs();  /* rootfsのアンマウント */
 
