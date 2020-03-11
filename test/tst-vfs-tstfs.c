@@ -15,6 +15,8 @@
 
 #include "tst-vfs-tstfs.h"
 
+static bool initialized=false;
+
 static kmem_cache tstfs_super; /**< super blockのSLABキャッシュ */
 static kmem_cache tstfs_inode; /**< I-nodeのSLABキャッシュ */
 static kmem_cache tstfs_dent;  /**< ディレクトリエントリのSLABキャッシュ */
@@ -136,7 +138,7 @@ _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key,
 	return 0;	
 }
 
-int
+static int
 tst_vfs_tstfs_superblock_find_nolock(dev_id devid, tst_vfs_tstfs_super **superp){
 	int                     rc;
 	tst_vfs_tstfs_super *super;
@@ -321,6 +323,131 @@ unlock_out:
 	return rc;
 }
 
+static int
+tst_vfs_tstfs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *args, 
+		 vfs_vnode_id *root_vnid){
+	int                     rc;
+	uint32_t             major;
+	tst_vfs_tstfs_super *super;
+
+	major = dev >> 32;
+	
+	if ( major != TST_VFS_TSTFS_DEV_MAJOR )
+		return -ENOENT;
+
+	rc = tst_vfs_tstfs_superblock_alloc(dev, &super);
+	if ( rc != 0 )
+		return rc;
+
+	*fs_super = (vfs_fs_super)super;
+	*root_vnid = (vfs_vnode_id)TST_VFS_TSTFS_ROOT_VNID;
+
+	return 0;
+}
+static int
+tst_vfs_tstfs_unmount(vfs_fs_super fs_super){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	kassert( super->s_magic == TST_VFS_TSTFS_MAGIC );
+
+	tst_vfs_tstfs_superblock_free(super);
+
+	return 0;
+}
+
+static int
+tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode *v){
+	int                     rc;
+	tst_vfs_tstfs_super *super;
+	tst_vfs_tstfs_ino      ino;
+	tst_vfs_tstfs_inode *inode;
+
+	if ( ( 0 > id) || ( id > TST_VFS_NR_INODES ) )
+		return -EINVAL;
+
+	super=(tst_vfs_tstfs_super *)fs_super;
+	ino = (tst_vfs_tstfs_ino)id; 
+
+	mutex_lock(&super->mtx);
+	rc = tst_vfs_tstfs_inode_find_nolock(super, ino, &inode);
+	mutex_unlock(&super->mtx);
+	if ( rc != 0 )
+		return rc;
+
+	*v = (vfs_fs_vnode)inode;
+
+	return 0;
+}
+
+static int
+tst_vfs_tstfs_putvnode(vfs_fs_super __unused fs_super, vfs_fs_vnode __unused v){
+
+	return 0;
+}
+
+static int
+tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
+		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
+	int                     rc;
+	tst_vfs_tstfs_super *super;
+	tst_vfs_tstfs_ino      ino;
+	tst_vfs_tstfs_inode    *dv;
+	tst_vfs_tstfs_inode *inode;
+	tst_vfs_tstfs_dent   *dent;
+	vfs_fs_mode      file_mode;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+	
+	dv = (tst_vfs_tstfs_inode *)dir;
+	if ( !( dv->i_mode & S_IFDIR ) )
+		return -EINVAL;
+	mutex_lock(&dv->mtx);
+
+	rc = tst_vfs_tstfs_dent_find_nolock(dv, name, &dent);
+	if ( rc == 0 )
+		ino = dent->ino;
+
+	mutex_unlock(&dv->mtx);
+
+	if ( rc != 0 )
+		return rc;
+
+	mutex_lock(&super->mtx);
+
+	rc = tst_vfs_tstfs_inode_find_nolock(super, ino, &inode);
+	if ( rc == 0 )
+		file_mode = inode->i_mode;
+
+	mutex_unlock(&super->mtx);
+
+	if ( rc != 0 )
+		return rc;
+
+	*id = ino;
+	*modep = file_mode;
+
+	return 0;
+}
+
+static int
+tst_vfs_tstfs_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
+	       off_t pos, off_t *new_posp, int whence){
+
+	return 0;
+}
+
+fs_calls tst_vfs_tstfs_calls={
+	.fs_mount = tst_vfs_tstfs_mount,
+	.fs_unmount = tst_vfs_tstfs_unmount,
+	.fs_getvnode = tst_vfs_tstfs_getvnode,
+	.fs_putvnode = tst_vfs_tstfs_putvnode,
+	.fs_lookup = tst_vfs_tstfs_lookup,
+	.fs_seek = tst_vfs_tstfs_seek,
+};
+
 int
 tst_vfs_tstfs_dpage_free(tst_vfs_tstfs_inode *inode, off_t index){
 	int                     rc;
@@ -405,8 +532,6 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 	}
 	bitops_clr(inode->i_ino, &super->s_inode_map);
 
-	mutex_lock(&inode->mtx);
-
 	/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 	RB_FOREACH_SAFE(dent, _tst_vfs_tstfs_dent_tree, &inode->dents, next_dent) {
 
@@ -416,8 +541,6 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 
 	for(off = 0; inode->i_size > off; off += PAGE_SIZE) 
 		tst_vfs_tstfs_dpage_free_nolock(inode, off/PAGE_SIZE);
-
-	mutex_unlock(&inode->mtx);
 
 	slab_kmem_cache_free((void *)inode);  /* I-node を解放    */
 
@@ -429,7 +552,7 @@ unlock_out:
 }
 
 int
-tst_vfs_tstfs_superblock_alloc(dev_id devid){
+tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 	int                          rc;
 	int                           i;
 	tst_vfs_tstfs_super      *super;
@@ -475,7 +598,9 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid){
 	}
 
 	mutex_unlock(&g_tstfs_db.mtx);
-	
+	if ( superp != NULL )
+		*superp = super;
+
 	return 0;
 
 free_super_out:
@@ -495,8 +620,12 @@ tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 	RB_FOREACH_SAFE(inode, _tst_vfs_tstfs_inode_tree, &super->s_inodes, next) {
 
+		mutex_lock(&inode->mtx);
+
 		rc = tst_vfs_tstfs_inode_free_nolock(super, inode);
 		kassert( rc == 0 );
+
+		mutex_unlock(&inode->mtx);
 	}
 	mutex_unlock(&super->mtx);
 	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
@@ -507,23 +636,31 @@ void
 tst_vfs_tstfs_init(void){
 	int rc;
 
-	/* テスト用ファイルシステムsuperblock用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_super, "test file system superblock", 
-	    sizeof(tst_vfs_tstfs_super), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
+	if ( !initialized ) {
 
-	/* テスト用ファイルシステムI-node用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_inode, "test file system I-node", 
-	    sizeof(tst_vfs_tstfs_inode), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
+		/* テスト用ファイルシステムsuperblock用SLABキャッシュの初期化 */
 
-	/* テスト用ファイルシステムディレクトリエントリ用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_dent, "test file system directory entries", 
-	    sizeof(tst_vfs_tstfs_dent), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
-	
-	/* テスト用ファイルシステムデータページ用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_dpage, "test file system data pages", 
-	    sizeof(tst_vfs_tstfs_dpage), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
+		rc = slab_kmem_cache_create(&tstfs_super, "test file system superblock", 
+		    sizeof(tst_vfs_tstfs_super), SLAB_ALIGN_NONE, 0, KMALLOC_NORMAL,
+		    NULL, NULL);
+		kassert( rc == 0 );
+
+		/* テスト用ファイルシステムI-node用SLABキャッシュの初期化 */
+		rc = slab_kmem_cache_create(&tstfs_inode, "test file system I-node", 
+		    sizeof(tst_vfs_tstfs_inode), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
+		    NULL, NULL);
+		kassert( rc == 0 );
+
+		/* テスト用ファイルシステムディレクトリエントリ用SLABキャッシュの初期化 */
+		rc = slab_kmem_cache_create(&tstfs_dent, "test file system directory entries",
+		    sizeof(tst_vfs_tstfs_dent), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
+		    NULL, NULL);
+		kassert( rc == 0 );
+
+		/* テスト用ファイルシステムデータページ用SLABキャッシュの初期化 */
+		rc = slab_kmem_cache_create(&tstfs_dpage, "test file system data pages", 
+		    sizeof(tst_vfs_tstfs_dpage), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
+		    NULL, NULL);
+		kassert( rc == 0 );
+	}
 }

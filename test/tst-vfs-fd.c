@@ -14,12 +14,15 @@
 
 #include <kern/ktest.h>
 
+#include "tst-vfs-tstfs.h"
+
 static ktest_stats tstat_vfs_fd=KTEST_INITIALIZER;
 
 static void
 vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
 
+	tst_vfs_tstfs_init();
 	rc = 0;
 	if ( rc == 0 )
 		ktest_pass( sp );

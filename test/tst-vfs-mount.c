@@ -123,6 +123,7 @@ tst_vfs_mount_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 
 	return 0;
 }
+
 static int
 tst_vfs_mount_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
 	       off_t pos, off_t *new_posp, int whence){
