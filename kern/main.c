@@ -54,7 +54,6 @@ kern_common_tests(void){
 	tst_vfs_path();
 	tst_vfs_fstbl();
 	tst_vfs_mount();
-	tst_vfs_ioctx();
 	tst_vfs_fd();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
