@@ -21,13 +21,24 @@ static ktest_stats tstat_vfs_fd=KTEST_INITIALIZER;
 static void
 vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
+	dev_id dev;
+	dev_id minor;
 
 	tst_vfs_tstfs_init();
-	rc = 0;
+	ktest_pass( sp );
+
+	minor = 0;
+	dev = (dev_id)TST_VFS_TSTFS_DEV_MAJOR << 32|minor;
+	
+	rc = vfs_mount(NULL, "/", dev, TST_VFS_TSTFS_NAME, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	vfs_unmount_rootfs();  /* rootfsのアンマウント */
+
+	vfs_unregister_filesystem(TST_VFS_TSTFS_NAME);  /* ファイルシステムの解放 */
 }
 
 void

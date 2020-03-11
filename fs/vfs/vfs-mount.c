@@ -1576,8 +1576,10 @@ int
 vfs_unmount_rootfs(void){
 	fs_mount  *mount;
 	int           rc;
+	bool         res;
 
-	rc = get_fs_mount_nolock(g_mnttbl.mt_root_mntid, &mount); /* マウント情報への参照獲得 */
+	 /* マウント情報への参照獲得 */
+	rc = get_fs_mount_nolock(g_mnttbl.mt_root_mntid, &mount);
 	if ( rc != 0 ) {
 
 		rc = -ENOENT;  /* マウントポイント情報が見つからなかった */
@@ -1605,7 +1607,12 @@ vfs_unmount_rootfs(void){
 
 	vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  v-node削除用に参照を解放する */
 
-	vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  参照を解放する */
+	res = vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  参照を解放する */
+	if ( res ) {  /* ルートディレクトリ情報を再初期化 */
+
+		g_mnttbl.mt_root = NULL;
+		g_mnttbl.mt_root_mntid = VFS_INVALID_MNTID;
+	}
 
 	vfs_fs_mount_put(mount);  /* マウントポイントの参照を解放する */
 

@@ -69,7 +69,8 @@ typedef struct _tst_vfs_tstfs_super{
    テスト用ファイルシステムDB
  */
 typedef struct _tst_vfs_tstfs_db{
-	struct _mutex                                         mtx; /**< 排他用ミューテックス */
+	bool                                         initialized; /**< 初期化 */
+	struct _mutex                                        mtx; /**< 排他用ミューテックス */
 	RB_HEAD(_tst_vfs_tstfs_super_tree, _tst_vfs_tstfs_super) supers; /**< スーパブロック */
 }tst_vfs_tstfs_db;
 int tst_vfs_tstfs_dpage_alloc(tst_vfs_tstfs_inode *_inode, off_t _index, 
