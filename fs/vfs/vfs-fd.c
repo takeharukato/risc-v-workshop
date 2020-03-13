@@ -206,7 +206,7 @@ static int
 add_fd_nolock(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
 	size_t  i;
 
-	i = bitops_ffs(&ioctxp->ioc_bmap);  /* 空きスロットを取得 */
+	i = bitops_ffc(&ioctxp->ioc_bmap);  /* 空きスロットを取得 */
 	if ( i == 0 ) 
 		return  -ENOSPC;
 
@@ -228,9 +228,11 @@ add_fd_nolock(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
    @param[in] fd     ユーザファイルディスクリプタ
    @retval  0     正常終了
    @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+   @retval -EBUSY ファイルディスクリプタへの参照が残っている
 */
 static int
 del_fd_nolock(vfs_ioctx *ioctxp, int fd){
+	bool           res;
 	file_descriptor *f;
 
 	if ( ( 0 > fd ) ||
@@ -244,10 +246,12 @@ del_fd_nolock(vfs_ioctx *ioctxp, int fd){
 	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
 
 	f = ioctxp->ioc_fds[fd];
+	res = vfs_fd_ref_dec(f); /*  ファイルディスクリプタへの参照を解放  */
+	if ( !res )
+		return -EBUSY;
+
 	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
 	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
-
-	vfs_fd_ref_dec(f); /*  ファイルディスクリプタへの参照を解放  */
 
 	return 0;
 }
@@ -319,6 +323,7 @@ vfs_fd_add(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
    @param[in] fd     ユーザファイルディスクリプタ
    @retval  0     正常終了
    @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+   @retval -EBUSY ファイルディスクリプタへの参照が残っている
  */
 int
 vfs_fd_del(vfs_ioctx *ioctxp, int fd){
@@ -344,6 +349,7 @@ vfs_fd_del(vfs_ioctx *ioctxp, int fd){
    @param[in]  v      openするファイルのvnode
    @param[in]  omode  open時に指定したモード
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @param[out] fpp    ファイルディスクリプタを返却する領域
    @retval  0     正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
@@ -352,7 +358,8 @@ vfs_fd_del(vfs_ioctx *ioctxp, int fd){
    @retval -EIO    I/Oエラー
  */
 int 
-vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp){
+vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
+    file_descriptor **fpp){
 	int                     fd;
 	vfs_file_private file_priv;
 	file_descriptor         *f;
@@ -412,16 +419,56 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp){
 
 	f->f_private = file_priv;  /* プライベート情報を設定 */
 
-	*fdp = fd;  /*  ユーザファイルディスクリプタを返却  */
+	if ( fdp != NULL )
+		*fdp = fd;  /*  ユーザファイルディスクリプタを返却  */
+	if ( fpp != NULL )
+		*fpp = f;   /*  ファイルディスクリプタを返却  */
 
 	return 0;
 
 put_fd_out:
 	/*  alloc_fdで獲得したファイルディスクリプタをI/Oコンテキストから除去
 	 */
-	vfs_fd_remove(ioctxp, f);
+	vfs_fd_free(ioctxp, f);
 
 out:
+	return rc;
+}
+
+/**
+   ファイルディスクリプタをI/Oコンテキストから除去する
+   @param[in] ioctxp I/Oコンテキスト
+   @param[in] fp     ファイルディスクリプタ
+   @retval  0     正常終了
+   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+ */
+int
+vfs_fd_free(vfs_ioctx *ioctxp, file_descriptor *fp){
+	int rc;
+	int  i;
+
+	/*
+	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
+	 */
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+
+	kassert( (ptrdiff_t)fp > (ptrdiff_t)&ioctxp->ioc_fds[0] );
+
+	/*
+	 * ユーザファイルディスクリプタを算出
+	 */
+	rc = -ENOENT;
+	for( i = 0; ioctxp->ioc_table_size > i; ++i) {
+
+		if ( ioctxp->ioc_fds[i] == fp ) {
+
+			rc = del_fd_nolock(ioctxp, i);  /* ファイルディスクリプタを解放 */
+			break;
+		}
+	}
+
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+
 	return rc;
 }
 
@@ -429,12 +476,12 @@ out:
    ユーザファイルディスクリプタをキーにファイルディスクリプタへの参照を獲得
    @param[in] ioctxp I/Oコンテキスト
    @param[in] fd     ユーザファイルディスクリプタ
-   @param[out] fp    ファイルディスクリプタを指し示すポインタのアドレス
+   @param[out] fpp   ファイルディスクリプタを指し示すポインタのアドレス
    @retval  0 正常終了
    @retval -EBADF 正当なユーザファイルディスクリプタでない
  */
 int
-vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fp){
+vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fpp){
 	bool           res;
 	file_descriptor *f;
 
@@ -454,43 +501,25 @@ vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fp){
 
 	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
 
-	*fp = f;
+	if ( fpp != NULL )
+		*fpp = f;
 	
 	return 0;
 }
 
 /**
-   ファイルディスクリプタをI/Oコンテキストから除去する
+   ファイルディスクリプタの参照を返却する 
    @param[in] ioctxp I/Oコンテキスト
-   @param[in] fp     ファイルディスクリプタ
-   @retval  0     正常終了
-   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+   @param[out] fp    ファイルディスクリプタ
+   @retval  0 正常終了
+   @retval -EBADF 正当なユーザファイルディスクリプタでない
+   @note vfs_fd_getと対称操作を用意するためのvfs_fd_free()関数の別名
  */
 int
-vfs_fd_remove(vfs_ioctx *ioctxp, file_descriptor *fp){
-	int rc;
-	int fd;
+vfs_fd_put(vfs_ioctx *ioctxp, file_descriptor *fp){
 
-	/*
-	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
-	 */
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
-
-	kassert( (ptrdiff_t)fp > (ptrdiff_t)&ioctxp->ioc_fds[0] );
-
-	/*
-	 * ユーザファイルディスクリプタを算出
-	 */
-	fd = (uintptr_t)( (void *)fp - (void *)&ioctxp->ioc_fds[0] ) 
-		/ sizeof(file_descriptor *);
-
-	rc = del_fd_nolock(ioctxp, fd);  /* ファイルディスクリプタを解放 */
-
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
-
-	return rc;
+	return vfs_fd_free(ioctxp, fp);
 }
-
 /**
    ファイルディスクリプタテーブルサイズを更新する
    @param[in] ioctxp   I/Oコンテキスト
