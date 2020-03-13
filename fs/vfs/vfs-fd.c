@@ -296,53 +296,6 @@ vfs_fd_ref_dec(file_descriptor *f){
  */
 
 /**
-   ファイルディスクリプタをI/Oコンテキストに割り当てる
-   @param[in]  ioctxp I/Oコンテキスト
-   @param[in]  f      ファイルディスクリプタ
-   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
-   @retval  0      正常終了
-   @retval -ENOSPC I/Oコンテキスト中に空きがない
- */
-int 
-vfs_fd_add(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
-	int    rc;
-
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
-
-	rc = add_fd_nolock(ioctxp, f, fdp);
-
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
-
-	return rc;
-}
-
-/**
-   ユーザファイルディスクリプタをキーにファイルディスクリプタを解放する
-   @param[in] ioctxp I/Oコンテキスト
-   @param[in] fd     ユーザファイルディスクリプタ
-   @retval  0     正常終了
-   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
-   @retval -EBUSY ファイルディスクリプタへの参照が残っている
- */
-int
-vfs_fd_del(vfs_ioctx *ioctxp, int fd){
-	int rc;
-
-	/*
-	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
-	 */
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
-
-	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
-
-	rc = del_fd_nolock(ioctxp, fd);
-
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
-
-	return rc;
-}
-
-/**
    ファイルディスクリプタを割り当てる
    @param[in]  ioctxp I/Oコンテキスト
    @param[in]  v      openするファイルのvnode
@@ -364,6 +317,14 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 	file_descriptor         *f;
 	int                     rc;
 
+	kassert( v != NULL );  
+	kassert( v->v_mount != NULL );
+	kassert( v->v_mount->m_fs != NULL );
+	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+	if ( ( v->v_mode & VFS_VNODE_MODE_DIR ) && ( omode & VFS_O_WRONLY ) )
+		return -EPERM;    /* 書き込みでディレクトリを開こうとした */
+
 	/*
 	 * ファイルディスクリプタを獲得する
 	 */
@@ -371,13 +332,8 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 	if ( rc != 0 ) {
 
 		kassert( rc == -ENOMEM );
-		goto out;
+		goto error_out;
 	}
-
-	kassert( f->f_vn != NULL );  
-	kassert( f->f_vn->v_mount != NULL );
-	kassert( f->f_vn->v_mount->m_fs != NULL );
-	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
 
 	/*
 	 * Close On Exec指定フラグの設定
@@ -388,17 +344,12 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 	/*
 	 * ユーザファイルディスクリプタの割当て
 	 */
-	rc = vfs_fd_add(ioctxp, f, &fd);
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをロック  */
+	rc = add_fd_nolock(ioctxp, f, &fd);
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをアンロック  */
 	if ( rc != 0 ) {
 
 		kassert( rc == -ENOSPC );
-		goto put_fd_out;
-	}
-
-	if ( ( f->f_vn->v_mode & VFS_VNODE_MODE_DIR ) 
-	    && ( omode & VFS_O_WRONLY ) ) {  /* 書き込みでディレクトリを開こうとした */
-
-		rc = -EPERM;
 		goto put_fd_out;
 	}
 
@@ -430,7 +381,7 @@ put_fd_out:
 	 */
 	vfs_fd_free(ioctxp, f);
 
-out:
+error_out:
 	return rc;
 }
 
