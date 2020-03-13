@@ -196,15 +196,15 @@ path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv,
 		 * 末尾の/の後にカレントディレクトリを表す.だけを
 		 * 含むエレメントを作成して文字列を終端させることで
 		 * ディレクトリのvnodeを獲得する
-		 * e.g., path: "/xxx/yyy"の場合なら"xxx/."に置き換えて, 
+		 * e.g., path: "/xxx/yyy"の場合なら"/xxx/."に置き換えて, 
 		 *             "/xxx/"のvnodeを獲得させる
 		 *       pathが'/'で終わる場合はpathを修正せずに検索パスに引き渡す
-		 * filenameには, path中の/の後に続く文字列をコピーして返却する
+		 * filenameには, path中の/の後に続く文字列(ファイル部)をコピーして返却する
 		 */
 		strncpy(filename, p+1, fnamelen);
 		filename[fnamelen - 1] = '\0';
 
-		if(p[1] != '\0'){
+		if( p[1] != '\0' ){  /* pathが'/'で終わっていない場合 */
 
 			p[1] = '.';
 			p[2] = '\0';
