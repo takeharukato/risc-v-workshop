@@ -21,7 +21,7 @@ static kmem_cache file_descriptor_cache; /**< ファイルディスクリプタ�
 
 /**
    ファイルディスクリプタの割当て (内部関数)
-   @param[in] v    ファイルディスクリプタから参照するvnode
+   @param[in] v    ファイルディスクリプタから参照するv-node
    @param[out] fpp ファイルディスクリプタを指し示すポインタのアドレス
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
@@ -42,14 +42,14 @@ alloc_fd(vnode *v, file_descriptor **fpp){
 	/*
 	 * ファイルディスクリプタを初期化する
 	 */
-	f->f_vn = v;                     /* vnodeへの参照を設定         */
-	f->f_pos = 0;                    /* ファイルポジションの初期化  */
-	refcnt_init(&f->f_refs);         /* 参照を得た状態で返却        */
+	f->f_vn = v;                    /* v-nodeへの参照を設定        */
+	f->f_pos = 0;                   /* ファイルポジションの初期化  */
+	refcnt_init(&f->f_refs);        /* ファイルディスクリプタテーブルからの参照分を設定 */
 	f->f_flags = VFS_FDFLAGS_NONE;  /*  フラグを初期化 */
 	f->f_private = NULL;  /* ファイルディスクリプタのプライベート情報をNULLに設定  */
 
-	/*  ファイルディスクリプタから参照するため
-	 *  vnode参照を加算 
+	/*  ファイルディスクリプタからv-nodeを参照するため,
+	 *  v-node参照カウンタを加算 
 	 */
 	vfs_vnode_ref_inc(v);
 
@@ -86,7 +86,7 @@ free_fd(file_descriptor *f){
 		f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
 		    f->f_vn->v_fs_vnode, f->f_private);
 
-	vfs_vnode_ref_dec(f->f_vn);  /*  vnodeの参照を解放  */
+	vfs_vnode_ref_dec(f->f_vn);  /*  v-nodeの参照を解放  */
 
 	slab_kmem_cache_free(f);    /*  ファイルディスクリプタを解放  */
 }
@@ -184,8 +184,6 @@ alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxpp) {
 	mutex_init(&ioctxp->ioc_mtx);        /* I/Oコンテキスト排他用mutexを初期化      */
 	ioctxp->ioc_table_size = table_size; /* I/Oテーブル長を設定                    */
 	bitops_zero(&ioctxp->ioc_bmap);      /* FD割り当てビットマップを初期化       */
-	//TODO: I/Oコンテキストを管理する
-	//RB_INIT(&ioctxp->ioc_ent);         /* I/Oコンテキストテーブルへのリンクを初期化 */
 	ioctxp->ioc_root = NULL;             /* ルートディレクトリを初期化             */
 	ioctxp->ioc_cwd = NULL;              /* カレントディレクトリを初期化           */
 
@@ -221,7 +219,7 @@ free_ioctx(vfs_ioctx *ioctxp) {
 	int   rc;
 	size_t i;
 
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをロック  */
 
 	kassert( ioctxp->ioc_root != NULL );
 	vfs_vnode_ref_dec( ioctxp->ioc_root );  /* ルートディレクトリの参照を返却  */
@@ -243,7 +241,7 @@ free_ioctx(vfs_ioctx *ioctxp) {
 		}
 	}
 
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをアンロック  */
 
 	/*
 	 * I/Oコンテキストを破棄
@@ -298,7 +296,7 @@ vfs_fd_ref_dec(file_descriptor *f){
 /**
    ファイルディスクリプタを割り当てる
    @param[in]  ioctxp I/Oコンテキスト
-   @param[in]  v      openするファイルのvnode
+   @param[in]  v      openするファイルのv-node
    @param[in]  omode  open時に指定したモード
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @param[out] fpp    ファイルディスクリプタを返却する領域
@@ -401,7 +399,7 @@ vfs_fd_free(vfs_ioctx *ioctxp, file_descriptor *fp){
 	/*
 	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
 	 */
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをロック  */
 
 	/*
 	 * ユーザファイルディスクリプタを算出
@@ -416,7 +414,7 @@ vfs_fd_free(vfs_ioctx *ioctxp, file_descriptor *fp){
 		}
 	}
 
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをアンロック  */
 
 	return rc;
 }
@@ -439,7 +437,7 @@ vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fpp){
 	    ( ioctxp->ioc_fds[fd] == NULL ) )
 		return -EBADF;  /*  不正なユーザファイルディスクリプタ  */
 
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをロック  */
 
 	/*  有効なファイルディスクリプタの場合は
 	 *  リフェレンスカウンタを加算して返却
@@ -448,7 +446,7 @@ vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fpp){
 	res = vfs_fd_ref_inc(f);
 	kassert( res );
 
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをアンロック  */
 
 	if ( fpp != NULL )
 		*fpp = f;
@@ -501,7 +499,7 @@ vfs_ioctx_resize_fd_table(vfs_ioctx *ioctxp, const size_t new_size){
 
 	memset(new_fds, 0, new_tbl_size);
 
-	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをロック  */
 
 	if ( ioctxp->ioc_table_size > new_size ) {  /*  テーブルを縮小する場合  */
 
@@ -524,14 +522,14 @@ vfs_ioctx_resize_fd_table(vfs_ioctx *ioctxp, const size_t new_size){
 	ioctxp->ioc_fds = new_fds;           /*  テーブルの参照を更新する  */
 	ioctxp->ioc_table_size = new_size;   /*  テーブルサイズを更新する  */
 
-	mutex_unlock(&ioctxp->ioc_mtx); /* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&ioctxp->ioc_mtx); /* I/Oコンテキストをアンロック  */
 
 	return 0;
 
 free_new_table_out:
 	kfree(new_fds);
 
-	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&ioctxp->ioc_mtx);  /* I/Oコンテキストをアンロック  */
 
 	return rc;
 }
@@ -582,7 +580,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 	 */
 	if ( parent_ioctx != NULL ) {
 
-		mutex_lock(&parent_ioctx->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
+		mutex_lock(&parent_ioctx->ioc_mtx);  /* I/Oコンテキストをロック  */
 
 		if ( ( parent_ioctx->ioc_root == NULL ) || 
 		    ( parent_ioctx->ioc_cwd == NULL ) ) {
@@ -625,7 +623,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 			}
 		}
 
-		/* I/Oコンテキストテーブルをアンロック  */
+		/* I/Oコンテキストをアンロック  */
 		mutex_unlock(&parent_ioctx->ioc_mtx); 
 	} else {
 
@@ -663,7 +661,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 	return 0;
 
 unlock_out:
-	/* I/Oコンテキストテーブルをアンロック  */
+	/* I/Oコンテキストをアンロック  */
 	mutex_unlock(&parent_ioctx->ioc_mtx); 
 
 free_ioctx_out:
