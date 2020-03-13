@@ -232,7 +232,7 @@ add_fd_nolock(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
 */
 static int
 del_fd_nolock(vfs_ioctx *ioctxp, int fd){
-	bool           res;
+	int             rc;
 	file_descriptor *f;
 
 	if ( ( 0 > fd ) ||
@@ -246,12 +246,12 @@ del_fd_nolock(vfs_ioctx *ioctxp, int fd){
 	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
 
 	f = ioctxp->ioc_fds[fd];
-	res = vfs_fd_ref_dec(f); /*  ファイルディスクリプタへの参照を解放  */
-	if ( !res )
-		return -EBUSY;
-
 	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
 	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
+
+	rc = vfs_fd_put(f); /*  ファイルディスクリプタへの参照を解放  */
+	if ( rc != 0 )
+		return rc;
 
 	return 0;
 }
@@ -507,16 +507,19 @@ vfs_fd_get(vfs_ioctx *ioctxp, int fd, file_descriptor **fpp){
 
 /**
    ファイルディスクリプタの参照を返却する 
-   @param[in] ioctxp I/Oコンテキスト
-   @param[out] fp    ファイルディスクリプタ
-   @retval  0 正常終了
-   @retval -EBADF 正当なユーザファイルディスクリプタでない
-   @note vfs_fd_getと対称操作を用意するためのvfs_fd_free()関数の別名
+   @param[in] f ファイルディスクリプタ
+   @retval    0 正常終了
+   @retval   -EBUSY ファイルディスクリプタへの参照が残っている
  */
 int
-vfs_fd_put(vfs_ioctx *ioctxp, file_descriptor *fp){
+vfs_fd_put(file_descriptor *f){
+	bool res;
 
-	return vfs_fd_free(ioctxp, fp);
+	res = vfs_fd_ref_dec(f);
+	if ( !res )
+		return -EBUSY;
+
+	return 0;
 }
 /**
    ファイルディスクリプタテーブルサイズを更新する

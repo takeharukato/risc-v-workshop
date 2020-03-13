@@ -88,7 +88,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rc = vfs_fd_put(cur_ioctx, close_fp);
+	rc = vfs_fd_put(close_fp);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
