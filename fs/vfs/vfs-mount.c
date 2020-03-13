@@ -923,8 +923,9 @@ unmount_common(vnode *root_vnode){
 	/* ボリューム中のv-nodeを書き出し, 
 	 * v-nodeをロックする
 	 */
-	sync_and_lock_vnodes(mount);  
-
+	rc = sync_and_lock_vnodes(mount);  
+	if ( rc != 0 )
+		goto unlock_out;  /*  アンマウント不能  */
 	/*
 	 * ファイルシステム固有なアンマウント処理を実施
 	 */
@@ -1583,7 +1584,7 @@ vfs_unmount_rootfs(void){
 	if ( rc != 0 ) {
 
 		rc = -ENOENT;  /* マウントポイント情報が見つからなかった */
-		goto put_mount_out;
+		goto error_out;
 	}
 
 	mutex_lock(&g_mnttbl.mt_mtx); /* マウントテーブルをロック  */
@@ -1607,6 +1608,10 @@ vfs_unmount_rootfs(void){
 
 	vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  v-node削除用に参照を解放する */
 
+	/* アンマウント失敗(上記の参照解放によりマウント操作用参照を解放済み) */
+	if ( rc != 0 )
+		goto put_mount_out;  
+
 	res = vfs_vnode_ref_dec(g_mnttbl.mt_root); /*  参照を解放する */
 	if ( res ) {  /* ルートディレクトリ情報を再初期化 */
 
@@ -1622,7 +1627,7 @@ unlock_out:
 	mutex_unlock(&g_mnttbl.mt_mtx); /* マウントテーブルをアンロック  */
 put_mount_out:
 	vfs_fs_mount_put(mount);  /* マウントポイントの参照を解放する */
-
+error_out:
 	return rc;
 }
 /**

@@ -25,6 +25,9 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	dev_id minor;
 	vfs_ioctx *parent_ioctx;
 	vfs_ioctx    *cur_ioctx;
+	vnode                *v;
+	//vfs_open_flags          omode;
+	char              fname[1024];
 
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
@@ -46,14 +49,23 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/*
+	 * I/Oコンテキスト生成(親コンテキストを継承したI/Oコンテキストの解放)
+	 */
 	rc = vfs_ioctx_alloc(parent_ioctx, &cur_ioctx);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	vfs_ioctx_free(cur_ioctx);
-	vfs_ioctx_free(parent_ioctx);
+	rc = vfs_path_to_dir_vnode(cur_ioctx, "/", 1, &v, fname, 1024);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_vnode_ref_dec(v);
+	vfs_ioctx_free(cur_ioctx);  /* 親コンテキストを継承したI/Oコンテキストの解放 */
+	vfs_ioctx_free(parent_ioctx); /* 親コンテキストの解放 */
 
 	vfs_unmount_rootfs();  /* rootfsのアンマウント */
 

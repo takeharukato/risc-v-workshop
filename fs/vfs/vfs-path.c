@@ -175,8 +175,8 @@ path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv,
     char *filename, size_t fnamelen){
 	char *p;
 
-	kassert( pathlen > 1 );
-	kassert( fnamelen > 1 );
+	kassert( pathlen > 0 );
+	kassert( fnamelen > 0 );
 
 	p = strrchr(path, '/');
 	if ( p == NULL ) {
