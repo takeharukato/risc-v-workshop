@@ -92,6 +92,68 @@ free_fd(file_descriptor *f){
 }
 
 /**
+   ファイルディスクリプタをI/Oコンテキストに割り当てる(内部関数)
+   @param[in]  ioctxp I/Oコンテキスト
+   @param[in]  f      ファイルディスクリプタ
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0      正常終了
+   @retval -ENOSPC I/Oコンテキスト中に空きがない
+ */
+static int 
+add_fd_nolock(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
+	size_t  i;
+
+	i = bitops_ffc(&ioctxp->ioc_bmap);  /* 空きスロットを取得 */
+	if ( i == 0 ) 
+		return  -ENOSPC;
+
+	--i; /* 配列のインデクスに変換 */
+	kassert( ioctxp->ioc_fds[i] == NULL );
+
+	bitops_set(i, &ioctxp->ioc_bmap) ; /* 使用中ビットをセット */
+	ioctxp->ioc_fds[i] = f;    /*  ファイルディスクリプタを設定  */
+
+	*fdp = i;  /*  ユーザファイルディスクリプタを返却  */
+
+
+	return 0;
+}
+
+/**
+   ユーザファイルディスクリプタをキーにファイルディスクリプタを解放する (内部関数)
+   @param[in] ioctxp I/Oコンテキスト
+   @param[in] fd     ユーザファイルディスクリプタ
+   @retval  0     正常終了
+   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+   @retval -EBUSY ファイルディスクリプタへの参照が残っている
+*/
+static int
+del_fd_nolock(vfs_ioctx *ioctxp, int fd){
+	int             rc;
+	file_descriptor *f;
+
+	if ( ( 0 > fd ) ||
+	     ( ( (size_t)fd ) >= ioctxp->ioc_table_size ) ||
+	     ( ioctxp->ioc_fds[fd] == NULL ) ) 
+		return -EBADF;
+
+	/*  有効なファイルディスクリプタの場合は
+	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
+	 */
+	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
+
+	f = ioctxp->ioc_fds[fd];
+	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
+	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
+
+	rc = vfs_fd_put(f); /*  ファイルディスクリプタへの参照を解放  */
+	if ( rc != 0 )
+		return rc;
+
+	return 0;
+}
+
+/**
    I/Oコンテキストを新規に割り当てる (内部関数)
    @param[in] table_size I/Oコンテキストテーブルサイズ ( 単位: インデックス数 )
    @param[out] ioctxpp I/Oコンテキストを指し示すポインタのアドレス
@@ -156,6 +218,7 @@ error_out:
  */
 static void
 free_ioctx(vfs_ioctx *ioctxp) {
+	int   rc;
 	size_t i;
 
 	mutex_lock(&ioctxp->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
@@ -174,10 +237,9 @@ free_ioctx(vfs_ioctx *ioctxp) {
 		if ( bitops_isset(i, &ioctxp->ioc_bmap) ) {
 
 			kassert( ioctxp->ioc_fds[i] != NULL );
-			bitops_clr(i, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
-			vfs_fd_ref_dec( ioctxp->ioc_fds[i] );  /* 参照を解放 */
-			ioctxp->ioc_fds[i] = NULL;  /* 未使用スロットに設定 */
 
+			rc = del_fd_nolock(ioctxp, i);  /* ファイルディスクリプタを解放 */
+			kassert( ( rc == 0 ) || ( rc == -EBUSY ) );
 		}
 	}
 
@@ -193,69 +255,6 @@ free_ioctx(vfs_ioctx *ioctxp) {
 
 	return ;
 }
-
-/**
-   ファイルディスクリプタをI/Oコンテキストに割り当てる(内部関数)
-   @param[in]  ioctxp I/Oコンテキスト
-   @param[in]  f      ファイルディスクリプタ
-   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
-   @retval  0      正常終了
-   @retval -ENOSPC I/Oコンテキスト中に空きがない
- */
-static int 
-add_fd_nolock(vfs_ioctx *ioctxp, file_descriptor *f, int *fdp){
-	size_t  i;
-
-	i = bitops_ffc(&ioctxp->ioc_bmap);  /* 空きスロットを取得 */
-	if ( i == 0 ) 
-		return  -ENOSPC;
-
-	--i; /* 配列のインデクスに変換 */
-	kassert( ioctxp->ioc_fds[i] == NULL );
-
-	bitops_set(i, &ioctxp->ioc_bmap) ; /* 使用中ビットをセット */
-	ioctxp->ioc_fds[i] = f;    /*  ファイルディスクリプタを設定  */
-
-	*fdp = i;  /*  ユーザファイルディスクリプタを返却  */
-
-
-	return 0;
-}
-
-/**
-   ユーザファイルディスクリプタをキーにファイルディスクリプタを解放する (内部関数)
-   @param[in] ioctxp I/Oコンテキスト
-   @param[in] fd     ユーザファイルディスクリプタ
-   @retval  0     正常終了
-   @retval -EBADF 不正なユーザファイルディスクリプタを指定した
-   @retval -EBUSY ファイルディスクリプタへの参照が残っている
-*/
-static int
-del_fd_nolock(vfs_ioctx *ioctxp, int fd){
-	int             rc;
-	file_descriptor *f;
-
-	if ( ( 0 > fd ) ||
-	     ( ( (size_t)fd ) >= ioctxp->ioc_table_size ) ||
-	     ( ioctxp->ioc_fds[fd] == NULL ) ) 
-		return -EBADF;
-
-	/*  有効なファイルディスクリプタの場合は
-	 *  I/Oコンテキスト中のファイルディスクリプタテーブルから取り除く
-	 */
-	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
-
-	f = ioctxp->ioc_fds[fd];
-	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
-	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
-
-	rc = vfs_fd_put(f); /*  ファイルディスクリプタへの参照を解放  */
-	if ( rc != 0 )
-		return rc;
-
-	return 0;
-}
-
 
 /*
  * ファイルディスクリプタ操作 IF
@@ -441,6 +440,7 @@ out:
    @param[in] fp     ファイルディスクリプタ
    @retval  0     正常終了
    @retval -EBADF 不正なユーザファイルディスクリプタを指定した
+   @retval -EBUSY ファイルディスクリプタへの参照が残っている
  */
 int
 vfs_fd_free(vfs_ioctx *ioctxp, file_descriptor *fp){
@@ -590,6 +590,8 @@ free_new_table_out:
    @param[in]  parent_ioctx 親プロセスのI/Oコンテキスト
    @param[out] ioctxpp      I/Oコンテキストを指し示すポインタのアドレス
    @retval  0      正常終了
+   @retval -EINVAL ioctxppがNULL, または, 親I/Oコンテキストのルートディレクトリや
+                   カレントワーキングディレクトリが未設定
    @retval -ENOMEM メモリ不足
    @retval -ENODEV ルートディレクトリがマウントされていない
  */
@@ -601,11 +603,8 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 	size_t            i;
 	int              rc;
 
-	kassert( ioctxpp != NULL );
-
-	rc = vfs_fs_mount_system_root_vnode_get(&root_vnode);
-	if ( rc != 0 )
-		return -ENODEV;  /* ルートディレクトリがマウントされていない */
+	if ( ioctxpp == NULL )
+		return -EINVAL;
 
 	/* 親プロセスのI/Oコンテキストを指定した場合は, 
 	 * 親プロセスのI/Oコンテキストを引き継ぐ 
@@ -622,7 +621,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 	if ( rc != 0 ) {
 		
 		kassert( rc == -ENOMEM );
-		goto put_rootvnode_out;
+		goto error_out;
 	}
 
 	/*
@@ -634,30 +633,28 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 
 		mutex_lock(&parent_ioctx->ioc_mtx);  /* I/Oコンテキストテーブルをロック  */
 
+		if ( ( parent_ioctx->ioc_root == NULL ) || 
+		    ( parent_ioctx->ioc_cwd == NULL ) ) {
+
+			/* 親コンテキストにルートディレクトリ, または, 
+			 * カレントワーキングディレクトリが設定されていない
+			 */
+			rc = -EINVAL;
+			goto unlock_out;
+		}
+
 		/* ルートディレクトリを引き継ぐ  
 		 * @note 親プロセスのioctxp->ioc_rootが解放されないように
 		 * parent_ioctx->ioc_mtx獲得中にv-nodeの参照をあげる
 		 */
-		if ( parent_ioctx->ioc_root != NULL )
-			ioctxp->ioc_root = parent_ioctx->ioc_root;
-		else
-			ioctxp->ioc_root = root_vnode;
-
-		kassert( ioctxp->ioc_root != NULL );
-
+		ioctxp->ioc_root = parent_ioctx->ioc_root;
 		vfs_vnode_ref_inc(ioctxp->ioc_root);
 
 		/* カレントディレクトリを引き継ぐ  
 		 * @note 親プロセスのioctxp->ioc_cwdが解放されないように
 		 * parent_ioctx->ioc_mtx獲得中にv-nodeの参照をあげる
 		 */
-		if ( parent_ioctx->ioc_cwd != NULL )
-			ioctxp->ioc_cwd= parent_ioctx->ioc_cwd;
-		else
-			ioctxp->ioc_cwd= root_vnode;
-
-		kassert( ioctxp->ioc_cwd != NULL );
-
+		ioctxp->ioc_cwd= parent_ioctx->ioc_cwd;
 		vfs_vnode_ref_inc(ioctxp->ioc_cwd);
 
 		/* I/Oコンテキスト中のclose-on-exec フラグがセットされていない
@@ -681,6 +678,16 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 		mutex_unlock(&parent_ioctx->ioc_mtx); 
 	} else {
 
+		/*
+		 * システムルートディレクトリv-nodeへの参照を得る
+		 */
+		rc = vfs_fs_mount_system_root_vnode_get(&root_vnode);
+		if ( rc != 0 ) {
+
+			rc = -ENODEV;  /* ルートディレクトリがマウントされていない */
+			goto free_ioctx_out;
+		}
+
 		/*  親プロセスのI/Oコンテキストを引き継がない場合は, 
 		 *  プロセスのルートとカレントディレクトリを指定された
 		 *  ルートディレクトリに設定する
@@ -692,24 +699,26 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 		ioctxp->ioc_cwd = root_vnode;
 		vfs_vnode_ref_inc(ioctxp->ioc_root);
 		vfs_vnode_ref_inc(ioctxp->ioc_cwd);
+
+		/* I/Oコンテキスト操作用に得た
+		 * システムルートディレクトリ v-nodeへの
+		 * 参照を解放する
+		 */
+		vfs_vnode_ref_dec(root_vnode);
 	}
 
-	/* I/Oコンテキスト操作用に得た
-	 * システムルートディレクトリ v-nodeへの
-	 * 参照を解放する
-	 */
-	vfs_vnode_ref_dec(root_vnode);
-
-	*ioctxpp = ioctxp;  /* I/OコンテキストIDを返却  */
+	*ioctxpp = ioctxp;  /* I/Oコンテキストを返却  */
 
 	return 0;
 
-put_rootvnode_out:
-	/* I/Oコンテキスト操作用に得た
-	 * システムルートディレクトリ v-nodeへの
-	 * 参照を解放する
-	 */
-	vfs_vnode_ref_dec(root_vnode);	
+unlock_out:
+	/* I/Oコンテキストテーブルをアンロック  */
+	mutex_unlock(&parent_ioctx->ioc_mtx); 
+
+free_ioctx_out:
+	free_ioctx(ioctxp);  /* I/Oコンテキストを解放 */
+
+error_out:
 	return rc;
 }
 
