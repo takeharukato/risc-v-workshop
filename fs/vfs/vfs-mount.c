@@ -1531,6 +1531,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 	}
 
 	mount->m_dev = dev; /* デバイスIDを設定 */
+	mount->m_root->v_mode |= VFS_VNODE_MODE_DIR; /* ディレクトリフラグを設定 */
 
 	/* マウント情報をマウントテーブルに登録し,
 	 * マウントIDを割当てる

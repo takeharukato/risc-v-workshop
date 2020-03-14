@@ -18,17 +18,53 @@
 
 static ktest_stats tstat_vfs_fd=KTEST_INITIALIZER;
 
+#define TST_VFS_FD_FNAMELEN (60)
+
+/*
+ * open相当の処理
+ */
+static int
+open_fd(vfs_ioctx *cur_ioctx, const char *path, vfs_open_flags omode, file_descriptor **fpp){
+	int                          rc;
+	size_t                      len;
+	vnode                        *v;
+	int                          fd;
+	char fname[TST_VFS_FD_FNAMELEN];
+
+	if ( path == NULL )
+		return -EINVAL;
+
+	len = strlen(path);
+	
+	rc = vfs_path_to_dir_vnode(cur_ioctx, (char *)path, len, &v,
+	    fname, TST_VFS_FD_FNAMELEN);
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = vfs_fd_alloc(cur_ioctx, v, omode, &fd, fpp);
+	if ( rc != 0 )
+		goto unref_out;
+
+	vfs_vnode_ref_dec(v);
+
+	return fd;
+
+unref_out:
+	vfs_vnode_ref_dec(v);
+
+error_out:
+	return rc;
+}
+
 static void
 vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
-	int rc;
-	dev_id dev;
-	dev_id minor;
-	vfs_ioctx *parent_ioctx;
-	vfs_ioctx    *cur_ioctx;
-	vnode                *v;
-	int                  fd;
-	char        fname[1024];
-	file_descriptor     *fp;
+	int                        rc;
+	dev_id                    dev;
+	dev_id                  minor;
+	vfs_ioctx       *parent_ioctx;
+	vfs_ioctx          *cur_ioctx;
+	int                        fd;
+	file_descriptor           *fp;
 	file_descriptor     *close_fp;
 
 	tst_vfs_tstfs_init();
@@ -42,6 +78,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
 	/*
 	 * I/Oコンテキスト生成
 	 */
@@ -59,21 +96,19 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	/*
-	 * open相当の処理
-	 */
-	rc = vfs_path_to_dir_vnode(cur_ioctx, "/", 1, &v, fname, 1024);
-	if ( rc == 0 )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-	rc = vfs_fd_alloc(cur_ioctx, v, VFS_O_RDWR, &fd, &fp);
-	if ( rc == 0 )
+
+	fd = open_fd(cur_ioctx, "/", VFS_O_RDWR, &fp);
+	if ( 0 > fd )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	vfs_vnode_ref_dec(v);
+	fd = open_fd(cur_ioctx, "/", VFS_O_RDONLY, &fp);
+	if ( fd >= 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	/*
 	 * close相当の処理
 	 */

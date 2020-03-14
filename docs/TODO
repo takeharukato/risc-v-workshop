@@ -1,8 +1,8 @@
+* ファイルモードの獲得をfs_vnode_lookupからfs_getvnodeに移動
+* mount/unmount/fd+ioctxの全ルートテストを実施
 * 可変長のIDビットマップ機構を導入し, VFSの上限制限を撤廃
-* vnode id割り当て処理追加
 * vfs_mountをファイルシステムツリーをたどってファイルシステムを自動認識するIFにし,
   現在のvfs_mount_deviceに名称変更
-* mount/unmount/fd+ioctxの全ルートテストを実施
 * システムコール<=>vfs間IFを実装
 * ツールにchdir/mkdir/mknodを追加
 * プロセスヒープの伸縮処理を追加

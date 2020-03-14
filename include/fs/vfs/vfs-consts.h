@@ -41,9 +41,10 @@
 /**
    openフラグ
  */
-#define VFS_O_RDONLY	ULONGLONG_C(0x0)           /**<  読み取り専用でオープンする     */
-#define VFS_O_WRONLY	ULONGLONG_C(0x1)           /**<  書き込み専用でオープンする     */
-#define VFS_O_RDWR	ULONGLONG_C(0x2)           /**<  読み書き両用でオープンする     */
+#define VFS_O_NONE	ULONGLONG_C(0x0)           /**<  フラグなし                     */
+#define VFS_O_RDONLY	ULONGLONG_C(0x1)           /**<  読み取り専用でオープンする     */
+#define VFS_O_WRONLY	ULONGLONG_C(0x2)           /**<  書き込み専用でオープンする     */
+#define VFS_O_RDWR	ULONGLONG_C(0x3)           /**<  読み書き両用でオープンする     */
 #define VFS_O_RWMASK	ULONGLONG_C(0x3)           /**<  読み書きモードを取り出すマスク */
 #define VFS_O_ACCMODE	(VFS_O_RWMASK)             /**<  アクセスモードマスク           */
 
