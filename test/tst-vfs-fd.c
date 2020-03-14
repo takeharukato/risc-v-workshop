@@ -55,6 +55,30 @@ unref_out:
 error_out:
 	return rc;
 }
+/*
+ * close相当の処理
+ */
+static int
+close_fd(vfs_ioctx *cur_ioctx, int fd){
+	int                          rc;
+	file_descriptor              *f;
+
+	rc = vfs_fd_get(cur_ioctx, fd, &f);
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = vfs_fd_free(cur_ioctx, f);
+	kassert( rc == -EBUSY );
+
+	rc = vfs_fd_put(f);
+	if ( rc != 0 )
+		goto error_out;
+
+	return 0;
+
+error_out:
+	return rc;
+}
 
 static void
 vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
@@ -65,7 +89,6 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	vfs_ioctx          *cur_ioctx;
 	int                        fd;
 	file_descriptor           *fp;
-	file_descriptor     *close_fp;
 
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
@@ -109,21 +132,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/*
-	 * close相当の処理
-	 */
-	rc = vfs_fd_get(cur_ioctx, fd, &close_fp);
-	if ( rc == 0 )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-
-	rc = vfs_fd_free(cur_ioctx, close_fp);
-	if ( rc == -EBUSY )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-	rc = vfs_fd_put(close_fp);
+	rc = close_fd(cur_ioctx, fd);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
