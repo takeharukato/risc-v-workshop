@@ -603,6 +603,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 	int             rc;
 	vnode           *v;
 	vnode        v_key;
+	vfs_fs_mode   mode;
 	wque_reason reason;
 
 	v_key.v_id = vnid;  /* 検索対象v-node ID */
@@ -630,7 +631,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			 * ファイルシステム固有のv-node情報を割り当てる
 			 */
 			rc = v->v_mount->m_fs->c_calls->fs_getvnode(v->v_mount->m_fs_super, 
-								    vnid, &v->v_fs_vnode);
+			    vnid, &mode, &v->v_fs_vnode);
 
 			if ( ( rc != 0 ) || ( v->v_fs_vnode == NULL ) ) {
 
@@ -639,6 +640,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			}
 
 			v->v_id = vnid;      /* v-node IDを設定 */
+			v->v_mode = mode;    /* v-nodeのファイルモードを設定 */
 
 			/* v-nodeをロード済みに設定する */
 			mark_vnode_flag_nolock(v, VFS_VFLAGS_VALID);
@@ -1405,9 +1407,10 @@ unlock_out:
    @retval -ENOENT 指定された名前のファイルシステムまたはパスが見つからなかった
    @retval -EINVAL ファイルシステムのマウントに失敗した(オプションが不正?)
    引数で指定されたファイルパスがディレクトリを指していない
-   @retval -EIO    ファイルシステムマウント時にI/Oエラーが発生した
-   @retval -EBUSY  既に対象ボリュームのルートマウントポイントになっている
-   @retval -ENODEV 下位のファイルシステムがルートv-nodeを設定しなかった
+   @retval -EIO     ファイルシステムマウント時にI/Oエラーが発生した
+   @retval -EBUSY   既に対象ボリュームのルートマウントポイントになっている
+   @retval -ENODEV  下位のファイルシステムがルートv-nodeを設定しなかった
+   @retval -ENOTDIR ディレクトリでないパスを指定した
    @note LO: マウントテーブルロック, マウントポイントロック, v-nodeロックの順に
    ロックを獲得する
 */
@@ -1489,7 +1492,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 			goto free_mount_out;
 		}
 		
-		mount->m_mount_point = covered_vnode;  /* マウントポイントとなるv-nodeを記録 */
+		mount->m_mount_point = covered_vnode; /* マウントポイントとなるv-nodeを記録 */
 		mnt_args = args;  /* マウントオプションを引き渡す */
 	} else {
 
@@ -1521,18 +1524,21 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 	if ( rc != 0 ) 
 		goto unmount_out;
 
-	/*
-	 * 下位のファイルシステムがルートv-nodeを設定しなかった
-	 */
 	if ( mount->m_root == NULL ) {  
 
+		/* 下位のファイルシステムがルートv-nodeを設定しなかった */
 		rc = -ENODEV;
 		goto unmount_out;
 	}
 
-	mount->m_dev = dev; /* デバイスIDを設定 */
-	mount->m_root->v_mode |= VFS_VNODE_MODE_DIR; /* ディレクトリフラグを設定 */
+	if ( !(mount->m_root->v_mode & VFS_VNODE_MODE_DIR) ) {
 
+		rc = -ENOTDIR; /* ディレクトリでないv-nodeを指定した */
+		goto unmount_out;
+	}
+
+	mount->m_dev = dev; /* デバイスIDを設定 */
+	
 	/* マウント情報をマウントテーブルに登録し,
 	 * マウントIDを割当てる
 	 */

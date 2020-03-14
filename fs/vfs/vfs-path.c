@@ -28,7 +28,6 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 	vnode      *curr_v;
 	vnode      *next_v;
 	vfs_vnode_id  vnid;
-	vfs_fs_mode v_mode;
 	int             rc;
 
 	kassert( ioctxp->ioc_root != NULL );
@@ -106,7 +105,7 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 		kassert( curr_v->v_mount->m_fs->c_calls != NULL );
 		kassert( is_valid_fs_calls( curr_v->v_mount->m_fs->c_calls ) );
 		rc = curr_v->v_mount->m_fs->c_calls->fs_lookup(curr_v->v_mount->m_fs_super,
-							 curr_v->v_fs_vnode, p, &vnid, &v_mode);
+							 curr_v->v_fs_vnode, p, &vnid);
 		if (rc != 0) {
 			
 			if ( ( rc != -EIO ) && ( rc != -ENOENT ) )
@@ -128,7 +127,6 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 			vfs_vnode_ref_dec(curr_v);
 			goto error_out;
 		}
-		next_v->v_mode |= v_mode;  /*  v_modeを更新する  */
 
 		/*  vnodeの参照を開放  */
 		vfs_vnode_ref_dec(curr_v);

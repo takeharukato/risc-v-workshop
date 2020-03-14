@@ -17,7 +17,8 @@
 static ktest_stats tstat_vfs_fstbl=KTEST_INITIALIZER;
 
 static int
-tst_vfs_fstbl_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
+tst_vfs_fstbl_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_mode *modep,
+    vfs_fs_vnode *v){
 
 	return 0;
 }
@@ -28,7 +29,7 @@ tst_vfs_fstbl_putvnode(vfs_fs_super fs_priv, vfs_fs_vnode v){
 }
 static int
 tst_vfs_fstbl_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
-		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
+		 const char *name, vfs_vnode_id *id){
 
 	return 0;
 }

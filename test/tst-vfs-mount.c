@@ -80,14 +80,21 @@ tst_vfs_mount_init_vnodes(void){
 
 		vn_array[i].i_vnid = i;
 	}
+	vn_array[TST_VFS_MOUNT_ROOT_VNID].i_mode = VFS_VNODE_MODE_DIR;
+	vn_array[TST_VFS_MOUNT_DEV_VNID].i_mode = VFS_VNODE_MODE_DIR;
 }
 static int
-tst_vfs_mount_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_vnode *v){
-	
+tst_vfs_mount_getvnode(vfs_fs_super fs_priv, vfs_vnode_id id, vfs_fs_mode *modep, 
+    vfs_fs_vnode *v){
+	tst_vfs_mount_vnode *fs_v;
+
 	if ( ( 0 > id) || ( id >= TST_VFS_MOUNT_VN_MAX ) )
 		return -EINVAL;
 
-	*v = (vfs_fs_vnode)&vn_array[id];
+	fs_v = &vn_array[id];
+
+	*modep = fs_v->i_mode;
+	*v = (vfs_fs_vnode)fs_v;
 
 	return 0;
 }
@@ -103,7 +110,7 @@ tst_vfs_mount_putvnode(vfs_fs_super fs_priv, vfs_fs_vnode v){
 }
 static int
 tst_vfs_mount_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
-		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
+		 const char *name, vfs_vnode_id *id){
 	tst_vfs_mount_super *super;
 	tst_vfs_mount_vnode    *dv;
 
@@ -114,7 +121,7 @@ tst_vfs_mount_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 	dv = (tst_vfs_mount_vnode *)dir;
 	if ( dv->i_vnid != TST_VFS_MOUNT_ROOT_VNID )
 		return -EINVAL;
-	if ( ( strcmp(name, ".") == 0 ) || ( strcmp(name, "..") == 0 ) ) 
+	if ( ( strcmp(name, ".") == 0 ) || ( strcmp(name, "..") == 0 ) )
 		*id = TST_VFS_MOUNT_ROOT_VNID;
 	else if ( strcmp(name, "dev") == 0 )
 		*id = TST_VFS_MOUNT_DEV_VNID;

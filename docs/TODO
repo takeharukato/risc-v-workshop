@@ -1,4 +1,4 @@
-* ファイルモードの獲得をfs_vnode_lookupからfs_getvnodeに移動
+
 * mount/unmount/fd+ioctxの全ルートテストを実施
 * 可変長のIDビットマップ機構を導入し, VFSの上限制限を撤廃
 * vfs_mountをファイルシステムツリーをたどってファイルシステムを自動認識するIFにし,
@@ -11,6 +11,7 @@
 * mutex/waitキュー操作を実装
   - スレッド管理実装後にTODOを消化し, mutexのテストを追加する
 
+* ファイルモードの獲得をfs_vnode_lookupからfs_getvnodeに移動[済み]
 * グローバルrootアンマウント処理を追加[済み]
 * v-nodeの参照制御の修正[済み]
   - 参照をgetで加算/putで減算する[済み]

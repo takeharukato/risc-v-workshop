@@ -366,7 +366,8 @@ tst_vfs_tstfs_unmount(vfs_fs_super fs_super){
 }
 
 static int
-tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode *v){
+tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *modep,
+    vfs_fs_vnode *v){
 	int                     rc;
 	tst_vfs_tstfs_super *super;
 	tst_vfs_tstfs_ino      ino;
@@ -385,6 +386,7 @@ tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode *v){
 		return rc;
 
 	*v = (vfs_fs_vnode)inode;
+	*modep = inode->i_mode;
 
 	return 0;
 }
@@ -397,14 +399,13 @@ tst_vfs_tstfs_putvnode(vfs_fs_super __unused fs_super, vfs_fs_vnode __unused v){
 
 static int
 tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
-		 const char *name, vfs_vnode_id *id, vfs_fs_mode *modep){
+		 const char *name, vfs_vnode_id *id){
 	int                     rc;
 	tst_vfs_tstfs_super *super;
 	tst_vfs_tstfs_ino      ino;
 	tst_vfs_tstfs_inode    *dv;
 	tst_vfs_tstfs_inode *inode;
 	tst_vfs_tstfs_dent   *dent;
-	vfs_fs_mode      file_mode;
 
 	super = (tst_vfs_tstfs_super *)fs_super;
 	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
@@ -427,8 +428,6 @@ tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 	mutex_lock(&super->mtx);
 
 	rc = tst_vfs_tstfs_inode_find_nolock(super, ino, &inode);
-	if ( rc == 0 )
-		file_mode = inode->i_mode;
 
 	mutex_unlock(&super->mtx);
 
@@ -436,7 +435,6 @@ tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 		return rc;
 
 	*id = ino;
-	*modep = file_mode;
 
 	return 0;
 }
