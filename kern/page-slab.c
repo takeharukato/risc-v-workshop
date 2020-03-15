@@ -52,6 +52,7 @@ static slab_prealloc_cache_info prealloc_caches_info[]={
 	{"kmalloc-16384", SLAB_PREALLOC_BASE << 11},
 	{"kmalloc-32768", SLAB_PREALLOC_BASE << 12},
 	{"kmalloc-65536", SLAB_PREALLOC_BASE << 13},
+	{"kmalloc-131072", SLAB_PREALLOC_BASE << 14},
 };
 
 /**

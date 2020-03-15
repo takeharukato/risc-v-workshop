@@ -89,6 +89,8 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	vfs_ioctx          *cur_ioctx;
 	int                        fd;
 	file_descriptor           *fp;
+	int                       fd2;
+	file_descriptor          *fp2;
 
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
@@ -128,6 +130,55 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 
 	fd = open_fd(cur_ioctx, "/", VFS_O_RDONLY, &fp);
 	if ( fd >= 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	fd2 = open_fd(cur_ioctx, "/", VFS_O_RDONLY, &fp2);
+	if ( fd2 >= 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * FDテーブルの伸張 (エラーケース)
+	 */
+	rc = vfs_ioctx_resize_fd_table(cur_ioctx, 0);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/*
+	 * FDテーブルの伸張 (エラーケース)
+	 */
+	rc = vfs_ioctx_resize_fd_table(cur_ioctx, VFS_MAX_FD_TABLE_SIZE+1);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/*
+	 * FDテーブルの伸張 (使用中のfdが伸縮対象に含まれるケース)
+	 */
+	rc = vfs_ioctx_resize_fd_table(cur_ioctx, 1);
+	if ( rc == -EBUSY )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * FDテーブルの伸張
+	 */
+	rc = vfs_ioctx_resize_fd_table(cur_ioctx, VFS_MAX_FD_TABLE_SIZE);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * FDテーブルの伸縮
+	 */
+	rc = vfs_ioctx_resize_fd_table(cur_ioctx, VFS_DEFAULT_FD_TABLE_SIZE/2);
+	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
