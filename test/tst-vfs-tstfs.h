@@ -77,15 +77,18 @@ typedef struct _tst_vfs_tstfs_db{
 int tst_vfs_tstfs_dpage_alloc(struct _tst_vfs_tstfs_inode *_inode, off_t _index, 
     struct _tst_vfs_tstfs_dpage **_dpagep);
 int tst_vfs_tstfs_dpage_free(struct _tst_vfs_tstfs_inode *_inode, off_t _index);
+int tst_vfs_tstfs_dent_add(struct _tst_vfs_tstfs_inode *_inode, tst_vfs_tstfs_ino _ino, 
+    const char *_name);
+int tst_vfs_tstfs_dent_find(struct _tst_vfs_tstfs_inode *_dv, const char *_name, 
+    struct _tst_vfs_tstfs_dent **_dentp);
 int tst_vfs_tstfs_dent_del(struct _tst_vfs_tstfs_inode *_inode, const char *_name);
-int tst_vfs_tstfs_superblock_find(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
+int tst_vfs_tstfs_inode_find(struct _tst_vfs_tstfs_super *_super, tst_vfs_tstfs_ino _ino, 
+    struct _tst_vfs_tstfs_inode **_inodep);
 int tst_vfs_tstfs_inode_alloc(struct _tst_vfs_tstfs_super *_super, 
     struct _tst_vfs_tstfs_inode **_inodep);
 int tst_vfs_tstfs_inode_free(struct _tst_vfs_tstfs_super *_super, 
     struct _tst_vfs_tstfs_inode *_inode);
-int tst_vfs_tstfs_dent_add(struct _tst_vfs_tstfs_inode *_inode, tst_vfs_tstfs_ino _ino, 
-    const char *_name);
-int tst_vfs_tstfs_dent_del(struct _tst_vfs_tstfs_inode *_inode, const char *_name);
+int tst_vfs_tstfs_superblock_find(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
 int tst_vfs_tstfs_superblock_alloc(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
 void tst_vfs_tstfs_superblock_free(struct _tst_vfs_tstfs_super *_super);
 int tst_vfs_tstfs_make_directory(struct _tst_vfs_tstfs_super *_super, 

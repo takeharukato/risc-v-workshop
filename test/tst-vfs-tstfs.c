@@ -245,6 +245,7 @@ tst_vfs_tstfs_inode_find_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino in
 
 	return 0;
 }
+
 /**
    ディレクトリエントリを追加する
    @param[in]  inode  ディレクトリファイルのI-node情報
@@ -730,7 +731,35 @@ unlock_out:
 	mutex_unlock(&inode->mtx);
 	return rc;
 }
+/**
+   ディレクトリエントリを検索する
+   @param[in]  dv     ディレクトリファイルのI-node情報
+   @param[in]  name   ファイル名
+   @param[out] dentp  ディレクトリエントリ情報返却領域
+   @retval  0      正常終了
+   @retval -ENOENT ディレクトリエントリが見つからなかった
+ */
+int
+tst_vfs_tstfs_dent_find(tst_vfs_tstfs_inode *dv, const char *name, 
+    tst_vfs_tstfs_dent **dentp){
+	int                     rc;
+	tst_vfs_tstfs_dent   *dent;
 
+	mutex_lock(&dv->mtx);
+	rc = tst_vfs_tstfs_dent_find_nolock(dv, name, &dent);
+	if ( rc != 0 )
+		goto unlock_out;
+	mutex_unlock(&dv->mtx);
+
+	if ( dentp != NULL )
+		*dentp = dent;
+	
+	return 0;
+
+unlock_out:
+	mutex_unlock(&dv->mtx);
+	return rc;
+}
 /**
    ディレクトリエントリを追加する
    @param[in]  inode  ディレクトリファイルのI-node情報
@@ -914,10 +943,9 @@ unlock_out:
 }
 
 /**
-   ファイルシステム固有スーパブロック情報を割り当てる
-   @param[in]  devid  デバイスID
-   @param[out] superp スーパブロック情報返却領域
-   @retval     0      正常終了
+   ファイルシステム固有スーパブロック情報を解放する
+   @param[in] super スーパブロック情報
+   @retval     0    正常終了
  */
 void
 tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
@@ -938,6 +966,38 @@ tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	}
 	mutex_unlock(&super->mtx);
 	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
+}
+
+/**
+   I-nodeを検索する
+   @param[in]  super  スーパブロック情報
+   @param[in]  ino    I-node番号
+   @param[out] inodep I-node情報返却領域
+   @retval  0      正常終了
+   @retval -ENOENT I-nodeが見つからなかった
+ */
+int
+tst_vfs_tstfs_inode_find(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino, 
+    tst_vfs_tstfs_inode **inodep){
+	int                     rc;
+	tst_vfs_tstfs_inode *inode;
+
+	mutex_lock(&super->mtx);
+
+	rc = tst_vfs_tstfs_inode_find_nolock(super, ino,  &inode);
+	if ( rc != 0 )
+		goto unlock_out;
+
+	mutex_unlock(&super->mtx);
+
+	if ( inodep != NULL )
+		*inodep = inode;
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&super->mtx);
+	return rc;
 }
 
 /**
