@@ -194,7 +194,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 
 	vfs_unmount_rootfs();  /* rootfsのアンマウント */
 
-	vfs_unregister_filesystem(TST_VFS_TSTFS_NAME);  /* ファイルシステムの解放 */
+	tst_vfs_tstfs_finalize();  /* ファイルシステムの解放 */
 }
 
 void

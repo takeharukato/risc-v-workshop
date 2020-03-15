@@ -96,4 +96,5 @@ int tst_vfs_tstfs_make_directory(struct _tst_vfs_tstfs_super *_super,
 int tst_vfs_tstfs_remove_directory(struct _tst_vfs_tstfs_super *_super, 
     struct _tst_vfs_tstfs_inode *_dv, const char *_name);
 void tst_vfs_tstfs_init(void);
+void tst_vfs_tstfs_finalize(void);
 #endif  /*  _KERN_TST_VFS_TSTFS_H  */
