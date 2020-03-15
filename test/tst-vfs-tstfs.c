@@ -590,6 +590,9 @@ tst_vfs_tstfs_seek(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_
 	return 0;
 }
 
+/**
+   ファイルシステム操作
+ */
 static fs_calls tst_vfs_tstfs_calls={
 	.fs_mount = tst_vfs_tstfs_mount,
 	.fs_unmount = tst_vfs_tstfs_unmount,
@@ -704,6 +707,13 @@ tst_vfs_tstfs_dent_del(tst_vfs_tstfs_inode *inode, const char *name){
 	return rc;
 }
 
+/**
+   スーパブロック情報を検索する
+   @param[in]  devid  デバイスID
+   @param[in]  superp スーパブロック情報返却領域
+   @retval  0      正常終了
+   @retval -ENOENT スーパブロック情報が見つからなかった
+ */
 int
 tst_vfs_tstfs_superblock_find(dev_id devid, tst_vfs_tstfs_super **superp){
 	int rc;
@@ -715,6 +725,13 @@ tst_vfs_tstfs_superblock_find(dev_id devid, tst_vfs_tstfs_super **superp){
 	return rc;
 }
 
+/**
+   I-nodeを割り当てる
+   @param[in]  super  スーパブロック情報
+   @param[in]  inode  I-node情報
+   @retval  0      正常終了
+   @retval -ENOSPC 空きI-nodeが見つからなかった
+ */
 int
 tst_vfs_tstfs_inode_alloc(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode **inodep){
 	int  rc;
@@ -760,11 +777,14 @@ unlock_out:
 	mutex_unlock(&super->mtx);
 	return rc;
 }
+
 /**
    ファイルシステム固有スーパブロック情報を割り当てる
    @param[in]  devid  デバイスID
    @param[out] superp スーパブロック情報返却領域
    @retval     0      正常終了
+   @retval    -ENOMEM メモリ不足
+   @retval    -EBUSY  対象のデバイスがすでにマウントされている
  */
 int
 tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
@@ -826,6 +846,13 @@ unlock_out:
 	mutex_unlock(&g_tstfs_db.mtx);
 	return rc;
 }
+
+/**
+   ファイルシステム固有スーパブロック情報を割り当てる
+   @param[in]  devid  デバイスID
+   @param[out] superp スーパブロック情報返却領域
+   @retval     0      正常終了
+ */
 void
 tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	int                      rc;
@@ -847,7 +874,9 @@ tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
 }
 
-
+/**
+   ファイルシステムを初期化する
+ */
 void
 tst_vfs_tstfs_init(void){
 	int rc;
