@@ -73,14 +73,7 @@ free_fd(file_descriptor *f){
 	kassert( refcnt_read(&f->f_refs) == 0 ); 
 
 	/*
-	 * ファイルシステム固有のクローズ処理を実施
-	 */
-	if ( f->f_vn->v_mount->m_fs->c_calls->fs_close != NULL )
-		f->f_vn->v_mount->m_fs->c_calls->fs_close(f->f_vn->v_mount->m_fs_super,
-		    f->f_vn->v_fs_vnode, f->f_private);
-
-	/*
-	 * ファイルディスクリプタのクローズ処理を実施
+	 * ファイルシステム固有のファイルディスクリプタ解放処理を実施
 	 */
 	if ( f->f_vn->v_mount->m_fs->c_calls->fs_release_fd != NULL )
 		f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
@@ -143,6 +136,14 @@ del_fd_nolock(vfs_ioctx *ioctxp, int fd){
 	kassert( bitops_isset(fd, &ioctxp->ioc_bmap) );
 
 	f = ioctxp->ioc_fds[fd];
+
+	/*
+	 * ファイルシステム固有のクローズ処理を実施
+	 */
+	if ( f->f_vn->v_mount->m_fs->c_calls->fs_close != NULL )
+		f->f_vn->v_mount->m_fs->c_calls->fs_close(f->f_vn->v_mount->m_fs_super,
+		    f->f_vn->v_fs_vnode, f->f_private);
+
 	bitops_clr(fd, &ioctxp->ioc_bmap) ; /* 使用中ビットをクリア */
 	ioctxp->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
 
@@ -300,7 +301,7 @@ vfs_fd_ref_dec(file_descriptor *f){
    @param[in]  omode  open時に指定したモード
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @param[out] fpp    ファイルディスクリプタを返却する領域
-   @retval  0     正常終了
+   @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EPERM  ディレクトリを書き込みで開こうとした
@@ -348,7 +349,9 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 	if ( rc != 0 ) {
 
 		kassert( rc == -ENOSPC );
-		goto put_fd_out;
+		rc = vfs_fd_put(f); /* ファイルディスクリプタへの参照を解放  */
+		kassert( rc == 0 ); /* 使用者がいないため解放可能 */
+		goto error_out;
 	}
 
 	if ( v->v_mount->m_fs->c_calls->fs_open != NULL ) {
@@ -360,7 +363,8 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 		    v->v_fs_vnode, &file_priv, omode);
 		if (rc != 0) {
 			
-			kassert( ( rc == -ENOMEM ) || ( rc == -EIO ) );
+			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )
+				rc = -EIO;
 			goto put_fd_out;
 		}
 	}
