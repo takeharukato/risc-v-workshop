@@ -275,6 +275,9 @@ tst_vfs_tstfs_dent_add_nolock(tst_vfs_tstfs_inode *inode, tst_vfs_tstfs_ino ino,
 		goto free_dent_out;
 	}
 
+	/* ディレクトリエントリのサイズを加算 */
+	inode->i_size += sizeof(tst_vfs_tstfs_dent); 
+
 	return 0;
 
 free_dent_out:
@@ -305,8 +308,8 @@ tst_vfs_tstfs_dent_del_nolock(tst_vfs_tstfs_inode *inode, const char *name){
 
 	res = RB_REMOVE(_tst_vfs_tstfs_dent_tree, &inode->dents, dent);
 	kassert( res != NULL );
+
 	kassert( inode->i_size >= sizeof(tst_vfs_tstfs_dent) );
-	
 	inode->i_size -= sizeof(tst_vfs_tstfs_dent);
 
 	slab_kmem_cache_free((void *)dent);  /* ディレクトリエントリを解放  */
@@ -363,7 +366,6 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 		rc = -ENOSPC;
 		goto error_out;
 	}
-
 	mutex_init(&inode->mtx);
 	inode->i_ino = new_ino - 1;
 	inode->i_mode = VFS_VNODE_MODE_NONE;
@@ -371,6 +373,8 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 	inode->i_size = 0;
 	RB_INIT(&inode->dents);
 	RB_INIT(&inode->dpages);
+
+	bitops_set(inode->i_ino, &super->s_inode_map);
 
 	res = RB_INSERT(_tst_vfs_tstfs_inode_tree, &super->s_inodes, inode);
 	kassert( res == NULL );
@@ -406,7 +410,7 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 	}
 	bitops_clr(inode->i_ino, &super->s_inode_map);
 
-	if ( ( inode->i_mode & S_IFDIR ) ) {
+	if ( inode->i_mode & S_IFDIR ) {
 
 		/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 		RB_FOREACH_SAFE(dent, _tst_vfs_tstfs_dent_tree, &inode->dents, next_dent) {
@@ -423,6 +427,63 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 	slab_kmem_cache_free((void *)inode);  /* I-node を解放    */
 
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ディレクトリを生成する
+   @param[in]  super  スーパブロック情報
+   @param[in]  dv     親ディレクトリのI-node情報
+   @param[in]  name   ディレクトリ名
+   @retval     0      正常終了
+   @retval    -ENOSPC I-nodeに空きがない
+   @retval    -ENOMEM メモリ不足
+   @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
+ */
+static int
+tst_vfs_tstfs_make_directory_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+	const char *name){
+	int                          rc;
+	tst_vfs_tstfs_inode  *new_inode;
+
+	/* ディレクトリ用I-nodeの割当て
+	 */
+	rc = tst_vfs_tstfs_inode_alloc_nolock(super, &new_inode); /* I-node割り当て */
+	if ( rc != 0 )
+		goto error_out;
+
+	new_inode->i_mode = VFS_VNODE_MODE_DIR; /* ディレクトリに設定 */
+	new_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
+
+	rc = tst_vfs_tstfs_dent_add_nolock(dv, new_inode->i_ino, name);
+	if ( rc != 0 )
+		goto del_new_inode_out;
+
+	/*
+	 * ".", ".." エントリの追加
+	 */
+	rc = tst_vfs_tstfs_dent_add_nolock(new_inode, new_inode->i_ino, ".");
+	if ( rc != 0 )
+		goto del_new_dent_out;
+
+	rc = tst_vfs_tstfs_dent_add_nolock(new_inode, dv->i_ino, "..");
+	if ( rc != 0 )
+		goto del_dot_out;
+
+	++dv->i_nlinks;  /* 親ディレクトリの参照を増やす */
+
+	return 0;
+
+del_dot_out:
+	tst_vfs_tstfs_dent_del_nolock(new_inode, ".");
+
+del_new_dent_out:
+	tst_vfs_tstfs_dent_del_nolock(dv, name);
+
+del_new_inode_out:
+	tst_vfs_tstfs_inode_free_nolock(super, new_inode);
 
 error_out:
 	return rc;
@@ -758,22 +819,26 @@ unlock_out:
    @param[in]  inode  I-node情報
    @retval  0      正常終了
    @retval -ENOENT I-nodeが見つからなかった
+   @note LO:   スーパブロック情報のロック, I-node情報のロックの順に獲得する
  */
 int
 tst_vfs_tstfs_inode_free(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *inode){
 	int  rc;
 
 	mutex_lock(&super->mtx);
+	mutex_lock(&inode->mtx);
 
 	rc = tst_vfs_tstfs_inode_free_nolock(super, inode);
 	if ( rc != 0 ) 
 		goto unlock_out;
 
+	mutex_unlock(&inode->mtx);
 	mutex_unlock(&super->mtx);
 
 	return 0;
 
 unlock_out:
+	mutex_unlock(&inode->mtx);
 	mutex_unlock(&super->mtx);
 	return rc;
 }
@@ -810,6 +875,7 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 	/* ルートI-nodeの割当て, ディレクトリエントリの生成 
 	 */
 	rc = tst_vfs_tstfs_inode_alloc(super, &dir_inode); /* ルートI-node割り当て */
+	kassert( rc == 0 );
 	kassert(dir_inode->i_ino == TST_VFS_TSTFS_ROOT_VNID);
 	/*
 	 * ".", ".." エントリの追加
@@ -822,8 +888,7 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 
 	dir_inode->i_mode = VFS_VNODE_MODE_DIR; /* ディレクトリに設定 */
 	dir_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
-	/* "."と".."エントリのサイズを加算 */
-	dir_inode->i_size += sizeof(tst_vfs_tstfs_dent) * 2; 
+
 	mutex_lock(&g_tstfs_db.mtx);
 
 	res = RB_INSERT(_tst_vfs_tstfs_super_tree, &g_tstfs_db.supers, super);
@@ -834,6 +899,7 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 	}
 
 	mutex_unlock(&g_tstfs_db.mtx);
+
 	if ( superp != NULL )
 		*superp = super;
 
@@ -872,6 +938,108 @@ tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
 	}
 	mutex_unlock(&super->mtx);
 	slab_kmem_cache_free((void *)super);  /* super blockを解放    */
+}
+
+/**
+   ディレクトリを削除する
+   @param[in]  super  スーパブロック情報
+   @param[in]  dv     親ディレクトリのI-node情報
+   @param[in]  name   ディレクトリ名
+   @retval     0      正常終了
+   @retval    -ENOTDIR dvがディレクトリではない
+   @retval    -ENOENT  指定された名前のディレクトリが存在しない
+   @retval    -EBUSY   ディレクトリが空でない
+ */
+int
+tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+	const char *name){
+	int                          rc;
+	tst_vfs_tstfs_dent        *dent;
+	tst_vfs_tstfs_inode   *rm_inode;
+
+	mutex_lock(&super->mtx);
+
+	mutex_lock(&dv->mtx);
+
+	if ( !( dv->i_mode & S_IFDIR ) ) {
+		
+		rc = -ENOTDIR;  /* ディレクトリではない */
+		goto unlock_out;  
+	}
+	
+	rc = tst_vfs_tstfs_dent_find_nolock(dv, name, &dent); /* ディレクトリエントリ検索 */
+	if ( rc != 0 )
+		goto unlock_out;  /* 指定された名前のディレクトリが存在しない */
+	
+	/*
+	 * 削除対象ディレクトリの検索, 状態確認
+	 */
+	rc = tst_vfs_tstfs_inode_find_nolock(super, dent->ino, &rm_inode);
+	if ( rc != 0 )
+		goto unlock_out;  /* 指定された名前のディレクトリのI-nodeが存在しない */
+
+	if ( !( rm_inode->i_mode & S_IFDIR ) ) {
+		
+		rc = -ENOTDIR;  /* ディレクトリではない */
+		goto unlock_out;  
+	}
+
+	if ( rm_inode->i_size > ( sizeof(tst_vfs_tstfs_dent) * 2 ) ) {
+
+		rc = -EBUSY; /* ディレクトリが空ではない */
+		goto unlock_out;  
+	}
+
+	if ( rm_inode->i_nlinks > 2 ) {
+
+		rc = -EBUSY; /* ディレクトリが空ではない */
+		goto unlock_out;  
+	}
+
+	/* ディレクトリエントリの削除 */
+	rc = tst_vfs_tstfs_dent_del_nolock(dv, name);
+	kassert( rc == 0 );
+
+	mutex_unlock(&dv->mtx);
+
+	/* 削除対象ディレクトリのI-nodeを解放
+	 */
+	mutex_lock(&rm_inode->mtx);
+	rc = tst_vfs_tstfs_inode_free_nolock(super, rm_inode);
+	kassert( rc == 0 );
+	mutex_unlock(&rm_inode->mtx);
+
+	mutex_unlock(&super->mtx);
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&dv->mtx);
+	mutex_unlock(&super->mtx);
+
+	return rc;
+}
+
+/**
+   ディレクトリを生成する
+   @param[in]  super  スーパブロック情報
+   @param[in]  dv     親ディレクトリのI-node情報
+   @param[in]  name   ディレクトリ名
+   @retval     0      正常終了
+   @note LO:   スーパブロック情報のロック, 親ディレクトリのI-node情報のロックの順に獲得する
+ */
+int
+tst_vfs_tstfs_make_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+	const char *name){
+	int                      rc;
+
+	mutex_lock(&super->mtx);
+	mutex_lock(&dv->mtx);
+	rc = tst_vfs_tstfs_make_directory_nolock(super, dv, name);
+	mutex_unlock(&dv->mtx);
+	mutex_unlock(&super->mtx);
+
+	return rc;
 }
 
 /**

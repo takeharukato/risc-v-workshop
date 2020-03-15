@@ -88,5 +88,9 @@ int tst_vfs_tstfs_dent_add(struct _tst_vfs_tstfs_inode *_inode, tst_vfs_tstfs_in
 int tst_vfs_tstfs_dent_del(struct _tst_vfs_tstfs_inode *_inode, const char *_name);
 int tst_vfs_tstfs_superblock_alloc(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
 void tst_vfs_tstfs_superblock_free(struct _tst_vfs_tstfs_super *_super);
+int tst_vfs_tstfs_make_directory(struct _tst_vfs_tstfs_super *_super, 
+    struct _tst_vfs_tstfs_inode *_dv, const char *_name);
+int tst_vfs_tstfs_remove_directory(struct _tst_vfs_tstfs_super *_super, 
+    struct _tst_vfs_tstfs_inode *_dv, const char *_name);
 void tst_vfs_tstfs_init(void);
 #endif  /*  _KERN_TST_VFS_TSTFS_H  */
