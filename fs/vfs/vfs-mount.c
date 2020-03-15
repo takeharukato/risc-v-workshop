@@ -729,6 +729,36 @@ sync_and_lock_vnodes(fs_mount *mount){
 	mutex_lock(&mount->m_mtx);    /*  マウントポイントロックを獲得     */
 
 	/*
+	 * アンマウント可否によらずボリューム中の全vnodeの情報を書き出す
+	 */
+	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+
+		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+		kassert( v->v_mount != NULL);
+		kassert( v->v_mount->m_fs != NULL);
+		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+		if ( v != mount->m_root ) {
+
+			/*
+			 * v-nodeを書き戻す
+			 */
+			if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
+				v->v_mount->m_fs->c_calls->fs_fsync(
+					v->v_mount->m_fs_super, v);
+		}
+		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+	}
+
+	/*
+	 * メタ情報を書き戻す
+	 */
+	if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
+		v->v_mount->m_fs->c_calls->fs_sync(
+			v->v_mount->m_fs_super);
+	
+	/*
 	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
@@ -755,8 +785,7 @@ sync_and_lock_vnodes(fs_mount *mount){
 	}
 
 	/*
-	 * ボリューム中の全vnodeの情報を書き出し後ロックする 
-	 * (vnodeの解放のためにvnodeのロックが必要となるため)
+	 * ボリューム中の全vnodeの情報をロックし, v-node更新を禁止する
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 
@@ -765,17 +794,9 @@ sync_and_lock_vnodes(fs_mount *mount){
 		kassert( v->v_mount->m_fs != NULL);
 		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
-		if ( v != mount->m_root ) {
-
-			/*
-			 * v-nodeを書き戻す
-			 */
-			if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
-				rc = v->v_mount->m_fs->c_calls->fs_sync(
-					v->v_mount->m_fs_super);
-			/* v-nodeをロックする */
+		if ( v != mount->m_root ) /* ルートv-node以外をロックする */
 			mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY); 
-		}
+
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 	
