@@ -741,15 +741,12 @@ sync_and_lock_vnodes(fs_mount *mount){
 		kassert( v->v_mount->m_fs != NULL);
 		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
-		if ( v != mount->m_root ) {
-
-			/*
-			 * v-nodeを書き戻す
-			 */
-			if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
-				v->v_mount->m_fs->c_calls->fs_fsync(
-					v->v_mount->m_fs_super, v);
-		}
+		/*
+		 * v-nodeを書き戻す
+		 */
+		if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
+			v->v_mount->m_fs->c_calls->fs_fsync(
+				v->v_mount->m_fs_super, v);
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 
