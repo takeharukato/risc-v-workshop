@@ -91,6 +91,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	file_descriptor           *fp;
 	int                       fd2;
 	file_descriptor          *fp2;
+	file_descriptor          *efp;
 
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
@@ -118,6 +119,27 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	rc = vfs_ioctx_alloc(parent_ioctx, &cur_ioctx);
 	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * FD獲得処理エラー処理系
+	 */
+	rc = vfs_fd_get(cur_ioctx, -1, &efp);
+	if ( rc == -EBADF )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_fd_get(cur_ioctx, cur_ioctx->ioc_table_size , &efp);
+	if ( rc == -EBADF )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_fd_get(cur_ioctx,  0, &efp);
+	if ( rc == -EBADF )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
