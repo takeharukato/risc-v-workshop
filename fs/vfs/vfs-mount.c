@@ -730,8 +730,8 @@ sync_and_lock_vnodes(fs_mount *mount){
 	 */
 	mutex_lock(&mount->m_mtx);    /*  マウントポイントロックを獲得     */
 
-	/*
-	 * アンマウント可否によらずボリューム中の全vnodeの情報を書き出す
+	/* アンマウント可否によらずボリューム中の更新中でないファイルの内容を
+	 * 書き出し, ファイルシステムの損傷を最小化する
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 
@@ -744,7 +744,8 @@ sync_and_lock_vnodes(fs_mount *mount){
 		/*
 		 * v-nodeを書き戻す
 		 */
-		if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
+		if ( ( v->v_mount->m_fs->c_calls->fs_fsync != NULL ) &&
+		    ( !check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) ) )
 			v->v_mount->m_fs->c_calls->fs_fsync(
 				v->v_mount->m_fs_super, v);
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
@@ -846,7 +847,6 @@ free_vnodes_in_fs_mount(fs_mount *mount){
 
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 		vfs_vnode_ref_dec(v);  /* v-nodeの参照を解放 ( v-nodeを解放 ) */
-
 	}
 	
 	mutex_unlock(&mount->m_mtx);  /* v-nodeテーブルをアンロック */	
@@ -1490,7 +1490,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 		}
 
 		/* 対象のvnodeがディレクトリでない場合, 引数異常で復帰 */
-		if ( !( covered_vnode->v_mode & VFS_VNODE_MODE_DIR ) ) {
+		if ( !S_ISDIR(covered_vnode->v_mode) ) {
 		       
 			/* マウントディレクトリへのv-nodeの参照を解放  */
 			dec_vnode_ref_nolock(covered_vnode);
@@ -1550,8 +1550,8 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 		goto unmount_out;
 	}
 
-	if ( !(mount->m_root->v_mode & VFS_VNODE_MODE_DIR) ) {
-
+	if ( !S_ISDIR(mount->m_root->v_mode) ) {
+		
 		rc = -ENOTDIR; /* ディレクトリでないv-nodeを指定した */
 		goto unmount_out;
 	}

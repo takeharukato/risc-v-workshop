@@ -455,7 +455,7 @@ tst_vfs_tstfs_make_directory_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_in
 	if ( rc != 0 )
 		goto error_out;
 
-	new_inode->i_mode = VFS_VNODE_MODE_DIR; /* ディレクトリに設定 */
+	new_inode->i_mode = S_IFDIR; /* ディレクトリに設定 */
 	new_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
 
 	rc = tst_vfs_tstfs_dent_add_nolock(dv, new_inode->i_ino, name);
@@ -1034,13 +1034,13 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 	/*
 	 * ".", ".." エントリの追加
 	 */
-	rc = tst_vfs_tstfs_dent_add(dir_inode, VFS_VNODE_MODE_DIR, ".");
+	rc = tst_vfs_tstfs_dent_add(dir_inode, TST_VFS_TSTFS_ROOT_VNID, ".");
 	kassert( rc == 0 );
 
-	rc = tst_vfs_tstfs_dent_add(dir_inode, VFS_VNODE_MODE_DIR, "..");
+	rc = tst_vfs_tstfs_dent_add(dir_inode, TST_VFS_TSTFS_ROOT_VNID, "..");
 	kassert( rc == 0 );
 
-	dir_inode->i_mode = VFS_VNODE_MODE_DIR; /* ディレクトリに設定 */
+	dir_inode->i_mode = S_IFDIR; /* ディレクトリに設定 */
 	dir_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
 
 	mutex_lock(&g_tstfs_db.mtx);

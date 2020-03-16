@@ -49,18 +49,20 @@
 	  VFS_VNODE_MODE_ACS_IRWXO |					\
 	  VFS_VNODE_MODE_ACS_ISMSK )
 
-#define S_IFMT  (VFS_VNODE_MODE_IFMT)    /* ファイル種別を示すビット領域を表すビットマスク */
-#define S_IFREG (VFS_VNODE_MODE_REG)     /* レギュラーファイル                             */
-#define S_IFBLK (VFS_VNODE_MODE_BLK)     /* block special                                  */
-#define S_IFDIR (VFS_VNODE_MODE_DIR)  	 /* directory */
-#define S_IFCHR (VFS_VNODE_MODE_CHR)	 /* character special */
-#define S_IFIFO (VFS_VNODE_MODE_FIFO)	    /* this is a FIFO */
-#define S_ISUID (VFS_VNODE_MODE_ACS_ISUID)  /* set user id on execution */
-#define S_ISGID (VFS_VNODE_MODE_ACS_ISGID)  /* set group id on execution */
-				/* next is reserved for future use */
-#define S_ISVTX (VFS_VNODE_MODE_ACS_ISVTX)	/* save swapped text even after use */
+#define S_IFMT  (VFS_VNODE_MODE_IFMT)   /**< ファイル種別を示すビット領域を表すビットマスク */
+#define S_IFREG (VFS_VNODE_MODE_REG)    /**< レギュラーファイル                             */
+#define S_IFBLK (VFS_VNODE_MODE_BLK)    /**< ブロックデバイス                               */
+#define S_IFDIR (VFS_VNODE_MODE_DIR)  	/**< ディレクトリ                                   */
+#define S_IFCHR (VFS_VNODE_MODE_CHR)	 /**< キャラクタデバイス                            */
+#define S_IFIFO (VFS_VNODE_MODE_FIFO)	    /**< FIFO (名前付きパイプ)                      */
+#define S_ISUID (VFS_VNODE_MODE_ACS_ISUID)  /**< set user ID ビット  */
+#define S_ISGID (VFS_VNODE_MODE_ACS_ISGID)  /**< set group ID ビット */
 
-/* POSIX masks for st_mode. */
+#define S_ISVTX (VFS_VNODE_MODE_ACS_ISVTX)  /**< ステッキービット    */
+
+/*
+ * POSIX st_mode マスク値
+ */
 #define S_IRWXU   (UINT32_C(00700))		/* owner:  rwx------ */
 #define S_IRUSR   (UINT32_C(00400))		/* owner:  r-------- */
 #define S_IWUSR   (UINT32_C(00200))		/* owner:  -w------- */
@@ -75,6 +77,14 @@
 #define S_IROTH   (UINT32_C(00004))		/* others: ------r-- */ 
 #define S_IWOTH   (UINT32_C(00002))		/* others: -------w- */
 #define S_IXOTH   (UINT32_C(00001))		/* others: --------x */
+
+/* st_mode テストマクロ(POSIX Sec. 5.6.1.1)
+ */
+#define S_ISREG(m)	(((m) & S_IFMT) == S_IFREG)	/* 通常ファイル         */
+#define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)	/* ディレクトリ         */
+#define S_ISCHR(m)	(((m) & S_IFMT) == S_IFCHR)	/* キャラクタ型デバイス */
+#define S_ISBLK(m)	(((m) & S_IFMT) == S_IFBLK)	/* ブロック型デバイス   */
+#define S_ISFIFO(m)	(((m) & S_IFMT) == S_IFIFO)	/* PIPE/FIFO            */
 
 #endif  /*  !ASM_FILE  */
 #endif /*  _FS_VFS_VFS_STAT_H   */

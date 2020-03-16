@@ -321,7 +321,7 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 	kassert( v->v_mount->m_fs != NULL );
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
-	if ( ( v->v_mode & VFS_VNODE_MODE_DIR ) && ( omode & VFS_O_WRONLY ) )
+	if ( S_ISDIR(v->v_mode) && ( omode & VFS_O_WRONLY ) )
 		return -EPERM;    /* 書き込みでディレクトリを開こうとした */
 
 	/*
