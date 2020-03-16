@@ -754,9 +754,8 @@ sync_and_lock_vnodes(fs_mount *mount){
 	/*
 	 * メタ情報を書き戻す
 	 */
-	if ( v->v_mount->m_fs->c_calls->fs_sync != NULL )
-		v->v_mount->m_fs->c_calls->fs_sync(
-			v->v_mount->m_fs_super);
+	if ( mount->m_fs->c_calls->fs_sync != NULL )
+		mount->m_fs->c_calls->fs_sync(mount->m_fs_super);
 	
 	/*
 	 * ボリューム中に使用中のvnodeが含まれていないことを確認する
