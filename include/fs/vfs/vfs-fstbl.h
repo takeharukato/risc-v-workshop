@@ -53,8 +53,8 @@ typedef struct _fs_calls {
 	int (*fs_removevnode)(vfs_fs_super fs_super, vfs_fs_vnode v);
 	int (*fs_getdents)(vfs_fs_super fs_super, vfs_fs_vnode fs_dirvn, void *_buf, 
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
-	int (*fs_open)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private *file_priv,
-	    int oflags);
+	int (*fs_open)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode,
+	    vfs_file_private *file_privp);
 	int (*fs_close)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv);
 	int (*fs_release_fd)(vfs_fs_super fs_super, vfs_fs_vnode v, 
 	    vfs_file_private file_priv);

@@ -360,7 +360,7 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 		 * ファイルシステム固有のオープン処理を実施
 		 */
 		rc = v->v_mount->m_fs->c_calls->fs_open(v->v_mount->m_fs_super, 
-		    v->v_fs_vnode, &file_priv, omode);
+		    v->v_fs_vnode, omode, &file_priv);
 		if (rc != 0) {
 			
 			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )

@@ -527,15 +527,34 @@ tst_vfs_tstfs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *arg
    ファイルシステムをアンマウントする
    @param[in] fs_super  スーパブロック情報
    @retval    0         正常終了
+   @retval   -EINVAL    スーパブロック情報が不正
  */
 static int
 tst_vfs_tstfs_unmount(vfs_fs_super fs_super){
 	tst_vfs_tstfs_super *super;
 
 	super = (tst_vfs_tstfs_super *)fs_super;
-	kassert( super->s_magic == TST_VFS_TSTFS_MAGIC );
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
 
 	tst_vfs_tstfs_superblock_free(super);
+
+	return 0;
+}
+
+/**
+   ファイルシステムの内容を二次記憶に書き戻す
+   @param[in] fs_super  スーパブロック情報
+   @retval    0         正常終了
+   @retval   -EINVAL    スーパブロック情報が不正
+ */
+static int
+tst_vfs_tstfs_sync(vfs_fs_super fs_super){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
 
 	return 0;
 }
@@ -579,17 +598,40 @@ tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *mode
 /**
    ファイルシステム固有v-node情報を返却する
    @param[in]  fs_super  スーパブロック情報
-   @param[in]  id        v-node ID
-   @param[out] modep     v-node のファイル種別
-   @param[out] v         ファイルシステム固有v-node情報返却領域
-   @retval    0          正常終了
-   @retval   -EINVAL     v-node IDが不正
-   @retval   -ENOENT     v-node IDに対応するI-nodeが見つからなかった
+   @param[in]  v         ファイルシステム固有v-node
+   @retval     0         正常終了
+   @retval    -EINVAL    スーパブロック情報が不正
  */
 static int
-tst_vfs_tstfs_putvnode(vfs_fs_super __unused fs_super, vfs_fs_vnode __unused v){
+tst_vfs_tstfs_putvnode(vfs_fs_super fs_super, vfs_fs_vnode __unused v){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
 
 	return 0;
+}
+
+/**
+   ファイルシステム固有v-node情報を破棄する
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  v         ファイルシステム固有v-node
+   @retval     0         正常終了
+   @retval    -EINVAL    スーパブロック情報が不正
+ */
+static int
+tst_vfs_tstfs_removevnode(vfs_fs_super fs_super, vfs_fs_vnode v){
+	tst_vfs_tstfs_inode *inode;	
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+
+	inode = (tst_vfs_tstfs_inode *)v;
+
+	return tst_vfs_tstfs_inode_free(super, inode);
 }
 
 /**
@@ -653,13 +695,96 @@ tst_vfs_tstfs_seek(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_
 }
 
 /**
+   ファイルシステム固有オープン処理
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  v         ファイルシステム固有v-node情報
+   @param[in]  omode     オープン時のフラグ値
+   @param[out]  file_privp ファイルディスクリプタプライベート情報
+   @retval    0          正常終了
+   @retval   -EINVAL    スーパブロック情報が不正
+ */
+int
+tst_vfs_tstfs_open(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode, 
+    vfs_file_private *file_privp){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
+   ファイルシステム固有クローズ処理
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  v         ファイルシステム固有v-node情報
+   @param[in]  file_priv ファイルディスクリプタプライベート情報
+   @retval    0          正常終了
+   @retval   -EINVAL    スーパブロック情報が不正
+ */
+int
+tst_vfs_tstfs_close(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
+   ファイルシステム固有ファイルディスクリプタ解放処理
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  v         ファイルシステム固有v-node情報
+   @param[in]  file_priv ファイルディスクリプタプライベート情報
+   @retval     0          正常終了
+   @retval    -EINVAL    スーパブロック情報が不正
+ */
+int
+tst_vfs_tstfs_release_fd(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
+   ファイルの内容を二次記憶に書き戻す
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  v         ファイルシステム固有v-node情報
+   @retval     0         正常終了
+   @retval    -EINVAL    スーパブロック情報が不正
+ */
+int
+tst_vfs_tstfs_fsync(vfs_fs_super fs_super, vfs_fs_vnode v){
+	tst_vfs_tstfs_super *super;
+
+	super = (tst_vfs_tstfs_super *)fs_super;
+	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
    ファイルシステム操作
  */
 static fs_calls tst_vfs_tstfs_calls={
 	.fs_mount = tst_vfs_tstfs_mount,
 	.fs_unmount = tst_vfs_tstfs_unmount,
+	.fs_sync = tst_vfs_tstfs_sync,
 	.fs_getvnode = tst_vfs_tstfs_getvnode,
 	.fs_putvnode = tst_vfs_tstfs_putvnode,
+	.fs_removevnode = tst_vfs_tstfs_removevnode,
+	.fs_open = tst_vfs_tstfs_open,
+	.fs_close = tst_vfs_tstfs_close,
+	.fs_release_fd = tst_vfs_tstfs_release_fd,
+	.fs_fsync = tst_vfs_tstfs_fsync,
 	.fs_lookup = tst_vfs_tstfs_lookup,
 	.fs_seek = tst_vfs_tstfs_seek,
 };

@@ -536,7 +536,9 @@ static void
 release_vnode(vnode *v){
 		
 	/* 
-	 * TODO: vm_cacheを実装した場合は, 本関数の最初にvm_cacheを開放すること
+	 * TODO: 
+	 * vm_cache(v-nodeに関連付けられたデータページキャッシュキュー)機能実装時に
+	 * 本関数の最初でvm_cacheを開放すること
 	 */
 
 	/*
