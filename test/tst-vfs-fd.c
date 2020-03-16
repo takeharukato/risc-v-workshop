@@ -106,6 +106,15 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	/*
+	 * I/Oコンテキストエラー処理
+	 */
+	rc = vfs_ioctx_alloc(NULL, NULL);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
 	 * I/Oコンテキスト生成
 	 */
 	rc = vfs_ioctx_alloc(NULL, &parent_ioctx);
