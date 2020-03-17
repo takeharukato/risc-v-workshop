@@ -14,7 +14,7 @@
 
 #include <sys/mman.h>
 
-#define MEM_AREA_SIZE    (MIB_TO_BYTE(4))
+#define MEM_AREA_SIZE    (MIB_TO_BYTE(8))
 #define AREA_NUM         (MIB_TO_BYTE(KC_PHYSMEM_MB)/MEM_AREA_SIZE)
 #define NORMAL_AREA_NUM  (AREA_NUM - 1)
 #define KHEAP_IDX        (AREA_NUM - 1)
