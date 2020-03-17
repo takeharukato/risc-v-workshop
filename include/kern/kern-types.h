@@ -80,6 +80,12 @@ typedef vm_vaddr        entry_addr;  /*< エントリアドレス              *
 typedef tid                    pid;  /*< プロセスID                    */
 
 /*
+ * ユーザ管理
+ */
+typedef uint64_t           cred_id;  /*< ユーザ/グループID             */
+
+
+/*
  * 時間/時刻管理
  */
 typedef uint32_t         tim_tmout;  /*< タイマハンドラのタイムアウト時間               */

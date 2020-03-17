@@ -496,20 +496,31 @@ error_out:
    @param[in]   super      スーパブロック情報
    @param[in]   dv         親ディレクトリのI-node情報
    @param[in]   name       ディレクトリ名
+   @param[in]   mode       ファイル種別/アクセス権
+   @param[in]   major      メジャー番号
+   @param[in]   minor      マイナー番号
    @param[out]  new_inop   I-node番号返却領域
    @param[out]  new_inodep I-node返却領域
    @retval     0      正常終了
+   @retval    -EISDIR ディレクトリを作成しようとした
+   @retval    -ENOSYS サポートされていないファイル種別を指定した
    @retval    -ENOSPC I-nodeに空きがない
    @retval    -ENOMEM メモリ不足
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int
 tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
-			       const char *name, tst_vfs_tstfs_ino  *new_inop,
+			       const char *name, vfs_fs_mode mode, fs_dev_id major, 
+				 fs_dev_id minor, tst_vfs_tstfs_ino  *new_inop,
 			       tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
 	tst_vfs_tstfs_inode  *new_inode;
-	tst_vfs_tstfs_ino       new_ino;
+
+	if ( S_ISDIR(mode) )
+		return -EISDIR;
+
+	if ( S_ISFIFO(mode) || ( !S_ISREG(mode) && !S_ISCHR(mode) && !S_ISBLK(mode) ) )
+		return -ENOSYS;  /* サポートしていないファイル種別 */
 
 	/* ファイル用I-nodeの割当て
 	 */
@@ -517,13 +528,23 @@ tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *d
 	if ( rc != 0 )
 		goto error_out;
 
-	new_inode->i_mode = S_IFREG; /* 通常ファイルに設定 */
+	new_inode->i_mode = mode; /* ファイルモードを設定 */
+
+	if ( S_ISCHR(mode) || S_ISBLK(mode) )  /* デバイスIDを設定 */
+		new_inode->i_rdev = ( (dev_id)major << 32 ) | minor;
+
 	new_inode->i_nlinks = 1; /* ファイルなのでリンク数を1に初期化 */
 
+	/* ディレクトリエントリに登録 */
 	rc = tst_vfs_tstfs_dent_add_nolock(dv, new_inode->i_ino, name);
 	if ( rc != 0 )
 		goto del_new_inode_out;
 
+	if ( new_inop != NULL )
+		*new_inop = new_inode->i_ino;
+
+	if ( new_inodep != NULL )
+		*new_inodep = new_inode;
 
 	return 0;
 
@@ -539,7 +560,7 @@ error_out:
    @param[in]   super      スーパブロック情報
    @param[in]   dv         親ディレクトリのI-node情報
    @param[in]   name       ディレクトリ名
-   @param[in]   type       デバイス種別
+   @param[in]   mode       デバイス種別/アクセス権
    @param[in]   major      メジャー番号
    @param[in]   minor      マイナー番号
    @param[out]  new_inop   I-node番号返却領域
@@ -550,32 +571,60 @@ error_out:
    @retval    -ENOMEM メモリ不足
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
-static int
+static int __unused 
 tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
-				 const char *name, vfs_fs_mode type, fs_dev_id major, 
-				 fs_dev_id minor, tst_vfs_tstfs_ino  *new_inop, 
-				 tst_vfs_tstfs_inode **new_inodep){
+    const char *name, vfs_fs_mode mode, fs_dev_id major, fs_dev_id minor, 
+    tst_vfs_tstfs_ino  *new_inop, tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
-	tst_vfs_tstfs_inode  *new_inode;
-	tst_vfs_tstfs_ino       new_ino;
 
-	if ( ( !S_ISBLK(type) && !S_ISCHR(type) ) ||
-	     ( S_ISBLK(type) && S_ISCHR(type) ) )
+	if ( ( !S_ISBLK(mode) && !S_ISCHR(mode) ) ||
+	     ( S_ISBLK(mode) && S_ISCHR(mode) ) )
 		return -EINVAL;  /* デバイス種別が不正 */
 
 	/* ファイル用I-nodeの割当て
 	 */
-	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, &new_ino, &new_inode);
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, major, 
+	    minor, new_inop, new_inodep);
 	if ( rc != 0 )
 		goto error_out;
 
-	new_inode->i_mode = type; /* デバイスファイルに設定 */
-	new_inode->i_rdev = ( (dev_id)major << 32 ) | minor;
-
 	return 0;
 
-del_new_inode_out:
-	tst_vfs_tstfs_inode_free_nolock(super, new_inode);
+error_out:
+	return rc;
+}
+
+/**
+   新規に通常ファイルを生成する
+   @param[in]   super      スーパブロック情報
+   @param[in]   dv         親ディレクトリのI-node情報
+   @param[in]   name       ディレクトリ名
+   @param[in]   mode       デバイス種別/アクセス権
+   @param[out]  new_inop   I-node番号返却領域
+   @param[out]  new_inodep I-node返却領域
+   @retval     0      正常終了
+   @retval    -EINVAL デバイス種別が不正
+   @retval    -ENOSPC I-nodeに空きがない
+   @retval    -ENOMEM メモリ不足
+   @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
+ */
+static int  __unused
+tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+    const char *name, vfs_fs_mode mode, tst_vfs_tstfs_ino  *new_inop, 
+    tst_vfs_tstfs_inode **new_inodep){
+	int                          rc;
+
+	if ( !S_ISREG(mode) )
+		return -EINVAL;  /* ファイル種別が不正 */
+
+	/* ファイル用I-nodeの割当て
+	 */
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, FS_INVALID_DEVID, 
+	    FS_INVALID_DEVID, new_inop, new_inodep);
+	if ( rc != 0 )
+		goto error_out;
+
+	return 0;
 
 error_out:
 	return rc;

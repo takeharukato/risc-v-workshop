@@ -11,6 +11,7 @@
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
+#include <kern/kern-types.h>
 #include <klib/misc.h>
 
 #define VFS_PATH_MAX     ULONGLONG_C(1024)  /**< パス長 */
@@ -18,7 +19,7 @@
  * VFS基本型
  */
 typedef uint64_t         vfs_mnt_id;  /**< マウントポイントID           */
-typedef uint64_t       vfs_vnode_id;  /**< Vnode ID                     */
+typedef uint64_t       vfs_vnode_id;  /**< v-node ID                    */
 typedef uint64_t       vfs_ioctx_id;  /**< I/OコンテキストID            */
 typedef int32_t        vfs_fs_nlink;  /**< リンク数                     */
 typedef uint32_t        vfs_fs_mode;  /**< ファイル種別/アクセスモード  */
