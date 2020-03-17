@@ -43,6 +43,7 @@ typedef struct _tst_vfs_tstfs_dpage{
 typedef struct _tst_vfs_tstfs_inode{
 	struct _mutex                   mtx; /**< 排他用ミューテックス */
 	tst_vfs_tstfs_ino             i_ino;  /**< I-node番号                       */
+	dev_id                       i_rdev;  /**< デバイスファイルデバイス番号     */
 	uint16_t                     i_mode;  /**< ファイル種別/保護属性            */
 	uint16_t                   i_nlinks;  /**< ファイルのリンク数 (単位:個)     */
 	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト)     */

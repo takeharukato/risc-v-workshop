@@ -369,6 +369,7 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 	}
 	mutex_init(&inode->mtx);
 	inode->i_ino = new_ino - 1;
+	inode->i_rdev = FS_INVALID_DEVID;
 	inode->i_mode = VFS_VNODE_MODE_NONE;
 	inode->i_nlinks = 1;
 	inode->i_size = 0;
@@ -503,7 +504,7 @@ error_out:
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int
-tst_vfs_tstfs_make_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
 			       const char *name, tst_vfs_tstfs_ino  *new_inop,
 			       tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
@@ -516,13 +517,60 @@ tst_vfs_tstfs_make_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *
 	if ( rc != 0 )
 		goto error_out;
 
-	new_inode->i_mode = S_IFDIR; /* ディレクトリに設定 */
-	new_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
+	new_inode->i_mode = S_IFREG; /* 通常ファイルに設定 */
+	new_inode->i_nlinks = 1; /* ファイルなのでリンク数を1に初期化 */
 
 	rc = tst_vfs_tstfs_dent_add_nolock(dv, new_inode->i_ino, name);
 	if ( rc != 0 )
 		goto del_new_inode_out;
 
+
+	return 0;
+
+del_new_inode_out:
+	tst_vfs_tstfs_inode_free_nolock(super, new_inode);
+
+error_out:
+	return rc;
+}
+
+/**
+   新規にデバイスファイルを生成する
+   @param[in]   super      スーパブロック情報
+   @param[in]   dv         親ディレクトリのI-node情報
+   @param[in]   name       ディレクトリ名
+   @param[in]   type       デバイス種別
+   @param[in]   major      メジャー番号
+   @param[in]   minor      マイナー番号
+   @param[out]  new_inop   I-node番号返却領域
+   @param[out]  new_inodep I-node返却領域
+   @retval     0      正常終了
+   @retval    -EINVAL デバイス種別が不正
+   @retval    -ENOSPC I-nodeに空きがない
+   @retval    -ENOMEM メモリ不足
+   @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
+ */
+static int
+tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+				 const char *name, vfs_fs_mode type, fs_dev_id major, 
+				 fs_dev_id minor, tst_vfs_tstfs_ino  *new_inop, 
+				 tst_vfs_tstfs_inode **new_inodep){
+	int                          rc;
+	tst_vfs_tstfs_inode  *new_inode;
+	tst_vfs_tstfs_ino       new_ino;
+
+	if ( ( !S_ISBLK(type) && !S_ISCHR(type) ) ||
+	     ( S_ISBLK(type) && S_ISCHR(type) ) )
+		return -EINVAL;  /* デバイス種別が不正 */
+
+	/* ファイル用I-nodeの割当て
+	 */
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, &new_ino, &new_inode);
+	if ( rc != 0 )
+		goto error_out;
+
+	new_inode->i_mode = type; /* デバイスファイルに設定 */
+	new_inode->i_rdev = ( (dev_id)major << 32 ) | minor;
 
 	return 0;
 
