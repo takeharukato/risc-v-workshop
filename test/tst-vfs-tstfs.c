@@ -411,7 +411,7 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 	}
 	bitops_clr(inode->i_ino, &super->s_inode_map);
 
-	if ( inode->i_mode & S_IFDIR ) {
+	if ( S_ISDIR(inode->i_mode) ) {
 
 		/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 		RB_FOREACH_SAFE(dent, _tst_vfs_tstfs_dent_tree, &inode->dents, next_dent) {
@@ -482,6 +482,49 @@ del_dot_out:
 
 del_new_dent_out:
 	tst_vfs_tstfs_dent_del_nolock(dv, name);
+
+del_new_inode_out:
+	tst_vfs_tstfs_inode_free_nolock(super, new_inode);
+
+error_out:
+	return rc;
+}
+
+/**
+   新規にファイルを生成する
+   @param[in]   super      スーパブロック情報
+   @param[in]   dv         親ディレクトリのI-node情報
+   @param[in]   name       ディレクトリ名
+   @param[out]  new_inop   I-node番号返却領域
+   @param[out]  new_inodep I-node返却領域
+   @retval     0      正常終了
+   @retval    -ENOSPC I-nodeに空きがない
+   @retval    -ENOMEM メモリ不足
+   @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
+ */
+static int
+tst_vfs_tstfs_make_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+			       const char *name, tst_vfs_tstfs_ino  *new_inop,
+			       tst_vfs_tstfs_inode **new_inodep){
+	int                          rc;
+	tst_vfs_tstfs_inode  *new_inode;
+	tst_vfs_tstfs_ino       new_ino;
+
+	/* ファイル用I-nodeの割当て
+	 */
+	rc = tst_vfs_tstfs_inode_alloc_nolock(super, &new_inode); /* I-node割り当て */
+	if ( rc != 0 )
+		goto error_out;
+
+	new_inode->i_mode = S_IFDIR; /* ディレクトリに設定 */
+	new_inode->i_nlinks = 2; /* ディレクトリなのでリンク数を2に初期化 */
+
+	rc = tst_vfs_tstfs_dent_add_nolock(dv, new_inode->i_ino, name);
+	if ( rc != 0 )
+		goto del_new_inode_out;
+
+
+	return 0;
 
 del_new_inode_out:
 	tst_vfs_tstfs_inode_free_nolock(super, new_inode);
@@ -657,7 +700,7 @@ tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 		return -EINVAL;
 	
 	dv = (tst_vfs_tstfs_inode *)dir;
-	if ( !( dv->i_mode & S_IFDIR ) )
+	if ( !( S_ISDIR(dv->i_mode) ) )
 		return -EINVAL;
 
 	mutex_lock(&dv->mtx);
@@ -1150,7 +1193,7 @@ tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *
 
 	mutex_lock(&dv->mtx);
 
-	if ( !( dv->i_mode & S_IFDIR ) ) {
+	if ( !S_ISDIR(dv->i_mode) ) {
 		
 		rc = -ENOTDIR;  /* ディレクトリではない */
 		goto unlock_out;  
@@ -1167,7 +1210,7 @@ tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *
 	if ( rc != 0 )
 		goto unlock_out;  /* 指定された名前のディレクトリのI-nodeが存在しない */
 
-	if ( !( rm_inode->i_mode & S_IFDIR ) ) {
+	if ( !S_ISDIR(rm_inode->i_mode) ) {
 		
 		rc = -ENOTDIR;  /* ディレクトリではない */
 		goto unlock_out;  
