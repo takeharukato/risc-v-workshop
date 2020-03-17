@@ -16,7 +16,7 @@
 
 #include <hal/hal-page.h>  /*  HAL_PAGE_SIZE  */
 
-#define PAGE_POOL_MAX_ORDER (11)  /**<  ページ最大オーダ  */
+#define PAGE_POOL_MAX_ORDER (11)  /**<  ページ最大オーダ (最大4MiB: 1<<10 = 1024 ページ) */
 
 #define PAGE_SIZE  HAL_PAGE_SIZE  /**< ノーマルページサイズ  */
 #define PAGE_SHIFT HAL_PAGE_SHIFT /**< ノーマルページシフト  */

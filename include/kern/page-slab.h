@@ -87,12 +87,12 @@
 /**
    事前割当て済みカーネルキャッシュ
  */
-#define SLAB_PREALLOC_CACHE_NR   (15)  /** 事前割当て済みカーネルキャッシュの数      */
+#define SLAB_PREALLOC_CACHE_NR   (18)  /** 事前割当て済みカーネルキャッシュの数      */
 #define SLAB_PREALLOC_BASE       (ULONG_C(8)) /** 事前割当て済みカーネルキャッシュの基準サイズ  */
 
 /**  事前割当て済みカーネルキャッシュの最小サイズ 8Byte (単位:バイト)  */
 #define SLAB_PREALLOC_MIN	(SLAB_PREALLOC_BASE << 0)
-/**  事前割当て済みカーネルキャッシュの最大サイズ 128KiB (単位:バイト) */
+/**  事前割当て済みカーネルキャッシュの最大サイズ 1MiB  */
 #define SLAB_PREALLOC_MAX       (SLAB_PREALLOC_BASE << (SLAB_PREALLOC_CACHE_NR - 1)) 
 
 /**  事前割当て済みカーネルキャッシュのアラインメント(アラインメントを設定しない)  */
