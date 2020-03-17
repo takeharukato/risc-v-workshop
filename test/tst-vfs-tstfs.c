@@ -612,7 +612,7 @@ static int  __unused
 tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
     const char *name, vfs_fs_mode mode, tst_vfs_tstfs_ino  *new_inop, 
     tst_vfs_tstfs_inode **new_inodep){
-	int                          rc;
+	int  rc;
 
 	if ( !S_ISREG(mode) )
 		return -EINVAL;  /* ファイル種別が不正 */
@@ -625,6 +625,71 @@ tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 		goto error_out;
 
 	return 0;
+
+error_out:
+	return rc;
+}
+/**
+   通常ファイル/デバイスファイルを削除する
+   @param[in]   super      スーパブロック情報
+   @param[in]   dv         親ディレクトリのI-node情報
+   @param[in]   name       ディレクトリ名
+   @retval     0      正常終了
+   @retval    -EINVAL デバイス種別が不正
+   @retval    -ENOENT ディレクトリエントリ中にファイル名が見つからなかった
+ */
+static int  __unused
+tst_vfs_tstfs_unlink_file_common(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+    const char *name){
+	int rc;
+	tst_vfs_tstfs_inode *inode;
+	tst_vfs_tstfs_dent   *dent;
+
+	if ( S_ISDIR(dv->i_mode) )
+		return -EISDIR;  /* ディレクトリでない */
+
+	/* ディレクトリエントリからディレクトリエントリ情報を取得 */
+	rc = tst_vfs_tstfs_dent_find_nolock(dv, name, &dent);
+	if ( rc != 0 ) {
+
+		rc = -ENOENT; /* ディレクトリエントリ中にファイル名が見つからなかった */
+		goto error_out;
+	}
+	/*
+	 * I-nodeを検索
+	 */
+	rc = tst_vfs_tstfs_inode_find_nolock(super, dent->ino, &inode);
+	if ( rc != 0 ) {
+
+		/* スーパブロック中にI-nodeが見つからなかった
+		 * 整合性をとるためにディレクトリエントリ中の対象エントリを削除
+		 */
+		rc = tst_vfs_tstfs_dent_del_nolock(dv, name); 
+		kassert( rc == 0 );  /* 上記でディレクトリエントリを獲得済み, 成功するはず */
+		goto error_out; 
+	}
+
+	/* ディレクトリエントリ中の対象エントリを削除 */
+	rc = tst_vfs_tstfs_dent_del_nolock(dv, name);
+	kassert( rc == 0 ); /* 上記でディレクトリエントリを獲得済み, 成功するはず */
+
+	
+	mutex_lock(&inode->mtx);
+	if ( inode->i_nlinks > 0 ) 
+		--inode->i_nlinks;  /* I-nodeのリンク数を削除 */
+
+	if ( inode->i_nlinks > 0 ) {
+		
+		/* I-nodeを参照中のディレクトリエントリエントリがあればエラー復帰 */
+		rc = -EBUSY;
+		goto unlock_out;
+	}
+	mutex_unlock(&inode->mtx);
+
+	return 0;
+
+unlock_out:
+	mutex_unlock(&inode->mtx);
 
 error_out:
 	return rc;
