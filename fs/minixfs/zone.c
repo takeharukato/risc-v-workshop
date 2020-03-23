@@ -1077,7 +1077,7 @@ error_out:
    @param[in]   len        解放長(単位: バイト)
    @retval      0          正常終了
    @retval     -EINVAL     offに負の値を指定した
-   @retval     -EFBIG      ファイル長を超えている
+   @retval     -EFBIG      ファイル長よりoffの方が大きい
    @note TODO: 更新時間更新
  */
 int
@@ -1341,14 +1341,28 @@ minix_extend_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, ssi
 		MINIX_D_INODE_SET(sbp, dip, i_size, cur_pos);  /* サイズを更新 */
 	}
 
+	if ( MINIX_D_INODE(sbp, dip, i_size) > ( old_siz + len ) ) { 
+
+		/*
+		 * 終端がゾーン境界に沿っていない場合
+		 */
+		cur_pos = old_siz + len;  /* サイズを補正 */
+		MINIX_D_INODE_SET(sbp, dip, i_size, cur_pos);  /* サイズを更新 */
+	}
+
 	/* I-node情報を更新 */
 	rc = minix_rw_disk_inode(sbp, i_num, MINIX_RW_WRITING, dip);
-	if ( rc != 0 ) 
-		goto unmap_zone_out;
+	if ( rc != 0 ) {
 
+		/* 最終ゾーンを削除するようにサイズを更新 */
+		MINIX_D_INODE_SET(sbp, dip, i_size, 
+				  roundup_align(cur_pos, MINIX_ZONE_SIZE(sbp))); 
+		goto unmap_zone_out;
+	}
 	return 0;
 
 unmap_zone_out:
+
 	res = minix_unmap_zone(sbp, i_num, dip, old_siz,
 			      MINIX_D_INODE(sbp, dip, i_size) - old_siz);
 	kassert( res == 0 );
