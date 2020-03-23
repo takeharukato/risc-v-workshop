@@ -1085,9 +1085,9 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
     ssize_t len){
 	int                    rc;
 	size_t              pgsiz;
+	off_t             cur_pos;
 	size_t            clr_siz;
 	size_t          clr_start;
-	minix_zone        cur_pos;
 	minix_zone   cur_rel_zone;
 	minix_zone first_rel_zone;
 	minix_zone   end_rel_zone;
@@ -1223,5 +1223,136 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 	return 0;
 
 error_out:
+	return rc;
+}
+
+/**
+   MinixのI-nodeを元にデータブロックを伸長する
+   @param[in]   sbp        Minixスーパブロック情報
+   @param[in]   i_num      Minix I-node番号
+   @param[in]   dip        MinixディスクI-node
+   @param[in]   len        伸長長(単位: バイト)
+   @retval      0          正常終了
+   @retval     -EINVAL     offに負の値を指定した
+   @retval     -EFBIG      ファイル長を超えている
+   @note TODO: 更新時間更新
+ */
+int
+minix_extend_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, ssize_t len){
+	int                    rc;
+	int                   res;
+	size_t              pgsiz;
+	off_t             cur_pos;
+	size_t            old_siz;
+	size_t            clr_siz;
+	size_t          clr_start;
+	minix_zone   cur_rel_zone;
+	minix_zone first_rel_zone;
+	minix_zone   end_rel_zone;
+	minix_zone       new_zone;
+
+	if ( len == 0 )
+		return 0;  /* 伸長不要 */
+
+	if ( 0 > len )
+		return -EINVAL;
+
+	rc = pagecache_pagesize(sbp->dev, &pgsiz);  /* ページサイズ取得 */
+	kassert( rc == 0 ); /* マウントされているはずなのでデバイスが存在する */
+
+	old_siz = MINIX_D_INODE(sbp, dip, i_size);  /* 伸長前のサイズ  */
+
+	first_rel_zone = 
+		truncate_align(old_siz, MINIX_ZONE_SIZE(sbp))
+		/ MINIX_ZONE_SIZE(sbp);    /* 開始ゾーン     */
+
+	end_rel_zone = roundup_align(old_siz + len, MINIX_ZONE_SIZE(sbp))
+		/ MINIX_ZONE_SIZE(sbp); /* 終了ゾーン     */
+
+	cur_pos = old_siz;              /* 伸長開始位置   */
+	cur_rel_zone = first_rel_zone;  /* 伸長開始ゾーン */
+
+	/* 開始点がゾーン境界と合っておらず, 後続のゾーンがある場合
+	 */
+	if ( addr_not_aligned(cur_pos, MINIX_ZONE_SIZE(sbp) ) 
+	    && ( end_rel_zone > first_rel_zone ) ) {
+
+		/* デバイス先頭からのゾーン番号を算出
+		 */
+		rc = minix_read_mapped_block(sbp, dip, 
+		    first_rel_zone * MINIX_ZONE_SIZE(sbp), &new_zone);
+		if ( rc == 0 ) {  /* 既にデータゾーンが割り当てられている場合 */
+
+			/* クリア開始オフセットを算出 */
+			clr_start = cur_pos % MINIX_ZONE_SIZE(sbp);
+
+			/* クリアサイズを算出 */
+			clr_siz = MINIX_ZONE_SIZE(sbp) - clr_start;
+
+			/* 開始ゾーン内をクリアする */
+			minix_clear_zone(sbp, new_zone, clr_start, clr_siz);
+
+			/* 次のゾーンからゾーンを伸長する */
+			++cur_rel_zone; 
+			cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(sbp));
+		}
+	}
+
+	/*
+	 * 伸長範囲中のゾーンを割り当てる
+	 */
+	for( ; end_rel_zone > cur_rel_zone; ++cur_rel_zone ) {
+		
+		/* デバイス先頭からのゾーン番号を算出
+		 */
+		rc = minix_read_mapped_block(sbp, dip, 
+		    cur_rel_zone * MINIX_ZONE_SIZE(sbp), &new_zone);
+
+		/* ゾーンが割り当てられていない場合は, 
+		 * 新たにゾーンを割り当てる 
+		 * @note 読取りの場合, 上記で転送サイズをファイルサイズ内に
+		 * 収めるように補正しているので, 読取りの場合で, かつ, 
+		 * ゾーンが割り当てられていない場合でも, ゼロクリアした
+		 * ゾーンを割り当てればよい(パンチホールアクセスケース)
+		 */
+		rc = minix_alloc_zone(sbp, &new_zone);  /* データゾーンを割当てる */
+		if ( rc != 0 ) 
+			goto unmap_zone_out;
+
+		/* ゾーン内のブロックをクリアする
+		 * 本ファイルシステムで使用されたデータブロックは
+		 * データブロックの解放時にクリアされるためゼロクリアを
+		 * 保証できるが, 新規に割り当てたゾーンのディスクブロックが
+		 * 過去に他の用途で使われていた場合そのデータが読めてしまうため
+		 * 念のためゾーンをクリアしてからマップする
+		 */
+		minix_clear_zone(sbp, new_zone, 0, MINIX_ZONE_SIZE(sbp));
+
+		/* ゾーンをマップする */
+		rc = minix_write_mapped_block(sbp, dip, cur_pos, new_zone);
+		if ( rc != 0 ) {  /* 割り当てたゾーンをマップできなかった */
+
+			/* 割当てたデータゾーンを解放する  */
+			minix_free_zone(sbp, new_zone);
+			goto unmap_zone_out;
+		}
+
+		cur_pos += MINIX_ZONE_SIZE(sbp);   /* ゾーン追加位置を更新 */
+		MINIX_D_INODE_SET(sbp, dip, i_size, cur_pos);  /* サイズを更新 */
+	}
+
+	/* I-node情報を更新 */
+	rc = minix_rw_disk_inode(sbp, i_num, MINIX_RW_WRITING, dip);
+	if ( rc != 0 ) 
+		goto unmap_zone_out;
+
+	return 0;
+
+unmap_zone_out:
+	res = minix_unmap_zone(sbp, i_num, dip, old_siz,
+			      MINIX_D_INODE(sbp, dip, i_size) - old_siz);
+	kassert( res == 0 );
+	kassert( MINIX_D_INODE(sbp, dip, i_size) == old_siz );
+
 	return rc;
 }
