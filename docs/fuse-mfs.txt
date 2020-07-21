@@ -1,3 +1,7 @@
+関連パッケージのインストール
+
+sudo yum install -y fuse fuse-devel
+
 マウント
 fuse-mfs /path/to/image_file /path/to/mountpoint/
 

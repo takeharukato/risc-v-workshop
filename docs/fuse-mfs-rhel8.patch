@@ -1,0 +1,37 @@
+diff --git a/fsck/fsck.c b/fsck/fsck.c
+index d4cf25c..d2cebf0 100644
+--- a/fsck/fsck.c
++++ b/fsck/fsck.c
+@@ -43,6 +43,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <sys/sysmacros.h>
++
+ #include "glue.h"
+ #include "const.h"
+ #include "inode.h"
+diff --git a/mkfs/mkfs.c b/mkfs/mkfs.c
+index 7d0fd63..528e6cb 100644
+--- a/mkfs/mkfs.c
++++ b/mkfs/mkfs.c
+@@ -35,6 +35,7 @@
+ #include <string.h>
+ #include <time.h>
+ #include <unistd.h>
++#include <sys/sysmacros.h>
+ 
+ /* Definition of the file system layout: */
+ #include "const.h"
+diff --git a/src/fs.h b/src/fs.h
+index 8b47f57..4127664 100644
+--- a/src/fs.h
++++ b/src/fs.h
+@@ -15,6 +15,7 @@
+ 
+ #include <limits.h>
+ #include <errno.h>
++#include <sys/sysmacros.h>
+ 
+ #include "mfsdir.h"
+ #include "const.h"

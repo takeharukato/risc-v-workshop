@@ -1,19 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # This file is a part of the sample kernel for RISC-V
 # Copyright 2019 Takeharu KATO.
 #
-
 import sys, codecs, os, re, datetime
-import ConfigParser
+import configparser
 import csv
 import shutil
 import subprocess
 import datetime
 import tempfile
 from optparse import OptionParser
-from StringIO import StringIO
 
 #
 #リダイレクト時にUTF-8の日本語を含む文字を受け入れるための設定
@@ -127,12 +125,12 @@ class genoffset:
         try:
             fh = open(self.outfile, 'w')
         except IOError:
-            print '"%s" cannot be opened.' % self.outfile
+            print ('"%s" cannot be opened.' % self.outfile)
         else:
             try:
                 f = open(self.infile, 'r')
             except IOError:
-                print '"%s" cannot be opened.' % self.infile
+                print ('"%s" cannot be opened.' % self.infile)
             else:
                 self.outputHead(fh)
                 for line in f:                  
