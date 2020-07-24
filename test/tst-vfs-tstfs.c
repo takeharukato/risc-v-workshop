@@ -1019,6 +1019,7 @@ tst_vfs_tstfs_dpage_free(tst_vfs_tstfs_inode *inode, off_t offset){
    データページを割り当てる
    @param[in]  inode  通常ファイルのI-node情報
    @param[in]  offset ファイル先頭からのオフセットアドレス(単位:バイト)
+   @param[out] dpagep ファイルシステムデータページを指し示すポインタのアドレス
    @retval  0      正常終了
    @retval -EBUSY  指定されたオフセットのデータページが存在する
  */
@@ -1148,7 +1149,7 @@ tst_vfs_tstfs_superblock_find(dev_id devid, tst_vfs_tstfs_super **superp){
 /**
    I-nodeを割り当てる
    @param[in]  super  スーパブロック情報
-   @param[in]  inode  I-node情報
+   @param[out] inodep  I-node情報を指し示すポインタのアドレス
    @retval  0      正常終了
    @retval -ENOSPC 空きI-nodeが見つからなかった
  */

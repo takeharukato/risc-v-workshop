@@ -78,8 +78,7 @@ error_out:
    @retval     0          正常終了
    @retval    -ESRCH  格納可能なページオーダを越えている
    @retval    -ENOMEM メモリ不足
-   @retval    -ENOMEM        メモリ不足
-   @retval    -EBUSY         すでにマップ済みの領域だった
+   @retval    -EBUSY  すでにマップ済みの領域だった
    @note      ページ単位でのアンマップを行う
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
