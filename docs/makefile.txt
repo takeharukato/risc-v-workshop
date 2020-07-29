@@ -1,0 +1,14 @@
+[1] メイクターゲット
+
+1. menuconfig コンフィグレータを立ち上げる
+2. clean      オブジェクトを削除する
+3. distclean  バックアップファイルを削除する
+4. all        カーネルのELFファイルを構築する
+5. gtags      カーネルのクロスリファレンスを生成する
+6. doxygen    doxygenによる簡易詳細仕様書を生成する
+7. gen-lcov   lcovによるカバレッジテストレポートを生成する
+8. run-cov-tests ユーザランドでのカバレッジテストを実行する
+9. show-loc   コード行数情報 (Lines Of the Code)を表示する
+10. run        カーネルを起動する
+11. run-debug  デバッグ用にカーネルを起動する
+
