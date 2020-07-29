@@ -31,17 +31,20 @@ threada(void *arg){
 		if ( rc == 0 ) 
 			break;
 
-		kprintf("ThreadA: can not lock mutexA. wait lock\n");
+		kprintf("ThreadA: can not trylock mutexA. wait lock\n");
+		kprintf("ThreadA: lock mutexB.wait threadB.\n");
 		rc = mutex_lock(&mtxB);
 		kassert( rc == -ENODEV );
 		mutex_lock(&mtxA);
+		kprintf("ThreadA: lock mutexA.\n");
 		break;
 	}
 
 	res = mutex_locked_by_self(&mtxA);
 	kassert( res );
-
+	kprintf("ThreadA: locked mutexA.\n");
 	mutex_unlock(&mtxA);
+	kprintf("ThreadA: unlocked mutexA.\n");
 	kprintf("ThreadA: exit\n");
 	thr_thread_exit(0);
 }
@@ -52,7 +55,7 @@ threadb(void *arg){
 
 	while(1){
 
-		kprintf("ThreadB\n");
+		kprintf("ThreadB: try lock mutexA\n");
 		rc = mutex_try_lock(&mtxA);
 		if ( rc == 0 ) 
 			break;
@@ -60,8 +63,14 @@ threadb(void *arg){
 		kprintf("ThreadB: can not lock mutexA\n");
 		sched_schedule();
 	}
+	kprintf("ThreadB: destroy mutexB\n");
 	mutex_destroy(&mtxB);
-	mutex_unlock(&mtxA);
+
+	if ( mutex_locked_by_self(&mtxA) ) {
+
+		kprintf("ThreadA: unlock mutexA.\n");		
+		mutex_unlock(&mtxA);
+	}
 	kprintf("ThreadB: exit\n");
 	thr_thread_exit(0);
 }

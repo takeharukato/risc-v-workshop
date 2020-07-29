@@ -17,7 +17,7 @@ all: kconfig/mconf
 kconfig/mconf:
 	cd kconfig && ${MAKE} mconf
 
-gcov:
+run-cov-tests:
 
 clean:
 	for dir in ${subdirs} ; do 	\

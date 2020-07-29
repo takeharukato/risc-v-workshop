@@ -30,7 +30,7 @@ ${lib}: ${objects}
 run: 
 	${top}/kernel-dbg.elf
 
-gcov:
+run-cov-tests:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif

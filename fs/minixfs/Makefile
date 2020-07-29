@@ -20,7 +20,7 @@ all: ${depends} ${lib}
 ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
-gcov:
+run-cov-tests:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif

@@ -96,7 +96,9 @@ mkfsimg: include/kern/autoconf.h
 ${fsimg_objfile}:
 	${MAKE} -C fs ${fsimg_obj} ;
 
-run: hal kernel.elf
+build: hal kernel.elf
+
+run: build
 	${MAKE} -C hal/hal $@ ;\
 
 run-debug: hal kernel.elf
@@ -131,11 +133,11 @@ gtags:
 	${GTAGS} -v
 
 ifeq ($(CONFIG_PROFILE),y)
-gcov: run
+run-cov-tests: run
 	for dir in ${subdirs} ; do \
 		${MAKE} -C $${dir} $@ ;\
 	done
-lcov: gcov
+gen-lcov: run-cov-tests
 	${RM} ${LCOV_CLEAN_FILES}
 	${LCOV} -c -d . -o tmp-kernel-cov.linfo
 	${LCOV} -r tmp-kernel-cov.linfo *docs*  \
@@ -149,11 +151,11 @@ lcov: gcov
 	${RM} ${LCOV_CLEAN_FILES}
 	${RM} -fr ${LCOV_DIR}
 else
-gcov: 
-lcov:
+run-cov-tests: 
+gen-lcov:
 endif
 
-loc:
+show-loc:
 	tempfile=`mktemp`;					\
 	echo ${supdirs}|sed  's|\s\+|\n|g' > $${tempfile};	\
 	${CLOC} --exclude-lang="D" --exclude-list-file=$${tempfile} --by-file --vcs=git; \

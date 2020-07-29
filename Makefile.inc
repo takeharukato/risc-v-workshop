@@ -21,6 +21,8 @@ STRIP=${CROSS_COMPILE}strip
 OBJCOPY=${CROSS_COMPILE}objcopy
 OBJDUMP=${CROSS_COMPILE}objdump
 NM=${CROSS_COMPILE}nm
+VALGRIND=valgrind
+VALGRIND_OPTS=--leak-check=yes --leak-check=full --track-origins=yes 
 CLOC=cloc
 GCOV=gcov
 GCOV_OPTS=-l

@@ -27,7 +27,7 @@ mkfs.minixfs: mkfs.minixfs.o ${mkfs_minixfs_objects}
 copyfile.minixfs: copyfile.minixfs.o ${copyfile_minixfs_objects}
 	${HOST_CC} ${HOST_CFLAGS} -o $@ copyfile.minixfs.o ${copyfile_minixfs_objects}
 
-gcov:
+run-cov-tests:
 ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif

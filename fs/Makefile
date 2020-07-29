@@ -22,7 +22,7 @@ ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
 	${RANLIB} $@
 
-gcov:
+run-cov-tests:
 ifeq ($(CONFIG_PROFILE),y)
 	for dir in ${subdirs} ; do \
 	${MAKE} -C $${dir} $@;\
