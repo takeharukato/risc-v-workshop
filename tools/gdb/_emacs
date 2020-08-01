@@ -1,0 +1,12 @@
+;;
+;; Grand Unified Debugger mode
+;;
+(load-library "gud") ;;
+(setq cross-gdb-command-name (if (not (setq cross-gdb-env (getenv "GDB_COMMAND"))) "gdb" cross-gdb-env)) ;;コマンド
+(setq gdb-args-list (cdr (if (boundp 'gud-gdb-command-name) (split-string gud-gdb-command-name)
+                           (if (boundp 'gud-gud-gdb-command-name)
+                               (split-string gud-gud-gdb-command-name))))) ;; 引数のリスト
+(if (boundp 'gud-gdb-command-name)
+    (custom-set-variables '(gud-gdb-command-name (concat cross-gdb-command-name " --fullname")))
+  (custom-set-variables '(gud-gud-gdb-command-name
+                          (concat cross-gdb-command-name " --fullname"))) )
