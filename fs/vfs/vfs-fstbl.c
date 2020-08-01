@@ -82,6 +82,37 @@ free_filesystem(const char *fs_name){
 error_out:
 	return rc;
 }
+/**
+   ファイルシステムへの参照を得る(内部関数)
+   @param[in] fs_name キーとなるファイルシステム名を表す文字列
+   @param[in] containerp ファイルシステムコンテナへのポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
+ */
+static int 
+vfs_fs_get_nolock(const char *fs_name, fs_container **containerp){
+	int           rc;
+	fs_container *fs;
+	fs_container key;
+
+	key.c_name = (char *)fs_name;
+
+	fs = RB_FIND(_fstbl_tree, &g_fstbl.c_head, &key); /* ファイルシステムテーブルを検索 */
+	if ( fs == NULL ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	vfs_fs_ref_inc(fs);  /* ファイルシステムへの参照を加算 */
+
+	*containerp = fs;  /* ファイルシステムコンテナを返却する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
 
 /*
  * ファイルシステム情報IF
@@ -141,29 +172,9 @@ error_out:
 int 
 vfs_fs_get(const char *fs_name, fs_container **containerp){
 	int           rc;
-	fs_container *fs;
-	fs_container key;
-
-	key.c_name = (char *)fs_name;
 
 	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
-
-	fs = RB_FIND(_fstbl_tree, &g_fstbl.c_head, &key); /* ファイルシステムテーブルを検索 */
-	if ( fs == NULL ) {
-
-		rc = -ENOENT;
-		goto unlock_out;
-	}
-
-	vfs_fs_ref_inc(fs);  /* ファイルシステムへの参照を加算 */
-
-	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
-
-	*containerp = fs;  /* ファイルシステムコンテナを返却する */
-
-	return 0;
-
-unlock_out:
+	rc = vfs_fs_get_nolock(fs_name, containerp);
 	mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
 
 	return rc;
@@ -178,7 +189,57 @@ vfs_fs_put(fs_container *container){
 
 	 vfs_fs_ref_dec(container);
 }
+/**
+   ファイルシステムをマウントする
+   @param[in] ioctxp   I/Oコンテキスト
+   @param[in] path     マウント先のパス名
+   @param[in] dev      マウントするデバイス
+   @param[in] args     マウントオプション
+   @retval  0      正常終了
+   @retval -ENOENT 指定された名前のファイルシステムまたはパスが見つからなかった
+   @retval -EBUSY   既に対象ボリュームのルートマウントポイントになっている
+   @retval -ENOTDIR ディレクトリでないパスを指定した
+   @note LO: ファイルシステムテーブルロックを獲得する
+*/
+int
+vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, void *args){
+	int                  rc;
+	fs_container       *ent;
+	fs_container *container;
+	
+	/*
+	 * ファイルシステムテーブルを辿ってファイルシステムをマウントする
+	 */
+	mutex_lock(&g_fstbl.c_mtx);  /*  ファイルシステムテーブルをロック  */
+	RB_FOREACH(ent, _fstbl_tree, &g_fstbl.c_head) {
 
+		/* ファイルシステムへの参照を獲得 */
+		rc = vfs_fs_get_nolock(ent->c_name, &container);
+		mutex_unlock(&g_fstbl.c_mtx); /*  ファイルシステムテーブルをアンロック  */
+
+		if ( rc != 0 )
+			continue; /* ファイルシステムへの参照を獲得できなかった */
+
+		/*
+		 * ファイルシステムをマウントする
+		 */
+		rc = vfs_mount_with_fsname(ioctxp, path, dev, container->c_name, args);
+
+		vfs_fs_put(container);	/* ファイルシステムへの参照を解放 */
+
+		/*
+		 * ファイルシステム固有のエラーでない場合はエラー復帰する
+		 */
+		if ( ( rc == 0 ) || ( rc == -ENOENT ) ||
+		    ( rc == -EBUSY ) || ( rc == -ENOTDIR ) )
+			goto error_out;  
+	}
+
+	rc = -ENOENT; /* マウント可能なファイルシステムが存在しない */
+
+error_out:
+	return rc;
+}
 /**
    ファイルシステムの登録
    @param[in] name  ファイルシステム名を表す文字列

@@ -1414,8 +1414,9 @@ unlock_out:
 	mutex_unlock(&g_mnttbl.mt_mtx);
 	return rc;
 }
+
 /**
-   ファイルシステムをマウントする
+   ファイルシステムをファイルシステム名を指定してマウントする
    @param[in] ioctxp   I/Oコンテキスト
    @param[in] path     マウント先のパス名
    @param[in] dev      マウントするデバイス
@@ -1434,7 +1435,7 @@ unlock_out:
    ロックを獲得する
 */
 int
-vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name, 
+vfs_mount_with_fsname(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name, 
 	  void *args){
 	int                      rc;
 	fs_mount             *mount;

@@ -99,7 +99,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 	minor = 0;
 	dev = (dev_id)TST_VFS_TSTFS_DEV_MAJOR << 32|minor;
 	
-	rc = vfs_mount(NULL, "/", dev, TST_VFS_TSTFS_NAME, NULL);
+	rc = vfs_mount_with_fsname(NULL, "/", dev, TST_VFS_TSTFS_NAME, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

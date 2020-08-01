@@ -709,10 +709,10 @@ error_out:
 static int
 tst_vfs_tstfs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *args, 
 		 vfs_vnode_id *root_vnid){
-	int                     rc;
-	uint32_t             major;
-	tst_vfs_tstfs_super *super;
-
+	int                       rc;
+	uint32_t               major;
+	tst_vfs_tstfs_super   *super;
+	
 	major = dev >> 32;
 	
 	if ( major != TST_VFS_TSTFS_DEV_MAJOR )
@@ -1471,6 +1471,8 @@ tst_vfs_tstfs_init(void){
 	    sizeof(tst_vfs_tstfs_dpage), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
 	    NULL, NULL);
 	kassert( rc == 0 );
+
+	/* ファイルシステムを登録 */
 	rc = vfs_register_filesystem(TST_VFS_TSTFS_NAME, &tst_vfs_tstfs_calls);
 	kassert( rc == 0 );
 	g_tstfs_db.initialized = true;

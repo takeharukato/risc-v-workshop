@@ -104,6 +104,7 @@ bool vfs_fs_ref_inc(fs_container *_container);
 bool vfs_fs_ref_dec(fs_container *_container);
 int vfs_fs_get(const char *_fs_name, struct _fs_container **_containerp);
 void vfs_fs_put(struct _fs_container *_fs);
+int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev, void *_args);
 int vfs_register_filesystem(const char *_name, struct _fs_calls *_calls);
 int vfs_unregister_filesystem(const char *_name);
 void vfs_init_filesystem_table(void);
