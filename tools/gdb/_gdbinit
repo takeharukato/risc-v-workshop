@@ -1,0 +1,16 @@
+add-auto-load-safe-path ~/
+define riscv64-setup
+target remote localhost:1234
+symbol-file kernel-dbg.elf
+end
+
+define load_symbol
+file kernel-dbg.elf
+symbol-file kernel-dbg.elf
+end
+
+define six
+si
+x /i $pc
+end
+
