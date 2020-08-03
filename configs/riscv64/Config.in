@@ -4,7 +4,7 @@ config CONFIG_RISCV64
 
 config CONFIG_HAL
 	bool "Hardware Abstraction Layer(HAL)"
-	default n
+	default y if CONFIG_RISCV64
 	help
 	  If you wish to build the kernel for real hardware, then answer Y here.
 

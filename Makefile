@@ -161,4 +161,17 @@ show-loc:
 	${CLOC} --exclude-lang="D" --exclude-list-file=$${tempfile} --by-file --vcs=git; \
 	${RM} $${tempfile};
 
+help:
+	@echo "[Make targets]"
+	@echo ""
+	@echo "menuconfig    Run the configurator."
+	@echo "clean         Remove object files."
+	@echo "all           Build targets."
+	@echo "gtags         Collect cross reference information with the gtag command. "
+	@echo "doxygen       Generate a doxygen document. "
+	@echo "gen-lcov      Generate a coverage information with lcov. "
+	@echo "run-cov-tests Run coverage test programs. "
+	@echo "show-loc      Show line of codes with cloc."
+	@echo "run           Run kernel with the system emulator."
+	@echo "run-debug     Run kernel with the system emulator in the debug mode."
 
