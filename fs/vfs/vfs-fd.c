@@ -616,7 +616,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxpp){
 		for(i = 0; table_size > i; ++i) {
 
 			if ( (parent_ioctx->ioc_fds[i] != NULL ) && 
-			    ( !( parent_ioctx->ioc_fds[i]->f_flags & VFS_VFLAGS_COE ) ) ) {
+			    ( !( parent_ioctx->ioc_fds[i]->f_flags & VFS_FDFLAGS_COE ) ) ) {
 
 				ioctxp->ioc_fds[i]= parent_ioctx->ioc_fds[i];
 				
