@@ -1,4 +1,9 @@
 * システムコール<=>vfs間IFを実装
+  - vfs_openのレビュールートテスト
+    - 参照カウンタの一貫性
+    - 多重ロック整合性確認
+  - creatシステムコールIFを実装
+  
 * mount/unmount/fd+ioctxの全ルートテストを実施
 * 可変長のIDビットマップ機構を導入し, VFSの上限制限を撤廃
 * ツールにchdir/mkdir/mknodを追加

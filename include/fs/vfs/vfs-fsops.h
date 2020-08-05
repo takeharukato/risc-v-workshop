@@ -3,23 +3,19 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Virtual File System Interface                                     */
+/*  Virtual file system file system operations                        */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_VFS_IF_H)
-#define  _KERN_VFS_IF_H 
+#if !defined(_FS_VFS_VFS_FSOPS_H)
+#define _FS_VFS_VFS_FSOPS_H
 
+#if !defined(ASM_FILE)
+
+#include <klib/freestanding.h>
 #include <fs/vfs/vfs-types.h>
-#include <fs/vfs/vfs-consts.h>
-#include <fs/vfs/vfs-stat.h>
-#include <fs/vfs/vfs-dirent.h>
-#include <fs/vfs/vfs-path.h>
-#include <fs/vfs/vfs-fstbl.h>
-#include <fs/vfs/vfs-mount.h>
-#include <fs/vfs/vfs-vnode.h>
-#include <fs/vfs/vfs-attr.h>
-#include <fs/vfs/vfs-fd.h>
-#include <fs/vfs/vfs-fsops.h>
+#include <klib/refcount.h>
+#include <kern/mutex.h>
+#endif  /*  ASM_FILE  */
 
-void vfs_init(void);
-#endif  /* _KERN_VFS_IF_H */
+
+#endif  /*  _FS_VFS_VFS_FSOPS_H  */
