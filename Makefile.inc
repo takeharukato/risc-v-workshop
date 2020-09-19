@@ -65,8 +65,8 @@ FSIMG=${top}/${FSIMG_FILE}
 
 QEMU ?= qemu-system-x86_64
 QEMU_KERNEL ?= ${top}/kernel.elf
-QEMU_OPT ?= -m ${CONFIG_HAL_MEMORY_SIZE_MB} -nographic -serial mon:stdio
-QEMU_DBG_OPT := -S -gdb tcp::1234
+QEMU_OPTS ?= -m ${CONFIG_HAL_MEMORY_SIZE_MB} -nographic -serial mon:stdio
+QEMU_DBG_OPTS := -S -gdb tcp::1234
 
 OBJ_CLEAN_FILES=*.o *.d
 GTAGS_CLEAN_FILES=GPATH GRTAGS GSYMS GTAGS

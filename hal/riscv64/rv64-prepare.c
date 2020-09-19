@@ -92,6 +92,12 @@ prepare(uint64_t hartid){
 		    kernel_start_phy, kheap_end_phy);
 		pfdb_mark_phys_range_reserved(kernel_start_phy, kheap_end_phy);
 
+		/* Supervisor Binary Interfaceの領域を予約する  */
+#if defined(CONFIG_HAL_USE_SBI)
+		kprintf("Reserve SBI memory region [%p, %p)\n", 
+		    HAL_SBI_PHY_BASE, HAL_SBI_PHY_END);
+		pfdb_mark_phys_range_reserved(HAL_SBI_PHY_BASE, HAL_SBI_PHY_END);
+#endif  /*  CONFIG_HAL_USE_SBI  */
 		slab_prepare_preallocate_cahches(); /* SLABを初期化する */
 		vm_pgtbl_cache_init();  /* ページテーブル情報のキャッシュを初期化する */
 

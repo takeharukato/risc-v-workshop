@@ -20,6 +20,12 @@ config CONFIG_HAL_PAGE_SHIFT
        int
        default 12
 
+config CONFIG_HAL_USE_SBI
+	bool "Use Supervisor Binary Interface"
+	default n
+	help
+	  If you wish to use Supervisor Binary Interface (SBI), then answer Y here.
+
 config CONFIG_HAL_STRAIGHT_PAGE_SIZE
        int
        default 0x200000
@@ -28,6 +34,11 @@ config CONFIG_HAL_KERN_VMA_BASE
        int     
        default 0xFFFFFFE000000000 if CONFIG_UPPERHALF_KERNEL
        default 0x0000000000000000 if !CONFIG_UPPERHALF_KERNEL
+
+config CONFIG_HAL_KERN_ENTRY_ADDRESS
+       int
+       default 0x80200000 if CONFIG_HAL_USE_SBI
+       default 0x80000000 if !CONFIG_HAL_USE_SBI
 
 config CONFIG_HAL_MEMORY_SIZE_MB
        prompt "Max memory size(UNIT:MB)"

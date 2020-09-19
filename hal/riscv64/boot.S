@@ -32,8 +32,11 @@ ASMMAC_FUNCTION(entry)
 	* ブートスタック情報を算出する
 	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
 	*/
+#if !defined(CONFIG_HAL_USE_SBI)
         csrr a0, mhartid      /* hartidを読み込む                        */
-
+#else
+	li  a0, 0             /* hartidを0に設定  */
+#endif  /*  CONFIG_HAL_USE_SBI  */
         la a1, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
 	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
 	mul a6, a2, a0        /* BSPスタックの底から自hartスタックの底へのオフセットを計算 */
@@ -111,12 +114,13 @@ clear_bss:
 ap_boot: /* APの処理再開位置 */
 	/* ページテーブルをロード */
 	call load_pre_pgtbl
+#if !defined(CONFIG_HAL_USE_SBI)
 	/* APの初期化のためにmscratchテーブルのアドレスを再ロード */
 	la a1, mscratch_tbl_addr  
 	ld a1, (a1)               /* mscratchテーブルのアドレスをロード */
 	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 
 	call setup_machine_mode  /* マシンモードの設定を実施 */
-
+#endif  /*  CONFIG_HAL_USE_SBI  */
 	/*
 	 * 割込みベクタのセットアップ
 	 */
@@ -125,6 +129,7 @@ ap_boot: /* APの処理再開位置 */
 	/* 第1引数にhart, 第2引数にsscratchテーブルの仮想アドレスを指定 */ 
 	call setup_vector  /* 割込みベクタの設定 */
 
+#if !defined(CONFIG_HAL_USE_SBI)
 	/*
 	 * 割込み/例外の回送
 	 */
@@ -136,14 +141,17 @@ ap_boot: /* APの処理再開位置 */
 	 */
 	li a2, MIDELEG_MASK
 	csrw mideleg, a2
-
+#endif  /*  CONFIG_HAL_USE_SBI  */
 	/*
 	 * サイクルカウンタ命令の有効化
          */
 	li a2, COUNTEREN_VAL
+#if !defined(CONFIG_HAL_USE_SBI)	
 	csrw  mcounteren, a2   /* マシンモードカウンタイネーブル       */
+#endif  /*  CONFIG_HAL_USE_SBI  */
 	csrw  scounteren, a2   /* スーパバイザモードカウンタイネーブル */
 
+#if !defined(CONFIG_HAL_USE_SBI)
 	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
 	 */
 	csrr a1, mstatus          /* mstatusを読み込む */
@@ -156,6 +164,7 @@ ap_boot: /* APの処理再開位置 */
 	li a2, (MSTATUS_MPP_S|SSTATUS_SUM)  
 	or a1, a1, a2         
 	csrw mstatus, a1      /* mstatusを更新                                     */
+#endif  /*  CONFIG_HAL_USE_SBI  */
 
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	/* スタックをアッパーハーフマッピングに合わせて再設定
@@ -166,8 +175,15 @@ ap_boot: /* APの処理再開位置 */
 
 	la   t0, c_entry_addr /* Cのエントリ関数アドレス格納変数のアドレスをロード */
 	ld   a1, (t0)         /* Cのエントリ関数のアドレスをロード                 */
+
+#if !defined(CONFIG_HAL_USE_SBI)
 	csrw mepc, a1         /* Machine Exception Program Counterを更新           */
 	mret                  /* マシンモードからの復帰によりスーパバイザモードに遷移 */
+#else
+	mv   ra, a1           /* リターンアドレスを更新      */
+	jr   ra
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
 junk:
         j junk
 wait_bsp:

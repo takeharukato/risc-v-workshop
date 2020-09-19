@@ -4,7 +4,7 @@
  */
 
 __KERN_VMA_BASE = __KERN_VMA_BASE__;
-__KERN_BASE = 0x80000000;  /* qemu's -kernel jumps to 0x80000000 */
+__KERN_BASE = __KERN_KERN_ENTRY_ADDRESS__;  /* qemu's -kernel jumps to __KERN_KERN_ENTRY_ADDRESS__ */
 OUTPUT_ARCH( "riscv" )
 ENTRY(_kernel_start)
 SECTIONS

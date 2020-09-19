@@ -40,8 +40,23 @@
 #else
 #define HAL_KERN_IO_BASE      (ULONGLONG_C(0x0000000000000000))
 #endif  /*  CONFIG_UPPERHALF_KERNEL */
+
+#if defined(CONFIG_HAL_USE_SBI)
+/** Supervisor Binary Interface 開始物理メモリアドレス */
+#define HAL_SBI_PHY_BASE      (ULONGLONG_C(0x80000000))
+/** Supervisor Binary Interface 終了物理メモリアドレス */
+#define HAL_SBI_PHY_END       (ULONGLONG_C(0x80200000))
 /** 開始物理メモリアドレス */
 #define HAL_KERN_PHY_BASE     (ULONGLONG_C(0x80000000))
+#else
+/** Supervisor Binary Interface 開始物理メモリアドレス(なし) */
+#define HAL_SBI_PHY_BASE      (ULONGLONG_C(0x00000000))
+/** Supervisor Binary Interface 終了物理メモリアドレス(なし) */
+#define HAL_SBI_PHY_END       (ULONGLONG_C(0x00000000))
+/** 開始物理メモリアドレス */
+#define HAL_KERN_PHY_BASE     (ULONGLONG_C(0x80000000))
+#endif
+
 /** ストレートマップ長 */                  
 #define RV64_STRAIGHT_MAPSIZE ( GIB_TO_BYTE(4) )  /**< 4GiBをマップする  */
 /** ユーザ空間終了アドレス */

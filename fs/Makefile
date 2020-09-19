@@ -45,7 +45,7 @@ ${FSIMG}:
 	mkdir ${top}/rfs
 	fuse-mfs ${top}/fsimg.img ${top}/rfs
 	echo "Hello World" > ${top}/rfs/hello.txt
-	${DD} if=/dev/urandom of=${top}/rfs/second-zone.dat bs=1M count=5
+	${DD} if=/dev/urandom of=${top}/rfs/second-zone.dat bs=1M count=4
 	ls -lai ${top}/rfs
 	fusermount -u ${top}/rfs
 

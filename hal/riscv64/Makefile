@@ -24,7 +24,15 @@ QEMU_CPU_OPTS = -smp ${CONFIG_HAL_CPUS_NR}
 else
 QEMU_CPU_OPTS = 
 endif
-HAL_QEMUOPTS = -machine virt -bios none ${QEMU_CPU_OPTS} -kernel ${QEMU_KERNEL}
+
+ifeq ($(CONFIG_HAL_USE_SBI),y)
+HAL_QEMU_BIOS_OPTS = -bios default
+else
+HAL_QEMU_BIOS_OPTS = -bios none
+endif
+
+HAL_QEMU_OPTS = -machine virt ${HAL_QEMU_BIOS_OPTS} ${QEMU_CPU_OPTS} -kernel ${QEMU_KERNEL}
+
 lib=libhal.a
 
 all: kernel.lds ${depends} ${lib}
@@ -36,19 +44,20 @@ ${lib}: ${objects}
 
 kernel.lds: kernel.lds.in ${top}/.config
 	${RM} $@
-	${SED} -e 's|__KHEAP_SIZE__|${CONFIG_HEAP_SIZE}*1024*1024|g' 	\
-	       -e 's|__PAGE_SIZE__|${CONFIG_HAL_PAGE_SIZE}|g' 		\
-	       -e 's|__KSTACK_PAGES__|(1 << ${CONFIG_KSTACK_PAGE_ORDER})|g'	\
-	       -e 's|__ISTACK_PAGES__|(1 << ${CONFIG_ISTACK_PAGE_ORDER})|g'	\
-	       -e 's|__KERN_VMA_BASE__|${CONFIG_HAL_KERN_VMA_BASE}|g'	\
-	       -e 's|__CPUS_NR__|${CONFIG_CPUS_NR}|g'         \
+	${SED} -e 's|__KHEAP_SIZE__|${CONFIG_HEAP_SIZE}*1024*1024|g' 	             \
+	       -e 's|__PAGE_SIZE__|${CONFIG_HAL_PAGE_SIZE}|g' 		             \
+	       -e 's|__KSTACK_PAGES__|(1 << ${CONFIG_KSTACK_PAGE_ORDER})|g'	     \
+	       -e 's|__ISTACK_PAGES__|(1 << ${CONFIG_ISTACK_PAGE_ORDER})|g'	     \
+	       -e 's|__KERN_VMA_BASE__|${CONFIG_HAL_KERN_VMA_BASE}|g'	             \
+	       -e 's|__KERN_KERN_ENTRY_ADDRESS__|${CONFIG_HAL_KERN_ENTRY_ADDRESS}|g' \
+	       -e 's|__CPUS_NR__|${CONFIG_CPUS_NR}|g'                                \
 	$< > $@
 
 run: ${QEMU_KERNEL}
-	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT}
+	${QEMU} ${HAL_QEMU_OPTS} ${QEMU_OPTS}
 
 run-debug: ${QEMU_KERNEL}
-	${QEMU} ${HAL_QEMUOPTS} ${QEMU_OPT} ${QEMU_DBG_OPT}
+	${QEMU} ${HAL_QEMU_OPTS} ${QEMU_OPTS} ${QEMU_DBG_OPTS}
 
 clean:
 	${RM} ${CLEAN_FILES} ${lib} kernel.lds asm-offset.s
