@@ -498,10 +498,8 @@ unlock_out:
    指定されたページを先頭とする連続ページを取り出す(内部関数)
    @param[in]   deq   取り出し対象のページフレーム情報
    @param[out]  pp    ページフレーム情報返却域
-   @retval  0     正常終了
-   @retval -ESRCH 指定されたページフレーム番号に対応するページがなかった
 */
-static int
+static void
 dequeue_specified_page(page_frame *deq){
 	page_buddy        *pool;
 	page_frame        *head;
@@ -519,15 +517,18 @@ dequeue_specified_page(page_frame *deq){
 	/*  ページプールロックを獲得 */
 	deq_idx = deq - &pool->array[0];  /*  配列のインデクスを獲得  */
 
-	/* 先頭ページを得る */
+	/* ヘッドページ(初期値は, deqを含む連続ページの先頭ページ)を得る */
 	kassert(deq->headp != NULL);
 	head = PAGE_REFER_CLUSTER_HEAD(deq);
 
-	/* 先頭ページをキューから外す */
+	/* ヘッドページをキューから外す */
 	queue_del(&pool->page_list[head->order], &head->link); /* ページをキューから外す */
 	--pool->free_nr[head->order];                        /* 空きページ数を更新     */
-	/* 対象ページをキューから取り出す */
-	while( deq != head ){ /* 先頭ページがdeq と異なる限り以下を実施 */
+
+	/*
+	 * deqページをキューから取り出す
+	 */
+	while( deq != head ){ /* ヘッドページがdeqページと異なる限り以下を実施 */
 
 		/* オーダが0より大きいことを確認 */
 		kassert( head->order > 0 );
@@ -538,47 +539,44 @@ dequeue_specified_page(page_frame *deq){
 		buddy_idx = head_idx ^ ( 1 << cur_order ); /*  バディページのインデクス  */
 		buddy = &pool->array[buddy_idx]; /* バディページのページフレーム情報 */
 
-		/* ヘッドページの方がbuddyページより小さいことを確認 */
+		/* ヘッドページの方がバディページより小さいことを確認 */
 		kassert( head_idx < buddy_idx );
 		kassert( head->pfn < buddy->pfn );
 
-		/* 先頭ページとバディのオーダを更新 */
+		/* ヘッドページとバディページのオーダを更新 */
 		head->order = buddy->order = cur_order;
 
-		/* 先頭ページとバディのクラスタ情報を更新 */
+		/* ヘッドページとバディページのクラスタ情報を更新 */
 		setup_clustered_pages(head);  /* ページクラスタ情報を更新する */
 		setup_clustered_pages(buddy);  /* ページクラスタ情報を更新する */
 
 		if ( buddy_idx > deq_idx ) {
 
-			/* deqのページ番号よりバディのページ番号が大きい場合
-			   (先頭ページ側のページ群に対象のページが含まれる)
-			   1) バディページをプールに格納する
-			*/
-			/* キューにつながっていないことを確認 */
-			kassert(list_not_linked(&buddy->link));
+			/* deqのページ番号よりバディのページ番号が大きい場合, つまり, 
+			 * ヘッドページ側のページ群に対象のページが含まれる場合は,
+			 * バディページをプールに格納する
+			 */
+			kassert(list_not_linked(&buddy->link)); /* キューにつながっていない */
 			queue_add(&pool->page_list[cur_order],
 			    &buddy->link);          /*  バディページをキューに追加     */
 			++pool->free_nr[cur_order]; /*  空きページ数を更新             */
 		} else {
 
-			/* deqのページ番号よりバディのページ番号が小さい場合
-			   (バディページ側のページ群に対象のページが含まれる)
-			   1) 先頭ページをプールに格納する
-			   2) 先頭ページへのポインタをバディを指すように更新する
+			/* deqのページ番号よりバディのページ番号が小さい場合, つまり,
+			 * バディページ側のページ群に対象のページが含まれる場合は,
+			 * ヘッドページをプールに格納した後で, 
+			 * ヘッドページへのポインタをバディのページに更新する
 			*/
-			/* キューにつながっていない */
-			kassert(list_not_linked(&head->link));
-
-			/* バディ側に含まれる場合は, ヘッドを返却する */
+			kassert(list_not_linked(&head->link)); /* キューにつながっていない */
+			/* バディ側に含まれる場合は, ヘッドページを返却する */
 			queue_add(&pool->page_list[cur_order],
-			    &head->link);        /*  ヘッドページをキューに追加  */
+			    &head->link);             /*  ヘッドページをキューに追加  */
 			++pool->free_nr[cur_order];   /*  空きページ数を更新          */
-			head = buddy;       /*  ヘッドページを更新する      */
+			head = buddy;                 /*  ヘッドページを更新          */
 		}
 	}
 
-	return 0;
+	return ;
 }
 /** 指定されたページフレーム番号のページを予約する (内部関数) 
     @param[in]  pfn   ページフレーム番号
