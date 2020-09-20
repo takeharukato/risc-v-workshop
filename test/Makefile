@@ -14,7 +14,7 @@ objects += tst-rv64-pgtbl.o tst-irqctrlr.o tst-bsp-stack.o
 endif
 
 ifeq ($(CONFIG_HAL),y)
-objects += tst-vmcopy.o	tst-vmstrlen.o
+objects += tst-vmcopy.o	tst-vmstrlen.o tst-rv64-cycle.o
 endif
 
 lib=libktest.a

@@ -18,6 +18,7 @@
 #include <hal/rv64-platform.h>
 #include <hal/rv64-plic.h>
 #include <hal/rv64-clint.h>
+#include <hal/rv64-sbi.h>
 #include <hal/hal-dbg-console.h>
 
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
@@ -110,7 +111,16 @@ prepare(uint64_t hartid){
 
 		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
 		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
-
+#if defined(CONFIG_HAL_USE_SBI)
+		do{
+			rv64_sbi_sbiret sret;
+			uint32_t major, minor;
+			
+			sret = rv64_sbi_get_spec_version(&major, &minor);
+			kprintf("SBI spec version: %u.%u (rc=%d)\n",
+			    major, minor, sret.error);
+		}while(0);
+#endif 	/*  CONFIG_HAL_USE_SBI  */
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
 
 		/* 優先度マスクを無効にする */

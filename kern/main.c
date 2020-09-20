@@ -41,6 +41,7 @@ kern_common_tests(void){
 	tst_pcache();
 	tst_proc();
 #if defined(CONFIG_HAL)
+	tst_rv64cycle_regs();
 	tst_vmcopy();
 	tst_vmstrlen();
 #endif  /*  CONFIG_HAL  */

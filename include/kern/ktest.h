@@ -192,5 +192,5 @@ void tst_vfs_path(void);
 void tst_vfs_fstbl(void);
 void tst_vfs_mount(void);
 void tst_vfs_fd(void);
-
+void tst_rv64cycle_regs(void);
 #endif  /*  _KERN_KTEST_H  */
