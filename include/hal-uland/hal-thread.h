@@ -16,7 +16,7 @@
 struct _thread_args;
 
 /**
-   スレッドスイッチコンテキスト
+   スレッドコンテキスト
  */
 typedef struct _x64_thrsw_context{
 	reg_type     r15;  /* r15    */

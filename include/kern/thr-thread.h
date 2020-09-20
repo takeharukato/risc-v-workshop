@@ -95,7 +95,7 @@ typedef struct _thread{
 	thr_state                 state;  /**< スレッドの状態                     */
 	tid                          id;  /**< Thread ID                          */
 	struct _proc                 *p;  /**< プロセス管理情報へのポインタ       */
-	void                       *ksp;  /**< スレッドスイッチコンテキスト       */
+	void                       *ksp;  /**< スレッドコンテキスト               */
 	struct _thread_info      *tinfo;  /**< スレッド情報へのポインタ           */
 	struct _list               link;  /**< スケジューラキュー/wait待ちへのリンク  */
 	struct _list          proc_link;  /**< プロセス管理情報のリンク           */

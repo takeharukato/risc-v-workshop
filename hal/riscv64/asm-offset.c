@@ -95,7 +95,7 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_EPC, _trap_context, epc);
 
 	/*
-	 * スレッドスイッチコンテキスト情報
+	 * スレッドコンテキスト情報
 	 */
 	DEFINE_VAL(RV64_THRSW_CONTEXT_SIZE, sizeof(struct _rv64_thrsw_context));
 	OFFSET(RV64_THRSW_CONTEXT_RA, _rv64_thrsw_context, ra);

@@ -31,7 +31,7 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 
 	/* 例外コンテキスト位置 */
 	trap = (trap_context *)((void *)*stkp - sizeof(trap_context)); 
-	/* スレッドスイッチコンテキスト位置 */
+	/* スレッドコンテキスト位置 */
 	thrctx = (x64_thrsw_context *)((void *)trap - sizeof(x64_thrsw_context)); 
 
 	/* コンテキスト内のレジスタをゼロ初期化
@@ -59,5 +59,5 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 		trap->r9  = args->arg6;
 	}
 
-	*stkp = (void *)thrctx;  /* スレッドスイッチコンテキストを指すようにスタックを更新 */
+	*stkp = (void *)thrctx;  /* スレッドコンテキストを指すようにスタックを更新 */
 }

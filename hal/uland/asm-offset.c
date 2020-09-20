@@ -62,7 +62,7 @@ main(int __unused argc, char __unused *argv[]) {
 #endif  /*  !CONFIG_HAL  */
 
 	/*
-	 * スレッドスイッチコンテキスト情報
+	 * スレッドコンテキスト情報
 	 */
 	DEFINE_VAL(X64_THRSW_CONTEXT_SIZE, sizeof(struct _x64_thrsw_context));
 	OFFSET(X64_THRSW_CONTEXT_R15, _x64_thrsw_context, r15);

@@ -27,7 +27,7 @@ ASMMAC_DECLARE_NAME(hal_thread_switch)
     @note  void hal_thread_switch(void **prev, void **next) 相当
 */
 ASMMAC_FUNCTION(hal_thread_switch)
-	/* スレッドスイッチコンテキストを保存 */
+	/* スレッドコンテキストを保存 */
 	pushfq            /* rflags */
 	pushq %rbx        /* rbx    */
 	pushq %rbp        /* rbp    */

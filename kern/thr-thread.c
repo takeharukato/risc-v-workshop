@@ -273,7 +273,7 @@ create_thread_common(tid id, entry_addr entry, thread_args *args,
 	/* スレッド管理情報を指すようにスタック位置を初期化 */
 	thr->ksp = (void *)thr->tinfo;   
 
-	/* スレッドスイッチコンテキスト, 例外コンテキストの初期化
+	/* スレッドコンテキスト, 例外コンテキストの初期化
 	 */
 	hal_setup_thread_context(entry, args, usp, thr->flags, &thr->ksp);
 

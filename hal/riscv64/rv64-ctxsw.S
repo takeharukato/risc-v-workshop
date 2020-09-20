@@ -18,8 +18,8 @@ ASMMAC_DECLARE_NAME(hal_thread_switch)
 
 /**
     スレッドを切り替える
-    @param[in] prev 現在のスレッドのスレッドスイッチコンテキスト格納先アドレスを指し示すポインタのアドレス
-    @param[in] next 切り替え先のスレッドのスレッドスイッチコンテキスト格納先アドレスを指し示すポインタのアドレス
+    @param[in] prev 現在のスレッドのスレッドコンテキスト格納先アドレスを指し示すポインタのアドレス
+    @param[in] next 切り替え先のスレッドのスレッドコンテキスト格納先アドレスを指し示すポインタのアドレス
     @note  void hal_thread_switch(void **prev, void **next) 相当
 */
 ASMMAC_FUNCTION(hal_thread_switch)
@@ -28,11 +28,11 @@ ASMMAC_FUNCTION(hal_thread_switch)
 	*/
 	
 	addi sp, sp, -RV64_THRSW_CONTEXT_SIZE /* コンテキスト保存領域を確保  */
-	RV64_ASM_SAVE_THRSW_CONTEXT(sp)  /* スレッドスイッチコンテキストを保存 */
+	RV64_ASM_SAVE_THRSW_CONTEXT(sp)  /* スレッドコンテキストを保存 */
 	sd   sp, (a0)  /* 現在のスレッドのコンテキスト格納先アドレスを更新  */
 
 	ld   sp, (a1)  /* 切り替え先スレッドのコンテキスト格納先アドレスをspにロード */
-	RV64_ASM_RESTORE_THRSW_CONTEXT(sp)   /* スレッドスイッチコンテキストを復元 */
+	RV64_ASM_RESTORE_THRSW_CONTEXT(sp)   /* スレッドコンテキストを復元 */
 	addi sp, sp, RV64_THRSW_CONTEXT_SIZE /* コンテキスト保存領域を解放  */
 	
 	jr ra            /*  呼び出し元に戻る                                */
