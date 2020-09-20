@@ -19,8 +19,8 @@ ASMMAC_DECLARE_NAME(rv64_sbi_call)
     @return a0 返値 (sbiret構造体のerrorメンバ), a1 値(sbiret構造体のvalueメンバ)
 
     @note struct _rv64_sbi_sbiret rv64_sbi_call(uint64_t func, uint64_t ext, uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3) 相当
-    @param[in] func SBI callの機能番号(Function ID)
-    @param[in] ext  SBI callの拡張番号(Extension ID)
+    @param[in] func SBI callの機能番号 (Function ID)
+    @param[in] ext  SBI callの拡張番号 (Extension ID)
     @param[in] arg0 SBI callの第1引数
     @param[in] arg1 SBI callの第2引数
     @param[in] arg2 SBI callの第3引数

@@ -9,9 +9,6 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
-#include <klib/backtrace.h>
-#include <kern/page-macros.h>
-#include <kern/kern-cpuinfo.h>
 
 #include <hal/rv64-platform.h>
 #include <hal/rv64-clint.h>
