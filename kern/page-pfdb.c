@@ -239,28 +239,12 @@ setup_clustered_pages(page_frame *pf) {
 		PAGE_MARK_CLUSTERED(&pf[i], &pf[0]);  
 }
 
-/**
-   クラスタページの設定を解除する
-   @param[in] pf ページフレーム情報
- */
-static void
-clear_clustered_pages(page_frame *pf) {
-	obj_cnt_type      i;
-
-	/*
-	 * 各ページのページフレーム情報の状態をクラスタページの設定を解除し,
-	 * 先頭ページをNULLに設定する
-	 */
-	for(i = 0; ( ULONG_C(1) << pf->order) > i; ++i) 
-		PAGE_UNMARK_CLUSTERED(&pf[i]);
-}
-
 /** 指定されたページフレームのページオーダを下げる (内部関数) 
     @param[in]  pf            ページフレーム情報
     @param[in]  request_order 要求ページオーダ
  */
 static void
-adjust_page_order(page_frame *pf, page_order request_order){
+make_page_order_down(page_frame *pf, page_order request_order){
 	pfdb_ent          *pfdb;
 	page_buddy        *pool;
 	page_order    cur_order;
@@ -293,6 +277,7 @@ adjust_page_order(page_frame *pf, page_order request_order){
 		/*  バディページのページフレーム情報を取得  */
 		buddy_page = &pool->array[buddy_idx]; 
 		buddy_page->order = cur_order;           /*  バディページのオーダを更新     */
+		setup_clustered_pages(buddy_page);       /* ページクラスタ情報を更新する    */
 		pg_queue = &pool->page_list[cur_order];  /*  対象オーダのページキューを参照 */
 		queue_add(pg_queue, &buddy_page->link);  /*  バディページをキューに追加     */
 		++pool->free_nr[cur_order];              /*  空きページ数を更新             */
@@ -433,8 +418,8 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 	    cur_page->order, area, (pool->free_nr[cur_page->order] + 1));
 #endif  /*  ENQUEUE_PAGE_DEBUG  */
 
-	clear_clustered_pages(cur_page);  /* ページクラスタ情報をクリアする */
-	
+	setup_clustered_pages(cur_page);  /* ページクラスタ情報を更新する */	
+
 	/*
 	 * ページをキューに追加する  
 	 */
@@ -485,12 +470,11 @@ dequeue_page_from_memory_area(pfdb_ent *ent, page_order order,
 			--pool->free_nr[cur_order];
 			
 			/* 要求オーダまでページオーダを落とす */
-			adjust_page_order(cur_page, order);
+			make_page_order_down(cur_page, order);
 
 			/*
 			 * ページ返却
 			 */
-			setup_clustered_pages(cur_page);  /* ページクラスタ情報を設定する */
 			mark_page_usage(cur_page, usage); /* ページ利用用途を更新する  */
 
 			PAGE_MARK_USED(cur_page); /* ページを使用中にする */
@@ -510,6 +494,92 @@ unlock_out:
 	return rc;
 }
 
+/**
+   指定されたページを先頭とする連続ページを取り出す(内部関数)
+   @param[in]   deq   取り出し対象のページフレーム情報
+   @param[out]  pp    ページフレーム情報返却域
+   @retval  0     正常終了
+   @retval -ESRCH 指定されたページフレーム番号に対応するページがなかった
+*/
+static int
+dequeue_specified_page(page_frame *deq){
+	page_buddy        *pool;
+	page_frame        *head;
+	page_frame       *buddy;
+	obj_cnt_type    deq_idx;
+	obj_cnt_type   head_idx;
+	obj_cnt_type  buddy_idx;
+	page_order    cur_order;
+
+	pool = deq->buddyp;    /*  ページプール情報を参照  */
+
+	kassert( spinlock_locked_by_self(&g_pfdb.lock) );  /* PFDBロック獲得済み */
+	kassert( spinlock_locked_by_self(&pool->lock) );   /* ページプールロック獲得済み */
+
+	/*  ページプールロックを獲得 */
+	deq_idx = deq - &pool->array[0];  /*  配列のインデクスを獲得  */
+
+	/* 先頭ページを得る */
+	kassert(deq->headp != NULL);
+	head = PAGE_REFER_CLUSTER_HEAD(deq);
+
+	/* 先頭ページをキューから外す */
+	queue_del(&pool->page_list[head->order], &head->link); /* ページをキューから外す */
+	--pool->free_nr[head->order];                        /* 空きページ数を更新     */
+	/* 対象ページをキューから取り出す */
+	while( deq != head ){ /* 先頭ページがdeq と異なる限り以下を実施 */
+
+		/* オーダが0より大きいことを確認 */
+		kassert( head->order > 0 );
+
+		cur_order = head->order - 1; /* オーダを下げる */
+
+		head_idx = head - &pool->array[0];         /* ヘッドページのインデクス   */
+		buddy_idx = head_idx ^ ( 1 << cur_order ); /*  バディページのインデクス  */
+		buddy = &pool->array[buddy_idx]; /* バディページのページフレーム情報 */
+
+		/* ヘッドページの方がbuddyページより小さいことを確認 */
+		kassert( head_idx < buddy_idx );
+		kassert( head->pfn < buddy->pfn );
+
+		/* 先頭ページとバディのオーダを更新 */
+		head->order = buddy->order = cur_order;
+
+		/* 先頭ページとバディのクラスタ情報を更新 */
+		setup_clustered_pages(head);  /* ページクラスタ情報を更新する */
+		setup_clustered_pages(buddy);  /* ページクラスタ情報を更新する */
+
+		if ( buddy_idx > deq_idx ) {
+
+			/* deqのページ番号よりバディのページ番号が大きい場合
+			   (先頭ページ側のページ群に対象のページが含まれる)
+			   1) バディページをプールに格納する
+			*/
+			/* キューにつながっていないことを確認 */
+			kassert(list_not_linked(&buddy->link));
+			queue_add(&pool->page_list[cur_order],
+			    &buddy->link);          /*  バディページをキューに追加     */
+			++pool->free_nr[cur_order]; /*  空きページ数を更新             */
+		} else {
+
+			/* deqのページ番号よりバディのページ番号が小さい場合
+			   (バディページ側のページ群に対象のページが含まれる)
+			   1) 先頭ページをプールに格納する
+			   2) 先頭ページへのポインタをバディを指すように更新する
+			*/
+			/* キューにつながっていない */
+			kassert(list_not_linked(&head->link));
+
+			/* バディ側に含まれる場合は, ヘッドを返却する */
+			queue_add(&pool->page_list[cur_order],
+			    &head->link);        /*  ヘッドページをキューに追加  */
+			++pool->free_nr[cur_order];   /*  空きページ数を更新          */
+			head = buddy;       /*  ヘッドページを更新する      */
+		}
+	}
+
+	return 0;
+}
 /** 指定されたページフレーム番号のページを予約する (内部関数) 
     @param[in]  pfn   ページフレーム番号
     @retval  0     正常終了
@@ -553,12 +623,9 @@ mark_page_frame_reserved(obj_cnt_type pfn){
 
 	/*  ページプールロックを獲得 */
 	spinlock_lock_disable_intr(&pool->lock, &iflags);
-	queue_del(&pool->page_list[pf->order], &pf->link); /* ページをキューから外す */
-	--pool->free_nr[pf->order];                        /* 空きページ数を更新     */
 
-	/*  クラスタページの場合後続のページをキューに返却する
-	 */
-	adjust_page_order(pf, 0);
+	dequeue_specified_page(pf);  /* 指定されたページをキューから取り除く          */
+	make_page_order_down(pf, 0); /*  クラスタページの後続ページをキューに返却する */
 
 	/* ページが使用されていないことを確認
 	 */
@@ -566,7 +633,6 @@ mark_page_frame_reserved(obj_cnt_type pfn){
 	kassert( ( pf->state & PAGE_STATE_UCASE_MASK ) == 0 );
 	kassert( !PAGE_IS_USED(pf) );
 
-	setup_clustered_pages(pf);  /* ページクラスタ情報をクリアする */
 	--pool->available_pages;    /* 利用可能ページ数を減算         */
 
 	/*  ページプールロックを解放 */
@@ -863,7 +929,7 @@ pfdb_add(uintptr_t phys_start, size_t length, pfdb_ent **pfdbp){
 		pgf->order = 0;                           /* ページオーダ初期化   */
 		queue_init(&pgf->pv_head);  /* 物理->仮想アドレス変換キュー初期化 */
 		pgf->buddyp = pool;         /* ページプールを設定                 */
-		pgf->headp = NULL;          /* ページクラスタ情報初期化           */
+		pgf->headp = pgf;          /* ページクラスタ情報初期化           */
 		list_init(&pgf->lru_ent);   /* LRUエントリの初期化                */
 		pgf->slabp = NULL;          /* SLABアドレスを初期化               */
 		pgf->pcachep = NULL;        /* ページキャッシュアドレスを初期化   */
