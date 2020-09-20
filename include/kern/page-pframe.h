@@ -109,9 +109,9 @@
    @param[in] _pf ページフレーム情報
  */
 #define PAGE_UNMARK_CLUSTERED(_pf) \
-	do{								              \
+	do{								               \
 		( (struct _page_frame *)(_pf) )->state &= ~PAGE_STATE_CLUSTERED;       \
-		( (struct _page_frame *)(_pf) )->headp = (struct _page_frame *)NULL; \
+		( (struct _page_frame *)(_pf) )->headp = (struct _page_frame *)(_pf);  \
 	}while(0)
 
 /**
@@ -121,6 +121,20 @@
 #define PAGE_IS_CLUSTERED(_pf) \
 	( ( (struct _page_frame *)(_pf) )->state & PAGE_STATE_CLUSTERED )
 
+/**
+   ページがクラスタページの先頭ページであることを確認する
+   @param[in] _pf ページフレーム情報
+ */
+#define PAGE_IS_CLUSTER_HEAD(_pf)					\
+	( PAGE_IS_CLUSTERED(_pf) &&					\
+	    ( ( (struct _page_frame *)(_pf) )->headp == (struct _page_frame *)(_pf) ) )
+
+/**
+   ページがクラスタページの先頭ページを得る
+   @param[in] _pf ページフレーム情報
+ */
+#define PAGE_REFER_CLUSTER_HEAD(_pf)			\
+	( ( (struct _page_frame *)(_pf) )->headp )
 
 /**
    ページをカーネルデータとして使用する
