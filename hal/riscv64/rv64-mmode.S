@@ -215,6 +215,24 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	or   a3, a3, a4                      /* マシンモード割込み許可を追加 */
 	csrw mstatus, a3                     /* マシンモード割込み許可 */
 
+	/*
+	 * サイクルカウンタ命令の有効化
+         */
+	li a3, COUNTEREN_VAL
+	csrw  mcounteren, a3   /* マシンモードカウンタイネーブル       */
+
+	/*
+	 * 割込み/例外の回送
+	 */
+	/* 例外をスーパバイザモードに回送
+	 */
+	li a3, MEDELEG_MASK
+	csrw medeleg, a3
+	/* 割込みをスーパバイザモードに回送
+	 */
+	li a3, MIDELEG_MASK
+	csrw mideleg, a3
+	
 	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
 	ld ra, 8(sp)     /*  raレジスタを復元する                            */
 	addi sp,sp,16    /*  スタック位置を復元する                          */

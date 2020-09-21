@@ -31,11 +31,11 @@ ASMMAC_FUNCTION(entry)
        /*
 	* ブートスタック情報を算出する
 	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
+	* @note Supervisor Binary Interface(SBI)使用時は, SBIがa0にhartidを
+	* 代入してエントリする
 	*/
 #if !defined(CONFIG_HAL_USE_SBI)
         csrr a0, mhartid      /* hartidを読み込む                        */
-#else
-	li  a0, 0             /* hartidを0に設定  */
 #endif  /*  CONFIG_HAL_USE_SBI  */
         la a1, _bsp_stack_end /* ブートスタック領域の末尾を参照          */
 	li a2, KC_KSTACK_SIZE /* スタックサイズをa2に代入                */
@@ -128,27 +128,10 @@ ap_boot: /* APの処理再開位置 */
 	ld a1, (a1)
 	/* 第1引数にhart, 第2引数にsscratchテーブルの仮想アドレスを指定 */ 
 	call setup_vector  /* 割込みベクタの設定 */
-
-#if !defined(CONFIG_HAL_USE_SBI)
-	/*
-	 * 割込み/例外の回送
-	 */
-	/* 例外をスーパバイザモードに回送
-	 */
-	li a2, MEDELEG_MASK
-	csrw medeleg, a2
-	/* 割込みをスーパバイザモードに回送
-	 */
-	li a2, MIDELEG_MASK
-	csrw mideleg, a2
-#endif  /*  CONFIG_HAL_USE_SBI  */
 	/*
 	 * サイクルカウンタ命令の有効化
          */
 	li a2, COUNTEREN_VAL
-#if !defined(CONFIG_HAL_USE_SBI)	
-	csrw  mcounteren, a2   /* マシンモードカウンタイネーブル       */
-#endif  /*  CONFIG_HAL_USE_SBI  */
 	csrw  scounteren, a2   /* スーパバイザモードカウンタイネーブル */
 
 #if !defined(CONFIG_HAL_USE_SBI)

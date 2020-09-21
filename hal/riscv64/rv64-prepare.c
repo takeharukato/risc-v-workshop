@@ -115,10 +115,13 @@ prepare(uint64_t hartid){
 		do{
 			rv64_sbi_sbiret sret;
 			uint32_t major, minor;
-			
+			uint64_t impl;
 			sret = rv64_sbi_get_spec_version(&major, &minor);
 			kprintf("SBI spec version: %u.%u (rc=%d)\n",
 			    major, minor, sret.error);
+			sret = rv64_sbi_get_impl_id(&impl);
+			kprintf("SBI implementation: %u (rc=%d)\n",
+			    sret.value, sret.error);
 		}while(0);
 #endif 	/*  CONFIG_HAL_USE_SBI  */
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
