@@ -22,7 +22,7 @@ static const char __unused *rv64_sbi_impl_id_tbl[]={"Berkeley Boot Loader (BBL)"
    Supervisor Binary Interfaceの版数情報を得る
    @param[out] majorp メジャーバージョン格納域
    @param[out] minorp マイナーバージョン格納域
-   @return SBI返却値(sbi_ret構造体)
+   @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
 rv64_sbi_get_spec_version(uint32_t *majorp, uint32_t *minorp) {
@@ -47,7 +47,7 @@ rv64_sbi_get_spec_version(uint32_t *majorp, uint32_t *minorp) {
 /**
    Supervisor Binary Interfaceの実装IDを得る
    @param[out] implp  ID格納領域
-   @return SBI返却値(sbi_ret構造体)
+   @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
 rv64_sbi_get_impl_id(uint64_t *implp) {
@@ -66,7 +66,7 @@ rv64_sbi_get_impl_id(uint64_t *implp) {
 /**
    Supervisor Binary Interfaceの機能を確認する
    @param[in] id    機能ID
-   @return SBI返却値(sbi_ret構造体)
+   @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
 rv64_sbi_probe_extension(int64_t id){
@@ -86,7 +86,7 @@ void
 rv64_sbi_set_timer(reg_type next_time_val){
 
 	/* タイマ割込み発生時刻を設定 */
-	RV64_SBI_CALL1(RV64_SBI_SET_TIMER, 0, (uint64_t)next_time_val);
+	RV64_SBICALL1(RV64_SBI_SET_TIMER, 0, (uint64_t)next_time_val);
 }
 
 /**
@@ -95,7 +95,7 @@ rv64_sbi_set_timer(reg_type next_time_val){
 void
 rv64_sbi_shutdown(void){
 
-	RV64_SBI_CALL0(RV64_SBI_SHUTDOWN, 0);
+	RV64_SBICALL0(RV64_SBI_SHUTDOWN, 0);
 }
 
 /**
@@ -104,7 +104,7 @@ rv64_sbi_shutdown(void){
 void
 rv64_sbi_clear_ipi(void){
 
-	RV64_SBI_CALL0(RV64_SBI_CLEAR_IPI, 0);
+	RV64_SBICALL0(RV64_SBI_CLEAR_IPI, 0);
 }
 /**
    指定したhart群にプロセッサ間割り込みを発行する
@@ -113,7 +113,7 @@ rv64_sbi_clear_ipi(void){
 void
 rv64_sbi_send_ipi(const unsigned long *hart_mask){
 
-	RV64_SBI_CALL1(RV64_SBI_SEND_IPI, 0, (uint64_t)hart_mask);
+	RV64_SBICALL1(RV64_SBI_SEND_IPI, 0, (uint64_t)hart_mask);
 }
 
 /**
@@ -123,7 +123,7 @@ rv64_sbi_send_ipi(const unsigned long *hart_mask){
 void
 rv64_sbi_remote_fence_i(const unsigned long *hart_mask){
 
-	RV64_SBI_CALL1(RV64_SBI_REMOTE_FENCE_I, 0, (uint64_t)hart_mask);
+	RV64_SBICALL1(RV64_SBI_REMOTE_FENCE_I, 0, (uint64_t)hart_mask);
 }
 
 /**
@@ -136,7 +136,7 @@ void
 rv64_sbi_remote_sfence_vma(const unsigned long *hart_mask,
     vm_vaddr start, vm_size size){
 
-	RV64_SBI_CALL3(RV64_SBI_REMOTE_SFENCE_VMA, 0, (uint64_t)hart_mask,
+	RV64_SBICALL3(RV64_SBI_REMOTE_SFENCE_VMA, 0, (uint64_t)hart_mask,
 	    (unsigned long)start, (unsigned long)size);
 }
 
@@ -149,9 +149,8 @@ rv64_sbi_remote_sfence_vma(const unsigned long *hart_mask,
 void
 rv64_sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
     vm_vaddr start, vm_size size, uint64_t asid){
-	unsigned long sbi_asid;
 
-	RV64_SBI_CALL4(RV64_SBI_REMOTE_SFENCE_VMA_ASID, 0, (uint64_t)hart_mask,
+	RV64_SBICALL4(RV64_SBI_REMOTE_SFENCE_VMA_ASID, 0, (uint64_t)hart_mask,
 	    (unsigned long)start, (unsigned long)size, (unsigned long)asid);
 }
 
@@ -160,7 +159,7 @@ rv64_sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
    @param[in] hart        起動プロセッサHardware Thread (hart)ID
    @param[in] start_addr  アプリケーションプロセッサ起動物理アドレス
    @param[in] private     アプリケーションプロセッサ起動時に引き渡す引数情報
-   @return SBI返却値(sbi_ret構造体)
+   @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
 rv64_sbi_hsm_hart_start(uint64_t hart, vm_paddr start_addr, uint64_t private){
@@ -179,7 +178,7 @@ rv64_sbi_hsm_hart_start(uint64_t hart, vm_paddr start_addr, uint64_t private){
 void
 rv64_sbi_hsm_hart_stop(void){
 
-	RV64_SBICALL0(RV64_SBI_EXT_ID_HSM, SBI_HSM_HART_STOP);
+	RV64_SBICALL0(RV64_SBI_EXT_ID_HSM, RV64_SBI_HSM_HART_STOP);
 }
 
 /**
@@ -191,18 +190,18 @@ rv64_sbi_hsm_hart_stop(void){
  */
 int
 rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
-	struct sbi_ret rv;
+	rv64_sbi_sbiret rv;
 
 	/*
 	 * hartの状態を獲得する
 	 */
-	ret = RV64_SBI_CALL1(SBI_EXT_ID_HSM, SBI_HSM_HART_STATUS, hart);
+	rv = RV64_SBICALL1(RV64_SBI_EXT_ID_HSM, RV64_SBI_HSM_HART_STATUS, hart);
 
 	if ( ( rv.error == 0 ) && ( statusp != NULL ) ) { /* 状態獲得成功 */
 
-		*statusp = (int)ret.value;  /* 状態を返却 */
+		*statusp = (int)rv.value;  /* 状態を返却 */
 	}
 
-	return (int)ret.error;
+	return (int)rv.error;
 }
 
