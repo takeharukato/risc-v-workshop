@@ -143,7 +143,11 @@ typedef struct _rv64_sbi_sbiret {
 struct _rv64_sbi_sbiret rv64_sbi_call(uint64_t _func, uint64_t _ext, uint64_t _arg0, uint64_t _arg1, uint64_t _arg2, uint64_t _arg3);
 
 struct _rv64_sbi_sbiret rv64_sbi_get_spec_version(uint32_t *_majorp, uint32_t *_minorp);
-struct _rv64_sbi_sbiret rv64_sbi_get_impl_id(uint64_t *_implp);
+struct _rv64_sbi_sbiret rv64_sbi_get_impl_id(uint64_t *_implidp);
+struct _rv64_sbi_sbiret rv64_sbi_get_impl_version(uint32_t *_majorp, uint32_t *_minorp);
+struct _rv64_sbi_sbiret rv64_sbi_get_mimpid(uint64_t *_mimpidp);
+struct _rv64_sbi_sbiret rv64_sbi_get_marchid(uint64_t *_marchidp);
+struct _rv64_sbi_sbiret rv64_sbi_get_mvendorid(uint64_t *_mvendoridp);
 struct _rv64_sbi_sbiret rv64_sbi_probe_extension(int64_t _id);
 void rv64_sbi_set_timer(reg_type next_time_val);
 void rv64_sbi_shutdown(void);
@@ -159,5 +163,6 @@ struct _rv64_sbi_sbiret rv64_sbi_hsm_hart_start(uint64_t _hart, vm_paddr _start_
 void rv64_sbi_hsm_hart_stop(void);
 int rv64_sbi_hsm_hart_status(uint64_t _hart, int *_statusp);
 
+void rv64_sbi_init(void);
 #endif  /* !ASM_FILE */
 #endif  /* _HAL_RV64_SBI_H  */

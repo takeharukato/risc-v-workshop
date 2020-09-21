@@ -112,17 +112,7 @@ prepare(uint64_t hartid){
 		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
 		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
 #if defined(CONFIG_HAL_USE_SBI)
-		do{
-			rv64_sbi_sbiret sret;
-			uint32_t major, minor;
-			uint64_t impl;
-			sret = rv64_sbi_get_spec_version(&major, &minor);
-			kprintf("SBI spec version: %u.%u (rc=%d)\n",
-			    major, minor, sret.error);
-			sret = rv64_sbi_get_impl_id(&impl);
-			kprintf("SBI implementation: %u (rc=%d)\n",
-			    sret.value, sret.error);
-		}while(0);
+		rv64_sbi_init();
 #endif 	/*  CONFIG_HAL_USE_SBI  */
 		hal_map_kernel_space(); /* カーネルページテーブルを初期化する */
 
@@ -138,7 +128,7 @@ prepare(uint64_t hartid){
 		spinlock_unlock_restore_intr(&prepare_lock, &iflags);
 		goto loop;
 
-		rc = krn_cpuinfo_cpu_register(hartid, &log_id); /* BSPを登録する */
+		rc = krn_cpuinfo_cpu_register(hartid, &log_id); /* APを登録する */
 		kassert( rc == 0 );
 
 		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */

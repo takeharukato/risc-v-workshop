@@ -13,7 +13,10 @@
 #include <hal/rv64-platform.h>
 #include <hal/rv64-clint.h>
 #include <hal/rv64-sbi.h>
-static const char __unused *rv64_sbi_impl_id_tbl[]={"Berkeley Boot Loader (BBL)",
+/**
+   Supervisor Binary Interfaceの実装名
+ */
+static const char *rv64_sbi_impl_id_tbl[]={"Berkeley Boot Loader (BBL)",
 					   "OpenSBI",
 					   "XVisor",
 					   "KVM"};
@@ -46,19 +49,97 @@ rv64_sbi_get_spec_version(uint32_t *majorp, uint32_t *minorp) {
 
 /**
    Supervisor Binary Interfaceの実装IDを得る
-   @param[out] implp  ID格納領域
+   @param[out] implidp  ID格納領域
    @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
-rv64_sbi_get_impl_id(uint64_t *implp) {
+rv64_sbi_get_impl_id(uint64_t *implidp) {
 	rv64_sbi_sbiret rv;
 
-	/* 実装ID情報獲得  */
+	/* 実装ID獲得  */
 	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_IMPL_ID);
 
-	/* 実装情報返却  */
-	if ( implp != NULL )
-		*implp = rv.value;
+	/* 実装ID返却  */
+	if ( ( rv.error == 0 ) && ( implidp != NULL ) )
+		*implidp = rv.value;
+
+	return rv;
+}
+
+/**
+   Supervisor Binary Interfaceの実装版数を得る
+   @param[out] majorp メジャーバージョン格納域
+   @param[out] minorp マイナーバージョン格納域
+   @return SBI返却値(rv64_sbi_sbiret構造体)
+ */
+rv64_sbi_sbiret
+rv64_sbi_get_impl_version(uint32_t *majorp, uint32_t *minorp){
+	rv64_sbi_sbiret rv;
+
+	/* 実装版数獲得  */
+	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_IMPL_VERSION);
+
+	if ( rv.error != 0 )
+		goto error_out;
+	
+	/* メジャー版数取り出し  */
+	if ( majorp != NULL )
+		*majorp = (rv.value >> RV64_SBI_SPEC_VERSION_MAJOR_SHIFT) \
+			& RV64_SBI_SPEC_VERSION_MAJOR_MASK;
+
+	/* マイナー版数取り出し  */
+	if ( minorp != NULL )
+		*minorp = (rv.value >> RV64_SBI_SPEC_VERSION_MINOR_SHIFT) \
+			& RV64_SBI_SPEC_VERSION_MINOR_MASK;
+
+error_out:
+	return rv;
+}
+
+/**
+   Supervisor Binary InterfaceのベンダIDを得る
+   @param[out] mvendoridp  ベンダID格納領域
+   @return SBI返却値(rv64_sbi_sbiret構造体)
+ */
+rv64_sbi_sbiret
+rv64_sbi_get_mvendorid(uint64_t *mvendoridp){
+	rv64_sbi_sbiret rv;
+	
+	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MVENDORID);
+	if ( ( rv.error == 0 ) && ( mvendoridp != NULL ) )  /* 状態獲得成功 */
+		*mvendoridp = rv.value;
+
+	return rv;
+}
+
+/**
+   Supervisor Binary InterfaceのアーキテクチャIDを得る
+   @param[out] marchidp  アーキテクチャID格納領域
+   @return SBI返却値(rv64_sbi_sbiret構造体)
+ */
+rv64_sbi_sbiret
+rv64_sbi_get_marchid(uint64_t *marchidp){
+	rv64_sbi_sbiret rv;
+	
+	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MARCHID);
+	if ( ( rv.error == 0 ) && ( marchidp != NULL ) )  /* 状態獲得成功 */
+		*marchidp = rv.value;
+
+	return rv;
+}
+
+/**
+   Supervisor Binary InterfaceのアーキテクチャIDを得る
+   @param[out] marchidp  アーキテクチャID格納領域
+   @return SBI返却値(rv64_sbi_sbiret構造体)
+ */
+rv64_sbi_sbiret
+rv64_sbi_get_mimpid(uint64_t *mimpidp){
+	rv64_sbi_sbiret rv;
+	
+	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MIMPID);
+	if ( ( rv.error == 0 ) && ( mimpidp != NULL ) )  /* 状態獲得成功 */
+		*mimpidp = rv.value;
 
 	return rv;
 }
@@ -106,6 +187,7 @@ rv64_sbi_clear_ipi(void){
 
 	RV64_SBICALL0(RV64_SBI_CLEAR_IPI, 0);
 }
+
 /**
    指定したhart群にプロセッサ間割り込みを発行する
    @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
@@ -205,3 +287,32 @@ rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
 	return (int)rv.error;
 }
 
+/**
+   Supervisor Binary Interfaceの初期化
+ */
+void
+rv64_sbi_init(void){
+	rv64_sbi_sbiret rv;
+	uint32_t major, minor;
+	uint64_t implid;
+
+	rv = rv64_sbi_get_spec_version(&major, &minor);
+	if ( rv.error == RV64_SBI_SUCCESS )
+		kprintf("SBI spec version: %u.%u\n", major, minor);
+	else
+		kprintf("SBI spec version: unknown. rc=%d\n", rv.error);
+
+	rv = rv64_sbi_get_impl_id(&implid);
+	if ( ( rv.error == RV64_SBI_SUCCESS ) && ( implid < 4 ) )
+		kprintf("SBI implementation: %s (id=%d)\n",
+		    rv64_sbi_impl_id_tbl[implid], implid);
+	else
+		kprintf("SBI implementation: unknown (id=%d)\n", implid);
+
+	rv = rv64_sbi_get_impl_version(&major, &minor);
+	if ( rv.error == RV64_SBI_SUCCESS )
+		kprintf("SBI implementation version: %u.%u\n", major, minor);
+	else
+		kprintf("SBI implementation version: unknown\n");
+	
+}
