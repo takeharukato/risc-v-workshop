@@ -134,6 +134,18 @@ ap_boot: /* APの処理再開位置 */
 	li a2, COUNTEREN_VAL
 	csrw  scounteren, a2   /* スーパバイザモードカウンタイネーブル */
 
+#if defined(CONFIG_UPPERHALF_KERNEL)
+	/* スタックをアッパーハーフマッピングに合わせて再設定
+	 */
+	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
+	add sp, sp, a1
+#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+
+	la   t0, c_entry_addr /* Cのエントリ関数アドレス格納変数のアドレスをロード */
+	ld   a7, (t0)         /* Cのエントリ関数のアドレスをロード                 */
+	/*
+	 * これ以降a7にCのエントリ関数のアドレスを保持すること
+	 */
 #if !defined(CONFIG_HAL_USE_SBI)
 	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
 	 */
@@ -147,25 +159,13 @@ ap_boot: /* APの処理再開位置 */
 	li a2, (MSTATUS_MPP_S|SSTATUS_SUM)  
 	or a1, a1, a2         
 	csrw mstatus, a1      /* mstatusを更新                                     */
-#endif  /*  CONFIG_HAL_USE_SBI  */
 
-#if defined(CONFIG_UPPERHALF_KERNEL)
-	/* スタックをアッパーハーフマッピングに合わせて再設定
-	 */
-	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
-	add sp, sp, a1
-#endif  /*  CONFIG_UPPERHALF_KERNEL  */
-
-	la   t0, c_entry_addr /* Cのエントリ関数アドレス格納変数のアドレスをロード */
-	ld   a1, (t0)         /* Cのエントリ関数のアドレスをロード                 */
-
-#if !defined(CONFIG_HAL_USE_SBI)
-	csrw mepc, a1         /* Machine Exception Program Counterを更新           */
+	csrw mepc, a7         /* Machine Exception Program Counterを更新           */
 	mret                  /* マシンモードからの復帰によりスーパバイザモードに遷移 */
 #else
-	mv   ra, a1           /* リターンアドレスを更新      */
+	mv   ra, a7           /* リターンアドレスを更新      */
 	jr   ra
-#endif  /*  CONFIG_UPPERHALF_KERNEL  */
+#endif  /*  CONFIG_HAL_USE_SBI  */
 
 junk:
         j junk
