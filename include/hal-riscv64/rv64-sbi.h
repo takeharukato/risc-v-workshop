@@ -12,7 +12,7 @@
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
-#include <kern/kern-cpuinfo.h>
+#include <kern/kern-types.h>
 
 #define RV64_SBI_SUCCESS                    (0)   /**< 正常終了                 */
 #define RV64_SBI_ERR_FAILURE                (-1)  /**< 失敗                     */
@@ -145,6 +145,19 @@ struct _rv64_sbi_sbiret rv64_sbi_call(uint64_t _func, uint64_t _ext, uint64_t _a
 struct _rv64_sbi_sbiret rv64_sbi_get_spec_version(uint32_t *_majorp, uint32_t *_minorp);
 struct _rv64_sbi_sbiret rv64_sbi_get_impl_id(uint64_t *_implp);
 struct _rv64_sbi_sbiret rv64_sbi_probe_extension(int64_t _id);
+void rv64_sbi_set_timer(reg_type next_time_val);
+void rv64_sbi_shutdown(void);
+void rv64_sbi_clear_ipi(void);
+void rv64_sbi_send_ipi(const unsigned long *_hart_mask);
+void rv64_sbi_remote_fence_i(const unsigned long *_hart_mask);
+void rv64_sbi_remote_sfence_vma(const unsigned long *_hart_mask,
+    vm_vaddr _start, vm_size _size);
+void rv64_sbi_remote_sfence_vma_asid(const unsigned long *_hart_mask,
+    vm_vaddr _start, vm_size _size, uint64_t _asid);
+
 struct _rv64_sbi_sbiret rv64_sbi_hsm_hart_start(uint64_t _hart, vm_paddr _start_addr, uint64_t _private);
+void rv64_sbi_hsm_hart_stop(void);
+int rv64_sbi_hsm_hart_status(uint64_t _hart, int *_statusp);
+
 #endif  /* !ASM_FILE */
 #endif  /* _HAL_RV64_SBI_H  */

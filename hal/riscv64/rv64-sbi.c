@@ -79,6 +79,83 @@ rv64_sbi_probe_extension(int64_t id){
 }
 
 /**
+   タイマ割込みを設定する
+   @param[in] next_time_val 次にタイマ割込みを発生させるタイマ割込み発生時刻(timeレジスタの値)
+ */
+void
+rv64_sbi_set_timer(reg_type next_time_val){
+
+	/* タイマ割込み発生時刻を設定 */
+	RV64_SBI_CALL1(RV64_SBI_SET_TIMER, 0, (uint64_t)next_time_val);
+}
+
+/**
+   自hartを終了させる
+ */
+void
+rv64_sbi_shutdown(void){
+
+	RV64_SBI_CALL0(RV64_SBI_SHUTDOWN, 0);
+}
+
+/**
+   自hartへのプロセッサ間割り込み受付け完了をSBIに通知する
+ */
+void
+rv64_sbi_clear_ipi(void){
+
+	RV64_SBI_CALL0(RV64_SBI_CLEAR_IPI, 0);
+}
+/**
+   指定したhart群にプロセッサ間割り込みを発行する
+   @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
+ */
+void
+rv64_sbi_send_ipi(const unsigned long *hart_mask){
+
+	RV64_SBI_CALL1(RV64_SBI_SEND_IPI, 0, (uint64_t)hart_mask);
+}
+
+/**
+   指定したhart群にFENCE.I命令発効指示を出す
+   @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
+ */
+void
+rv64_sbi_remote_fence_i(const unsigned long *hart_mask){
+
+	RV64_SBI_CALL1(RV64_SBI_REMOTE_FENCE_I, 0, (uint64_t)hart_mask);
+}
+
+/**
+   指定したhart群にSFENCE.VMA命令発効指示を出す
+   @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
+   @param[in]  start     SFENCE.VMA命令によりTLBを無効化する仮想領域の先頭アドレス
+   @param[in]  size      SFENCE.VMA命令によりTLBを無効化する仮想領域の領域長(単位:バイト)
+ */
+void
+rv64_sbi_remote_sfence_vma(const unsigned long *hart_mask,
+    vm_vaddr start, vm_size size){
+
+	RV64_SBI_CALL3(RV64_SBI_REMOTE_SFENCE_VMA, 0, (uint64_t)hart_mask,
+	    (unsigned long)start, (unsigned long)size);
+}
+
+/**
+   指定したhart群にアドレス空間ID付きのSFENCE.VMA命令発効指示を出す
+   @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
+   @param[in]  start     SFENCE.VMA命令によりTLBを無効化する仮想領域の先頭アドレス
+   @param[in]  size      SFENCE.VMA命令によりTLBを無効化する仮想領域の領域長(単位:バイト)
+ */
+void
+rv64_sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
+    vm_vaddr start, vm_size size, uint64_t asid){
+	unsigned long sbi_asid;
+
+	RV64_SBI_CALL4(RV64_SBI_REMOTE_SFENCE_VMA_ASID, 0, (uint64_t)hart_mask,
+	    (unsigned long)start, (unsigned long)size, (unsigned long)asid);
+}
+
+/**
    アプリケーションプロセッサを起動する
    @param[in] hart        起動プロセッサHardware Thread (hart)ID
    @param[in] start_addr  アプリケーションプロセッサ起動物理アドレス
@@ -94,5 +171,38 @@ rv64_sbi_hsm_hart_start(uint64_t hart, vm_paddr start_addr, uint64_t private){
 	    start_addr, private);
 
 	return rv;
+}
+
+/**
+   自hartを停止する
+ */
+void
+rv64_sbi_hsm_hart_stop(void){
+
+	RV64_SBICALL0(RV64_SBI_EXT_ID_HSM, SBI_HSM_HART_STOP);
+}
+
+/**
+   指定したhartの状態を参照する
+   @param[in]  hart    状態参照対象となるhartのhartid
+   @param[out] statusp hartの状態を返却する領域
+   @retval 0   正常終了
+   @retval 非0 状態参照に失敗した
+ */
+int
+rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
+	struct sbi_ret rv;
+
+	/*
+	 * hartの状態を獲得する
+	 */
+	ret = RV64_SBI_CALL1(SBI_EXT_ID_HSM, SBI_HSM_HART_STATUS, hart);
+
+	if ( ( rv.error == 0 ) && ( statusp != NULL ) ) { /* 状態獲得成功 */
+
+		*statusp = (int)ret.value;  /* 状態を返却 */
+	}
+
+	return (int)ret.error;
 }
 
