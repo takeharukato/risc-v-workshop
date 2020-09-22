@@ -26,7 +26,7 @@ endif
 
 depends = $(patsubst %.o,%.d,${objects})
 ifeq ($(CONFIG_SMP),y)
-QEMU_CPU_OPTS = -smp ${CONFIG_HAL_CPUS_NR}
+QEMU_CPU_OPTS = -smp ${CONFIG_CPUS_NR}
 else
 QEMU_CPU_OPTS = 
 endif

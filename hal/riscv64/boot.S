@@ -70,7 +70,7 @@ ASMMAC_FUNCTION(entry)
 
 	mv  sp, a7                    /* スタックポインタをコンテキスト保存域に設定      */
 
-	bne  a0, x0, wait_bsp         /*  ページテーブル設定を待ち合わせる */
+	bne a0, x0, wait_bsp          /* APの場合, BSPのページテーブル設定を待ち合わせる */
 	
 	/*
 	 * BSSクリア/マシンモード情報テーブル/MMU設定 (BSPのみ実施)
@@ -111,6 +111,10 @@ clear_bss:
 	 */
 	call setup_pre_pgtbl
 
+	la   t0, bsp_ready    /* BSP処理中フラグ格納変数のアドレスをロード */
+	li   t1, 0x1          /* 初期化完了                                */
+	sd   t1, (t0)         /* 変数値を格納                              */
+
 ap_boot: /* APの処理再開位置 */
 	/* ページテーブルをロード */
 	call load_pre_pgtbl
@@ -120,7 +124,7 @@ ap_boot: /* APの処理再開位置 */
 	ld a1, (a1)               /* mscratchテーブルのアドレスをロード */
 	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 
 	call setup_machine_mode  /* マシンモードの設定を実施 */
-#endif  /*  CONFIG_HAL_USE_SBI  */
+#endif  /*  !CONFIG_HAL_USE_SBI  */
 	/*
 	 * 割込みベクタのセットアップ
 	 */
@@ -165,13 +169,18 @@ ap_boot: /* APの処理再開位置 */
 #else
 	mv   ra, a7           /* リターンアドレスを更新      */
 	jr   ra
-#endif  /*  CONFIG_HAL_USE_SBI  */
+#endif  /*  !CONFIG_HAL_USE_SBI  */
 
 junk:
         j junk
+/*
+ * BSPのMMU処理化処理待ち
+ */
 wait_bsp:
-	wfi                     /* CPUを休眠する */
-	j wait_bsp
+	la   t0, bsp_ready    /* BSP処理中フラグ格納変数のアドレスをロード */
+	ld   t1, (t0)         /* 変数値をロード                            */
+	beq  t1, x0, wait_bsp  /* ページテーブル設定を待ち合わせる          */
+	j ap_boot             /* APの初期化再開                            */
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_DATA_SECTION
@@ -203,6 +212,11 @@ ASMMAC_DECLARE_NAME(c_entry_addr)
 ASMMAC_BALIGN(8)
 c_entry_addr:
 	.dword prepare       /* prepare関数のアドレスを格納 */
+
+ASMMAC_DECLARE_NAME(bsp_ready)
+ASMMAC_BALIGN(8)
+bsp_ready:
+	.dword 0x0          /* bspの処理完了フラグ */
 
 ASMMAC_BALIGN(16)
 mscratch_tbl_addr:

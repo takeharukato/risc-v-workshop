@@ -8,6 +8,7 @@ mainmenu "Kernel Configuration"
 config CONFIG_SMP
 	bool "SMP kernel"
 	default n
+        depends on CONFIG_HAL_SMP
 	help
 	  If you wish to build the kernel for multi-processor system, then answer Y here.
 
@@ -20,11 +21,11 @@ config CONFIG_PREEMPT
 source "configs/hal/Config.in"
 
 config CONFIG_CPUS_NR
-       prompt "Max cpus"
-       int
-       default 1 if !CONFIG_SMP
-       default 4 if CONFIG_SMP
-       range 1 4
+    int "Max cpus"
+    depends on CONFIG_HAL
+    default 1 if !CONFIG_SMP
+    default 2 if CONFIG_SMP
+    range 1 8
 
 config CONFIG_UPPERHALF_KERNEL
     bool "Use Upper Half Kernel"
