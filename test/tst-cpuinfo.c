@@ -23,7 +23,7 @@ cpuinfo1(struct _ktest_stats *sp, void __unused *arg){
 	
 	phys_id = hal_get_physical_cpunum();
 	cpu_num = krn_current_cpu_get();
-	kprintf("cpuid (phys, log)=(%lu, %lu)\n",
+	kprintf("current cpuid(phys, log)=(%lu, %lu)\n",
 	    phys_id, cpu_num);
 
 	res = krn_cpuinfo_cpu_is_online(cpu_num);
