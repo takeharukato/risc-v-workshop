@@ -72,6 +72,12 @@ typedef struct _cpu_map{
 #define FOREACH_ONLINE_CPUS(_cpu_num)					\
 	for( (_cpu_num) = 0; KC_CPUS_NR > (_cpu_num); ++(_cpu_num))	\
 		if ( krn_cpuinfo_cpu_is_online( (_cpu_num) ) )
+/**
+   搭載可能CPUに対して処理を行う
+   @param[in] _cpu_num 論理CPU番号を格納する変数
+ */
+#define FOREACH_MAXIMUM_CPUS(_cpu_num)					\
+	for( (_cpu_num) = 0; KC_CPUS_NR > (_cpu_num); ++(_cpu_num))	\
 
 void krn_cpuinfo_update(void);
 int krn_cpuinfo_online(cpu_id _cpu_num);

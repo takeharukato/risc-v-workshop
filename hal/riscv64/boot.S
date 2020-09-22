@@ -99,7 +99,8 @@ clear_bss:
 	/*
 	 * マシンモード情報テーブルのアドレスを設定
 	 */
-	la a3, mscratch_tbl_addr  /* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
+	/* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
+	la a3, mscratch_tbl_addr  
 	ld a1, (a3)               /* mscratchテーブルのアドレスをロード */
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	sub a1, a1, a2            /* mscratchテーブルの物理アドレスを算出   */

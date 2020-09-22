@@ -9,10 +9,12 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
+#include <kern/kern-cpuinfo.h>
 
 #include <hal/rv64-platform.h>
 #include <hal/rv64-clint.h>
 #include <hal/rv64-sbi.h>
+
 /**
    Supervisor Binary Interfaceの実装名
  */
@@ -20,6 +22,18 @@ static const char *rv64_sbi_impl_id_tbl[]={"Berkeley Boot Loader (BBL)",
 					   "OpenSBI",
 					   "XVisor",
 					   "KVM"};
+/**
+   Hardware Thread (hart)の状態
+ */
+static const char *rv64_sbi_hart_states[]={"Started",
+					   "Stopped",
+					   "StartPending",
+					   "StopPending"};
+#define RV64_SBI_IMPLTBL_LEN  \
+	(sizeof(rv64_sbi_impl_id_tbl)/sizeof(char *)) /**<  SBI実装数 */
+
+#define RV64_SBI_MAX_STATES  \
+	(sizeof(rv64_sbi_hart_states)/sizeof(char *)) /**<  hartの状態数 */
 
 /**
    Supervisor Binary Interfaceの版数情報を得る
@@ -266,12 +280,12 @@ rv64_sbi_hsm_hart_stop(void){
 /**
    指定したhartの状態を参照する
    @param[in]  hart    状態参照対象となるhartのhartid
-   @param[out] statusp hartの状態を返却する領域
+   @param[out] statep hartの状態を返却する領域
    @retval 0   正常終了
    @retval 非0 状態参照に失敗した
  */
 int
-rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
+rv64_sbi_hsm_hart_state(uint64_t hart, uint64_t *statep){
 	rv64_sbi_sbiret rv;
 
 	/*
@@ -279,9 +293,9 @@ rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
 	 */
 	rv = RV64_SBICALL1(RV64_SBI_EXT_ID_HSM, RV64_SBI_HSM_HART_STATUS, hart);
 
-	if ( ( rv.error == 0 ) && ( statusp != NULL ) ) { /* 状態獲得成功 */
+	if ( ( rv.error == 0 ) && ( statep != NULL ) ) { /* 状態獲得成功 */
 
-		*statusp = (int)rv.value;  /* 状態を返却 */
+		*statep = (int)rv.value;  /* 状態を返却 */
 	}
 
 	return (int)rv.error;
@@ -292,10 +306,13 @@ rv64_sbi_hsm_hart_status(uint64_t hart, int *statusp){
  */
 void
 rv64_sbi_init(void){
-	rv64_sbi_sbiret rv;
+	int                rc;
+	rv64_sbi_sbiret    rv;
 	uint32_t major, minor;
-	uint64_t implid;
-
+	uint64_t       implid;
+	cpu_id            cpu;
+	uint64_t        state;
+	
 	rv = rv64_sbi_get_spec_version(&major, &minor);
 	if ( rv.error == RV64_SBI_SUCCESS )
 		kprintf("SBI spec version: %u.%u\n", major, minor);
@@ -303,16 +320,73 @@ rv64_sbi_init(void){
 		kprintf("SBI spec version: unknown. rc=%d\n", rv.error);
 
 	rv = rv64_sbi_get_impl_id(&implid);
-	if ( ( rv.error == RV64_SBI_SUCCESS ) && ( implid < 4 ) )
+	if ( ( rv.error == RV64_SBI_SUCCESS ) && ( RV64_SBI_IMPLTBL_LEN > implid ) )
 		kprintf("SBI implementation: %s (id=%d)\n",
 		    rv64_sbi_impl_id_tbl[implid], implid);
 	else
-		kprintf("SBI implementation: unknown (id=%d)\n", implid);
+		kprintf("SBI implementation: unknown (rc=%d, id=%d)\n",
+		    rv.error, implid);
 
 	rv = rv64_sbi_get_impl_version(&major, &minor);
 	if ( rv.error == RV64_SBI_SUCCESS )
 		kprintf("SBI implementation version: %u.%u\n", major, minor);
 	else
 		kprintf("SBI implementation version: unknown\n");
-	
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_SET_TIMER);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_set_timer() (rc=%d).\n");
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_CONSOLE_PUTCHAR);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_console_putchar() (rc=%d).\n");
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_CONSOLE_GETCHAR);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_console_getchar() (rc=%d).\n",
+		    rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_CLEAR_IPI);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_clear_ipi() (rc=%d).\n",
+		    rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_SEND_IPI);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_send_ipi() (rc=%d).\n",
+		    rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_FENCE_I);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_fence_i() (rc=%d).\n",
+		    rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_SFENCE_VMA);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_sfence_vma() (rc=%d).\n",
+		    rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_SFENCE_VMA_ASID);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_sfence_vma_asid()"
+		    " (rc=%d).\n", rv.error);
+
+	rv = rv64_sbi_probe_extension(RV64_SBI_SHUTDOWN);
+	if ( rv.error != RV64_SBI_SUCCESS )
+		kprintf(KERN_PNC "SBI doesn't implement sbi_shutdown()"
+		    " (rc=%d).\n", rv.error);
+
+	/*
+	 * cpu状態を参照する
+	 */
+	FOREACH_MAXIMUM_CPUS(cpu) {
+
+		rc = rv64_sbi_hsm_hart_state(cpu, &state);
+		if  ( ( rc == 0 ) && ( RV64_SBI_MAX_STATES > state ) )
+			kprintf("hart #%u state %s(%d)\n",
+			    cpu, rv64_sbi_hart_states[state], state);
+		else 
+			kprintf("hart #%u state unknown (rc=%d, state=%d).\n",
+			    cpu, rc, state);
+	}
 }

@@ -32,7 +32,8 @@ QEMU_CPU_OPTS =
 endif
 
 ifeq ($(CONFIG_HAL_USE_SBI),y)
-HAL_QEMU_BIOS_OPTS = -bios default
+RV64_SBI_FIRMWARE_FILE ?= default
+HAL_QEMU_BIOS_OPTS = -bios ${RV64_SBI_FIRMWARE_FILE}
 else
 HAL_QEMU_BIOS_OPTS = -bios none
 endif

@@ -57,14 +57,17 @@
 /*
  * Hart State Management (HSM) 拡張
  */
-#define	RV64_SBI_EXT_ID_HSM			(0x48534D)  /**< 拡張ID       */
-#define	RV64_SBI_HSM_HART_START		        (0)         /**< HART起動     */
-#define	RV64_SBI_HSM_HART_STOP		        (1)         /**< HART停止     */
-#define	RV64_SBI_HSM_HART_STATUS		(2)         /**< HART状態確認 */
-#define	RV64_SBI_HSM_STATUS_STARTED		(0)         /**< HART起動中   */
-#define	RV64_SBI_HSM_STATUS_STOPPED		(1)         /**< HART停止中   */
-#define	RV64_SBI_HSM_STATUS_START_PENDING	(2)         /**< HART起動待ち */
-#define	RV64_SBI_HSM_STATUS_STOP_PENDING	(3)         /**< HART停止待ち */
+#define	RV64_SBI_EXT_ID_HSM			(0x48534D)  /**< 拡張ID             */
+#define	RV64_SBI_HSM_HART_START		        (0)         /**< HART起動           */
+#define	RV64_SBI_HSM_HART_STOP		        (1)         /**< HART停止           */
+#define	RV64_SBI_HSM_HART_STATUS		(2)         /**< HART状態確認       */
+/*
+ * Hart Status
+ */
+#define	RV64_SBI_HSM_STATUS_STARTED		(0)         /**< HART起動中         */
+#define	RV64_SBI_HSM_STATUS_STOPPED		(1)         /**< HART停止中         */
+#define	RV64_SBI_HSM_STATUS_START_PENDING	(2)         /**< HART起動要求保留中 */
+#define	RV64_SBI_HSM_STATUS_STOP_PENDING	(3)         /**< HART停止要求保留中 */
 
 /**
    SBIメジャー版数マスク
@@ -161,7 +164,7 @@ void rv64_sbi_remote_sfence_vma_asid(const unsigned long *_hart_mask,
 
 struct _rv64_sbi_sbiret rv64_sbi_hsm_hart_start(uint64_t _hart, vm_paddr _start_addr, uint64_t _private);
 void rv64_sbi_hsm_hart_stop(void);
-int rv64_sbi_hsm_hart_status(uint64_t _hart, int *_statusp);
+int rv64_sbi_hsm_hart_state(uint64_t _hart, uint64_t *_statep);
 
 void rv64_sbi_init(void);
 #endif  /* !ASM_FILE */
