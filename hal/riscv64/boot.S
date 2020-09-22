@@ -11,6 +11,7 @@
 #include <klib/asm-macros.h>
 #include <klib/asm-offset.h>
 #include <kern/thr-preempt.h>
+#include <kern/kern-cpuinfo.h>
 #include <hal/riscv64.h>
 #include <hal/rv64-platform.h>
 #include <hal/hal-stack.h>
@@ -65,7 +66,9 @@ ASMMAC_FUNCTION(entry)
 	sw  a6, TI_PREEMPT_OFFSET(a4) /* プリエンプションカウント初期化     */
 	sw  x0, TI_FLAGS_OFFSET(a4)   /* フラグ初期化                       */
 	sw  x0, TI_MDFLAGS_OFFSET(a4) /* アーキ依存フラグ初期化             */
-	sw  x0, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化                  */
+	la  t0, rv64_indalid_logical_cpu /* 不正論理CPU番号格納変数のアドレスをロード */
+	ld  t1, (t0)                  /* 値をロード                         */
+	sd  t1, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化                  */
 	add a6, a5, a2                /* カーネル仮想アドレス内スレッド情報 */
 	sd  a6, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化     */
 
@@ -237,6 +240,11 @@ ASMMAC_DECLARE_NAME(boot_state)
 ASMMAC_BALIGN(8)
 boot_state:
 	.dword   RV64_BOOT_STATE_START  /* 初期化処理の状態  */
+
+ASMMAC_DECLARE_NAME(rv64_indalid_logical_cpu)
+ASMMAC_BALIGN(8)
+rv64_indalid_logical_cpu:
+	.dword   KRN_CPUINFO_INVALID_CPU  /* 不正CPUID  */
 
 ASMMAC_BALIGN(16)
 mscratch_tbl_addr:

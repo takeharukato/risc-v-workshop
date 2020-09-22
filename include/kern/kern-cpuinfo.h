@@ -12,6 +12,8 @@
 #include <klib/misc.h>
 
 #define KRN_CPUINFO_BSP_NUM     (UINT64_C(0))  /**< ブートプロセッサ論理プロセッサ番号 */
+/** 不正ブートプロセッサ論理プロセッサ番号 */
+#define KRN_CPUINFO_INVALID_CPU (UINT64_C(0xffffffffffffffff))
 
 #if !defined(ASM_FILE)
 

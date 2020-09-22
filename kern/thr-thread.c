@@ -526,14 +526,19 @@ create_reaper_thread(void){
 	thread     *thr;
 	cpu_info  *cinf; 
 
+	/* 起動時の初期化処理中から呼ばれるためカレントを親スレッド
+	 * として設定しないように, thr_kernel_thread_createを使わずに
+	 * アイドルスレッドを親スレッドとして生成, スレッド情報と
+	 * スレッド管理情報とのリンクをti_thread_info_initを使って設定する。
+	 */
 	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
 	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread,
 	    NULL, proc_kernel_process_refer(), NULL, NULL, THR_PRIO_REAPER, 
 	    THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
 	kassert( rc == 0 );
 
-	thr->tinfo->thr = thr;  /* 自スレッドを設定 */
-
+	ti_thread_info_init(thr->tinfo, thr);  /* スレッド情報初期化 */
+	
 	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
 }
 
@@ -885,14 +890,24 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	else
 		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
 
+	/* 起動時の初期化処理中から呼ばれるためカレントを親スレッド
+	 * として設定しないように, thr_kernel_thread_createを使わずに
+	 * アイドルスレッドを親スレッドとして生成, スレッド情報と
+	 * スレッド管理情報とのリンクを設定する。
+	 */
 	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, 
 	    proc_kernel_process_refer(), NULL, ti->kstack, SCHED_MIN_RR_PRIO, 
 	    THR_THRFLAGS_KERNEL|THR_THRFLAGS_IDLE, NULL, &thr);
 	if ( rc != 0 )
 		goto error_out;
 
-	thr->parent = thr;  /* 自分自身を参照 */
-	ti->thr = thr;      /* スレッド管理情報にスレッドを設定 */
+	/* ti_thread_info_initを呼び出すとブート処理で初期化したアイドルスレッドの
+	 * カーネルスタック上にあるスレッド情報を破壊してしまうため, ti_thread_info_init
+	 * を使用せずブート処理で初期化していない情報のみを初期化する
+	 */
+	thr->parent = thr;  /* 自分自身を親スレッドに設定  */
+	ti->thr = thr;      /* スレッド管理情報を生成したアイドルスレッドを指すよう設定 */
+	ti->cpu = cpu;      /* 引数で指定された論理プロセッサ番号を設定 */
 
 	if ( thrp != NULL )
 		*thrp = thr;   /* スレッド管理情報を返却 */
