@@ -62,7 +62,7 @@
 /**
    割込みコンテスト復元共通処理
    @param[in] _ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
-   @note epc, estatus, sp以外のレジスタを復元する (rv64-vector.S参照)
+   @note epc, estatus, sp, tp以外のレジスタを復元する (rv64-vector.S参照)
  */
 #define RV64_ASM_RESTORE_CONTEXT_COMMON(_ctx) \
         ld t6, RV64_TRAP_CONTEXT_T6(_ctx);     \
@@ -92,7 +92,6 @@
 	ld t2, RV64_TRAP_CONTEXT_T2(_ctx);     \
 	ld t1, RV64_TRAP_CONTEXT_T1(_ctx);     \
 	ld t0, RV64_TRAP_CONTEXT_T0(_ctx);     \
-	ld tp, RV64_TRAP_CONTEXT_TP(_ctx);     \
 	ld gp, RV64_TRAP_CONTEXT_GP(_ctx);     \
 	ld ra, RV64_TRAP_CONTEXT_RA(_ctx);
 

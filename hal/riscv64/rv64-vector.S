@@ -104,7 +104,8 @@ ASMMAC_FUNCTION(rv64_return_from_trap)
 	 * - ユーザモードからの割込みを有効化
 	 * - ユーザモード->スーパバイザモード割込みベクタに割り込みベクタを設定する
 	 */
-
+	ld   tp, RV64_TRAP_CONTEXT_TP(sp)      /* tpレジスタを復元 */
+	
 	or   s1, s1, SSTATUS_SPIE              /* ユーザモード割り込みを有効化 */
 
 	/* ユーザモード->スーパバイザモード割込みベクタをロード */
@@ -115,7 +116,7 @@ to_kernel:
 	csrw sstatus, s1                       /* sstatusを復元  */
 
 	/*
-	 * sp以外のレジスタを復元する
+	 * sp, tp以外のレジスタを復元する
 	 */
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
 	ld     sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
