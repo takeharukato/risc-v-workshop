@@ -34,7 +34,7 @@ _cpu_info_cmp(struct _cpu_info *key, struct _cpu_info *ent){
 	if ( key->phys_id < ent->phys_id )
 		return 1;
 
-	if ( ent->phys_id  > key->phys_id )
+	if ( key->phys_id > ent->phys_id )
 		return -1;
 
 	return 0;	
@@ -266,9 +266,6 @@ krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 
 	cinf = &cmap->cpuinfo[newid];  /* CPU情報を参照 */
 
-	res = RB_INSERT(_cpu_map_tree, &cmap->head, cinf);   /* RBツリーによるインデクス */
-	kassert( res == NULL );
-
 	/* CPU情報のロックを獲得 */
 	spinlock_lock(&cinf->lock);
 
@@ -279,6 +276,9 @@ krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 
 	/* CPU情報のロックを解放 */
 	spinlock_unlock(&cinf->lock);
+
+	res = RB_INSERT(_cpu_map_tree, &cmap->head, cinf);   /* RBツリーに追加 */
+	kassert( res == NULL );
 
 	bitops_set(newid, &cmap->available);  /* CPUを追加 */
 
