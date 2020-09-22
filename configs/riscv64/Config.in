@@ -7,10 +7,10 @@ config CONFIG_HAL
 	default y if CONFIG_RISCV64
 	help
 	  If you wish to build the kernel for real hardware, then answer Y here.
+
 config CONFIG_HAL_SMP
        bool
-       default y if CONFIG_HAL_USE_SBI
-       default n if !CONFIG_HAL_USE_SBI
+       default y
        
 config CONFIG_NR_IRQS
        int

@@ -15,13 +15,17 @@
 #include <hal/rv64-platform.h>
 #include <hal/hal-stack.h>
 
+#define RV64_BOOT_STATE_START         (0)
+#define RV64_BOOT_STATE_BSP_INIT      (1)
+#define RV64_BOOT_STATE_BSP_COMPLETED (2)
+
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_TEXT_SECTION
 #else
 ASMMAC_TEXT_SECTION
 #endif  /* CONFIG_HAL */
 
-ASMMAC_EXTERN_SYMBOL(prepare)
+ASMMAC_EXTERN_SYMBOL(rv64_prepare)
 
 #if defined(CONFIG_HAL)	
 ASMMAC_BOOT_FUNCTION(entry)
@@ -70,7 +74,18 @@ ASMMAC_FUNCTION(entry)
 
 	mv  sp, a7                    /* スタックポインタをコンテキスト保存域に設定      */
 
-	bne a0, x0, wait_bsp          /* APの場合, BSPのページテーブル設定を待ち合わせる */
+	/*
+	 * BSP初期化処理区間の排他
+	 */
+	la   t0, boot_state    /* BSP処理中フラグ格納変数のアドレスをロード     */
+bsp_init_loop:
+	ld   t1, (t0)          /* 変数値をロード                                */
+	bne  t1, x0, wait_bsp  /* BOOT開始中でなければ, BSPの処理を待ち合わせる */
+
+	li t1, RV64_BOOT_STATE_BSP_INIT  /*  初期化中を表す値をt1に代入    */	
+	/* t0の指し示すメモリの内容をt1の値に設定し, 以前の値をt2に設定      */
+	amoswap.d.aqrl t2,t1,(t0) 
+	bne  t2, x0, bsp_init_loop  /* 以前の値が0でなければ他のコアが初期化中 */
 	
 	/*
 	 * BSSクリア/マシンモード情報テーブル/MMU設定 (BSPのみ実施)
@@ -112,9 +127,12 @@ clear_bss:
 	 */
 	call setup_pre_pgtbl
 
-	la   t0, bsp_ready    /* BSP処理中フラグ格納変数のアドレスをロード */
-	li   t1, 0x1          /* 初期化完了                                */
-	sd   t1, (t0)         /* 変数値を格納                              */
+	/*
+	 * BSPの初期化完了
+	 */
+	la   t0, boot_state    /* BSP処理中フラグ格納変数のアドレスをロード */
+	li   t1, RV64_BOOT_STATE_BSP_COMPLETED  /* 初期化完了               */
+	sd   t1, (t0)          /* 変数値を格納                              */
 
 ap_boot: /* APの処理再開位置 */
 	/* ページテーブルをロード */
@@ -152,7 +170,7 @@ ap_boot: /* APの処理再開位置 */
 	 * これ以降a7にCのエントリ関数のアドレスを保持すること
 	 */
 #if !defined(CONFIG_HAL_USE_SBI)
-	/* スーパバイザモードに移行し, Cのエントリ関数(prepare)に移行する
+	/* スーパバイザモードに移行し, Cのエントリ関数(rv64_prepare)に移行する
 	 */
 	csrr a1, mstatus          /* mstatusを読み込む */
 	li a2, ~MSTATUS_MPP_MASK  /* Machine Previous Privilege Modeビットをクリアする */
@@ -178,10 +196,11 @@ junk:
  * BSPのMMU処理化処理待ち
  */
 wait_bsp:
-	la   t0, bsp_ready    /* BSP処理中フラグ格納変数のアドレスをロード */
-	ld   t1, (t0)         /* 変数値をロード                            */
-	beq  t1, x0, wait_bsp  /* ページテーブル設定を待ち合わせる          */
-	j ap_boot             /* APの初期化再開                            */
+	la   t0, boot_state    /* BSP処理中フラグ格納変数のアドレスをロード */
+	ld   t1, (t0)         /* 変数値をロード                             */
+	li   t2, RV64_BOOT_STATE_BSP_COMPLETED  /* BSP動作完了              */
+	bne  t1, t2, wait_bsp  /* ページテーブル設定を待ち合わせる          */
+	j ap_boot             /* APの初期化再開                             */
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_DATA_SECTION
@@ -212,12 +231,12 @@ ASMMAC_DATA_SECTION
 ASMMAC_DECLARE_NAME(c_entry_addr)
 ASMMAC_BALIGN(8)
 c_entry_addr:
-	.dword prepare       /* prepare関数のアドレスを格納 */
+	.dword rv64_prepare       /* rv64_prepare関数のアドレスを格納 */
 
-ASMMAC_DECLARE_NAME(bsp_ready)
+ASMMAC_DECLARE_NAME(boot_state)
 ASMMAC_BALIGN(8)
-bsp_ready:
-	.dword 0x0          /* bspの処理完了フラグ */
+boot_state:
+	.dword   RV64_BOOT_STATE_START  /* 初期化処理の状態  */
 
 ASMMAC_BALIGN(16)
 mscratch_tbl_addr:

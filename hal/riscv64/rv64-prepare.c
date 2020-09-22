@@ -15,6 +15,7 @@
 #include <kern/vm-if.h>
 
 #include <hal/riscv64.h>
+#include <hal/rv64-prepare.h>
 #include <hal/rv64-platform.h>
 #include <hal/rv64-plic.h>
 #include <hal/rv64-clint.h>
@@ -24,9 +25,11 @@
 static vm_paddr kernel_start_phy=(vm_paddr)&_kernel_start;  /* カーネル開始物理アドレス */
 static vm_paddr kheap_end_phy=(vm_paddr)&_kheap_end;        /* カーネル終了物理アドレス */
 
-static spinlock prepare_lock=__SPINLOCK_INITIALIZER;  /* 初期化用排他ロック */
-
+/* 初期化処理用データ構造 */
+static rv64_prepare_info prepare_inf = __RV64_PREPARE_INFO_INITIALIZER;
 //#define RV64_SHOW_MEMSTAT
+
+#define RV64_BSP_HARTID   (1)  /** BSPのhartid */
 
 /**
    物理メモリページプールの状態を表示
@@ -68,19 +71,23 @@ hal_platform_init(void){
    Cエントリ関数
  */
 void
-prepare(uint64_t hartid){
+rv64_prepare(reg_type hartid){
 	int              rc;
 	pfdb_ent      *pfdb;
 	cpu_id       log_id;
 	intrflags    iflags;
 
-	if ( hartid == 0 ) {
+	spinlock_lock_disable_intr(&prepare_inf.lock, &iflags);
+	if ( prepare_inf.boot_cpus == 0 ) {  /* Boot Service Processor (BSP) の場合 */
 
 		hal_dbg_console_init();  /* デバッグコンソールを初期化する  */
 
-		spinlock_lock_disable_intr(&prepare_lock, &iflags);
-		kprintf("Boot on supervisor mode on %d hart\n", hartid);
-		spinlock_unlock_restore_intr(&prepare_lock, &iflags);
+		++prepare_inf.boot_cpus;  /* 起動CPU数を更新する  */
+		prepare_inf.bsp_hart = hartid;  /* BSPを記録する  */
+		
+		spinlock_lock(&prepare_inf.console_lock);
+		kprintf("Boot on supervisor mode on %d hart(BSP)\n", hartid);
+		spinlock_unlock(&prepare_inf.console_lock);
 
 		/* 物理メモリ領域を登録する */
 		kprintf("Add memory region [%p, %p) %ld MiB\n", 
@@ -119,20 +126,29 @@ prepare(uint64_t hartid){
 		/* 優先度マスクを無効にする */
 		rv64_plic_set_priority_mask(PLIC_PRIO_THRES_ALL);
 
+		/* 初期化処理ロックを解除する */
+		spinlock_unlock_restore_intr(&prepare_inf.lock, &iflags);
+		
 		kern_init();
 	} else {
 
-		/* TODO: カーネル初期化完了を待ち合わせる */
-		spinlock_lock_disable_intr(&prepare_lock, &iflags);
-		kprintf("Boot on supervisor mode on %d hart\n", hartid);
-		spinlock_unlock_restore_intr(&prepare_lock, &iflags);
-		goto loop;
+		++prepare_inf.boot_cpus;  /* 起動CPU数を更新する  */
+		
+		spinlock_lock(&prepare_inf.console_lock);
+		kprintf("Boot on supervisor mode on %d hart(AP)\n", hartid);
+		spinlock_unlock(&prepare_inf.console_lock);
 
 		rc = krn_cpuinfo_cpu_register(hartid, &log_id); /* APを登録する */
 		kassert( rc == 0 );
 
 		rv64_write_tp(hartid); /* tpレジスタに物理CPUIDを設定する */
 		krn_cpuinfo_online(log_id); /* CPUをオンラインにする */
+
+		/* 初期化処理ロックを解除する */
+		spinlock_unlock_restore_intr(&prepare_inf.lock, &iflags);
+
+		/* TODO: カーネル初期化完了を待ち合わせる */
+		goto loop;
 	}
 loop:
 	while(1);
