@@ -10,7 +10,9 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 #include <kern/irq-if.h>
+#include <kern/thr-if.h>
 #include <klib/stack.h>
+
 #include <hal/riscv64.h>
 #include <hal/hal-traps.h>
 
@@ -98,9 +100,13 @@ show_trap_backtrace(void) {
  */
 void
 rv64_show_trap_context(trap_context *ctx, scause_type cause, stval_type stval){
+	thread *cur;
 
+	cur = ti_get_current_thread();
+	kprintf("Thread: 0x%016qx Thread ID: %d\n",cur, cur->id);
+	ti_show_thread_info(cur->tinfo);
+	kprintf("Trap Information:\n");
 	kprintf("cause: 0x%016qx epc: 0x%016qx stval: 0x%016qx\n", cause, ctx->epc, stval);
-
 	if ( ( MCAUSE_IMISALIGN_BIT <= cause ) && ( cause <= MCAUSE_ST_PGFAULT_BIT) )
 		kprintf("reason: %s\n", scause_string[cause]);
 	kprintf("sstatus: 0x%016qx\n", ctx->estatus);

@@ -16,6 +16,64 @@
 #include <kern/sched-if.h>
 
 /**
+   カレントスレッドからプロセッサの横取りを試みる
+   @retval 真 プリエンプションを実施した
+   @retval 偽 プリエンプションを実施しなかった
+*/
+static bool
+preempt_dispatch(void){
+	thread_info   *ti;
+	intrflags  iflags;
+	bool    preempted;
+	
+	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
+	
+	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割り込み禁止 */
+	
+	/* プリエンプション条件の判定
+	 * - カレントスレッドに遅延ディスパッチ要求が来ており, かつ
+	 * - ディスパッチ禁止区間内にいなければ, プリエンプションを実施
+	 */
+	preempted = ( ( ti->flags & TI_DISPATCH_DELAYED ) && ( !ti_dispatch_disabled() ) );
+	
+	if ( !preempted )
+		goto error_out;  /*  プリエンプション不要  */
+
+#if defined(CONFIG_PREEMPT)
+
+	/*
+	 * CPUをカレントスレッドから横取りする
+	 */
+	krn_cpu_restore_interrupt(&iflags);    /* 割り込み復元 */
+	
+	sched_schedule();  /*  プリエンプションによるスケジュール実施  */
+	
+	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込み禁止 */
+#endif  /*  CONFIG_PREEMPT  */
+
+error_out:	
+	krn_cpu_restore_interrupt(&iflags);   /* 割り込み復元 */
+	
+	return preempted;  /*  プリエンプション実施有無を返却  */
+
+}
+/**
+   スレッド情報を表示する
+   @param[in] ti スレッド情報
+ */
+void
+ti_show_thread_info(thread_info *ti){
+
+	kprintf("thread-info: 0x%016qx\n", ti);
+	kprintf("ti->magic: 0x%016qx intr-depth: %u preempt-count: %u\n",
+	    ti->magic, ti->intrcnt, ti->preempt);
+	kprintf("ti->flags: 0x%016qx ti->mdflags: 0x%016qx\n",
+	    ti->flags, ti->mdflags);
+	kprintf("ti->cpu: %u ti->kstack: 0x%016qx ti->thr: 0x%016qx\n",
+	    ti->cpu, ti->kstack, ti->thr);
+}
+
+/**
    現在のスタックポインタからカレントスレッドを返却する
  */
 thread *
@@ -83,49 +141,6 @@ ti_thread_info_init(thread_info *ti, thread *thr){
 	ti->kstack = (void *)truncate_align(ti, TI_KSTACK_SIZE); /* カーネルスタック設定 */
 	ti->thr  = thr;      /* スレッドを指すように初期化                               */
 	ti->cpu = krn_current_cpu_get();  /*  現在のCPUIDを設定 */
-}
-
-/**
-   カレントスレッドからプロセッサの横取りを試みる
-   @retval 真 プリエンプションを実施した
-   @retval 偽 プリエンプションを実施しなかった
-*/
-static bool
-preempt_dispatch(void){
-	thread_info   *ti;
-	intrflags  iflags;
-	bool    preempted;
-	
-	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
-	
-	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割り込み禁止 */
-	
-	/* プリエンプション条件の判定
-	 * - カレントスレッドに遅延ディスパッチ要求が来ており, かつ
-	 * - ディスパッチ禁止区間内にいなければ, プリエンプションを実施
-	 */
-	preempted = ( ( ti->flags & TI_DISPATCH_DELAYED ) && ( !ti_dispatch_disabled() ) );
-	
-	if ( !preempted )
-		goto error_out;  /*  プリエンプション不要  */
-
-#if defined(CONFIG_PREEMPT)
-
-	/*
-	 * CPUをカレントスレッドから横取りする
-	 */
-	krn_cpu_restore_interrupt(&iflags);    /* 割り込み復元 */
-	
-	sched_schedule();  /*  プリエンプションによるスケジュール実施  */
-	
-	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込み禁止 */
-#endif  /*  CONFIG_PREEMPT  */
-
-error_out:	
-	krn_cpu_restore_interrupt(&iflags);   /* 割り込み復元 */
-	
-	return preempted;  /*  プリエンプション実施有無を返却  */
-
 }
 
 /**

@@ -59,6 +59,7 @@ typedef struct _thread_info{
 	( (struct _thread_info *)					\
 	    ( ( (void *)(_kstk_top) ) + TI_KSTACK_SIZE - sizeof(thread_info) ) )
 
+void ti_show_thread_info(struct _thread_info *_ti);
 struct _thread *ti_get_current_thread(void);
 struct _thread_info *ti_get_current_thread_info(void);
 cpu_id ti_current_cpu_get(void);
