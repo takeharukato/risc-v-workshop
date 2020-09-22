@@ -9,10 +9,12 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
-#include <kern/kern-if.h>
 #include <kern/spinlock.h>
+#include <kern/kern-if.h>
 #include <kern/page-if.h>
 #include <kern/vm-if.h>
+#include <kern/thr-if.h>
+#include <kern/sched-if.h>
 
 #include <hal/riscv64.h>
 #include <hal/rv64-prepare.h>
@@ -147,8 +149,20 @@ rv64_prepare(reg_type hartid){
 		/* 初期化処理ロックを解除する */
 		spinlock_unlock_restore_intr(&prepare_inf.lock, &iflags);
 
-		/* TODO: カーネル初期化完了を待ち合わせる */
-		goto loop;
+		goto loop; /* TODO: カーネル初期化完了を待ち合わせる */
+
+		/* BSPのカーネル処理化処理が完了し, プロセス/スレッドなどの
+		 * カーネル内データ構造が初期化された後で以降の処理を呼び出す
+		 */
+		sched_idlethread_add();  /* 自プロセッサ用のアイドルスレッドを生成する */
+
+		/*
+		 * アイドルループに入る
+		 */
+		ti_dec_preempt();  /* ディスパッチを許可する */
+		kassert( !ti_dispatch_disabled() ); /* ディスパッチ可能であることを確認 */
+
+		thr_idle_loop(NULL);  /* アイドル処理を実行する */
 	}
 loop:
 	while(1);

@@ -890,10 +890,12 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	else
 		id = THR_TID_AUTO;  /* アイドルスレッドの番号を自動的に割振る */
 
-	/* 起動時の初期化処理中から呼ばれるためカレントを親スレッド
+	/* 起動時の初期化処理中から呼ばれるためカレントスレッドを親スレッド
 	 * として設定しないように, thr_kernel_thread_createを使わずに
 	 * アイドルスレッドを親スレッドとして生成, スレッド情報と
 	 * スレッド管理情報とのリンクを設定する。
+	 * また, ブート時に初期化したスレッド情報を使用するため, カーネルスタックの
+	 * 開始アドレス(のカーネル仮想アドレス)を指定してカーネルスレッドを生成する。
 	 */
 	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, 
 	    proc_kernel_process_refer(), NULL, ti->kstack, SCHED_MIN_RR_PRIO, 

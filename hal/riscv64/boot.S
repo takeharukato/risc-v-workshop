@@ -69,7 +69,7 @@ ASMMAC_FUNCTION(entry)
 	la  t0, rv64_indalid_logical_cpu /* 不正論理CPU番号格納変数のアドレスをロード */
 	ld  t1, (t0)                  /* 値をロード                         */
 	sd  t1, TI_CPU_OFFSET(a4)     /* 論理CPU番号初期化                  */
-	add a6, a5, a2                /* カーネル仮想アドレス内スレッド情報 */
+	add a6, a5, a2                /* 自hartのカーネルスタックのカーネル仮想アドレス */
 	sd  a6, TI_KSTACK_OFFSET(a4)  /* カーネルスタック開始位置初期化     */
 
 	li  a7, (RV64_TRAP_CONTEXT_SIZE + RV64_THRSW_CONTEXT_SIZE) /* コンテキスト保存域 */
