@@ -17,7 +17,6 @@
 
 static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tbl);
 
-
 /**
    単純なファイルシステムのディレクトリI-nodeを初期化する(ファイル種別に依らない共通処理)
    @param[in] fs_inode 初期化対象ディレクトリのI-node
@@ -49,6 +48,8 @@ simplefs_init_inode_common(simplefs_inode *fs_inode){
    @param[in] mode     ファイル種別/アクセス権
    @param[in] major    デバイスのメジャー番号
    @param[in] minor    デバイスのマイナー番号
+   @retval  0      正常終了
+   @retval -EINVAL デバイス以外のファイルを作ろうとした
  */
 int
 simplefs_device_inode_init(simplefs_inode *fs_inode, uint16_t mode,
@@ -72,7 +73,9 @@ simplefs_device_inode_init(simplefs_inode *fs_inode, uint16_t mode,
 /**
    単純なファイルシステムの通常ファイル/ディレクトリI-nodeを初期化する
    @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @param[in] mode     ファイル種別/アクセス権
+   @param[in] mode ファイル種別/アクセス権
+   @retval  0      正常終了
+   @retval -EINVAL 通常ファイル/ディレクトリ以外のファイルを作ろうとした
  */
 int
 simplefs_inode_init(simplefs_inode *fs_inode, uint16_t mode){
@@ -93,7 +96,27 @@ simplefs_inode_init(simplefs_inode *fs_inode, uint16_t mode){
 	return 0;
 }
 
+/**
+   単純なファイルシステムの通常ファイル/デバイスファイルを削除する
+   @param[in] fs_super スーパブロック情報
+   @param[in] fs_vnid  v-node ID
+   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @note 本関数呼び出し前に
+   @retval  0      正常終了
+ */
+int
+simplefs_inode_remove(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
+    simplefs_inode *fs_inode){
 
+	/* 単純なファイルシステム全体のロックを獲得済み */
+	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
+
+	bitops_clr(fs_vnid, &fs_super->s_inode_map); /* I-nodeを解放 */
+
+	simplefs_init_inode_common(fs_inode);  /* I-nodeの情報をクリアする */
+
+	return 0;
+}
 /**
    単純なファイルシステムのスーパブロック情報を初期化する
    @param[in] super 単純なファイルシステムのスーパブロック情報
