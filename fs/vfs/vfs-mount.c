@@ -551,10 +551,10 @@ release_vnode(vnode *v){
 	if ( check_vnode_flags_nolock(v, VFS_VFLAGS_DELETE) 
 	    && ( v->v_mount->m_fs->c_calls->fs_removevnode != NULL ) )
 		v->v_mount->m_fs->c_calls->fs_removevnode(v->v_mount->m_fs_super,
-		    v->v_fs_vnode);
+		    v->v_id, v->v_fs_vnode);
 	else 
 		v->v_mount->m_fs->c_calls->fs_putvnode(v->v_mount->m_fs_super,
-		    v->v_fs_vnode);
+		    v->v_id, v->v_fs_vnode);
 	
 	del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
 	v->v_mount = NULL;

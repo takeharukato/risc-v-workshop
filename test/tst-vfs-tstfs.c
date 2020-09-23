@@ -803,12 +803,13 @@ tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *mode
 /**
    ファイルシステム固有v-node情報を返却する
    @param[in]  fs_super  スーパブロック情報
+   @param[in]  vnid      v-node ID
    @param[in]  v         ファイルシステム固有v-node
    @retval     0         正常終了
    @retval    -EINVAL    スーパブロック情報が不正
  */
 static int
-tst_vfs_tstfs_putvnode(vfs_fs_super fs_super, vfs_fs_vnode __unused v){
+tst_vfs_tstfs_putvnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_vnode __unused v){
 	tst_vfs_tstfs_super *super;
 
 	super = (tst_vfs_tstfs_super *)fs_super;
@@ -821,12 +822,13 @@ tst_vfs_tstfs_putvnode(vfs_fs_super fs_super, vfs_fs_vnode __unused v){
 /**
    ファイルシステム固有v-node情報を破棄する
    @param[in]  fs_super  スーパブロック情報
+   @param[in]  vnid      v-node ID
    @param[in]  v         ファイルシステム固有v-node
    @retval     0         正常終了
    @retval    -EINVAL    スーパブロック情報が不正
  */
 static int
-tst_vfs_tstfs_removevnode(vfs_fs_super fs_super, vfs_fs_vnode v){
+tst_vfs_tstfs_removevnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_vnode v){
 	tst_vfs_tstfs_inode *inode;	
 	tst_vfs_tstfs_super *super;
 

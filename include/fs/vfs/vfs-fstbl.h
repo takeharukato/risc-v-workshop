@@ -49,8 +49,8 @@ typedef struct _fs_calls {
 			 const char *name, vfs_vnode_id *id);
 	int (*fs_getvnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *modep, 
 	    vfs_fs_vnode *v);
-	int (*fs_putvnode)(vfs_fs_super fs_super, vfs_fs_vnode v);
-	int (*fs_removevnode)(vfs_fs_super fs_super, vfs_fs_vnode v);
+	int (*fs_putvnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode v);
+	int (*fs_removevnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode v);
 	int (*fs_getdents)(vfs_fs_super fs_super, vfs_fs_vnode fs_dirvn, void *_buf, 
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_open)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode,
