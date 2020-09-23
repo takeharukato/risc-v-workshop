@@ -29,5 +29,7 @@
 #endif  /*  CONFIG_HAL_MEMORY_SIZE_MB  */
 #define KC_THR_MAX    (CONFIG_THR_MAX)
 
-#define FS_INVALID_DEVID          (0)             /* 無効デバイスID  */
+#define FS_ROOT_UID               (0)             /* rootのユーザID   */
+#define FS_ROOT_GID               (0)             /* rootのグループID */
+#define FS_INVALID_DEVID          (0)             /* 無効デバイスID   */
 #endif  /* KERN_KERN_CONSTS_H */
