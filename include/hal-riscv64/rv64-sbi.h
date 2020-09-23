@@ -3,7 +3,7 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  RISC-V 64 Supervisor Binary Interface definitions                 */
+/*  RISC-V64 Supervisor Binary Interface definitions                  */
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_RV64_SBI_H)
