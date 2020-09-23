@@ -103,9 +103,12 @@ typedef struct _call_out_ent{
 #endif
 
 void tim_update_walltime(struct _trap_context *_ctx, struct _ktimespec *_diff);
+void tim_walltime_get(struct _ktimespec *_ktsp);
 int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private, 
-		    struct _call_out_ent **entp);
+		    struct _call_out_ent **_entp);
 int tim_callout_cancel(struct _call_out_ent *_ent);
-void tim_callout_init(void);
+void tim_timer_init(void);
+
+int hal_read_rtc(struct _ktimespec *_ktsp);
 #endif  /*  ASM_FILE */
 #endif  /*  _KERN_TIMER_H   */

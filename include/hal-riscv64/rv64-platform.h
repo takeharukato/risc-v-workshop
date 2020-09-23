@@ -125,6 +125,31 @@
 /** QEMU virtI/O MMIO Interface 割込み番号   */
 #define RV64_VIRTIO0_IRQ             (1)
 
+/** QEMU Android Goldfish RTC 物理アドレス */
+#define RV64_RTC_PADDR                  (ULONGLONG_C(0x101000))
+/** QEMU Android Goldfish RTC 仮想アドレス */
+#define RV64_RTC                        (RV64_RTC_PADDR + HAL_KERN_IO_BASE)
+/** QEMU Android Goldfish RTC レジスタサイズ */
+#define RV64_RTC_SIZE                   (PAGE_SIZE)
+/** QEMU Android Goldfish RTC 割込み番号 */
+#define RV64_RTC_IRQ                    (11)
+/** QEMU Android Goldfish RTC 時刻下位32ビット オフセットアドレス */
+#define RV64_RTC_TIME_LOW_REG           (0)
+/** QEMU Android Goldfish RTC 時刻上位32ビット オフセットアドレス */
+#define RV64_RTC_TIME_HIGH_REG          (0x4)
+/** QEMU Android Goldfish RTC アラーム時刻下位32ビット オフセットアドレス */
+#define RV64_RTC_ALARM_LOW_REG          (0x8)
+/** QEMU Android Goldfish RTC アラーム時刻上位32ビット オフセットアドレス */
+#define RV64_RTC_ALARM_HIGH_REG         (0xc)
+/** QEMU Android Goldfish RTC アラーム 割込み許可レジスタ オフセットアドレス */
+#define RV64_RTC_ALARM_IRQ_ENABLED_REG  (0x10)
+/** QEMU Android Goldfish RTC アラーム 割込みクリア許可レジスタ オフセットアドレス */
+#define RV64_RTC_ALARM_CLEAR_REG        (0x14)
+/** QEMU Android Goldfish RTC アラーム 状態レジスタ オフセットアドレス */
+#define RV64_RTC_ALARM_STATUS_REG       (0x18)
+/** QEMU Android Goldfish RTC アラーム 割込みクリアレジスタ オフセットアドレス */
+#define RV64_RTC_ALARM_CLEAR_INTR_REG   (0x1c)
+
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

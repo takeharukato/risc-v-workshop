@@ -811,6 +811,11 @@ hal_map_kernel_space(void){
 	    RV64_VIRTIO0_SIZE);
 	show_page_map(pgtbl, RV64_VIRTIO0, RV64_VIRTIO0_SIZE);
 
+	rc = hal_pgtbl_enter(pgtbl, RV64_RTC, RV64_RTC_PADDR,
+	    VM_PROT_READ|VM_PROT_WRITE, VM_FLAGS_UNMANAGED|VM_FLAGS_SUPERVISOR,
+	    RV64_RTC_SIZE);
+	show_page_map(pgtbl, RV64_RTC, RV64_RTC_SIZE);
+
 #if defined(RV64_MAP_KERNEL_LOWER_MEMORY)
 	/* マップ範囲の仮想アドレスと開始物理アドレスを算出
 	 */

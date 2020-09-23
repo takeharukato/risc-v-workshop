@@ -13,6 +13,8 @@
 #include <kern/page-if.h>
 #include <kern/timer.h>
 
+#include <klib/epoch_time.h>
+
 #include <hal/hal-traps.h>
 
 /* システム時刻 */
@@ -188,6 +190,23 @@ invoke_callout(trap_context *ctx){
 	/*  時刻情報のロックを解放  */
 	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
 }
+
+/**
+   コールアウト機構の初期化
+ */
+static void
+init_callout(void) {
+	int rc;
+
+	/* コールアウトエントリキャッシュを初期化する
+	 */
+	rc = slab_kmem_cache_create(&callout_ent_cache, "call entry cache",
+	    sizeof(call_out_ent), SLAB_ALIGN_NONE, 0, KMALLOC_NORMAL, NULL, NULL);
+	kassert( rc == 0 );
+
+	return;
+}
+
 /**
    システム時刻を更新する
    @param[in] ctx       割込みコンテキスト
@@ -226,18 +245,63 @@ tim_update_walltime(trap_context *ctx, ktimespec *diff){
 			g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
 #endif  /*  SHOW_WALLTIME  */
 }
+
 /**
-   コールアウト機構の初期化
+   現在のシステム時刻を取得する
+   @param[out] ktsp 時刻返却領域
  */
 void
-tim_callout_init(void) {
-	int rc;
+tim_walltime_get(ktimespec *ktsp){
+	intrflags iflags;
 
-	/* コールアウトエントリキャッシュを初期化する
+	if ( ktsp == NULL )
+		return; /* 何もせず抜ける */
+
+	/*
+	 * システム時刻を取得する
 	 */
-	rc = slab_kmem_cache_create(&callout_ent_cache, "call entry cache", 
-	    sizeof(call_out_ent), SLAB_ALIGN_NONE, 0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
+	/*  時刻情報のロックを獲得  */
+	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
 
-	return;
+	ktsp->tv_sec = g_walltime.curtime.tv_sec;    /* 秒を取得する     */
+	ktsp->tv_nsec = g_walltime.curtime.tv_nsec;  /* ナノ秒を取得する */
+
+	/*  時刻情報のロックを解放  */
+	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+}
+
+/**
+   タイマ管理機構を初期化する
+ */
+void
+tim_timer_init(void){
+	int           rc;
+	ktimespec     ld;
+	kernel_tm     tm;
+	intrflags iflags;
+
+	rc = hal_read_rtc(&ld);  /* RTCから現在時刻を得る  */
+	if ( rc == 0 ) {  /* RTCから時刻を得られた場合は, システム時刻を更新する */
+
+		/* エポック時刻をtm構造体に変換する */
+		clock_epoch_time_to_tm(ld.tv_sec, &tm);
+
+		/*
+		 * システム時刻を更新する
+		 */
+		/*  時刻情報のロックを獲得  */
+		spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+
+		g_walltime.curtime.tv_sec = ld.tv_sec;    /* 秒を更新する */
+		g_walltime.curtime.tv_nsec = ld.tv_nsec;  /* ナノ秒を更新する */
+
+		/*  時刻情報のロックを解放  */
+		spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	}
+
+	/* 時刻を表示する */
+	kprintf("Current wall time: %04d/%02d/%02d %02d:%02d:%02d\n",
+	    1900 + tm.tm_year, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	init_callout();  /* コールアウト機構を初期化する */
 }

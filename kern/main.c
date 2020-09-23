@@ -93,7 +93,7 @@ kern_init(void) {
 	thr_init(); /* スレッド管理機構を初期化する */
 	sched_init(); /* スケジューラを初期化する */
 	irq_init(); /* 割込み管理を初期化する */
-	tim_callout_init();  /* コールアウト機構を初期化する */
+	tim_timer_init();  /* タイマ管理機構を初期化する */
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
 	vfs_init();       /* ファイルシステムを初期化する                         */
