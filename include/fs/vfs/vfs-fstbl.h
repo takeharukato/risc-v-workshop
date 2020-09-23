@@ -41,43 +41,49 @@ typedef struct _fs_table{
 /** ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
-	int (*fs_mount)(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, 
-			void *args, vfs_vnode_id *root_vnid);
-	int (*fs_unmount)(vfs_fs_super fs_super);
-	int (*fs_sync)(vfs_fs_super fs_super);
-	int (*fs_lookup)(vfs_fs_super fs_super, vfs_fs_vnode dir,
-			 const char *name, vfs_vnode_id *id);
-	int (*fs_getvnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *modep, 
-	    vfs_fs_vnode *v);
-	int (*fs_putvnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode v);
-	int (*fs_removevnode)(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_vnode v);
-	int (*fs_getdents)(vfs_fs_super fs_super, vfs_fs_vnode fs_dirvn, void *_buf, 
+	int (*fs_mount)(vfs_fs_super *_fs_super, vfs_mnt_id _mntid, dev_id _dev,
+	    void *_args, vfs_vnode_id *_root_vnidp);
+	int (*fs_unmount)(vfs_fs_super _fs_super);
+	int (*fs_sync)(vfs_fs_super _fs_super);
+	int (*fs_lookup)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
+			 const char *_name, vfs_vnode_id *_vnidp);
+	int (*fs_getvnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid, vfs_fs_mode *_modep,
+	    vfs_fs_vnode *_fs_vnodep);
+	int (*fs_putvnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
+	    vfs_fs_vnode _fs_vnode);
+	int (*fs_removevnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
+	    vfs_fs_vnode _fs_vnode);
+	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
-	int (*fs_open)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode,
-	    vfs_file_private *file_privp);
-	int (*fs_close)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv);
-	int (*fs_release_fd)(vfs_fs_super fs_super, vfs_fs_vnode v, 
-	    vfs_file_private file_priv);
-	int (*fs_fsync)(vfs_fs_super fs_super, vfs_fs_vnode v);
-	ssize_t (*fs_read)(vfs_fs_super fs_super, vfs_fs_vnode v, 
-	    vfs_file_private file_priv, void *buf, off_t pos, ssize_t len);
-	ssize_t (*fs_write)(vfs_fs_super fs_super, vfs_fs_vnode v, 
-	    vfs_file_private file_priv, const void *buf, off_t pos, ssize_t len);
-	int (*fs_seek)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv, 
-	    off_t pos, off_t *new_posp, int whence);
-	int (*fs_ioctl)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv,
-	    int op, void *buf, size_t len);
-	int (*fs_create)(vfs_fs_super fs_super, vfs_fs_vnode dir, const char *name, 
-	    struct _file_stat *fstat, vfs_vnode_id *new_vnid);
-	int (*fs_unlink)(vfs_fs_super fs_super, vfs_fs_vnode dir, const char *name);
-	int (*fs_rename)(vfs_fs_super fs_super, vfs_fs_vnode olddir, const char *oldname, 
-	    vfs_fs_vnode newdir, const char *newname);
-	int (*fs_mkdir)(vfs_fs_super fs_super, vfs_fs_vnode base_dir, const char *name);
-	int (*fs_rmdir)(vfs_fs_super fs_super, vfs_fs_vnode base_dir, const char *name);
-	int (*fs_getattr)(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_vstat_mask stat_mask, 
-	    struct _file_stat *stat);
-	int (*fs_setattr)(vfs_fs_super fs_super, vfs_fs_vnode v, struct _file_stat *stat, 
-	    vfs_vstat_mask stat_mask);
+	int (*fs_open)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode, vfs_open_flags _omode,
+	    vfs_file_private *_file_privp);
+	int (*fs_close)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv);
+	int (*fs_release_fd)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv);
+	int (*fs_fsync)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode);
+	ssize_t (*fs_read)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv, void *_buf, off_t _pos, ssize_t _len);
+	ssize_t (*fs_write)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv, const void *_buf, off_t _pos, ssize_t _len);
+	int (*fs_seek)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv, off_t _pos, off_t *_new_posp, int _whence);
+	int (*fs_ioctl)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_file_private _file_priv, int _op, void *_buf, size_t _len);
+	int (*fs_create)(vfs_fs_super fs_super, vfs_fs_vnode _fs_dir_vnode,
+	    const char *_name, struct _file_stat *_fstat, vfs_vnode_id *_new_vnidp);
+	int (*fs_unlink)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
+	    const char *_name);
+	int (*fs_rename)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_olddir_vnode,
+	    const char *_oldname, vfs_fs_vnode _fs_newdir_vnode, const char *_newname);
+	int (*fs_mkdir)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
+	    const char *_name);
+	int (*fs_rmdir)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
+	    const char *_name);
+	int (*fs_getattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    vfs_vstat_mask _stat_mask, struct _file_stat *_statp);
+	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	    struct _file_stat *_stat, vfs_vstat_mask _stat_mask);
 }fs_calls;
 
 /** 
