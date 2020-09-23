@@ -14,7 +14,7 @@ supdirs=${tool_dirs} doxygen
 cleandirs=include ${subdirs} ${supdirs}
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a \
-	fs/vfs/libvfs.a fs/minixfs/libminixfs.a
+	fs/vfs/libvfs.a fs/minixfs/libminixfs.a fs/simplefs/libsimplefs.a
 
 mconf=tools/kconfig/mconf
 

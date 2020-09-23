@@ -4,7 +4,7 @@
 #
 top=..
 include ${top}/Makefile.inc
-subdirs=vfs minixfs
+subdirs=vfs minixfs simplefs
 
 objects=dev-fsimg.o
 

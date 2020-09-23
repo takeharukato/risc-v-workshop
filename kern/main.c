@@ -21,6 +21,9 @@
 #include <kern/timer.h>
 #include <kern/vfs-if.h>
 #include <klib/asm-offset.h>
+
+#include <fs/simplefs/simplefs.h>
+
 #if !defined(CONFIG_HAL)
 #include <stdlib.h>
 #endif  /*  !CONFIG_HAL  */
@@ -94,6 +97,9 @@ kern_init(void) {
 	pagecache_init(); /* ページキャッシュ機構を初期化する */
 	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
 	vfs_init();       /* ファイルシステムを初期化する                         */
+
+	simplefs_init();  /* 単純なファイルシステムを初期化する  */
+
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 
 	/**

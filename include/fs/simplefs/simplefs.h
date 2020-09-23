@@ -16,44 +16,100 @@
 #include <kern/kern-types.h>
 #include <kern/mutex.h>
 
-#define SIMPLEFS_SUPER_NR    (8)    /**< 8マウント    */
+#define SIMPLEFS_SUPER_NR    (2)    /**< 2マウント    */
 #define SIMPLEFS_INODE_NR    (64)   /**< 64ファイル   */
 #define SIMPLEFS_IDATA_NR    (128)  /**< 512 KiB      */
 #define SIMPLEFS_DIRSIZ      (60)   /**< ファイル名長 */
+#define SIMPLEFS_SUPER_BLOCK_SIZE    (4096)   /**< データブロック長   */
 
+#define SIMPLEFS_SUPER_UNINITIALIZED  (0x0)   /**< 未初期化           */
+#define SIMPLEFS_SUPER_INITIALIZED    (0x1)   /**< 初期化済み         */
+#define SIMPLEFS_SUPER_MOUNTED        (0x2)   /**< マウントされている */
+
+#define SIMPLEFS_INODE_RESERVED_INO   (0x0)   /**< 予約I-node番号     */
+#define SIMPLEFS_INODE_ROOT_INO       (0x1)   /**< ルートI-node番号   */
+
+/**
+   単純ファイルシステムのデータエントリ
+ */
 typedef struct _simplefs_data{
-	uint64_t data[512];  /**< 1ページ分 */
+	uint64_t data[SIMPLEFS_SUPER_BLOCK_SIZE/8];  /**< 1ページ分 */
 }simplefs_data;
 
-typedef struct _simplefs_inode{
-	uint16_t                     i_mode;  /**< ファイル種別/保護属性            */
-	uint16_t                   i_nlinks;  /**< ファイルのリンク数 (単位:個)     */
-	uint16_t                      i_uid;  /**< ファイル所有者のユーザID         */
-	uint16_t                      i_gid;  /**< ファイル所有者のグループID       */
-	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト)     */
-	uint32_t                    i_atime;  /**< 最終アクセス時刻 (単位:UNIX時刻) */
-	uint32_t                    i_mtime;  /**< 最終更新時刻 (単位:UNIX時刻)     */
-	uint32_t                    i_ctime;  /**< 最終属性更新時刻 (単位:UNIX時刻) */
-	struct _simplefs_data        i_data[SIMPLEFS_IDATA_NR];   /* データブロック */
-}simplefs_inode;
-
+/**
+   単純ファイルシステムのディレクトリエントリ
+ */
 typedef struct _simplefs_dent{
 	uint32_t                d_inode;  /**< I-node番号                                  */
 	char    d_name[SIMPLEFS_DIRSIZ];  /**< ファイル名 (NULLターミネートなし, 60バイト) */
 }simplefs_dent;
 
 /**
-   スーパーブロック情報
+   単純ファイルシステムのファイル管理情報
+ */
+typedef struct _simplefs_inode{
+	uint16_t                     i_mode;  /**< ファイル種別/保護属性            */
+	uint16_t                   i_nlinks;  /**< ファイルのリンク数 (単位:個)     */
+	uint16_t                      i_uid;  /**< ファイル所有者のユーザID         */
+	uint16_t                      i_gid;  /**< ファイル所有者のグループID       */
+	uint16_t                    i_major;  /**< デバイスのメジャー番号           */
+	uint16_t                    i_minor;  /**< デバイスのマイナー番号           */
+	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト)     */
+	uint32_t                    i_atime;  /**< 最終アクセス時刻 (単位:UNIX時刻) */
+	uint32_t                    i_mtime;  /**< 最終更新時刻 (単位:UNIX時刻)     */
+	uint32_t                    i_ctime;  /**< 最終属性更新時刻 (単位:UNIX時刻) */
+	union{
+		/* データブロック */
+		struct _simplefs_data i_data[SIMPLEFS_IDATA_NR];
+		/* ディレクトリエントリ */
+		struct _simplefs_dent i_dent[SIMPLEFS_SUPER_BLOCK_SIZE/64]; 
+	}i_dblk; /**< データブロック */
+}simplefs_inode;
+
+/**
+   I-nodeのデータブロックを参照
+   @param[in] _inodep I-nodeへのポインタ
+   @return データブロックの先頭アドレス
+ */
+#define SIMPLEFS_REFER_DATA(_inodep)\
+	((void *)(&((_inodep)->i_dblk.i_data[0])))
+
+/**
+   I-nodeのディレクトリエントリを参照
+   @param[in] _inodep I-nodeへのポインタ
+   @param[in] _idx    ディレクトリエントリ配列のインデックス
+   @return ディレクトリエントリへのポインタ
+ */
+#define SIMPLEFS_REFER_DENT(_inodep, _idx)		\
+	((struct _simplefs_dent *)(&((_inodep)->i_dblk.i_dent[(_idx)])))
+
+/**
+   単純ファイルシステムのボリューム管理情報 (スーパブロック情報)
  */
 typedef struct _simplefs_super_block{
-	struct _simplefs_inode s_inode[SIMPLEFS_INODE_NR];  /* ファイル */
+	uint64_t                                       s_state; /**< スーパブロックの状態 */
+	void                                        *s_private; /**< プライベート情報     */
+	BITMAP_TYPE(, uint64_t, SIMPLEFS_INODE_NR) s_inode_map; /**< I-nodeマップ         */
+	struct _simplefs_inode      s_inode[SIMPLEFS_INODE_NR]; /**< I-node               */
 }simplefs_super_block;
+
 /**
-   ファイルシステム管理用大域データ
+   単純ファイルシステム管理用大域データ
  */
 typedef struct _simplefs_table{
-	struct _mutex     mtx;  /**< 排他用mutex */
-	
+	struct _mutex                                            mtx;  /**< 排他用mutex    */
+	struct _simplefs_super_block super_blocks[SIMPLEFS_SUPER_NR];  /**< スーパブロック */
 }simplefs_table;
+
+/**
+   単純ファイルシステム管理用大域データ初期化子
+   @param _tablep 単純ファイルシステム管理用大域データへのポインタ
+ */
+#define __SIMPLEFS_TABLE_INITIALIZER(_tablep)		\
+	{						\
+	.mtx = __MUTEX_INITIALIZER(&((_tablep)->mtx)),	\
+	}		
+
+int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */
