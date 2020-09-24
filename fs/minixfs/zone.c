@@ -1144,8 +1144,8 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		/* 開始ゾーン内をクリアする */
 		minix_clear_zone(sbp, remove_zone, clr_start, clr_siz);
 
-		 /* 次のゾーンから削除を継続する */
-		++cur_rel_zone; 
+		++cur_rel_zone; /* 次のゾーンから削除を継続する */
+		/*  削除位置を更新する  */
 		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(sbp));
 	}
 
@@ -1159,7 +1159,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		rc = minix_read_mapped_block(sbp, dip, 
 		    cur_rel_zone * MINIX_ZONE_SIZE(sbp), &remove_zone);
 
-		/* 割当てられているデータゾーンを解放する
+		/* 割当てられているゾーンを解放する
 		 */
 		if ( rc == 0 ) {
 
@@ -1170,7 +1170,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 				continue;  /* 解放できなかったブロックをスキップする */
 			minix_free_zone(sbp, remove_zone);
 		}
-		cur_pos += MINIX_ZONE_SIZE(sbp);
+		cur_pos += MINIX_ZONE_SIZE(sbp);  /*  削除位置を更新する  */
 	}
 
 	if ( ( off + len ) > cur_pos ) { /* 最終ゾーン内をクリアする */
