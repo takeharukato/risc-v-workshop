@@ -1097,7 +1097,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		return 0;  /* 削除不要 */
 
 	if ( ( 0 > off ) || ( 0 > len ) )
-		return -EINVAL;
+		return -EINVAL;  /*  オフセットまたは解放長に負の値を設定した  */
 
 	if ( ( off > MINIX_D_INODE(sbp, dip, i_size) ) ||
 	    ( off > ( off + len ) ) )
@@ -1117,7 +1117,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 	end_rel_zone = roundup_align(off + len, MINIX_ZONE_SIZE(sbp))
 		/ MINIX_ZONE_SIZE(sbp); /* 終了ゾーン     */
 
-	/* 終了点がゾーン境界と合っていない場合
+	/* 終了位置がゾーン境界と合っていない場合
 	 */
 	if ( ( end_rel_zone > first_rel_zone ) 
 	    && ( addr_not_aligned(off + len, MINIX_ZONE_SIZE(sbp)) ) )
@@ -1144,7 +1144,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		/* 開始ゾーン内をクリアする */
 		minix_clear_zone(sbp, remove_zone, clr_start, clr_siz);
 
-		 /* 次のゾーンからゾーンを開放する */
+		 /* 次のゾーンから削除を継続する */
 		++cur_rel_zone; 
 		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(sbp));
 	}
