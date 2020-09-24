@@ -20,195 +20,28 @@
 static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tbl);
 
 /**
-   単純なファイルシステムのディレクトリI-nodeを初期化する(ファイル種別に依らない共通処理)
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
- */
-void
-simplefs_init_inode_common(simplefs_inode *fs_inode){
-
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	fs_inode->i_mode   = S_IRWXU|S_IRWXG|S_IRWXO; /* アクセス権を設定             */
-	fs_inode->i_nlinks = 1;                       /* リンク数を設定               */
-
-	fs_inode->i_uid   = FS_ROOT_UID;              /* ユーザIDを設定               */
-	fs_inode->i_gid   = FS_ROOT_GID;              /* グループIDを設定             */
-	fs_inode->i_major = 0;                        /* デバイスのメジャー番号を設定 */
-	fs_inode->i_minor = 0;                        /* デバイスのマイナー番号を設定 */
-	fs_inode->i_size  = 0;                        /* サイズを設定                 */
-	fs_inode->i_atime = 0;                        /* アクセス時刻を0クリア        */
-	fs_inode->i_mtime = 0;                        /* 更新時刻を0クリア            */
-	fs_inode->i_ctime = 0;                        /* 属性更新時刻を0クリア        */	
-
-	/* データブロックを初期化 */
-	memset(&fs_inode->i_dblk, 0, sizeof(simplefs_data)*SIMPLEFS_IDATA_NR);
-}
-
-/**
-   単純なファイルシステムのデバイスI-nodeを初期化する
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @param[in] mode     ファイル種別/アクセス権
-   @param[in] major    デバイスのメジャー番号
-   @param[in] minor    デバイスのマイナー番号
-   @retval  0      正常終了
-   @retval -EINVAL デバイス以外のファイルを作ろうとした
- */
-int
-simplefs_device_inode_init(simplefs_inode *fs_inode, uint16_t mode,
-    uint16_t major, uint16_t minor){
-
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	if ( ( !S_ISCHR(mode) ) && ( !S_ISBLK(mode) ) )
-		return -EINVAL;  /* デバイス以外のファイルを作ろうとした */
-
-	simplefs_init_inode_common(fs_inode);  /* I-nodeの初期化共通処理 */
-
-	fs_inode->i_mode = mode;   /* ファイル種別, アクセス権を設定  */
-	fs_inode->i_major = major; /* デバイスのメジャー番号を設定 */
-	fs_inode->i_minor = minor; /* デバイスのマイナー番号を設定 */
-
-	return 0;
-}
-
-/**
-   単純なファイルシステムの通常ファイル/ディレクトリI-nodeを初期化する
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @param[in] mode ファイル種別/アクセス権
-   @retval  0      正常終了
-   @retval -EINVAL 通常ファイル/ディレクトリ以外のファイルを作ろうとした
- */
-int
-simplefs_inode_init(simplefs_inode *fs_inode, uint16_t mode){
-
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	if ( ( !S_ISREG(mode) ) && ( !S_ISDIR(mode) ) )
-		return -EINVAL;  /* 通常ファイル/ディレクトリ以外のファイルを作ろうとした */
-
-	simplefs_init_inode_common(fs_inode);  /* I-nodeの初期化共通処理 */
-
-	fs_inode->i_mode |= mode; /* ファイル種別, アクセス権を設定  */
-
-	if ( S_ISDIR(mode) )  /* ディレクトリの場合  */
-		++fs_inode->i_nlinks;        /* 親ディレクトリからの参照分を加算 */
-
-	return 0;
-}
-
-/**
-   単純なファイルシステムの通常ファイル/デバイスファイルを削除する
-   @param[in] fs_super スーパブロック情報
-   @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @retval  0      正常終了
- */
-int
-simplefs_inode_remove(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
-    simplefs_inode *fs_inode){
-
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	bitops_clr(fs_vnid, &fs_super->s_inode_map); /* I-nodeを解放 */
-
-	simplefs_init_inode_common(fs_inode);  /* I-nodeの情報をクリアする */
-
-	return 0;
-}
-
-/**
-   単純なファイルシステムのファイルを伸縮/解放(クリア)する
-   @param[in] fs_super スーパブロック情報
-   @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @param[in] off      解放開始位置のオフセット(単位: バイト)
-   @param[in] len      解放長(単位: バイト)
-   @retval  0          正常終了
-   @retval -EINVAL     offに負の値を指定した
-   @retval -EFBIG      ファイル長よりoffの方が大きい
- */
-int
-simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
-				 simplefs_inode *fs_inode, off_t off, off_t len){
-
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	/* 解放長が0の場合は更新不要 */
-	/* オフセットまたは解放長に負の値を設定した  */
-	/* ファイル長よりオフセットの方が大きい */
-
-	/* ファイルの終端を越える場合は, 削除長をファイル終端に補正する */
-
-	/* ブロックサイズ取得 */
-	/* 開始ブロック算出   */
-	/* 終了ブロック算出   */
-	
-	/*
-	 * 終了位置がブロック境界と合っていない場合
-	 * 終了ブロックを減算
-	 */
-
-	/* 削除開始位置をoffに設定 */
-	/* 削除開始ブロックを算出  */
-	/* 開始点がブロック境界と合っておらず, 後続のブロックもクリアする場合
-	 *   削除開始オフセットを算出
-	 *   削除サイズを算出
-	 *   先頭からのブロック番号を算出
-	 *   開始ブロック内をクリアする
-	 *   次のブロックから削除を継続する
-	 */
-
-	/* 削除範囲中のゾーンを解放するループ
-	 *   デバイス先頭からのブロック番号を算出
-	 *   割当てられているブロックを解放する
-	 *   (解放できなかったブロックをスキップする)
-	 */
-	
-	/* 最終削除位置がブロック境界にそろっていない場合
-	 * ( (off + len) > 現在の削除位置の場合), 
-	 * 最終ブロック内の指定範囲をクリアする
-	 */
-
-	/* ファイル終端までクリアした場合は, ファイルサイズを更新する
-	 */	
-
-	/*
-	 * ファイル更新時刻を更新する
-	 */
-	
-	return 0;
-}
-
-/**
    単純なファイルシステムのスーパブロック情報を初期化する
-   @param[in] super 単純なファイルシステムのスーパブロック情報
+   @param[in] fs_super 単純なファイルシステムのスーパブロック情報
  */
 static void
-simplefs_init_super(simplefs_super_block *super){
+simplefs_init_super(simplefs_super_block *fs_super){
 	int i;
 
-	/* 単純なファイルシステム全体のロックを獲得済み */
-	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
-
-	super->s_private = NULL;  /* プライベート情報を初期化  */
-	bitops_zero(&super->s_inode_map);	/* I-nodeマップをクリア */
+	fs_super->s_blksiz = SIMPLEFS_SUPER_BLOCK_SIZE;  /* ブロック長を初期化  */
+	fs_super->s_private = NULL;  /* プライベート情報を初期化  */
+	bitops_zero(&fs_super->s_inode_map);	/* I-nodeマップをクリア */
 	/* 予約I-nodeを使用済みに設定 */
-	bitops_set(SIMPLEFS_INODE_RESERVED_INO, &super->s_inode_map); 
+	bitops_set(SIMPLEFS_INODE_RESERVED_INO, &fs_super->s_inode_map); 
 	/* ルートI-nodeを使用済みに設定 */
-	bitops_set(SIMPLEFS_INODE_ROOT_INO, &super->s_inode_map); 
+	bitops_set(SIMPLEFS_INODE_ROOT_INO, &fs_super->s_inode_map); 
 
 	/* I-nodeをゼロ初期化する */
 	for(i = 0; SIMPLEFS_INODE_NR > i; ++i) 
-		memset(&super->s_inode[i], 0, sizeof(simplefs_inode));
+		memset(&fs_super->s_inode[i], 0, sizeof(simplefs_inode));
 
 	/* TODO: ルートディレクトリのディレクトリエントリを作成する  */
 	
-	super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */
+	fs_super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */
 
 	return;
 }
@@ -216,11 +49,11 @@ simplefs_init_super(simplefs_super_block *super){
 /**
    単純なファイルシステムのスーパブロックを読み込む
    @param[in]  dev シンプルファイルシステムが記録されたブロックデバイスのデバイスID
-   @param[out] sbp 情報返却領域
+   @param[out] fs_super 情報返却領域
    @retval 0   正常終了
  */
 int
-simplefs_read_super(dev_id dev, simplefs_super_block *sbp){
+simplefs_read_super(dev_id dev, simplefs_super_block *fs_super){
 
 	return 0;
 }
@@ -233,6 +66,7 @@ simplefs_init(void){
 	
 	/* 単純なファイルシステム全体をロックする  */
 	mutex_lock(&g_simplefs_tbl.mtx);
+
 	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i) 
 		simplefs_init_super(&g_simplefs_tbl.super_blocks[i]);
 

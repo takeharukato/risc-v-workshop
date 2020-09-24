@@ -69,10 +69,11 @@ typedef struct _simplefs_inode{
 /**
    I-nodeのデータブロックを参照
    @param[in] _inodep I-nodeへのポインタ
+   @param[in] _blk    ブロック番号
    @return データブロックの先頭アドレス
  */
-#define SIMPLEFS_REFER_DATA(_inodep)\
-	((void *)(&((_inodep)->i_dblk.i_data[0])))
+#define SIMPLEFS_REFER_DATA(_inodep, _blk)			\
+	((void *)(&((_inodep)->i_dblk.i_data[_blk])))
 
 /**
    I-nodeのディレクトリエントリを参照
@@ -87,6 +88,7 @@ typedef struct _simplefs_inode{
    単純ファイルシステムのボリューム管理情報 (スーパブロック情報)
  */
 typedef struct _simplefs_super_block{
+	off_t                                         s_blksiz; /**< ブロック長           */
 	uint64_t                                       s_state; /**< スーパブロックの状態 */
 	void                                        *s_private; /**< プライベート情報     */
 	BITMAP_TYPE(, uint64_t, SIMPLEFS_INODE_NR) s_inode_map; /**< I-nodeマップ         */
@@ -109,6 +111,12 @@ typedef struct _simplefs_table{
 	{						\
 	.mtx = __MUTEX_INITIALIZER(&((_tablep)->mtx)),	\
 	}		
+
+int simplefs_device_inode_init(simplefs_inode *_fs_inode, uint16_t _mode,
+    uint16_t _major, uint16_t _minor);
+int simplefs_inode_init(simplefs_inode *_fs_inode, uint16_t _mode);
+int simplefs_inode_remove(simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
+    simplefs_inode *_fs_inode);
 
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
