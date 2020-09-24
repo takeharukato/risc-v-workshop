@@ -104,7 +104,6 @@ simplefs_inode_init(simplefs_inode *fs_inode, uint16_t mode){
    @param[in] fs_super スーパブロック情報
    @param[in] fs_vnid  v-node ID
    @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @note 本関数呼び出し前に
    @retval  0      正常終了
  */
 int
@@ -120,6 +119,71 @@ simplefs_inode_remove(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
 
 	return 0;
 }
+
+/**
+   単純なファイルシステムのファイルを伸縮/解放(クリア)する
+   @param[in] fs_super スーパブロック情報
+   @param[in] fs_vnid  v-node ID
+   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] off      解放開始位置のオフセット(単位: バイト)
+   @param[in] len      解放長(単位: バイト)
+   @retval  0          正常終了
+   @retval -EINVAL     offに負の値を指定した
+   @retval -EFBIG      ファイル長よりoffの方が大きい
+ */
+int
+simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+				 simplefs_inode *fs_inode, off_t off, off_t len){
+
+	/* 単純なファイルシステム全体のロックを獲得済み */
+	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
+
+	/* 解放長が0の場合は更新不要 */
+	/* オフセットまたは解放長に負の値を設定した  */
+	/* ファイル長よりオフセットの方が大きい */
+
+	/* ファイルの終端を越える場合は, 削除長をファイル終端に補正する */
+
+	/* ブロックサイズ取得 */
+	/* 開始ブロック算出   */
+	/* 終了ブロック算出   */
+	
+	/*
+	 * 終了位置がブロック境界と合っていない場合
+	 * 終了ブロックを減算
+	 */
+
+	/* 削除開始位置をoffに設定 */
+	/* 削除開始ブロックを算出  */
+	/* 開始点がブロック境界と合っておらず, 後続のブロックもクリアする場合
+	 *   削除開始オフセットを算出
+	 *   削除サイズを算出
+	 *   先頭からのブロック番号を算出
+	 *   開始ブロック内をクリアする
+	 *   次のブロックから削除を継続する
+	 */
+
+	/* 削除範囲中のゾーンを解放するループ
+	 *   デバイス先頭からのブロック番号を算出
+	 *   割当てられているブロックを解放する
+	 *   (解放できなかったブロックをスキップする)
+	 */
+	
+	/* 最終削除位置がブロック境界にそろっていない場合
+	 * ( (off + len) > 現在の削除位置の場合), 
+	 * 最終ブロック内の指定範囲をクリアする
+	 */
+
+	/* ファイル終端までクリアした場合は, ファイルサイズを更新する
+	 */	
+
+	/*
+	 * ファイル更新時刻を更新する
+	 */
+	
+	return 0;
+}
+
 /**
    単純なファイルシステムのスーパブロック情報を初期化する
    @param[in] super 単純なファイルシステムのスーパブロック情報
