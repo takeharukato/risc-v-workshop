@@ -13,6 +13,8 @@
 #include <kern/mutex.h>
 #include <kern/dev-pcache.h>
 #include <kern/vfs-if.h>
+#include <kern/timer-if.h>
+
 #include <fs/simplefs/simplefs.h>
 
 static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tbl);
@@ -23,20 +25,21 @@ static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tb
  */
 void
 simplefs_init_inode_common(simplefs_inode *fs_inode){
+
 	/* 単純なファイルシステム全体のロックを獲得済み */
 	kassert( mutex_locked_by_self(&g_simplefs_tbl.mtx) );
 
-	fs_inode->i_mode  = S_IRWXU|S_IRWXG|S_IRWXO; /* アクセス権を設定   */
-	fs_inode->i_nlinks = 1;                      /* リンク数を設定     */
+	fs_inode->i_mode   = S_IRWXU|S_IRWXG|S_IRWXO; /* アクセス権を設定             */
+	fs_inode->i_nlinks = 1;                       /* リンク数を設定               */
 
-	fs_inode->i_uid = FS_ROOT_UID;               /* ユーザIDを設定     */
-	fs_inode->i_gid = FS_ROOT_GID;               /* グループIDを設定   */
-	fs_inode->i_major = 0;                       /* デバイスのメジャー番号を設定 */
-	fs_inode->i_minor = 0;                       /* デバイスのマイナー番号を設定 */
-	fs_inode->i_size = 0;                        /* サイズを設定       */
-	fs_inode->i_atime = 0;                       /* TODO: walltimeを代入する */
-	fs_inode->i_mtime = 0;                       /* TODO: walltimeを代入する */
-	fs_inode->i_ctime = 0;                       /* TODO: walltimeを代入する */	
+	fs_inode->i_uid   = FS_ROOT_UID;              /* ユーザIDを設定               */
+	fs_inode->i_gid   = FS_ROOT_GID;              /* グループIDを設定             */
+	fs_inode->i_major = 0;                        /* デバイスのメジャー番号を設定 */
+	fs_inode->i_minor = 0;                        /* デバイスのマイナー番号を設定 */
+	fs_inode->i_size  = 0;                        /* サイズを設定                 */
+	fs_inode->i_atime = 0;                        /* アクセス時刻を0クリア        */
+	fs_inode->i_mtime = 0;                        /* 更新時刻を0クリア            */
+	fs_inode->i_ctime = 0;                        /* 属性更新時刻を0クリア        */	
 
 	/* データブロックを初期化 */
 	memset(&fs_inode->i_dblk, 0, sizeof(simplefs_data)*SIMPLEFS_IDATA_NR);
