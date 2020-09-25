@@ -1270,7 +1270,7 @@ minix_extend_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, ssi
 		/ MINIX_ZONE_SIZE(sbp); /* 終了ゾーン     */
 
 	cur_pos = old_siz;              /* 伸長開始位置   */
-	cur_rel_zone = first_rel_zone;  /* 伸長開始ゾーン */
+	cur_rel_zone = first_rel_zone;  /* 伸長対象ゾーン */
 
 	/* 開始点がゾーン境界と合っておらず, 後続のゾーンがある場合
 	 */
