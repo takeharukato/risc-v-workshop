@@ -1362,11 +1362,13 @@ minix_extend_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, ssi
 	return 0;
 
 unmap_zone_out:
-
+	/* 伸長したゾーンをアンマップ */
 	res = minix_unmap_zone(sbp, i_num, dip, old_siz,
 			      MINIX_D_INODE(sbp, dip, i_size) - old_siz);
 	kassert( res == 0 );
-	kassert( MINIX_D_INODE(sbp, dip, i_size) == old_siz );
+
+	/* ゾーン解放に伴って元のサイズに更新されていることを確認  */
+	kassert( MINIX_D_INODE(sbp, dip, i_size) == old_siz );  
 
 	return rc;
 }
