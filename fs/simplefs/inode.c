@@ -13,12 +13,13 @@
 #include <kern/mutex.h>
 #include <kern/dev-pcache.h>
 #include <kern/vfs-if.h>
+#include <kern/timer-if.h>
 
 #include <fs/simplefs/simplefs.h>
 
 /**
    単純なファイルシステムのディレクトリI-nodeを初期化する(ファイル種別に依らない共通処理)
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
  */
 static void
 simplefs_init_inode_common(simplefs_inode *fs_inode){
@@ -65,7 +66,7 @@ simplefs_alloc_inode(simplefs_super_block *fs_super, vfs_vnode_id *fs_vnidp){
    単純なファイルシステムのI-nodeを解放する
    @param[in] fs_super スーパブロック情報
    @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
    @retval  0      正常終了
    @retval -E2BIG     I-node番号が大きすぎる
    @retval -ENOENT    未割り当てのI-nodeを指定した
@@ -136,8 +137,8 @@ simplefs_write_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
    単純なファイルシステムのファイルを伸長する
    @param[in] fs_super スーパブロック情報
    @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
-   @param[in] len      解放長(単位: バイト)
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
+   @param[in] len      伸長する長さ(単位: バイト)
    @retval  0          正常終了
    @retval -EINVAL     offまたはlenに負の値を指定した
    @retval -EFBIG      ファイル長よりoffの方が小さい
@@ -157,9 +158,8 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
 	simplefs_blkno   end_rel_blk;
 	simplefs_blkno       new_blk;
 
-	if ( len == 0 )
-		return 0; /* lenが0の場合は伸長不要なので即時正常復帰する */
-
+	kassert( len != 0 );  /* 解放長が0の場合の処理は呼び出し元で実施済み */
+	
 	if ( 0 > len )
 		return -EINVAL;      /* 伸長長に負の値を設定した */
 
@@ -291,7 +291,7 @@ unmap_block_out:
    単純なファイルシステムのファイルを伸縮/解放(クリア)する
    @param[in] fs_super スーパブロック情報
    @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] off      解放開始位置のオフセット(単位: バイト)
    @param[in] len      解放長(単位: バイト)
    @retval  0          正常終了
@@ -311,8 +311,7 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vni
 	simplefs_blkno   end_rel_blk;
 	simplefs_blkno    remove_blk;
 	
-	if ( len == 0 )
-		return 0; 	/* 解放長が0の場合は更新不要 */
+	kassert( len != 0 );  /* 解放長が0の場合の処理は呼び出し元で実施済み */
 
 	if ( ( 0 > off ) || ( 0 > len ) )
 		return -EINVAL; /* オフセットまたは解放長に負の値を設定した  */
@@ -421,8 +420,76 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vni
 }
 
 /**
+   単純なファイルシステムのファイルサイズを更新する
+   @param[in] fs_super スーパブロック情報
+   @param[in] fs_vnid  v-node ID
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
+   @param[in] len      更新後のファイルサイズ(単位: バイト)
+   @retval  0          正常終了
+   @retval -EINVAL     ファイルサイズが不正
+ */
+int
+simplefs_inode_truncate(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+    simplefs_inode *fs_inode, off_t len){
+	int       rc;
+	ktimespec ts;
+	
+	if ( len == 0 )
+		return 0;  /* サイズ変更がない場合は即時正常復帰する */
+	if ( 0 > len )
+		return -EINVAL;  /*  ファイルサイズに負の値を指定した */
+
+	if ( len >= SIMPLEFS_SUPER_MAX_FILESIZE )
+		return -EINVAL;   /* 最大ファイル長さを超えている  */
+	
+	if ( fs_inode->i_size > len )
+		rc = simplefs_inode_truncate_down(fs_super, fs_vnid, 
+		    fs_inode, len,
+		    fs_inode->i_size - len);  /*  ファイルサイズを伸縮する  */
+	else
+		rc = simplefs_inode_truncate_up(fs_super, fs_vnid, 
+		    fs_inode, len - fs_inode->i_size);  /*  ファイルサイズを伸長する  */
+
+	if ( rc != 0 )
+		goto error_out;  /* エラー復帰する  */
+	/*
+	 * ファイル書き込み時刻を更新する
+	 */
+	tim_walltime_get(&ts);  /* 現在時刻を得る */
+	fs_inode->i_mtime = ts.tv_sec;  /* 最終書き込み時刻を更新する */
+
+	rc = simplefs_write_inode(fs_super, fs_vnid, fs_inode); /* I-nodeを書き戻す */
+	if ( rc != 0 )
+		goto error_out;  /* エラー復帰する  */
+
+	return 0;
+	
+error_out:
+	return rc;
+}
+
+/**
+   単純なファイルシステムのファイルサイズを更新する
+   @param[in] fs_super  スーパブロック情報
+   @param[in] fs_vnid   v-node ID
+   @param[in] fs_inode  単純なファイルシステムのI-node情報
+   @param[in] file_priv ファイルディスクリプタのプライベート情報
+   @param[in] buf       読み込みバッファ
+   @param[in] pos       ファイル内での読み込み開始オフセット(単位: バイト)
+   @param[in] len       読み込み長
+   @retval  0           正常終了
+ */
+int
+simplefs_inode_read(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+    simplefs_inode *fs_inode, vfs_file_private file_priv,
+    void *buf, off_t pos, ssize_t len){
+	
+	return 0;
+}
+
+/**
    単純なファイルシステムのデバイスI-nodeを初期化する
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] mode     ファイル種別/アクセス権
    @param[in] major    デバイスのメジャー番号
    @param[in] minor    デバイスのマイナー番号
@@ -447,7 +514,7 @@ simplefs_device_inode_init(simplefs_inode *fs_inode, uint16_t mode,
 
 /**
    単純なファイルシステムの通常ファイル/ディレクトリI-nodeを初期化する
-   @param[in] fs_inode 初期化対象ディレクトリのI-node
+   @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] mode ファイル種別/アクセス権
    @retval  0      正常終了
    @retval -EINVAL 通常ファイル/ディレクトリ以外のファイルを作ろうとした

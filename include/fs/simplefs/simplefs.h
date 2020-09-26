@@ -16,11 +16,19 @@
 #include <kern/kern-types.h>
 #include <kern/mutex.h>
 
-#define SIMPLEFS_SUPER_NR    (2)    /**< 2マウント    */
-#define SIMPLEFS_INODE_NR    (64)   /**< 64ファイル   */
-#define SIMPLEFS_IDATA_NR    (128)  /**< 512 KiB      */
-#define SIMPLEFS_DIRSIZ      (60)   /**< ファイル名長 */
-#define SIMPLEFS_SUPER_BLOCK_SIZE    (4096)   /**< データブロック長   */
+/** 最大マウントポイント数 (単位:個) */
+#define SIMPLEFS_SUPER_NR      (2)
+/** 最大ファイル数 (単位:個) */
+#define SIMPLEFS_INODE_NR     (64)
+/**< ファイル中の最大データブロック数 (単位:個)  */
+#define SIMPLEFS_IDATA_NR    (128)  
+/** ヌル文字を含む最大ファイル名長 (単位:バイト) */
+#define SIMPLEFS_DIRSIZ       (60)  
+/** データブロック長 (単位:バイト) */
+#define SIMPLEFS_SUPER_BLOCK_SIZE     (UINT64_C(4096))   
+/** 最大ファイルサイズ (単位:バイト) */
+#define SIMPLEFS_SUPER_MAX_FILESIZE   ( SIMPLEFS_SUPER_BLOCK_SIZE * SIMPLEFS_IDATA_NR )
+
 #define SIMPLEFS_SUPER_INVALID_BLOCK  ((UINT64_C(1)<<32) - 1)   /**< 無効ブロック       */
 
 #define SIMPLEFS_SUPER_UNINITIALIZED  (0x0)   /**< 未初期化           */
