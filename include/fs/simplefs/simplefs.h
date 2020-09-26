@@ -21,6 +21,7 @@
 #define SIMPLEFS_IDATA_NR    (128)  /**< 512 KiB      */
 #define SIMPLEFS_DIRSIZ      (60)   /**< ファイル名長 */
 #define SIMPLEFS_SUPER_BLOCK_SIZE    (4096)   /**< データブロック長   */
+#define SIMPLEFS_SUPER_INVALID_BLOCK  ((UINT64_C(1)<<32) - 1)   /**< 無効ブロック       */
 
 #define SIMPLEFS_SUPER_UNINITIALIZED  (0x0)   /**< 未初期化           */
 #define SIMPLEFS_SUPER_INITIALIZED    (0x1)   /**< 初期化済み         */
@@ -29,6 +30,7 @@
 #define SIMPLEFS_INODE_RESERVED_INO   (0x0)   /**< 予約I-node番号     */
 #define SIMPLEFS_INODE_ROOT_INO       (0x1)   /**< ルートI-node番号   */
 
+typedef uint32_t simplefs_blkno; /**< ブロック番号  */
 /**
    単純ファイルシステムのデータエントリ
  */
@@ -67,24 +69,6 @@ typedef struct _simplefs_inode{
 }simplefs_inode;
 
 /**
-   I-nodeのデータブロックを参照
-   @param[in] _inodep I-nodeへのポインタ
-   @param[in] _blk    ブロック番号
-   @return データブロックの先頭アドレス
- */
-#define SIMPLEFS_REFER_DATA(_inodep, _blk)			\
-	((void *)(&((_inodep)->i_dblk.i_data[_blk])))
-
-/**
-   I-nodeのディレクトリエントリを参照
-   @param[in] _inodep I-nodeへのポインタ
-   @param[in] _idx    ディレクトリエントリ配列のインデックス
-   @return ディレクトリエントリへのポインタ
- */
-#define SIMPLEFS_REFER_DENT(_inodep, _idx)		\
-	((struct _simplefs_dent *)(&((_inodep)->i_dblk.i_dent[(_idx)])))
-
-/**
    単純ファイルシステムのボリューム管理情報 (スーパブロック情報)
  */
 typedef struct _simplefs_super_block{
@@ -104,6 +88,34 @@ typedef struct _simplefs_table{
 }simplefs_table;
 
 /**
+   I-nodeを参照
+   @param[in] _fs_super 単純なファイルシステムのスーパブロック情報
+   @param[in] _ino I-node番号
+   @return 対応するI-node情報
+ */
+#define SIMPLEFS_REFER_INODE(_fs_super, _ino)		\
+	((struct _simplefs_inode *)(&((_fs_super)->s_inode[(_ino)])))
+
+/**
+   I-nodeのデータブロックを参照
+   @param[in] _inodep I-nodeへのポインタ
+   @param[in] _blk    ブロック番号
+   @return データブロックの先頭アドレス
+ */
+#define SIMPLEFS_REFER_DATA(_inodep, _blk)			\
+	((void *)(&((_inodep)->i_dblk.i_data[_blk])))
+
+/**
+   I-nodeのディレクトリエントリを参照
+   @param[in] _inodep I-nodeへのポインタ
+   @param[in] _idx    ディレクトリエントリ配列のインデックス
+   @return ディレクトリエントリへのポインタ
+ */
+#define SIMPLEFS_REFER_DENT(_inodep, _idx)		\
+	((struct _simplefs_dent *)(&((_inodep)->i_dblk.i_dent[(_idx)])))
+
+
+/**
    単純ファイルシステム管理用大域データ初期化子
    @param _tablep 単純ファイルシステム管理用大域データへのポインタ
  */
@@ -112,12 +124,25 @@ typedef struct _simplefs_table{
 	.mtx = __MUTEX_INITIALIZER(&((_tablep)->mtx)),	\
 	}		
 
-int simplefs_device_inode_init(simplefs_inode *_fs_inode, uint16_t _mode,
+int simplefs_device_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode,
     uint16_t _major, uint16_t _minor);
-int simplefs_inode_init(simplefs_inode *_fs_inode, uint16_t _mode);
-int simplefs_inode_remove(simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
-    simplefs_inode *_fs_inode);
+int simplefs_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode);
+int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
+    struct _simplefs_inode *_fs_inode);
 
+int simplefs_read_mapped_block(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno *_blkp);
+int simplefs_write_mapped_block(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno _new_blk);
+int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
+    struct _simplefs_inode *_fs_inode, off_t _off, ssize_t _len);
+
+int simplefs_alloc_block(struct _simplefs_super_block *_fs_super,
+    simplefs_blkno *_block_nump);
+void simplefs_free_block(struct _simplefs_super_block *_fs_super, simplefs_inode *_fs_inode,
+    simplefs_blkno _block_num);
+int simplefs_clear_block(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_inode, simplefs_blkno _block_num, off_t _offset, off_t _size);
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */
