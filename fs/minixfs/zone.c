@@ -675,8 +675,6 @@ error_out:
     @param[in] new_zone 割り当てるゾーン
     @retval     0       正常終了
     @retval    -E2BIG   ファイルサイズの上限を超えている
-    @retval    -ENOSPC  空きゾーンがない
-    @retval    -EINVAL  不正なスーパブロックを指定した
     @retval    -EIO     ページキャッシュ操作に失敗した
     @note      new_zoneはビットマップから獲得済みでなければならない
  */
@@ -1094,7 +1092,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 	minix_zone    remove_zone;
 
 	if ( len == 0 )
-		return 0;  /* 削除不要 */
+		return 0;  /* 解放不要 */
 
 	if ( ( 0 > off ) || ( 0 > len ) )
 		return -EINVAL;  /*  オフセットまたは解放長に負の値を設定した  */
@@ -1103,7 +1101,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 	    ( off > ( off + len ) ) )
 		return -EFBIG;  /* ファイル長よりオフセットの方が大きい */
 
-	 /* ファイルの終端を越える場合は, 削除長をファイル終端に補正する */
+	 /* ファイルの終端を越える場合は, 解放長をファイル終端に補正する */
 	if ( ( off + len ) > MINIX_D_INODE(sbp, dip, i_size) )
 		len = MINIX_D_INODE(sbp, dip, i_size) - off;
 
@@ -1123,10 +1121,10 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 	    && ( addr_not_aligned(off + len, MINIX_ZONE_SIZE(sbp)) ) )
 		--end_rel_zone;  /* 終了ゾーンを減算 */
 
-	cur_pos = off; /* 削除開始位置   */
-	cur_rel_zone = first_rel_zone;  /* 削除開始ゾーン */
+	cur_pos = off; /* 解放開始位置   */
+	cur_rel_zone = first_rel_zone;  /* 解放開始ゾーン */
 
-	/* 開始点がゾーン境界と合っておらず, 後続のゾーンもクリアする場合
+	/* 開始点がゾーン境界と合っておらず, 後続のゾーンも解放する場合
 	 */
 	if ( addr_not_aligned(off, MINIX_ZONE_SIZE(sbp) ) 
 	    && ( end_rel_zone > first_rel_zone ) ) {
@@ -1136,7 +1134,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		/* クリアサイズを算出 */
 		clr_siz = MINIX_ZONE_SIZE(sbp) - clr_start;
 
-		/* デバイス先頭からのゾーン番号を算出
+		/* 物理ゾーン番号を算出
 		 */
 		rc = minix_read_mapped_block(sbp, dip, 
 		    first_rel_zone * MINIX_ZONE_SIZE(sbp), &remove_zone);
@@ -1144,17 +1142,17 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		/* 開始ゾーン内をクリアする */
 		minix_clear_zone(sbp, remove_zone, clr_start, clr_siz);
 
-		++cur_rel_zone; /* 次のゾーンから削除を継続する */
-		/*  削除位置を更新する  */
+		++cur_rel_zone; /* 次のゾーンから解放を継続する */
+		/*  解放位置を更新する  */
 		cur_pos = roundup_align(cur_pos, MINIX_ZONE_SIZE(sbp));
 	}
 
 	/*
-	 * 削除範囲中のゾーンを解放する
+	 * 指定された範囲内のゾーンを解放する
 	 */
 	for( ; end_rel_zone > cur_rel_zone; ++cur_rel_zone ) {
 		
-		/* デバイス先頭からのゾーン番号を算出
+		/* 物理ゾーン番号を算出
 		 */
 		rc = minix_read_mapped_block(sbp, dip, 
 		    cur_rel_zone * MINIX_ZONE_SIZE(sbp), &remove_zone);
@@ -1170,18 +1168,18 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 				continue;  /* 解放できなかったブロックをスキップする */
 			minix_free_zone(sbp, remove_zone);
 		}
-		cur_pos += MINIX_ZONE_SIZE(sbp);  /*  削除位置を更新する  */
+		cur_pos += MINIX_ZONE_SIZE(sbp);  /*  解放位置を更新する  */
 	}
 
 	if ( ( off + len ) > cur_pos ) { /* 最終ゾーン内をクリアする */
 
-		/* デバイス先頭からのゾーン番号を算出
+		/* 物理ゾーン番号を算出
 		 */
 		rc = minix_read_mapped_block(sbp, dip, 
 		    end_rel_zone * MINIX_ZONE_SIZE(sbp), &remove_zone);
 		if ( rc == 0 ) {
 
-			/* ゾーン内の全データが削除対象となる場合は, 
+			/* ゾーン内の全データが解放対象となる場合は, 
 			 * ゾーン内のブロックを解放する。
 			 */
 			if ( ( !addr_not_aligned(off, MINIX_ZONE_SIZE(sbp) ) )
@@ -1209,7 +1207,7 @@ minix_unmap_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, off_
 		}
 	}
 
-	/* ファイル終端までクリアした場合 */
+	/* ファイル終端まで解放した場合 */
 	if ( ( off + len ) == MINIX_D_INODE(sbp, dip, i_size) ) { 
 
 		MINIX_D_INODE_SET(sbp, dip, i_size, off);  /* サイズを更新 */
@@ -1307,36 +1305,39 @@ minix_extend_zone(minix_super_block *sbp, minix_ino i_num, minix_inode *dip, ssi
 		 */
 		rc = minix_read_mapped_block(sbp, dip, 
 		    cur_rel_zone * MINIX_ZONE_SIZE(sbp), &new_zone);
+		if ( rc == 0 ) {
 
-		/* ゾーンが割り当てられていない場合は, 
-		 * 新たにゾーンを割り当てる 
-		 * @note 読取りの場合, 上記で転送サイズをファイルサイズ内に
-		 * 収めるように補正しているので, 読取りの場合で, かつ, 
-		 * ゾーンが割り当てられていない場合でも, ゼロクリアした
-		 * ゾーンを割り当てればよい(パンチホールアクセスケース)
-		 */
-		rc = minix_alloc_zone(sbp, &new_zone);  /* データゾーンを割当てる */
-		if ( rc != 0 ) 
-			goto unmap_zone_out;
+			/* ゾーン内のブロックをクリアする
+			 */
+			minix_clear_zone(sbp, new_zone, 0, MINIX_ZONE_SIZE(sbp));
+		} else {
 
-		/* ゾーン内のブロックをクリアする
-		 * 本ファイルシステムで使用されたデータブロックは
-		 * データブロックの解放時にクリアされるためゼロクリアを
-		 * 保証できるが, 新規に割り当てたゾーンのディスクブロックが
-		 * 過去に他の用途で使われていた場合そのデータが読めてしまうため
-		 * 念のためゾーンをクリアしてからマップする
-		 */
-		minix_clear_zone(sbp, new_zone, 0, MINIX_ZONE_SIZE(sbp));
+			/* ゾーンが割り当てられていない場合は, 
+			 * 新たにゾーンを割り当てる 
+			 */
+			rc = minix_alloc_zone(sbp, &new_zone);  /* データゾーンを割当てる */
+			if ( rc != 0 ) 
+				goto unmap_zone_out;
 
-		/* ゾーンをマップする */
-		rc = minix_write_mapped_block(sbp, dip, cur_pos, new_zone);
-		if ( rc != 0 ) {  /* 割り当てたゾーンをマップできなかった */
+			/* ゾーン内のブロックをクリアする
+			 * 本ファイルシステムで使用されたデータブロックは
+			 * データブロックの解放時にクリアされるためゼロクリアを
+			 * 保証できるが, 新規に割り当てたゾーンのディスクブロックが
+			 * 過去に他の用途で使われていた場合そのデータが読めてしまうため
+			 * 念のためゾーンをクリアしてからマップする
+			 */
+			minix_clear_zone(sbp, new_zone, 0, MINIX_ZONE_SIZE(sbp));
 
-			/* 割当てたデータゾーンを解放する  */
-			minix_free_zone(sbp, new_zone);
-			goto unmap_zone_out;
+			/* ゾーンをマップする */
+			rc = minix_write_mapped_block(sbp, dip, cur_pos, new_zone);
+			if ( rc != 0 ) {  /* 割り当てたゾーンをマップできなかった */
+
+				/* 割当てたデータゾーンを解放する  */
+				minix_free_zone(sbp, new_zone);
+				goto unmap_zone_out;
+			}
 		}
-
+		
 		cur_pos += MINIX_ZONE_SIZE(sbp);   /* ゾーン追加位置を更新 */
 		MINIX_D_INODE_SET(sbp, dip, i_size, cur_pos);  /* サイズを更新 */
 	}
