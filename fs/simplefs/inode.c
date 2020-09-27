@@ -87,7 +87,6 @@ simplefs_alloc_inode(simplefs_super_block *fs_super, simplefs_ino *fs_vnidp){
    単純なファイルシステムのI-nodeを解放する
    @param[in] fs_super スーパブロック情報
    @param[in] fs_vnid  v-node ID
-   @param[in] fs_inode 単純なファイルシステムのI-node情報
    @retval  0      正常終了
    @retval -E2BIG     I-node番号が大きすぎる
    @retval -ENOENT    未割り当てのI-nodeを指定した

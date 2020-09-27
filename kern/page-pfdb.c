@@ -497,7 +497,6 @@ unlock_out:
 /**
    指定されたページを先頭とする連続ページを取り出す(内部関数)
    @param[in]   deq   取り出し対象のページフレーム情報
-   @param[out]  pp    ページフレーム情報返却域
 */
 static void
 dequeue_specified_page(page_frame *deq){

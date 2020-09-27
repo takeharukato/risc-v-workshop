@@ -143,8 +143,8 @@ rv64_sbi_get_marchid(uint64_t *marchidp){
 }
 
 /**
-   Supervisor Binary InterfaceのアーキテクチャIDを得る
-   @param[out] marchidp  アーキテクチャID格納領域
+   Supervisor Binary Interfaceのマシン実装IDを得る
+   @param[out] mimpidp  マシン実装ID格納領域
    @return SBI返却値(rv64_sbi_sbiret構造体)
  */
 rv64_sbi_sbiret
@@ -241,6 +241,7 @@ rv64_sbi_remote_sfence_vma(const unsigned long *hart_mask,
    @param[out] hart_mask プロセッサ間割込み発行先プロセッサのビットマップ配列のアドレス
    @param[in]  start     SFENCE.VMA命令によりTLBを無効化する仮想領域の先頭アドレス
    @param[in]  size      SFENCE.VMA命令によりTLBを無効化する仮想領域の領域長(単位:バイト)
+   @param[in]  asid      SFENCE.VMA命令によりTLBを無効化するアドレス空間ID
  */
 void
 rv64_sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,

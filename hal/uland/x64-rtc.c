@@ -15,10 +15,10 @@
 #include <time.h>
 
 /**
-   時刻を読み出す
+   Real Time Clock (RTC)から時刻を読み出す
    @param[out] ktsp 時刻返却領域
-   @retval   0 正常終了
-   @retval 非0 RTCを読み出せなかった
+   @retval   0      正常終了
+   @retval  -ENODEV RTCを読み出せなかった
  */
 int
 hal_read_rtc(ktimespec *ktsp) {

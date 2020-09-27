@@ -22,6 +22,7 @@
 #include <klib/list.h>
 
 struct _trap_context;
+struct _ktimespec;
 
 /**
    システム時刻情報
