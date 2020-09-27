@@ -36,9 +36,14 @@
 #define SIMPLEFS_SUPER_MOUNTED        (0x2)   /**< マウントされている */
 
 #define SIMPLEFS_INODE_RESERVED_INO   (0x0)   /**< 予約I-node番号     */
+#define SIMPLEFS_INODE_INVALID_INO   \
+	SIMPLEFS_INODE_RESERVED_INO           /**< 無効I-node番号     */
 #define SIMPLEFS_INODE_ROOT_INO       (0x1)   /**< ルートI-node番号   */
 
-typedef uint32_t simplefs_blkno; /**< ブロック番号  */
+typedef uint32_t          simplefs_ino;   /**< I-node番号    */	
+typedef uint32_t        simplefs_blkno;   /**< ブロック番号  */
+typedef void *   simplefs_file_private;   /**< プライベート情報  */
+
 /**
    単純ファイルシステムのデータエントリ
  */
@@ -135,14 +140,14 @@ typedef struct _simplefs_table{
 int simplefs_device_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode,
     uint16_t _major, uint16_t _minor);
 int simplefs_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode);
-int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
+int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode);
 
 int simplefs_read_mapped_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno *_blkp);
 int simplefs_write_mapped_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno _new_blk);
-int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, vfs_vnode_id _fs_vnid,
+int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode, off_t _off, ssize_t _len);
 
 int simplefs_alloc_block(struct _simplefs_super_block *_fs_super,
@@ -151,6 +156,13 @@ void simplefs_free_block(struct _simplefs_super_block *_fs_super, simplefs_inode
     simplefs_blkno _block_num);
 int simplefs_clear_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, simplefs_blkno _block_num, off_t _offset, off_t _size);
+int simplefs_read_block(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_inode, void *_buf, simplefs_blkno _block_num,
+    off_t _offset, off_t _size);
+int simplefs_write_block(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_inode, void *_buf, simplefs_blkno _block_num,
+    off_t _offset, off_t _size);
+
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */

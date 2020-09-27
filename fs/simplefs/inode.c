@@ -17,6 +17,9 @@
 
 #include <fs/simplefs/simplefs.h>
 
+#define SIMPLEFS_RW_READ   (0)  /**< 読み取り */
+#define SIMPLEFS_RW_WRITE  (1)  /**< 書き込み */
+
 /**
    単純なファイルシステムのディレクトリI-nodeを初期化する(ファイル種別に依らない共通処理)
    @param[in] fs_inode 単純なファイルシステムのI-node情報
@@ -42,13 +45,31 @@ simplefs_init_inode_common(simplefs_inode *fs_inode){
 
 /**
    単純なファイルシステムのI-nodeを割り当てる
+   @param[in] fs_super  スーパブロック情報
+   @param[in] fs_vnid   単純なファイルシステムのI-node番号
+   @retval  0      正常終了
+   @retval -ENOSPC    I-nodeに空きがない
+ */
+static bool
+simplefs_inode_is_alloced(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
+
+	/* 無効なI-node番号でなく, かつ,  最大I-node数を超えておらず, かつ, 
+	 * I-nodeが割り当て済みであることを確認
+	 */
+	return ( (fs_vnid != SIMPLEFS_INODE_INVALID_INO) &&
+	    ( SIMPLEFS_INODE_NR > fs_vnid ) &&
+	    bitops_isset(fs_vnid, &fs_super->s_inode_map) );
+}
+
+/**
+   単純なファイルシステムのI-nodeを割り当てる
    @param[in] fs_super   スーパブロック情報
    @param[out] fs_vnidp  割り当てたInodeのv-node ID
    @retval  0      正常終了
    @retval -ENOSPC    I-nodeに空きがない
  */
 int
-simplefs_alloc_inode(simplefs_super_block *fs_super, vfs_vnode_id *fs_vnidp){
+simplefs_alloc_inode(simplefs_super_block *fs_super, simplefs_ino *fs_vnidp){
 	size_t idx;
 	
 	idx = bitops_ffc(&fs_super->s_inode_map);
@@ -72,7 +93,7 @@ simplefs_alloc_inode(simplefs_super_block *fs_super, vfs_vnode_id *fs_vnidp){
    @retval -ENOENT    未割り当てのI-nodeを指定した
  */
 int
-simplefs_remove_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid){
+simplefs_free_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
 
 	if ( fs_vnid >= SIMPLEFS_INODE_NR )
 		return -E2BIG;  /*  I-node番号が大きすぎる  */
@@ -95,7 +116,7 @@ simplefs_remove_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid){
    @retval   -ENOENT    未割り当てのI-nodeを指定した
  */
 int
-simplefs_read_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+simplefs_read_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode **fs_inodep){
 
 	kassert( fs_inodep != NULL );
@@ -121,7 +142,7 @@ simplefs_read_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
    @retval   -ENOENT    未割り当てのI-nodeを指定した
  */
 static int
-simplefs_write_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+simplefs_write_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode *fs_inode){
 
 	if ( fs_vnid >= SIMPLEFS_INODE_NR )
@@ -136,7 +157,7 @@ simplefs_write_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
 /**
    単純なファイルシステムのファイルを伸長する
    @param[in] fs_super スーパブロック情報
-   @param[in] fs_vnid  v-node ID
+   @param[in] fs_vnid  単純なファイルシステムのI-node番号
    @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] len      伸長する長さ(単位: バイト)
    @retval  0          正常終了
@@ -144,7 +165,7 @@ simplefs_write_inode(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
    @retval -EFBIG      ファイル長よりoffの方が小さい
  */
 int
-simplefs_inode_truncate_up(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
 			     simplefs_inode *fs_inode, off_t len){
 	int                       rc;
 	int                      res;
@@ -290,7 +311,7 @@ unmap_block_out:
 /**
    単純なファイルシステムのファイルを伸縮/解放(クリア)する
    @param[in] fs_super スーパブロック情報
-   @param[in] fs_vnid  v-node ID
+   @param[in] fs_vnid  単純なファイルシステムのI-node番号
    @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] off      解放開始位置のオフセット(単位: バイト)
    @param[in] len      解放長(単位: バイト)
@@ -299,7 +320,7 @@ unmap_block_out:
    @retval -EFBIG      ファイル長よりoffの方が大きい
  */
 int
-simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
 				 simplefs_inode *fs_inode, off_t off, off_t len){
 	int                       rc;
 	size_t                blksiz;
@@ -422,20 +443,21 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, vfs_vnode_id fs_vni
 /**
    単純なファイルシステムのファイルサイズを更新する
    @param[in] fs_super スーパブロック情報
-   @param[in] fs_vnid  v-node ID
+   @param[in] fs_vnid  単純なファイルシステムのI-node番号
    @param[in] fs_inode 単純なファイルシステムのI-node情報
    @param[in] len      更新後のファイルサイズ(単位: バイト)
    @retval  0          正常終了
    @retval -EINVAL     ファイルサイズが不正
  */
 int
-simplefs_inode_truncate(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
+simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode *fs_inode, off_t len){
 	int       rc;
 	ktimespec ts;
 	
 	if ( len == 0 )
 		return 0;  /* サイズ変更がない場合は即時正常復帰する */
+
 	if ( 0 > len )
 		return -EINVAL;  /*  ファイルサイズに負の値を指定した */
 
@@ -469,22 +491,206 @@ error_out:
 }
 
 /**
-   単純なファイルシステムのファイルサイズを更新する
-   @param[in] fs_super  スーパブロック情報
-   @param[in] fs_vnid   v-node ID
-   @param[in] fs_inode  単純なファイルシステムのI-node情報
-   @param[in] file_priv ファイルディスクリプタのプライベート情報
-   @param[in] buf       読み込みバッファ
-   @param[in] pos       ファイル内での読み込み開始オフセット(単位: バイト)
-   @param[in] len       読み込み長
-   @retval  0           正常終了
+   単純なファイルシステムからデータを読み込む
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  fs_vnid   単純なファイルシステムのI-node番号
+   @param[in]  fs_inode  単純なファイルシステムのI-node情報
+   @param[in]  file_priv ファイルディスクリプタのプライベート情報
+   @param[in]  buf       読み込みバッファ
+   @param[in]  pos       ファイル内での読み込み開始オフセット(単位: バイト)
+   @param[in]  len       読み書き長
+   @param[in]  rw_flag   読み取り/書き込み種別
+   @param[out] rwlenp    読み書きした長さ
+   @retval  0         正常終了
+   @retval -E2BIG     I-node番号/ファイルサイズが大きすぎる
+   @retval -ENOENT    未割り当てのI-nodeを指定した
+   @retval -ENOSPC    空きブロックがない
  */
 int
-simplefs_inode_read(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid, 
-    simplefs_inode *fs_inode, vfs_file_private file_priv,
-    void *buf, off_t pos, ssize_t len){
+simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+    simplefs_inode *fs_inode, simplefs_file_private file_priv,
+    void *buf, off_t pos, ssize_t len, int rw_flag, ssize_t *rwlenp){
+	int                 rc;
+	size_t          blksiz;
+	size_t         remains;
+	size_t           total;
+	off_t          cur_pos;
+	off_t          blk_off;
+	simplefs_blkno  rw_blk;
+	ssize_t          rwsiz;
+	ktimespec           ts;
+
+	if ( ( pos > fs_inode->i_size ) || ( pos > ( pos + len ) ) ) {
+
+		/* ファイル終端に達した場合
+		 */
+		if ( rwlenp != NULL )
+			*rwlenp = 0;
+		goto success;  /* EOF */
+	}
+
+	blksiz = fs_super->s_blksiz; /* ブロックサイズ取得 */
+	/* 読み書きサイズを算出
+	 */
+	if ( rw_flag == SIMPLEFS_RW_READ )
+		total = MIN(len, fs_inode->i_size - pos);  /* 読み込みサイズ */
+	else
+		total = len;  /* 書き込みサイズ */
+
+	remains = total; /* 残転送サイズ */
 	
+	for(rwsiz = 0, cur_pos = pos; remains > 0; remains -= rwsiz, cur_pos += rwsiz ){
+
+		rc = simplefs_read_mapped_block(fs_super, fs_inode,
+		    cur_pos, &rw_blk); /* 読み書き対象物理ブロック番号を算出 */
+
+		if ( rc != 0 ) {
+
+			/* ゾーンが割り当てられていない場合は, 新たにゾーンを割り当てる 
+			 */
+			rc = simplefs_alloc_block(fs_super, &rw_blk);
+			if ( rc != 0 )
+				goto error_out; /* 割り当てたブロックを解放する */
+
+			/* 新たに割り当てたブロックの内容をクリアする */
+			rc = simplefs_clear_block(fs_super, fs_inode, rw_blk,
+			    0, blksiz);  /* ブロック内をクリアする */
+			kassert( rc == 0 );
+
+			/* ブロックをマップする */
+			rc = simplefs_write_mapped_block(fs_super, fs_inode,
+			    cur_pos, rw_blk);
+			if ( rc != 0 ) {  /* 割り当てたブロックをマップできなかった */
+
+				/* 割り当てたブロックを解放する  */
+				simplefs_free_block(fs_super, fs_inode, rw_blk);
+				goto error_out;
+			}
+		}
+
+		blk_off = cur_pos % blksiz;  /* ブロック内オフセット */
+		rwsiz = MIN(remains, blksiz - blk_off);  /* ブロック内の読み書き量 */
+
+		if ( rw_flag == SIMPLEFS_RW_READ ) {
+
+			rc = simplefs_read_block(fs_super, fs_inode,
+			    buf, rw_blk, blk_off, rwsiz);  /* ブロックから読み込む */
+			kassert( rc == 0 );
+		} else {
+
+			rc = simplefs_write_block(fs_super, fs_inode,
+			    buf, rw_blk, blk_off, rwsiz);  /* ブロックに書き込む */
+			kassert( rc == 0 );
+		}
+	}
+
+	if ( total != remains ) {  /* 読み書きを行った場合 */
+	
+		if ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) {  /* I-nodeの更新を行う場合 */
+
+			tim_walltime_get(&ts); /* 現在時刻を得る */
+			
+			if ( rw_flag == SIMPLEFS_RW_WRITE ) {  /* 書き込みの場合 */
+
+				/* サイズ更新 */
+				if ( ( pos + total - remains ) > fs_inode->i_size ) 
+					fs_inode->i_size = pos + total - remains;
+
+				/* 最終書き込み時刻を更新する */
+				fs_inode->i_mtime = ts.tv_sec;
+			} else {
+			
+				/* 最終読み込み時刻を更新する */
+				fs_inode->i_atime = ts.tv_sec;
+			}
+
+			/* I-node情報を更新 */
+			rc = simplefs_write_inode(fs_super, fs_vnid, fs_inode);
+			if ( rc != 0 ) 
+				goto error_out;	
+		}
+
+		if ( rwlenp != NULL )
+			*rwlenp = total - remains;  /* 読み書きを行えたサイズを返却 */
+	}
+
+success:
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   単純なファイルシステムからデータを読み取る
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  fs_vnid   単純なファイルシステムのI-node番号
+   @param[in]  fs_inode  単純なファイルシステムのI-node情報
+   @param[in]  file_priv ファイルディスクリプタのプライベート情報
+   @param[in]  buf       読み込み/書き込みバッファ
+   @param[in]  pos       ファイル内での読み込み/書き込み開始オフセット(単位: バイト)
+   @param[in]  len       読み書き長(単位:バイト)
+   @retval  0以上     読み込んだ長さ(単位:バイト)
+   @retval -E2BIG     I-node番号/ファイルサイズが大きすぎる
+   @retval -ENOENT    未割り当てのI-nodeを指定した
+   @retval -ENOSPC    空きブロックがない
+ */
+ssize_t
+simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+    simplefs_inode *fs_inode, simplefs_file_private file_priv,
+    void *buf, off_t pos, ssize_t len){
+	int        rc;
+	ssize_t rwlen;
+
+	if ( !simplefs_inode_is_alloced(fs_super, fs_vnid) )
+		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
+	
+	/* ブロックから読み込む */
+	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid, 
+	    fs_inode, file_priv, buf, pos, len, SIMPLEFS_RW_READ, &rwlen);
+	if ( 0 > rc )
+		goto error_out;
+
+	return rwlen;  /* 読み込んだ長さを返却する */
+
+error_out:
+	return rc;  /* エラーコードを返却する */	
+}
+
+/**
+   単純なファイルシステムにデータを書き込む
+   @param[in]  fs_super  スーパブロック情報
+   @param[in]  fs_vnid   単純なファイルシステムのI-node番号
+   @param[in]  fs_inode  単純なファイルシステムのI-node情報
+   @param[in]  file_priv ファイルディスクリプタのプライベート情報
+   @param[in]  buf       書き込みバッファ
+   @param[in]  pos       ファイル内での読み込み開始オフセット(単位: バイト)
+   @param[in]  len       書き込み長(単位:バイト)
+   @retval  0以上     書き込んだ長さ(単位:バイト)
+   @retval -E2BIG     I-node番号/ファイルサイズが大きすぎる
+   @retval -ENOENT    未割り当てのI-nodeを指定した
+   @retval -ENOSPC    空きブロックがない
+ */
+ssize_t
+simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+    simplefs_inode *fs_inode, simplefs_file_private file_priv,
+    void *buf, off_t pos, ssize_t len){
+	int        rc;
+	ssize_t rwlen;
+
+	if ( !simplefs_inode_is_alloced(fs_super, fs_vnid) )
+		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
+
+	/* ブロックに書き込む */
+	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid, 
+	    fs_inode, file_priv, buf, pos, len, SIMPLEFS_RW_WRITE, &rwlen);
+	if ( 0 > rc )
+		goto error_out;
+
+	return rwlen;  /* 書き込んだ長さを返却する */
+
+error_out:
+	return rc;  /* エラーコードを返却する */	
 }
 
 /**

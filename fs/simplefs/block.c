@@ -82,7 +82,7 @@ simplefs_write_mapped_block(simplefs_super_block *fs_super, simplefs_inode *fs_i
    @retval     -EFBIG      ファイル長よりoffの方が大きい
  */
 int
-simplefs_unmap_block(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
+simplefs_unmap_block(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
     simplefs_inode *fs_inode, off_t off, ssize_t len) {
 
 	if ( ( 0 > off ) || ( 0 > len ) )
@@ -104,7 +104,7 @@ simplefs_unmap_block(simplefs_super_block *fs_super, vfs_vnode_id fs_vnid,
    @param[in]  fs_super   単純なファイルシステムのスーパブロック情報
    @param[out] block_nump ブロック番号返却域
    @retval     0      正常終了
-   @retval    -ENOSPC 空きゾーンがない
+   @retval    -ENOSPC 空きブロックがない
  */
 int 
 simplefs_alloc_block(simplefs_super_block *fs_super, simplefs_blkno *block_nump){
@@ -163,6 +163,66 @@ simplefs_clear_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
 
 	memset(SIMPLEFS_REFER_DATA(fs_inode, block_num) + offset, 0,
 	    size); /* ブロック内をクリアする */
+
+	return 0;
+}
+
+/**
+   単純なファイルシステムのブロックから読み込む
+   @param[in] fs_super  単純なファイルシステムのスーパブロック情報
+   @param[in] fs_inode  単純なファイルシステムのI-node情報
+   @param[in] buf       読み込みバッファ
+   @param[in] block_num ブロック番号
+   @param[in] offset    ブロック内のクリア開始オフセット (単位: バイト)
+   @param[in] size      ブロック内のクリアサイズ (単位: バイト)
+   @retval    0      正常終了
+   @retval   -EINVAL offset/sizeがブロック長を超えている
+ */
+int
+simplefs_read_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
+    void *buf, simplefs_blkno block_num, off_t offset, off_t size){
+
+	if ( ( offset >= fs_super->s_blksiz ) ||
+	    ( size >= fs_super->s_blksiz ) )
+		return -EINVAL;  /*  offset/sizeがブロック長を超えている  */
+
+	if ( ( offset > ( offset + size )  ) ||
+	    ( ( offset + size ) > fs_super->s_blksiz ) )
+		return -EINVAL;  /*  offset + sizeがブロック長を超えている  */
+
+	/* ブロックから読み込む */
+	memmove(buf, SIMPLEFS_REFER_DATA(fs_inode, block_num) + offset,
+	    size);
+
+	return 0;
+}
+
+/**
+   単純なファイルシステムのブロックに書き込む
+   @param[in] fs_super  単純なファイルシステムのスーパブロック情報
+   @param[in] fs_inode  単純なファイルシステムのI-node情報
+   @param[in] buf       書き込みバッファ
+   @param[in] block_num ブロック番号
+   @param[in] offset    ブロック内のクリア開始オフセット (単位: バイト)
+   @param[in] size      ブロック内のクリアサイズ (単位: バイト)
+   @retval    0      正常終了
+   @retval   -EINVAL offset/sizeがブロック長を超えている
+ */
+int
+simplefs_write_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
+    void *buf, simplefs_blkno block_num, off_t offset, off_t size){
+
+	if ( ( offset >= fs_super->s_blksiz ) ||
+	    ( size >= fs_super->s_blksiz ) )
+		return -EINVAL;  /*  offset/sizeがブロック長を超えている  */
+
+	if ( ( offset > ( offset + size )  ) ||
+	    ( ( offset + size ) > fs_super->s_blksiz ) )
+		return -EINVAL;  /*  offset + sizeがブロック長を超えている  */
+
+	/* ブロックに書き込む */
+	memmove(SIMPLEFS_REFER_DATA(fs_inode, block_num) + offset, buf, 
+	    size);
 
 	return 0;
 }
