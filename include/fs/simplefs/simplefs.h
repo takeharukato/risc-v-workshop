@@ -22,7 +22,7 @@
 #define SIMPLEFS_INODE_NR     (64)
 /**< ファイル中の最大データブロック数 (単位:個)  */
 #define SIMPLEFS_IDATA_NR    (128)  
-/** ヌル文字を含む最大ファイル名長 (単位:バイト) */
+/** NULL終端を含まない最大ファイル名長 (単位:バイト) */
 #define SIMPLEFS_DIRSIZ       (60)  
 /** データブロック長 (単位:バイト) */
 #define SIMPLEFS_SUPER_BLOCK_SIZE     (UINT64_C(4096))   
@@ -56,7 +56,7 @@ typedef struct _simplefs_data{
  */
 typedef struct _simplefs_dent{
 	uint32_t                d_inode;  /**< I-node番号                                  */
-	char    d_name[SIMPLEFS_DIRSIZ];  /**< ファイル名 (NULLターミネートなし, 60バイト) */
+	char    d_name[SIMPLEFS_DIRSIZ];  /**< ファイル名 (NULL終端なし, 60バイト) */
 }simplefs_dent;
 
 /**
@@ -150,6 +150,14 @@ int simplefs_write_mapped_block(struct _simplefs_super_block *_fs_super,
 int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode, off_t _off, ssize_t _len);
 
+ssize_t simplefs_inode_read(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
+    struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
+    void *_buf, off_t _pos, ssize_t _len);
+
+ssize_t simplefs_inode_write(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
+    struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
+    void *_buf, off_t _pos, ssize_t _len);
+
 int simplefs_alloc_block(struct _simplefs_super_block *_fs_super,
     simplefs_blkno *_block_nump);
 void simplefs_free_block(struct _simplefs_super_block *_fs_super, simplefs_inode *_fs_inode,
@@ -163,6 +171,8 @@ int simplefs_write_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, void *_buf, simplefs_blkno _block_num,
     off_t _offset, off_t _size);
 
+int simplefs_dirent_lookup(struct _simplefs_super_block *_fs_super,
+    struct _simplefs_inode *_fs_dir_inode, const char *_name, simplefs_ino *_fs_vnidp);
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */
