@@ -108,8 +108,8 @@ simplefs_get_free_dirent(simplefs_super_block *fs_super, simplefs_inode *fs_dir_
 		}
 	}
 
-	if ( ( fs_dir_inode->i_size > cur_pos )
-		&& ( ( fs_dir_inode->i_size - cur_pos ) > sizeof(simplefs_dent) ) ) {
+	if ( ( SIMPLEFS_SUPER_MAX_FILESIZE > cur_pos )
+		&& ( ( SIMPLEFS_SUPER_MAX_FILESIZE - cur_pos ) > sizeof(simplefs_dent) ) ) {
 
 		/* ディレクトリエントリを書き込む余裕がある
 		 */

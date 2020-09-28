@@ -106,7 +106,7 @@ simplefs_free_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
 }
 
 /**
-   単純なファイルシステムのI-node情報を二次記憶から読み込む
+   単純なファイルシステムのI-node情報へのポインタを得る
    @param[in]  fs_super  単純なファイルシステムのスーパブロック情報
    @param[in]  fs_vnid   単純なファイルシステムのI-node番号
    @param[out] fs_inodep 単純なファイルシステムのI-node情報を指し示すポインタのアドレス
@@ -115,7 +115,7 @@ simplefs_free_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
    @retval   -ENOENT    未割り当てのI-nodeを指定した
  */
 int
-simplefs_read_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_refer_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode **fs_inodep){
 
 	kassert( fs_inodep != NULL );
@@ -641,7 +641,8 @@ simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	int        rc;
 	ssize_t rwlen;
 
-	if ( !simplefs_inode_is_alloced(fs_super, fs_vnid) )
+	if ( ( !simplefs_inode_is_alloced(fs_super, fs_vnid) ) &&
+	    ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) )
 		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
 	
 	/* ブロックから読み込む */
@@ -677,7 +678,8 @@ simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	int        rc;
 	ssize_t rwlen;
 
-	if ( !simplefs_inode_is_alloced(fs_super, fs_vnid) )
+	if ( ( !simplefs_inode_is_alloced(fs_super, fs_vnid) ) &&
+	    ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) )
 		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
 
 	/* ブロックに書き込む */

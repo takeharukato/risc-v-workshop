@@ -142,6 +142,8 @@ int simplefs_device_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode
 int simplefs_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode);
 int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode);
+int simplefs_refer_inode(struct _simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+    struct _simplefs_inode **fs_inodep);
 
 int simplefs_read_mapped_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno *_blkp);

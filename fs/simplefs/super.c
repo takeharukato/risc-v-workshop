@@ -25,8 +25,10 @@ static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tb
  */
 static void
 simplefs_init_super(simplefs_super_block *fs_super){
-	int i;
-
+	int                         rc;
+	int                          i;
+	simplefs_inode *root_dir_inode;
+	
 	fs_super->s_blksiz = SIMPLEFS_SUPER_BLOCK_SIZE;  /* ブロック長を初期化  */
 	fs_super->s_private = NULL;  /* プライベート情報を初期化  */
 	bitops_zero(&fs_super->s_inode_map);	/* I-nodeマップをクリア */
@@ -39,10 +41,29 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	for(i = 0; SIMPLEFS_INODE_NR > i; ++i) 
 		memset(&fs_super->s_inode[i], 0, sizeof(simplefs_inode));
 
-	/* TODO: ルートディレクトリのディレクトリエントリを作成する  */
-	
-	fs_super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */
+	/* ルートディレクトリのディレクトリエントリを作成する
+	 */
+	/* ルートディレクトリのI-nodeを参照する */
+	rc = simplefs_refer_inode(fs_super, SIMPLEFS_INODE_ROOT_INO, &root_dir_inode);
+	kassert( rc == 0 );
 
+	/* TODO: umask制御を行う */
+	/* ルートディレクトリのI-nodeをディレクトリとして初期化する */
+	rc = simplefs_inode_init(root_dir_inode,
+	    S_IFDIR|
+	    VFS_VNODE_MODE_ACS_IRWXU|VFS_VNODE_MODE_ACS_IRWXG|VFS_VNODE_MODE_ACS_IRWXO);
+	kassert( rc == 0 );
+
+	/* ルートディレクトリの".", ".."エントリを作成する */
+	rc = simplefs_dirent_add(fs_super, root_dir_inode, SIMPLEFS_INODE_ROOT_INO,
+	    ".");
+	kassert( rc == 0 );
+	rc = simplefs_dirent_add(fs_super, root_dir_inode, SIMPLEFS_INODE_ROOT_INO,
+	    "..");
+	kassert( rc == 0 );
+
+	fs_super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */
+	
 	return;
 }
 
