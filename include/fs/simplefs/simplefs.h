@@ -174,9 +174,11 @@ int simplefs_write_block(struct _simplefs_super_block *_fs_super,
     off_t _offset, off_t _size);
 
 int simplefs_dirent_add(struct _simplefs_super_block *fs_super,
-    struct _simplefs_inode *fs_dir_inode, simplefs_ino _fs_vnid, const char *_name);
+    simplefs_ino _fs_dir_vnid, struct _simplefs_inode *fs_dir_inode,
+    simplefs_ino _fs_vnid, const char *_name);
 int simplefs_dirent_del(struct _simplefs_super_block *_fs_super,
-    struct _simplefs_inode *_fs_dir_inode, simplefs_ino _fs_vnid, const char *_name);
+    simplefs_ino _fs_dir_vnid, struct _simplefs_inode *_fs_dir_inode,
+    simplefs_ino _fs_vnid, const char *_name);
 int simplefs_dirent_lookup(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_dir_inode, const char *_name, simplefs_ino *_fs_vnidp);
 

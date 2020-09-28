@@ -47,7 +47,6 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	rc = simplefs_refer_inode(fs_super, SIMPLEFS_INODE_ROOT_INO, &root_dir_inode);
 	kassert( rc == 0 );
 
-	/* TODO: umask制御を行う */
 	/* ルートディレクトリのI-nodeをディレクトリとして初期化する */
 	rc = simplefs_inode_init(root_dir_inode,
 	    S_IFDIR|
@@ -55,11 +54,11 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	kassert( rc == 0 );
 
 	/* ルートディレクトリの".", ".."エントリを作成する */
-	rc = simplefs_dirent_add(fs_super, root_dir_inode, SIMPLEFS_INODE_ROOT_INO,
-	    ".");
+	rc = simplefs_dirent_add(fs_super, SIMPLEFS_INODE_ROOT_INO, root_dir_inode,
+	    SIMPLEFS_INODE_ROOT_INO, ".");
 	kassert( rc == 0 );
-	rc = simplefs_dirent_add(fs_super, root_dir_inode, SIMPLEFS_INODE_ROOT_INO,
-	    "..");
+	rc = simplefs_dirent_add(fs_super, SIMPLEFS_INODE_ROOT_INO, root_dir_inode,
+	    SIMPLEFS_INODE_ROOT_INO, "..");
 	kassert( rc == 0 );
 
 	fs_super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */

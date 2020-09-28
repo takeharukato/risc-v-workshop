@@ -127,6 +127,7 @@ success:
 /**
    単純なファイルシステムのディレクトリエントリ中にディレクトリエントリを追加する
    @param[in]  fs_super     単純なファイルシステムのスーパブロック情報
+   @param[in]  fs_dir_vnid  単純なファイルシステムのディレクトリのI-node番号
    @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
    @param[in]  fs_vnid      作成するエントリの単純なファイルシステムのI-node番号
    @param[in]  name         作成するエントリの名前
@@ -137,8 +138,8 @@ success:
    @retval -EIO     ディレクトリエントリの書き込みに失敗した
  */
 int
-simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode,
-    simplefs_ino fs_vnid, const char *name){
+simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
+    simplefs_inode *fs_dir_inode, simplefs_ino fs_vnid, const char *name){
 	int                 rc;
 	ssize_t          wrlen;
 	off_t          new_pos;
@@ -172,7 +173,7 @@ simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode
 
 	/* ディレクトリエントリを書き込む
 	 */
-	wrlen = simplefs_inode_write(fs_super, SIMPLEFS_INODE_INVALID_INO, 
+	wrlen = simplefs_inode_write(fs_super, fs_dir_vnid, 
 	    fs_dir_inode, NULL, &new_ent, new_pos, sizeof(simplefs_dent));
 	if ( wrlen != sizeof(simplefs_dent) ) {
 
@@ -189,6 +190,7 @@ error_out:
 /**
    単純なファイルシステムのディレクトリエントリ中にディレクトリエントリを削除する
    @param[in]  fs_super     単純なファイルシステムのスーパブロック情報
+   @param[in]  fs_dir_vnid  単純なファイルシステムのディレクトリのI-node番号
    @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
    @param[in]  fs_vnid      作成するエントリの単純なファイルシステムのI-node番号
    @param[in]  name         作成するエントリの名前
@@ -198,8 +200,8 @@ error_out:
    @retval -EIO     ディレクトリエントリの書き込みに失敗した
  */
 int
-simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode,
-    simplefs_ino fs_vnid, const char *name){
+simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
+    simplefs_inode *fs_dir_inode, simplefs_ino fs_vnid, const char *name){
 	int                 rc;
 	ssize_t          wrlen;
 	off_t          ent_pos;
@@ -208,6 +210,7 @@ simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
+	/*  名前をキーにディレクトリエントリを検索する */
 	rc = simplefs_lookup_dirent_full(fs_super, fs_dir_inode, name, NULL, &ent_pos);
 	if ( rc != 0 ) {
 
@@ -223,7 +226,7 @@ simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode
 
 	/* ディレクトリエントリを書き込む
 	 */
-	wrlen = simplefs_inode_write(fs_super, SIMPLEFS_INODE_INVALID_INO,
+	wrlen = simplefs_inode_write(fs_super, fs_dir_vnid,
 	    fs_dir_inode, NULL, &new_ent, ent_pos, sizeof(simplefs_dent));
 	if ( wrlen != sizeof(simplefs_dent) ) {
 
