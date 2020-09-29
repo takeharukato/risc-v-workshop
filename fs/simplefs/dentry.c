@@ -11,7 +11,6 @@
 #include <kern/kern-common.h>
 
 #include <kern/mutex.h>
-#include <kern/dev-pcache.h>
 #include <kern/vfs-if.h>
 
 #include <fs/simplefs/simplefs.h>

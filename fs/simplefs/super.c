@@ -11,12 +11,12 @@
 #include <kern/kern-common.h>
 
 #include <kern/mutex.h>
-#include <kern/dev-pcache.h>
 #include <kern/vfs-if.h>
 #include <kern/timer-if.h>
 
 #include <fs/simplefs/simplefs.h>
 
+/** スーパーブロック表 */
 static simplefs_table g_simplefs_tbl=__SIMPLEFS_TABLE_INITIALIZER(&g_simplefs_tbl);
 
 /**
@@ -29,6 +29,8 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	int                          i;
 	simplefs_inode *root_dir_inode;
 	
+	mutex_init(&fs_super->mtx);  /*  排他用mutexを初期化する */
+
 	fs_super->s_blksiz = SIMPLEFS_SUPER_BLOCK_SIZE;  /* ブロック長を初期化  */
 	fs_super->s_private = NULL;  /* プライベート情報を初期化  */
 	bitops_zero(&fs_super->s_inode_map);	/* I-nodeマップをクリア */
@@ -67,17 +69,6 @@ simplefs_init_super(simplefs_super_block *fs_super){
 }
 
 /**
-   単純なファイルシステムのスーパブロックを読み込む
-   @param[in]  dev シンプルファイルシステムが記録されたブロックデバイスのデバイスID
-   @param[out] fs_super 情報返却領域
-   @retval 0   正常終了
- */
-int
-simplefs_read_super(dev_id dev, simplefs_super_block *fs_super){
-
-	return 0;
-}
-/**
    単純なファイルシステムの初期化
  */
 int
@@ -88,10 +79,19 @@ simplefs_init(void){
 	mutex_lock(&g_simplefs_tbl.mtx);
 
 	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i) 
-		simplefs_init_super(&g_simplefs_tbl.super_blocks[i]);
+		simplefs_init_super(&g_simplefs_tbl.super_blocks[i]); /* スーパブロックを初期化 */
 
 	/* 単純なファイルシステム全体に対するロックを解放する  */
 	mutex_unlock(&g_simplefs_tbl.mtx);
 
 	return 0;
+}
+
+/**
+   単純なファイルシステムの終了
+ */
+void
+simplefs_finalize(void){
+
+	return ;
 }

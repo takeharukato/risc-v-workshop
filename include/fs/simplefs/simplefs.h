@@ -85,6 +85,7 @@ typedef struct _simplefs_inode{
    単純ファイルシステムのボリューム管理情報 (スーパブロック情報)
  */
 typedef struct _simplefs_super_block{
+	struct _mutex                                      mtx;  /**< 排他用mutex    */
 	off_t                                         s_blksiz; /**< ブロック長           */
 	uint64_t                                       s_state; /**< スーパブロックの状態 */
 	void                                        *s_private; /**< プライベート情報     */
