@@ -887,16 +887,16 @@ unlock_out:
 /**
    ファイルポジションを更新する
    @param[in]  fs_super  スーパブロック情報
-   @param[in]  v         ファイルシステム固有v-node情報
-   @param[in]  file_priv ファイルディスクリプタプライベート情報
+   @param[in]  fs_vnode  ファイルシステム固有v-node情報
    @param[in]  pos       変更するオフセット位置(単位:バイト)
-   @param[out] new_posp  変更後オフセット位置(単位:バイト)返却領域
    @param[in]  whence    オフセット位置指定
+   @param[in]  file_priv ファイルディスクリプタプライベート情報
+   @param[out] new_posp  変更後オフセット位置(単位:バイト)返却領域
    @retval    0          正常終了
  */
 static int
-tst_vfs_tstfs_seek(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_file_private file_priv, 
-	       off_t pos, off_t *new_posp, int whence){
+tst_vfs_tstfs_seek(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode, off_t pos, int whence,
+    vfs_file_private file_priv, off_t *new_posp){
 
 	return 0;
 }

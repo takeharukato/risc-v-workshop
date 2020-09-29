@@ -34,8 +34,8 @@ tst_vfs_fstbl_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
 	return 0;
 }
 static int
-tst_vfs_fstbl_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, vfs_file_private file_priv, 
-	       off_t pos, off_t *new_posp, int whence){
+tst_vfs_fstbl_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, 
+    off_t pos,  int whence, vfs_file_private file_priv, off_t *new_posp){
 
 	return 0;
 }

@@ -53,8 +53,6 @@ typedef struct _fs_calls {
 	    vfs_fs_vnode _fs_vnode);
 	int (*fs_removevnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
 	    vfs_fs_vnode _fs_vnode);
-	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
-	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_open)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode, vfs_open_flags _omode,
 	    vfs_file_private *_file_privp);
 	int (*fs_close)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
@@ -69,11 +67,11 @@ typedef struct _fs_calls {
 	    vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
 	    const void *_buf, off_t _pos, ssize_t _len);
 	int (*fs_seek)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
-	    vfs_file_private _file_priv, off_t _pos, off_t *_new_posp, int _whence);
+	    off_t _pos, int _whence, vfs_file_private _file_priv, off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
-	    vfs_file_private _file_priv, int _op, void *_buf, size_t _len);
-	int (*fs_create)(vfs_fs_super fs_super, vfs_fs_vnode _fs_dir_vnode,
-	    const char *_name, struct _file_stat *_fstat, vfs_vnode_id *_new_vnidp);
+	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
+	int (*fs_create)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
+	    const char *_name, struct _file_stat *_stat, vfs_vnode_id *_new_vnidp);
 	int (*fs_unlink)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
 	    const char *_name);
 	int (*fs_rename)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_olddir_vnode,
@@ -82,6 +80,8 @@ typedef struct _fs_calls {
 	    const char *_name, vfs_vnode_id *_new_vnidp);
 	int (*fs_rmdir)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
 	    const char *_name);
+	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
+	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_getattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
 	    vfs_vstat_mask _stat_mask, struct _file_stat *_statp);
 	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
