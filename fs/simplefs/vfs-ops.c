@@ -123,6 +123,37 @@ simplefs_seek(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
 
 	return 0;
 }
+/**
+   単純なファイルシステムのv-nodeを返却し, 削除する
+   @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
+   @param[in]  fs_vnode    削除対象v-nodeのv-node情報
+   @param[in]  file_priv   ファイル記述子のプライベート情報
+   @param[in]  pos         ファイル操作位置
+   @param[out] new_posp    操作後のファイル操作位置返却領域
+   @param[in]  whence      ファイル操作位置指定
+   @retval     0           正常終了
+ */
+int
+fs_open(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode, vfs_open_flags omode,
+	vfs_file_private *_file_privp) {
+}
+int
+fs_close(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+	 vfs_file_private _file_priv){
+}
+int
+fs_release_fd(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
+		     vfs_file_private _file_priv);
+int
+fs_fsync(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode);
+ssize_t
+fs_read(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+		   vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
+		   void *_buf, off_t _pos, ssize_t _len);
+ssize_t
+fs_write(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
+		    vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
+		    const void *_buf, off_t _pos, ssize_t _len);
 
 /**
    単純なファイルシステムのVFS 操作

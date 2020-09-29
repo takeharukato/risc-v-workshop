@@ -1527,8 +1527,8 @@ vfs_mount_with_fsname(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_
 	 */
 	if ( mount->m_fs->c_calls->fs_mount != NULL ) {
 
-		rc = mount->m_fs->c_calls->fs_mount(&mount->m_fs_super, mount->m_id, 
-		    dev, mnt_args, &root_id);
+		rc = mount->m_fs->c_calls->fs_mount(mount->m_id, 
+		    dev, mnt_args, &mount->m_fs_super, &root_id);
 		if ( rc != 0 ) {
 		
 			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )

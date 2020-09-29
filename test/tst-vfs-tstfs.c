@@ -697,18 +697,18 @@ error_out:
 
 /**
    ファイルシステムをマウントする
-   @param[in] fs_super  スーパブロック情報
-   @param[in] id        マウントポイントID
-   @param[in] dev       デバイスID
-   @param[in] args      引数情報
-   @param[in] root_vnid マウントポイントのv-node ID返却領域
+   @param[in] id          マウントポイントID
+   @param[in] dev         デバイスID
+   @param[in] args        引数情報
+   @param[out] fs_superp  スーパブロック情報返却領域
+   @param[out] root_vnidp マウントポイントのv-node ID返却領域
    @retval  0      正常終了
    @retval -ENOENT 指定されたデバイスが見つからない
    @retval -ENOMEM メモリ不足
  */
 static int
-tst_vfs_tstfs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *args, 
-		 vfs_vnode_id *root_vnid){
+tst_vfs_tstfs_mount(vfs_mnt_id id, dev_id dev, void *args, 
+		 vfs_fs_super *fs_superp, vfs_vnode_id *root_vnidp){
 	int                       rc;
 	uint32_t               major;
 	tst_vfs_tstfs_super   *super;
@@ -722,8 +722,8 @@ tst_vfs_tstfs_mount(vfs_fs_super *fs_super, vfs_mnt_id id, dev_id dev, void *arg
 	if ( rc != 0 )
 		return rc;
 
-	*fs_super = (vfs_fs_super)super;
-	*root_vnid = (vfs_vnode_id)TST_VFS_TSTFS_ROOT_VNID;
+	*fs_superp = (vfs_fs_super)super;
+	*root_vnidp = (vfs_vnode_id)TST_VFS_TSTFS_ROOT_VNID;
 
 	return 0;
 }

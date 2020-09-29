@@ -41,13 +41,13 @@ typedef struct _fs_table{
 /** ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
-	int (*fs_mount)(vfs_fs_super *_fs_super, vfs_mnt_id _mntid, dev_id _dev,
-	    void *_args, vfs_vnode_id *_root_vnidp);
+	int (*fs_mount)(vfs_mnt_id _mntid, dev_id _dev,
+	    void *_args, vfs_fs_super *_fs_superp, vfs_vnode_id *_root_vnidp);
 	int (*fs_unmount)(vfs_fs_super _fs_super);
 	int (*fs_sync)(vfs_fs_super _fs_super);
 	int (*fs_lookup)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
 			 const char *_name, vfs_vnode_id *_vnidp);
-	int (*fs_getvnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid, vfs_fs_mode *_modep,
+	int (*fs_getvnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid, vfs_fs_mode *_fs_modep,
 	    vfs_fs_vnode *_fs_vnodep);
 	int (*fs_putvnode)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
 	    vfs_fs_vnode _fs_vnode);
