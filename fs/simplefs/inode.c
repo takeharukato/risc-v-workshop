@@ -496,9 +496,9 @@ error_out:
    @param[in]  file_priv ファイルディスクリプタのプライベート情報
    @param[in]  buf       読み込みバッファ
    @param[in]  pos       ファイル内での読み込み開始オフセット(単位: バイト)
-   @param[in]  len       読み書き長
+   @param[in]  len       読み書き長(単位: バイト)
    @param[in]  rw_flag   読み取り/書き込み種別
-   @param[out] rwlenp    読み書きした長さ
+   @param[out] rwlenp    読み書きした長さ(単位: バイト)
    @retval  0         正常終了
    @retval -E2BIG     I-node番号/ファイルサイズが大きすぎる
    @retval -ENOENT    未割り当てのI-nodeを指定した
