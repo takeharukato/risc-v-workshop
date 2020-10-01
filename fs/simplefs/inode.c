@@ -20,6 +20,15 @@
 #define SIMPLEFS_RW_WRITE  (1)  /**< 書き込み */
 
 /**
+   I-nodeを参照する
+   @param[in] _fs_super 単純なファイルシステムのスーパブロック情報
+   @param[in] _ino I-node番号
+   @return 対応するI-node情報
+ */
+#define SIMPLEFS_REFER_INODE(_fs_super, _ino)		\
+	((struct _simplefs_inode *)(&((_fs_super)->s_inode[(_ino)])))
+
+/**
    単純なファイルシステムのディレクトリI-nodeを初期化する(ファイル種別に依らない共通処理)
    @param[in] fs_inode 単純なファイルシステムのI-node情報
  */
@@ -110,20 +119,18 @@ simplefs_free_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
    @param[in]  fs_vnid   単純なファイルシステムのI-node番号
    @param[out] fs_inodep 単純なファイルシステムのI-node情報を指し示すポインタのアドレス
    @retval    0         正常終了
-   @retval   -E2BIG     I-node番号が大きすぎる
-   @retval   -ENOENT    未割り当てのI-nodeを指定した
+   @retval   -ENOENT    不正なI-nodeまたは未割り当てのI-nodeを指定した
  */
 int
 simplefs_refer_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode **fs_inodep){
-
+	int rc;
+	
 	kassert( fs_inodep != NULL );
 	
-	if ( fs_vnid >= SIMPLEFS_INODE_NR )
-		return -E2BIG;  /*  I-node番号が大きすぎる  */
-
-	if ( !bitops_isset(fs_vnid, &fs_super->s_inode_map) )
-		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
+	rc = simplefs_inode_is_alloced(fs_super, fs_vnid);
+	if ( rc != 0 )
+		return rc;
 
 	*fs_inodep = SIMPLEFS_REFER_INODE(fs_super, fs_vnid);  /* I-nodeを参照する */
 

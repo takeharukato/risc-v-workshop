@@ -240,16 +240,14 @@ error_out:
 }
 
 /**
-   単純なファイルシステムのディレクトリエントリ中にディレクトリエントリを検索し, 対応するI-node番号を返却する
+   単純なファイルシステムのディレクトリエントリを検索し, 指定された名前に対応するI-node番号を返却する
    @param[in]  fs_super     単純なファイルシステムのスーパブロック情報
    @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
    @param[in]  name         作成するエントリの名前
-   @param[out] fs_vnidp     エントリの単純なファイルシステムのI-node番号返却領域
+   @param[out] fs_vnidp     単純なファイルシステムのI-node番号返却領域
    @retval  0       正常終了
    @retval -ENOTDIR ディレクトリではないI-nodeを指定した
-   @retval -EEXIST  同じ名前のディレクトリエントリがすでに存在する
-   @retval -ENOSPC  空きエントリが見つからなかった
-   @retval -EIO     ディレクトリエントリの書き込みに失敗した
+   @retval -ENOENT  指定された名前のエントリが存在しない
  */
 int
 simplefs_dirent_lookup(simplefs_super_block *fs_super, simplefs_inode *fs_dir_inode,

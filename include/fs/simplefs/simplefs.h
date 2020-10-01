@@ -102,34 +102,6 @@ typedef struct _simplefs_table{
 }simplefs_table;
 
 /**
-   I-nodeを参照
-   @param[in] _fs_super 単純なファイルシステムのスーパブロック情報
-   @param[in] _ino I-node番号
-   @return 対応するI-node情報
- */
-#define SIMPLEFS_REFER_INODE(_fs_super, _ino)		\
-	((struct _simplefs_inode *)(&((_fs_super)->s_inode[(_ino)])))
-
-/**
-   I-nodeのデータブロックを参照
-   @param[in] _inodep I-nodeへのポインタ
-   @param[in] _blk    ブロック番号
-   @return データブロックの先頭アドレス
- */
-#define SIMPLEFS_REFER_DATA(_inodep, _blk)			\
-	((void *)(&((_inodep)->i_dblk.i_data[_blk])))
-
-/**
-   I-nodeのディレクトリエントリを参照
-   @param[in] _inodep I-nodeへのポインタ
-   @param[in] _idx    ディレクトリエントリ配列のインデックス
-   @return ディレクトリエントリへのポインタ
- */
-#define SIMPLEFS_REFER_DENT(_inodep, _idx)		\
-	((struct _simplefs_dent *)(&((_inodep)->i_dblk.i_dent[(_idx)])))
-
-
-/**
    単純ファイルシステム管理用大域データ初期化子
    @param _tablep 単純ファイルシステム管理用大域データへのポインタ
  */
@@ -183,6 +155,7 @@ int simplefs_dirent_del(struct _simplefs_super_block *_fs_super,
 int simplefs_dirent_lookup(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_dir_inode, const char *_name, simplefs_ino *_fs_vnidp);
 
+int simplefs_get_super(struct _simplefs_super_block **_fs_superp);
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */

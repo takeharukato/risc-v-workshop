@@ -14,6 +14,8 @@
 #include <kern/dev-pcache.h>
 #include <kern/vfs-if.h>
 
+#include <fs/simplefs/simplefs.h>
+
 /**
    単純なファイルシステムのマウント操作
    @param[in] mntid       マウントID
@@ -22,61 +24,163 @@
    @param[out] fs_superp  スーパブロックを指し示すポインタのアドレス
    @param[out] root_vnidp ルートディレクトリのv-node ID返却領域
    @retval     0          正常終了
+   @retval -ENOENT 空きスーパブロックがない
  */
 int
 simplefs_mount(vfs_mnt_id mntid, dev_id dev,
 	       void *args, vfs_fs_super *fs_superp, vfs_vnode_id *root_vnidp){
+	int                           rc;
+	simplefs_super_block *free_super;
+
+	kassert( fs_superp != NULL );
+	kassert( root_vnidp != NULL );
+
+	for( ; ; ) {
+		
+		rc = simplefs_get_super(&free_super);  /* 未マウントのスーパブロックを検索 */
+		if ( rc != 0 )
+			goto error_out;  /* 空きスーパーブロックが見つからなかった */
+
+		mutex_lock(&free_super->mtx);  /* スーパブロック情報のロックを獲得 */
+		if ( ( free_super->s_state &
+			( SIMPLEFS_SUPER_INITIALIZED|SIMPLEFS_SUPER_MOUNTED ) )
+		    == SIMPLEFS_SUPER_INITIALIZED ) {
+
+			/* スーパブロックをマウント状態に遷移 */
+			free_super->s_state |= SIMPLEFS_SUPER_MOUNTED;
+			mutex_unlock(&free_super->mtx); /* スーパブロック情報のロックを解放 */
+			break;  /* 空きスーパーブロックを獲得したのでループを抜ける */
+		}
+		mutex_unlock(&free_super->mtx);  /* スーパブロック情報のロックを解放 */
+	}
+
+
+	*fs_superp = free_super;  /* スーパブロック情報を返却 */
+	*root_vnidp = SIMPLEFS_INODE_ROOT_INO; /* ルートディレクトリのv-node番号を返却 */
 
 	return 0;
+
+error_out:
+	return rc;
 }
 
 /**
-   単純なファイルシステムのマウント操作
+   単純なファイルシステムのアンマウント操作
    @param[in] fs_super    単純なファイルシステムのスーパブロック情報
    @retval     0          正常終了
  */
 int
 simplefs_unmount(vfs_fs_super fs_super){
+	simplefs_super_block *super;
+
+	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
+	
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+
+	if ( ( super->s_state & SIMPLEFS_SUPER_MOUNTED ) == 0 )
+		goto unlock_out; /* アンマウント済み */
+
+	/* スーパブロックをアンマウント状態に遷移 */
+	super->s_state &= ~SIMPLEFS_SUPER_MOUNTED;
+
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 
 	return 0;
 }
 
 /**
-   単純なファイルシステムのマウント操作
+   単純なファイルシステムのバッファ書き戻し操作
    @param[in] fs_super    単純なファイルシステムのスーパブロック情報
    @retval     0          正常終了
  */
 int
 simplefs_sync(vfs_fs_super fs_super){
 
+	/* メモリファイルシステムであるため,
+	 * スーパブロック情報の書き戻しは不要
+	 */
 	return 0;
 }
 
 /**
-   単純なファイルシステムのマウント操作
+   単純なファイルシステムのディレクトリエントリを検索し, 
+   指定された名前に対応するI-node番号を返却する
    @param[in] fs_super    単純なファイルシステムのスーパブロック情報
-   @retval     0          正常終了
+   @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
+   @param[in]  name         作成するエントリの名前
+   @param[out] fs_vnidp     単純なファイルシステムのI-node番号返却領域
+   @retval     0  正常終了
+   @retval -ENOTDIR ディレクトリではないI-nodeを指定した
+   @retval -ENOENT  指定された名前のエントリが存在しない
  */
 int
 simplefs_lookup(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 		const char *name, vfs_vnode_id *vnidp){
+	int                          rc;
+	simplefs_ino               vnid;
+	simplefs_inode       *dir_inode;
+	simplefs_super_block     *super;
 
+	super = (simplefs_super_block *)fs_super;   /* スーパブロック情報を参照 */
+	dir_inode = (simplefs_inode *)fs_dir_vnode; /* I-node情報を参照 */
+
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+	
+	/* 名前をキーにディレクトリエントリ内を検索 */
+	rc = simplefs_dirent_lookup(super, dir_inode, name, &vnid);
+	if ( rc != 0 )
+		goto unlock_out;
+
+	if ( vnidp != NULL )
+		*vnidp = (vfs_vnode_id)vnid;  /* 対応するI-node番号を返却する */
+
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */	
 	return 0;
+
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+	return rc;
 }
 
 /**
-   単純なファイルシステムのv-node獲得
+   単純なファイルシステムのv-nodeを獲得する
    @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
    @param[in]  vnid        獲得対象ファイルのv-node ID
-   @param[out] fs_modep    ファイルモード値返却領域
+   @param[out] fs_modep    ファイル属性値返却領域
    @param[out] fs_vnodep   獲得したv-node情報を指し示すポインタのアドレス   
-   @retval     0          正常終了
+   @retval     0           正常終了
+   @retval    -ENOENT      無効なv-node IDまたは未割り当てのv-node IDを指定した
  */
 int
 simplefs_getvnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_mode *fs_modep,
-		vfs_fs_vnode *fs_vnodep){
+    vfs_fs_vnode *fs_vnodep){
+	int                      rc;
+	simplefs_inode       *inode;
+	simplefs_super_block *super;
 
+	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
+
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */	
+
+	/* I-node情報を参照 */
+	rc = simplefs_refer_inode(super, vnid, &inode);
+	if ( rc != 0 )
+		goto unlock_out;
+
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+
+	if ( fs_modep != NULL )
+		*fs_modep = (vfs_fs_mode)inode->i_mode; /* ファイル属性を返却 */
+	
+	if ( fs_vnodep != NULL )
+		*fs_vnodep = (vfs_fs_vnode)inode;  /* I-node情報を返却 */
+	
 	return 0;
+
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+	return rc;
 }
 
 /**
@@ -90,6 +194,8 @@ int
 simplefs_putvnode(vfs_fs_super fs_super, vfs_vnode_id vnid,
 	    vfs_fs_vnode fs_vnode){
 
+	/* 本ファイルシステムでは, 物理ファイルシステム固有の処理はない
+	 */
 	return 0;
 }
 

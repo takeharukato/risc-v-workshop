@@ -69,6 +69,44 @@ simplefs_init_super(simplefs_super_block *fs_super){
 }
 
 /**
+   単純なファイルシステムの空きスーパブロック情報を取得する
+   @param[out] fs_superp 単純なファイルシステムのスーパブロック情報を指し示すポインタのアドレス
+   @retval  0      空きスーパブロックが見つかった
+   @retval -ENOENT 空きスーパブロックがない
+   @note LO: 単純なファイルシステム全体をロック, スーパブロック情報のロックの順に獲得する
+ */
+int
+simplefs_get_super(simplefs_super_block **fs_superp){
+	int                          i;
+	simplefs_super_block *fs_super;
+	
+	/* 単純なファイルシステム全体をロックする  */
+	mutex_lock(&g_simplefs_tbl.mtx);
+
+	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i) {
+
+		fs_super = &g_simplefs_tbl.super_blocks[i];  /* スーパブロック情報を参照 */
+
+		mutex_lock(&fs_super->mtx);  /* スーパブロック情報のロックを獲得 */
+		if ( fs_super->s_state == SIMPLEFS_SUPER_INITIALIZED ) {
+			
+			mutex_unlock(&fs_super->mtx);  /* スーパブロック情報のロックを解放 */
+			goto success;  /* 空きスーパブロックが見つかった */
+		}
+		mutex_unlock(&fs_super->mtx);  /* スーパブロック情報のロックを解放 */
+	}
+
+	/* 単純なファイルシステム全体に対するロックを解放する  */
+	mutex_unlock(&g_simplefs_tbl.mtx);
+	return -ENOENT;
+
+success:
+	/* 単純なファイルシステム全体に対するロックを解放する  */
+	mutex_unlock(&g_simplefs_tbl.mtx);
+	return 0;
+}
+
+/**
    単純なファイルシステムの初期化
  */
 int

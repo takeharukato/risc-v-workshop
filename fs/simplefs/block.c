@@ -17,6 +17,15 @@
 #include <fs/simplefs/simplefs.h>
 
 /**
+   I-nodeのデータブロックを参照する
+   @param[in] _inodep I-nodeへのポインタ
+   @param[in] _blk    ブロック番号
+   @return データブロックの先頭アドレス
+ */
+#define SIMPLEFS_REFER_DATA(_inodep, _blk)			\
+	((void *)(&((_inodep)->i_dblk.i_data[_blk])))
+
+/**
    ファイル中の指定されたオフセット位置に対応したゾーン番号を取得する
    @param[in]  fs_super 単純なファイルシステムのスーパブロック情報
    @param[in]  fs_inode 単純なファイルシステムのI-node情報
