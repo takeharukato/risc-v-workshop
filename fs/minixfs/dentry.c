@@ -289,7 +289,7 @@ error_out:
    @param[in]  dirip  検索するディレクトリのI-node情報
    @param[in]  buf    ディレクトリエントリ情報書き込み先カーネルアドレス
    @param[in]  off    ディレクトリエントリ読み出しオフセット(単位:バイト)
-   @param[in]  len    ディレクトリエントリ情報読み出し長(単位:バイト)
+   @param[in]  len    ディレクトリエントリ情報の最大書き込み長(単位:バイト)
    @param[out] rdlenp 書き込んだディレクトリエントリ情報のサイズ(単位:バイト)を返却する領域
    @retval     0      正常終了
    @retval    -ESRCH  ディレクトリエントリが見つからなかった
@@ -325,14 +325,14 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 	 */
 	nr_ents = MINIX_D_INODE(sbp, dirip, i_size) / MINIX_D_DENT_SIZE(sbp); /* エントリ数算出 */
 
-	curp = buf;                    /* 書き込み先アドレスを初期化 */
-	buf_end = buf + ( off + len ); /* 最終アドレスを算出         */
+	curp = buf;          /* 書き込み先アドレスを初期化 */
+	buf_end = buf + len; /* 最終アドレスを算出         */
 
 	/* 読み取り開始ディレクトリエントリ位置(連番)を算出 */
 	pos = roundup_align(off, MINIX_D_DENT_SIZE(sbp)) / MINIX_D_DENT_SIZE(sbp);
 
-	for( ; ( nr_ents > pos ) && ( buf_end > curp ); 
-	    ++pos, curp += VFS_DIRENT_DENT_SIZE(namelen) ) {
+	for( namelen = 0; ( nr_ents > pos ) && ( buf_end > curp );
+	    ++pos) {
 
 		v_ent = (vfs_dirent *)curp;  /* 次に書き込むVFSディレクトリエントリ */
 
@@ -368,6 +368,8 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 		/* d_typeメンバを設定 */
 		*(uint8_t *)((void *)v_ent + VFS_DIRENT_DENT_TYPE_OFF(namelen)) 
 			= DT_UNKNOWN;
+
+		curp += VFS_DIRENT_DENT_SIZE(namelen); /* 次のエントリに書き込む */
 	}
 
 	kassert( curp >= buf );

@@ -191,8 +191,7 @@ error_out:
    @param[in]  fs_super     単純なファイルシステムのスーパブロック情報
    @param[in]  fs_dir_vnid  単純なファイルシステムのディレクトリのI-node番号
    @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
-   @param[in]  fs_vnid      作成するエントリの単純なファイルシステムのI-node番号
-   @param[in]  name         作成するエントリの名前
+   @param[in]  name         削除するエントリの名前
    @retval  0       正常終了
    @retval -ENOTDIR ディレクトリではないI-nodeを指定した
    @retval -ENOENT  指定された名前のエントリが存在しない
@@ -200,7 +199,7 @@ error_out:
  */
 int
 simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
-    simplefs_inode *fs_dir_inode, simplefs_ino fs_vnid, const char *name){
+    simplefs_inode *fs_dir_inode, const char *name){
 	int                 rc;
 	ssize_t          wrlen;
 	off_t          ent_pos;

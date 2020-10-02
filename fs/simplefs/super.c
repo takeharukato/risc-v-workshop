@@ -12,7 +12,6 @@
 
 #include <kern/mutex.h>
 #include <kern/vfs-if.h>
-#include <kern/timer-if.h>
 
 #include <fs/simplefs/simplefs.h>
 
@@ -77,23 +76,23 @@ simplefs_init_super(simplefs_super_block *fs_super){
  */
 int
 simplefs_get_super(simplefs_super_block **fs_superp){
-	int                          i;
-	simplefs_super_block *fs_super;
+	int                       i;
+	simplefs_super_block *super;
 	
 	/* 単純なファイルシステム全体をロックする  */
 	mutex_lock(&g_simplefs_tbl.mtx);
 
 	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i) {
 
-		fs_super = &g_simplefs_tbl.super_blocks[i];  /* スーパブロック情報を参照 */
+		super = &g_simplefs_tbl.super_blocks[i];  /* スーパブロック情報を参照 */
 
-		mutex_lock(&fs_super->mtx);  /* スーパブロック情報のロックを獲得 */
-		if ( fs_super->s_state == SIMPLEFS_SUPER_INITIALIZED ) {
+		mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+		if ( super->s_state == SIMPLEFS_SUPER_INITIALIZED ) {
 			
-			mutex_unlock(&fs_super->mtx);  /* スーパブロック情報のロックを解放 */
+			mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 			goto success;  /* 空きスーパブロックが見つかった */
 		}
-		mutex_unlock(&fs_super->mtx);  /* スーパブロック情報のロックを解放 */
+		mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 	}
 
 	/* 単純なファイルシステム全体に対するロックを解放する  */
@@ -103,15 +102,21 @@ simplefs_get_super(simplefs_super_block **fs_superp){
 success:
 	/* 単純なファイルシステム全体に対するロックを解放する  */
 	mutex_unlock(&g_simplefs_tbl.mtx);
+	if ( fs_superp != NULL )
+		*fs_superp = super;  /* スーパブロック情報を返却する */
+
 	return 0;
 }
 
 /**
    単純なファイルシステムの初期化
+   @retval 0 正常終了
+   @retval -ENOMEM   メモリ不足
  */
 int
 simplefs_init(void){
-	int            i;
+	int    i;
+	int   rc;
 	
 	/* 単純なファイルシステム全体をロックする  */
 	mutex_lock(&g_simplefs_tbl.mtx);
@@ -122,7 +127,10 @@ simplefs_init(void){
 	/* 単純なファイルシステム全体に対するロックを解放する  */
 	mutex_unlock(&g_simplefs_tbl.mtx);
 
-	return 0;
+	rc = simplefs_register_filesystem();  /* ファイルシステムを登録する */
+	kassert( ( rc == 0 ) || ( rc == -ENOMEM ) );
+
+	return rc;
 }
 
 /**
@@ -131,5 +139,6 @@ simplefs_init(void){
 void
 simplefs_finalize(void){
 
+	simplefs_register_filesystem();  /* ファイルシステムの登録を抹消する */
 	return ;
 }

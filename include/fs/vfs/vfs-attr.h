@@ -18,9 +18,10 @@
 
 struct _vnode;
 
-/** ファイル属性
+/**
+   ファイル属性
  */
-typedef struct _file_stat {
+typedef struct _vfs_file_stat {
 	vfs_vnode_id   st_vnid; /**< vnode id                                */
 	dev_id          st_dev; /**< ファイルがあるデバイスの ID             */
 	vfs_fs_mode    st_mode; /**< ファイル種別/アクセス権                 */
@@ -34,7 +35,7 @@ typedef struct _file_stat {
 	epoch_time    st_atime; /**< 最終アクセス時刻                        */
 	epoch_time    st_mtime; /**< 最終修正時刻                            */
 	epoch_time    st_ctime; /**< 最終状態変更時刻                        */
-}file_stat;
+}vfs_file_stat;
 /*
  * 操作対象メンバ
  */
@@ -74,9 +75,9 @@ typedef struct _file_stat {
 
  /** 属性情報反映対象マスク  */
 #define VFS_VSTAT_MASK_SETATTR						\
-	( ~( VFS_VSTAT_MASK_CHATTR   |					\
-	     VFS_VSTAT_MASK_SIZE     |					\
-	     VFS_VSTAT_MASK_TIMES ) )
+	( ( VFS_VSTAT_MASK_CHATTR   |					\
+	    VFS_VSTAT_MASK_SIZE     |					\
+	    VFS_VSTAT_MASK_TIMES ) )
 
  /** 属性情報獲得対象マスク  */
 #define VFS_VSTAT_MASK_GETATTR						\
@@ -95,5 +96,41 @@ typedef struct _file_stat {
 	VFS_VSTAT_MASK_MTIME    |					\
 	VFS_VSTAT_MASK_CTIME )
 
+/** デバイスのメジャー番号のシフト値 */
+#define VFS_VSTAT_DEV_MAJOR_SHIFT		UINT64_C(32)
+/** デバイスのメジャー番号のマスク値 */
+#define VFS_VSTAT_DEV_MAJOR_MASK		( ( UINT64_C(1) << 32 ) - 1 )
+/** デバイスのマイナー番号のシフト値 */
+#define VFS_VSTAT_DEV_MINOR_SHIFT		UINT64_C(0)
+/** デバイスのマイナー番号のマスク値 */
+#define VFS_VSTAT_DEV_MINOR_MASK		( ( UINT64_C(1) << 32 ) - 1 )
+
+/**
+   デバイスのメジャー番号を得る
+   @param[in] _dev デバイス番号
+   @return デバイスのメジャー番号
+*/
+#define VFS_VSTAT_GET_MAJOR(_dev)					\
+	((fs_dev_id)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MAJOR_SHIFT ) & \
+	    VFS_VSTAT_DEV_MAJOR_MASK) )
+/**
+   デバイスのマイナー番号を得る
+   @param[in] _dev デバイス番号
+   @return デバイスのマイナー番号
+  */
+#define VFS_VSTAT_GET_MINOR(_dev)					\
+	((fs_dev_id)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MINOR_SHIFT ) & \
+	    VFS_VSTAT_DEV_MINOR_MASK) )
+/**
+   デバイス番号を得る
+   @param[in] _major メジャー番号
+   @param[in] _minor マイナー番号
+   @return デバイス番号
+  */
+#define VFS_VSTAT_MAKEDEV(_major, _minor)				\
+	( (dev_id)( ( ( ( ((dev_id)(_major)) & VFS_VSTAT_DEV_MAJOR_MASK ) \
+		    << VFS_VSTAT_DEV_MAJOR_SHIFT ) ) |			\
+	    ( ( ( ((dev_id)(_minor)) & VFS_VSTAT_DEV_MINOR_MASK )	\
+		<< VFS_VSTAT_DEV_MINOR_SHIFT ) ) ) )
 #endif  /* !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_ATTR_H  */

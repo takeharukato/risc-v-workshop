@@ -1580,7 +1580,7 @@ unmount_out:  /*  ファイルシステム固有のアンマウント処理を�
 		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
 
 unref_covers_vnode_out: /* 通常マウント時はマウントポイントの参照を解放  */
-	if ( mount->m_mount_point != NULL)  /* マウントポイントの参照を解放  */
+	if ( mount->m_mount_point != NULL )  /* マウントポイントの参照を解放  */
 		dec_vnode_ref_nolock(covered_vnode);
 
 free_mount_out:  /*  マウント情報を解放  */

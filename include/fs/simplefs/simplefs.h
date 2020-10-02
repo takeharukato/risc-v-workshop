@@ -16,6 +16,7 @@
 #include <kern/kern-types.h>
 #include <kern/mutex.h>
 
+#define SIMPLEFS_FSNAME      "simplefs" /**< ファイルシステム名 */
 /** 最大マウントポイント数 (単位:個) */
 #define SIMPLEFS_SUPER_NR      (2)
 /** 最大ファイル数 (単位:個) */
@@ -40,9 +41,15 @@
 	SIMPLEFS_INODE_RESERVED_INO           /**< 無効I-node番号     */
 #define SIMPLEFS_INODE_ROOT_INO       (0x1)   /**< ルートI-node番号   */
 
+/** ファイルモードを抽出マスク */
+#define SIMPLEFS_INODE_MODE_MASK     ((UINT32_C(1) << 16) - 1)
+
 typedef uint32_t          simplefs_ino;   /**< I-node番号    */	
 typedef uint32_t        simplefs_blkno;   /**< ブロック番号  */
 typedef void *   simplefs_file_private;   /**< プライベート情報  */
+
+/* ディレクトリエントリ中のファイル名までのオフセット (単位: バイト) */
+#define SIMPLEFS_D_DIRNAME_OFFSET             (sizeof(simplefs_ino))
 
 /**
    単純ファイルシステムのデータエントリ
@@ -110,13 +117,14 @@ typedef struct _simplefs_table{
 	.mtx = __MUTEX_INITIALIZER(&((_tablep)->mtx)),	\
 	}		
 
+int simplefs_alloc_inode(struct _simplefs_super_block *_fs_super, simplefs_ino *_fs_vnidp);
+int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid);
+int simplefs_refer_inode(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
+    struct _simplefs_inode **_fs_inodep);
+
 int simplefs_device_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode,
     uint16_t _major, uint16_t _minor);
 int simplefs_inode_init(struct _simplefs_inode *_fs_inode, uint16_t _mode);
-int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
-    struct _simplefs_inode *_fs_inode);
-int simplefs_refer_inode(struct _simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
-    struct _simplefs_inode **fs_inodep);
 
 int simplefs_read_mapped_block(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_inode, off_t _position, simplefs_blkno *_blkp);
@@ -128,11 +136,12 @@ int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, simplefs_ino _
 ssize_t simplefs_inode_read(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
     struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
     void *_buf, off_t _pos, ssize_t _len);
-
 ssize_t simplefs_inode_write(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
     struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
-    void *_buf, off_t _pos, ssize_t _len);
+    const void *_buf, off_t _pos, ssize_t _len);
 
+int simplefs_inode_truncate(struct _simplefs_super_block *_fs_super,
+    simplefs_ino _fs_vnid, struct _simplefs_inode *_fs_inode, off_t _len);
 int simplefs_alloc_block(struct _simplefs_super_block *_fs_super,
     simplefs_blkno *_block_nump);
 void simplefs_free_block(struct _simplefs_super_block *_fs_super, simplefs_inode *_fs_inode,
@@ -151,11 +160,14 @@ int simplefs_dirent_add(struct _simplefs_super_block *fs_super,
     simplefs_ino _fs_vnid, const char *_name);
 int simplefs_dirent_del(struct _simplefs_super_block *_fs_super,
     simplefs_ino _fs_dir_vnid, struct _simplefs_inode *_fs_dir_inode,
-    simplefs_ino _fs_vnid, const char *_name);
+    const char *_name);
 int simplefs_dirent_lookup(struct _simplefs_super_block *_fs_super,
     struct _simplefs_inode *_fs_dir_inode, const char *_name, simplefs_ino *_fs_vnidp);
 
 int simplefs_get_super(struct _simplefs_super_block **_fs_superp);
+
+int simplefs_register_filesystem(void);
+int simplefs_unregister_filesystem(void);
 int simplefs_init(void);
 #endif  /*  !ASM_FILE  */
 #endif  /*  _FS_SIMPLEFS_SIMPLEFS_H   */

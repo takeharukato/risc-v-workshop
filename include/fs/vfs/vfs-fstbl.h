@@ -18,7 +18,7 @@
 #include <kern/mutex.h>
 #include <klib/rbtree.h>
 
-struct _file_stat;
+struct _vfs_file_stat;
 
 /**
    ファイルシステム情報
@@ -70,22 +70,25 @@ typedef struct _fs_calls {
 	    off_t _pos, int _whence, vfs_file_private _file_priv, off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
-	int (*fs_create)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
-	    const char *_name, struct _file_stat *_stat, vfs_vnode_id *_new_vnidp);
-	int (*fs_unlink)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
-	    const char *_name);
-	int (*fs_rename)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_olddir_vnode,
-	    const char *_oldname, vfs_fs_vnode _fs_newdir_vnode, const char *_newname);
-	int (*fs_mkdir)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
-	    const char *_name, vfs_vnode_id *_new_vnidp);
-	int (*fs_rmdir)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,
-	    const char *_name);
+	int (*fs_create)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
+	    vfs_fs_vnode _fs_dir_vnode, const char *_name,
+	    struct _vfs_file_stat *_stat, vfs_vnode_id *_new_vnidp);
+	int (*fs_unlink)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
+	    vfs_fs_vnode _fs_dir_vnode, const char *_name);
+	int (*fs_rename)(vfs_fs_super _fs_super, vfs_vnode_id _fs_olddir_vnid,
+	    vfs_fs_vnode _fs_olddir_vnode, const char *_oldname,
+	     vfs_vnode_id _fs_newdir_vnid, vfs_fs_vnode _fs_newdir_vnode,
+	    const char *_newname);
+	int (*fs_mkdir)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
+	    vfs_fs_vnode _fs_dir_vnode, const char *_name, vfs_vnode_id *_new_vnidp);
+	int (*fs_rmdir)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
+	    vfs_fs_vnode _fs_dir_vnode, const char *_name);
 	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_getattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
-	    vfs_vstat_mask _stat_mask, struct _file_stat *_statp);
-	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
-	    struct _file_stat *_stat, vfs_vstat_mask _stat_mask);
+	    vfs_vstat_mask _stat_mask, struct _vfs_file_stat *_statp);
+	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_vnode_id _fs_vnid,
+	    vfs_fs_vnode _fs_vnode, struct _vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
 }fs_calls;
 
 /** 
