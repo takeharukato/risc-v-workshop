@@ -125,7 +125,6 @@ mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
 
 	mark_vnode_flag_nolock(v, flags);  /* フラグを設定 */
 
-	v->v_flags |= flags;      /*  フラグをセットする */	
 	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
 		wque_wakeup(&v->v_waiters, WQUE_RELEASED); 
 
@@ -133,7 +132,7 @@ mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
 
 	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
 
-	return !res;      /* 最終参照ではなければフラグをセットできている  */
+	return !res;      /* 最終参照でなければフラグをセットできている  */
 }
 
 /**
