@@ -139,6 +139,6 @@ simplefs_init(void){
 void
 simplefs_finalize(void){
 
-	simplefs_register_filesystem();  /* ファイルシステムの登録を抹消する */
+	simplefs_unregister_filesystem();  /* ファイルシステムの登録を抹消する */
 	return ;
 }

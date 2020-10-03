@@ -38,12 +38,6 @@ simplefs_mount(vfs_mnt_id mntid, dev_id dev,
 	kassert( fs_superp != NULL );
 	kassert( root_vnidp != NULL );
 
-	/* ブロックデバイスを指定している場合は
-	 * 他のファイルシステムのマウントを呼び出す
-	 */
-	if ( dev != FS_INVALID_DEVID )
-		return -EINVAL;
-
 	for( ; ; ) {
 		
 		rc = simplefs_get_super(&free_super);  /* 未マウントのスーパブロックを検索 */
@@ -1091,7 +1085,8 @@ int
 simplefs_register_filesystem(void){
 
 	/* ファイルシステムを登録する */
-	return vfs_register_filesystem(SIMPLEFS_FSNAME, &simplefs_fstbl_calls);
+	return vfs_register_filesystem(SIMPLEFS_FSNAME, VFS_FSTBL_FSTYPE_PSEUDO_FS,
+	    &simplefs_fstbl_calls);
 }
 /**
    単純なファイルシステムの登録を抹消する

@@ -25,6 +25,7 @@ struct _vfs_file_stat;
  */
 typedef struct _fs_container {
 	RB_ENTRY(_fs_container)  c_ent;  /**< ファイルシステムテーブルのリンク     */
+	vfs_fstype_flags       c_flags;  /**< ファイルシステム属性フラグ           */
 	struct _fs_calls      *c_calls;  /**< ファイルシステム固有のファイル操作   */
 	struct _refcounter      c_refs;  /**< ファイルシステム参照カウンタ         */
 	char                   *c_name;  /**< ファイルシステム名を表す文字列       */
@@ -91,6 +92,8 @@ typedef struct _fs_calls {
 	    vfs_fs_vnode _fs_vnode, struct _vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
 }fs_calls;
 
+#define VFS_FSTBL_FSTYPE_NONE       UINT64_C(0)    /**< ファイルシステム属性なし */
+#define VFS_FSTBL_FSTYPE_PSEUDO_FS  UINT64_C(0x1)  /**< 疑似ファイルシステム     */
 /** 
     ファイルシステムテーブル初期化子
     @param[in] _fstbl ファイルシステムテーブルへのポインタ
@@ -116,7 +119,7 @@ bool vfs_fs_ref_dec(fs_container *_container);
 int vfs_fs_get(const char *_fs_name, struct _fs_container **_containerp);
 void vfs_fs_put(struct _fs_container *_fs);
 int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev, void *_args);
-int vfs_register_filesystem(const char *_name, struct _fs_calls *_calls);
+int vfs_register_filesystem(const char *_name, vfs_fstype_flags _fstype, struct _fs_calls *_calls);
 int vfs_unregister_filesystem(const char *_name);
 void vfs_init_filesystem_table(void);
 #endif  /*  !ASM_FILE  */

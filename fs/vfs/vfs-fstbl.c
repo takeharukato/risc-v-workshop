@@ -220,6 +220,14 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, void *args){
 		if ( rc != 0 )
 			continue; /* ファイルシステムへの参照を獲得できなかった */
 
+		if ( container->c_flags & VFS_FSTBL_FSTYPE_PSEUDO_FS ) {
+
+			/* 疑似ファイルシステムをスキップする
+			 */
+			vfs_fs_put(container);	/* ファイルシステムへの参照を解放 */
+			continue;
+		}
+
 		/*
 		 * ファイルシステムをマウントする
 		 */
@@ -242,14 +250,15 @@ error_out:
 }
 /**
    ファイルシステムの登録
-   @param[in] name  ファイルシステム名を表す文字列
+   @param[in] name   ファイルシステム名を表す文字列
+   @param[in] fstype ファイルシステム種別
    @param[in] calls ファイルシステム固有のファイルシステムコールハンドラ
    @retval  0        正常終了
    @retval -EINVAL   システムコールハンドラが不正
    @retval -ENOMEM   メモリ不足    
  */
 int
-vfs_register_filesystem(const char *name, fs_calls *calls){
+vfs_register_filesystem(const char *name, vfs_fstype_flags fstype, fs_calls *calls){
 	int                  rc;
 	fs_container *container;
 	fs_container       *res;
@@ -257,7 +266,7 @@ vfs_register_filesystem(const char *name, fs_calls *calls){
 	kassert( ( name != NULL ) && ( calls != NULL ) );
 
 	if ( !is_valid_fs_calls(calls) ) 
-		return -EINVAL;
+		return -EINVAL;  /* VFSオペレーションが不正 */
 	/*
 	 * ファイルシステムコンテナを割当て
 	 */
@@ -278,7 +287,7 @@ vfs_register_filesystem(const char *name, fs_calls *calls){
 
 	refcnt_init(&container->c_refs);  /*  参照カウンタ             */
 	container->c_calls = calls;       /*  ファイルオペレーション   */
-
+	container->c_flags = fstype;      /*  ファイルシステム種別     */
 	/*
 	 * ファイルシステムテーブルに登録する
 	 */

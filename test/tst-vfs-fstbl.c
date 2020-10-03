@@ -58,13 +58,14 @@ vfs_fstbl1(struct _ktest_stats *sp, void __unused *arg){
 	int                  rc;
 	fs_container *container;
 
-	rc = vfs_register_filesystem("bad", &bad_calls);
+	rc = vfs_register_filesystem("bad", VFS_FSTBL_FSTYPE_PSEUDO_FS, &bad_calls);
 	if ( rc == -EINVAL )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = vfs_register_filesystem("tst_vfs_fstbl", &tst_vfs_fstbl_calls);
+	rc = vfs_register_filesystem("tst_vfs_fstbl", VFS_FSTBL_FSTYPE_PSEUDO_FS,
+	    &tst_vfs_fstbl_calls);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

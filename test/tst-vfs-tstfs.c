@@ -1475,7 +1475,8 @@ tst_vfs_tstfs_init(void){
 	kassert( rc == 0 );
 
 	/* ファイルシステムを登録 */
-	rc = vfs_register_filesystem(TST_VFS_TSTFS_NAME, &tst_vfs_tstfs_calls);
+	rc = vfs_register_filesystem(TST_VFS_TSTFS_NAME, VFS_FSTBL_FSTYPE_NONE,
+	    &tst_vfs_tstfs_calls);
 	kassert( rc == 0 );
 	g_tstfs_db.initialized = true;
 }
