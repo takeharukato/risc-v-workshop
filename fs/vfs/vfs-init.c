@@ -23,7 +23,7 @@
 void
 vfs_init(void){
 
-	vfs_init_filesystem_table();
-	vfs_init_mount_table();
-	vfs_init_ioctx();
+	vfs_init_filesystem_table();  /* ファイルシステムテーブルの初期化 */
+	vfs_init_mount_table();       /* マウントテーブルの初期化         */
+	vfs_init_ioctx();             /* I/Oコンテキストテーブルの初期化  */
 }

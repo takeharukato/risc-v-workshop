@@ -89,14 +89,14 @@ kern_init(void) {
 		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 
+	vfs_init();   /* 仮想ファイルシステムを初期化する */
 	proc_init();  /* プロセス管理情報を初期化する */
-	thr_init(); /* スレッド管理機構を初期化する */
+	thr_init();   /* スレッド管理機構を初期化する */
 	sched_init(); /* スケジューラを初期化する */
-	irq_init(); /* 割込み管理を初期化する */
+	irq_init();   /* 割込み管理を初期化する */
 	tim_timer_init();  /* タイマ管理機構を初期化する */
-	pagecache_init(); /* ページキャッシュ機構を初期化する */
-	fsimg_load();     /* ファイルシステムイメージをページキャッシュに読み込む */
-	vfs_init();       /* ファイルシステムを初期化する                         */
+	pagecache_init();  /* ページキャッシュ機構を初期化する */
+	fsimg_load();      /* ファイルシステムイメージをページキャッシュに読み込む */
 
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 
