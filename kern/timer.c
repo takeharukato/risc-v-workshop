@@ -299,9 +299,9 @@ tim_timer_init(void){
 		spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
 	}
 
+	init_callout();  /* コールアウト機構を初期化する */
+		
 	/* 時刻を表示する */
 	kprintf("Current wall time: %04d/%02d/%02d %02d:%02d:%02d\n",
 	    1900 + tm.tm_year, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
-	init_callout();  /* コールアウト機構を初期化する */
 }

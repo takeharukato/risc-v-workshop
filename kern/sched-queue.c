@@ -251,7 +251,4 @@ sched_init(void){
 
 		queue_init(&ready_queue.que[i]);  /* レディキューを初期化 */
 	}
-
-	sched_idlethread_add();  /* BSP用のアイドルスレッドを生成 */
-	thr_system_thread_create(); /* システムスレッドを生成 */
 }
