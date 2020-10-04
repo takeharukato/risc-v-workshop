@@ -561,6 +561,9 @@ simplefs_alloc_inode(simplefs_super_block *fs_super, simplefs_ino *fs_vnidp){
 
 	bitops_set(idx, &fs_super->s_inode_map); /* I-nodeを確保 */
 
+	if ( fs_vnidp != NULL )
+		*fs_vnidp = idx;  /* I-node番号を返却 */
+	
 	return 0;
 }
 

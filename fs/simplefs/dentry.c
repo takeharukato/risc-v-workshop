@@ -32,10 +32,13 @@ simplefs_lookup_dirent_full(simplefs_super_block *fs_super, simplefs_inode *fs_d
 	int                 rc;
 	off_t          cur_pos;
 	simplefs_dent  cur_ent;	
-
+	size_t          cmplen;
+	
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
+	cmplen = MIN(strlen(name) + 1,SIMPLEFS_DIRSIZ); /* ヌル文字を含めた長さで比較する */
+	
 	/* ディレクトリエントリを順にたどる
 	 */
 	for(cur_pos = 0; fs_dir_inode->i_size > cur_pos; cur_pos += sizeof(simplefs_dent)) {
@@ -44,14 +47,14 @@ simplefs_lookup_dirent_full(simplefs_super_block *fs_super, simplefs_inode *fs_d
 		rc = simplefs_inode_read(fs_super, SIMPLEFS_INODE_INVALID_INO, 
 		    fs_dir_inode, NULL, &cur_ent, cur_pos, sizeof(simplefs_dent));
 
-		if ( rc != 0 )
+		if ( rc != sizeof(simplefs_dent) )
 			continue;  /* ディレクトリエントリが読めなかった */
 
 		if ( cur_ent.d_inode == SIMPLEFS_INODE_INVALID_INO )
 			continue;  /* 無効なディレクトリエントリだった */
 		
 		/* ディレクトリエントリの名前が指定された名前と一致した場合 */
-		if ( memcmp(name, cur_ent.d_name, SIMPLEFS_DIRSIZ) == 0 ) {
+		if ( memcmp(name, cur_ent.d_name, cmplen) == 0 ) {
 
 			if ( fs_vnidp != NULL )
 				*fs_vnidp = cur_ent.d_inode;  /* I-node番号を返却 */

@@ -605,7 +605,8 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 	vfs_fs_mode   mode;
 	wque_reason reason;
 
-	v_key.v_id = vnid;  /* 検索対象v-node ID */
+	v_key.v_id = vnid;    /* 検索対象v-node ID */
+	v_key.v_mount = mnt;  /* 検索対象v-nodeのマウントポイント情報 */
 	for( ; ; ) {
 
 		mutex_lock(&mnt->m_mtx);  /* マウントポイントのロックを獲得 */
@@ -1040,6 +1041,9 @@ vfs_vnode_get(vfs_mnt_id mntid, vfs_vnode_id vnid, vnode **outv){
 
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
+	if ( outv != NULL )
+		*outv = v;  /* v-nodeを返却 */
+
 	return 0;
 
 put_mount_out:
@@ -1105,6 +1109,49 @@ put_mount_out:
 	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
 
 error_out:
+	return rc;
+}
+
+/**
+   v-nodeの参照を解放する
+   @param[in] v     操作対象のv-node
+   @retval  0       正常終了
+   @retval -EBUSY   アンマウント中のボリュームだった
+ */
+int
+vfs_vnode_ptr_put(vnode *v){
+	int             rc;
+	bool           res;
+
+	kassert( v->v_mount != NULL );
+
+	res = vfs_fs_mount_ref_inc(v->v_mount);  /* マウントテーブル操作用に参照を加算 */
+	kassert( res );
+
+	/* 
+	 * v-nodeの参照を解放する
+	 */
+	res = vfs_vnode_ref_inc(v);  /* 参照解放処理用に参照を獲得する */
+	if ( !res ) {
+
+		rc = 0; /* すでに削除中のv-nodeだった */
+		goto put_mount_out;
+	}
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	kassert( !res );      /* 最終参照ではないはず  */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
+
+	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
+
+	if ( res )
+		return 0;  /* 最終参照者だった       */
+
+	return -EAGAIN;    /* 最終参照者ではなかった */
+
+put_mount_out:
+	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
 	return rc;
 }
 

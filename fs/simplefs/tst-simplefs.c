@@ -28,9 +28,10 @@ static struct _simplefs_vfs_ioctx{
 
 static void
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
-	int rc;
-	int fd;
-
+	int             rc;
+	int             fd;
+	vfs_file_stat   st;
+	
 	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -43,7 +44,27 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
+	/* 通常ファイル作成
+	 */
+	memset(&st, 0, sizeof(vfs_file_stat));
+	st.st_mode = S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO;
+	rc = vfs_create(tst_ioctx.cur, "/file1", &st);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rc = vfs_open(tst_ioctx.cur, "/file1", VFS_O_RDWR, 0, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	
+	
 }
 /**
    単純なファイルシステムのテスト

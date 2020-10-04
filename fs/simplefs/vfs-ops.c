@@ -435,6 +435,7 @@ simplefs_ioctl(vfs_fs_super fs_super,  vfs_vnode_id vnid, vfs_fs_vnode fs_vnode,
    @param[in]  stat         生成するファイルのファイル属性情報
    @param[out] new_vnidp    作成したファイルのv-node ID返却領域
    @retval     0            正常終了
+   @retval    -EINVAL       通常ファイル/デバイスファイル以外を作成しようとした
  */
 int
 simplefs_create(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_dir_vnode,
