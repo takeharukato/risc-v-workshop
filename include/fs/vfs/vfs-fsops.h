@@ -24,6 +24,8 @@ int vfs_open(struct _vfs_ioctx *_ioctx, char *_path, vfs_open_flags _omode, int 
 int vfs_closedir(struct _vfs_ioctx *_ioctx, int _fd);
 int vfs_close(struct _vfs_ioctx *_ioctx, int _fd);
 
-int vfs_read(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, ssize_t _len, ssize_t *_rdlen);
+int vfs_read(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, ssize_t _len, ssize_t *_rdlenp);
+int vfs_write(struct _vfs_ioctx *_ioctx, int _fd, const void *_buf, ssize_t _len,
+    ssize_t *_wrlenp);
 #endif  /*  ASM_FILE  */
 #endif  /*  _FS_VFS_VFS_FSOPS_H  */
