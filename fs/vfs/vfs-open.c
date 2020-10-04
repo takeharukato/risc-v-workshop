@@ -102,11 +102,11 @@ out:
 
 /**
    指定されたパスのディレクトリを開く
-   @param[in]  ioctx 自プロセスのI/Oコンテキスト
-   @param[in]  path  openするディレクトリのパス
+   @param[in]  ioctx  I/Oコンテキスト
+   @param[in]  path   openするディレクトリのパス
    @param[in]  oflags open時に指定したモード
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
-   @retval  0      正常終了
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0       正常終了
    @retval -EBADF   不正なユーザファイルディスクリプタを指定した
    @retval -ENOMEM  メモリ不足
    @retval -ENOENT  パスが見つからなかった

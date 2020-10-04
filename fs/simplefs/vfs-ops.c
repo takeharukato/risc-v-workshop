@@ -798,7 +798,6 @@ unlock_out:
    @retval    -ENOENT ゾーンが割り当てられていない
    @retval    -E2BIG  ファイルサイズの上限を超えている
    @retval    -EIO    ページキャッシュアクセスに失敗した
-   @retval    -ENOSPC 空きゾーンがない
    @retval    -EINVAL 不正なスーパブロックを指定した
 */
 int
@@ -807,6 +806,7 @@ simplefs_getdents(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 	int                      rc;
 	simplefs_super_block *super;
 	simplefs_inode   *dir_inode;
+	simplefs_inode   *ent_inode;
 	obj_cnt_type        nr_ents;
 	void                  *curp;
 	void               *buf_end;
@@ -816,7 +816,8 @@ simplefs_getdents(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 	void                  *term;
 	size_t              namelen;
 	vfs_dirent           *v_ent;
-
+	uint8_t              d_type;
+	
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
 	dir_inode = (simplefs_inode *)fs_dir_vnode; /* ディレクトリのI-node情報 */
 
@@ -873,8 +874,30 @@ simplefs_getdents(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 		    namelen);
 		v_ent->d_name[namelen] = '\0'; /* ヌルターミネートする */
 		/* d_typeメンバを設定 */
+
+		d_type = DT_UNKNOWN;  /* 不明 */
+
+		/* 対象のI-nodeを参照 */
+		rc = simplefs_refer_inode(super, d_ent.d_inode, &ent_inode);  
+		if ( rc == 0 ) { /* ファイル種別を設定 */
+
+			if (S_ISREG(ent_inode->i_mode))
+				d_type = DT_REG;
+
+			if (S_ISDIR(ent_inode->i_mode))
+				d_type = DT_DIR;
+
+			if (S_ISCHR(ent_inode->i_mode))
+				d_type = DT_CHR;
+
+			if (S_ISBLK(ent_inode->i_mode))
+				d_type = DT_BLK;
+
+			if (S_ISFIFO(ent_inode->i_mode))
+				d_type = DT_FIFO;
+		}
 		*(uint8_t *)((void *)v_ent + VFS_DIRENT_DENT_TYPE_OFF(namelen))
-			= DT_UNKNOWN;
+			= d_type;
 
 		curp += VFS_DIRENT_DENT_SIZE(namelen); /* 次のエントリに書き込む */
 	}
