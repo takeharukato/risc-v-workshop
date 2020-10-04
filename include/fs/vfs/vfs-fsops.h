@@ -29,5 +29,6 @@ int vfs_read(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, ssize_t _len, ssize
 int vfs_write(struct _vfs_ioctx *_ioctx, int _fd, const void *_buf, ssize_t _len,
     ssize_t *_wrlenp);
 int vfs_create(struct _vfs_ioctx *_ioctx, char *_path, struct _vfs_file_stat *_stat);
+int vfs_unlink(struct _vfs_ioctx *_ioctx, char *_path);
 #endif  /*  ASM_FILE  */
 #endif  /*  _FS_VFS_VFS_FSOPS_H  */

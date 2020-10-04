@@ -3,7 +3,7 @@
 /*  Yet Another Teachable Operating System                            */
 /*  Copyright 2016 Takeharu KATO                                      */
 /*                                                                    */
-/*  vfs create operations                                             */
+/*  vfs unlink operation                                              */
 /*                                                                    */
 /**********************************************************************/
 
@@ -14,7 +14,7 @@
 #include <kern/vfs-if.h>
 
 /**
-   ファイルを作成する
+   ファイルを削除する (ファイルのリンク数を減算する)
    @param[in] ioctx I/Oコンテキスト
    @param[in] path  ファイルパス
    @param[in] stat  ファイル作成時の属性情報 (ファイル種別/デバイス番号など)
@@ -22,24 +22,19 @@
    @retval -EBADF  正当なユーザファイルディスクリプタでない
    @retval -EIO    I/Oエラー
    @retval -ENOMEM メモリ不足
-   @retval -ENOSYS createをサポートしていない 
-   @retval -EISDIR ディレクトリを作成しようとした
+   @retval -ENOSYS unlinkをサポートしていない 
+   @retval -EISDIR ディレクトリを削除しようとした
  */
 int 
-vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
+vfs_unlink(vfs_ioctx *ioctx, char *path){
 	int                rc;
 	vnode              *v;
 	char        *pathname;
 	char        *filename;
-	vfs_vnode_id new_vnid;
 	size_t       name_len;
 	size_t       path_len;
 
-	if  ( S_ISDIR(stat->st_mode) )
-		return -EISDIR;  /* ディレクトリを作成しようとした */
-
-	/*
-	 * パス(ディレクトリ)検索時に使用する一時領域を確保
+	/* パス(ファイル名)検索時に使用する一時領域を確保
 	 */
 	name_len = strlen(path);
 	filename = kmalloc(name_len + 1, KMALLOC_NORMAL);
@@ -49,6 +44,8 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 		goto error_out;
 	}
 
+	/* パス(ディレクトリ)検索時に使用する一時領域を確保
+	 */
 	path_len = strlen(path);
 	pathname = kstrdup(path);
 	if ( pathname == NULL ) {
@@ -72,24 +69,27 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	rc = -ENOSYS;
 
 	/*
-	 * ファイルシステム固有なファイル作成処理を実施
+	 * ファイルシステム固有なアンリンク処理を実施
 	 */
-	if ( v->v_mount->m_fs->c_calls->fs_create != NULL ) {
+	if ( v->v_mount->m_fs->c_calls->fs_unlink != NULL ) {
 
-		/* TODO: statにファイル生成ユーザ/グループを設定 */
-		rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super, 
-		    v->v_id, v->v_fs_vnode, filename, stat, &new_vnid);
-		if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
+		/* TODO: アクセス権確認 */
+		rc = v->v_mount->m_fs->c_calls->fs_unlink(v->v_mount->m_fs_super, 
+		    v->v_id, v->v_fs_vnode, filename);
+		if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) && ( rc != -EISDIR ) )
 			rc = -EIO;  /*  エラーコードを補正  */
 	}
-
+	
+	/* TODO: ファイルの属性値を調査し, リンク数が0になっていたら
+	 * v-nodeの削除フラグを設定
+	 */
 	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
 free_pathname_out:
 	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 
 free_filename_out:
-	kfree(filename);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	kfree(filename);  /*  パス(ファイル名)検索時に使用した一時領域を解放  */
 
 error_out:
 	return rc;

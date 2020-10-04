@@ -513,6 +513,8 @@ unlock_out:
    @param[in]  fs_dir_vnode 親ディレクトリのv-node情報
    @param[in]  name         操作対象ファイルのファイル名
    @retval     0            正常終了
+   @retval    -EISDIR ディレクトリを削除しようとした
+   @retval    -EINVAL 通常ファイル, デバイス, ディレクトリ以外を削除しようとした
  */
 int
 simplefs_unlink(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_dir_vnode,
@@ -544,7 +546,10 @@ simplefs_unlink(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs
 	    && !S_ISCHR(inode->i_mode)
 	    && !S_ISBLK(inode->i_mode) ) {
 
-		rc = -EINVAL;  /* 通常ファイル, デバイスファイル以外を削除しようとした */
+		if ( S_ISDIR(inode->i_mode) )
+			rc = -EISDIR;  /* ディレクトリを削除しようとした */
+		else
+			rc = -EINVAL;  /* 通常ファイル, デバイス以外を削除しようとした */
 		goto unlock_out;
 	}
 
