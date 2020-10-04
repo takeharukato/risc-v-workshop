@@ -448,7 +448,7 @@ proc_grow_stack(proc *dest, vm_vaddr newsp){
 		if ( rc == 0 ) { /* 既にマップ済み */
 
 			pg_cur = truncate_align(pg_cur, map_pgsize); /* ページの先頭を指す */
-			pg_cur = truncate_align(pg_cur, PAGE_SIZE);  /* 次ページの先頭 */
+			pg_cur -= PAGE_SIZE;  /* 次ページの先頭 */
 			continue;
 		}
 
