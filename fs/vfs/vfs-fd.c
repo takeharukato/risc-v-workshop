@@ -381,7 +381,7 @@ vfs_fd_alloc(vfs_ioctx *ioctxp, vnode *v, vfs_open_flags omode, int *fdp,
 put_fd_out:
 	/*  alloc_fdで獲得したファイルディスクリプタをI/Oコンテキストから除去
 	 */
-	vfs_fd_free(ioctxp, f);
+	vfs_fd_remove(ioctxp, f);
 
 error_out:
 	return rc;
@@ -396,7 +396,7 @@ error_out:
    @retval -EBUSY ファイルディスクリプタへの参照が残っている
  */
 int
-vfs_fd_free(vfs_ioctx *ioctxp, file_descriptor *fp){
+vfs_fd_remove(vfs_ioctx *ioctxp, file_descriptor *fp){
 	int rc;
 	int  i;
 

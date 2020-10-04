@@ -14,7 +14,7 @@
 
 /**
    指定されたパスのvnodeの参照を獲得する(実処理関数)
-   @param[in] ioctxp パス検索に使用するI/Oコンテキスト
+   @param[in] ioctx  パス検索に使用するI/Oコンテキスト
    @param[in] path   検索対象のパス文字列
    @param[out] outv  見つかったvnodeを指し示すポインタのアドレス
    @retval   0       正常終了
@@ -22,7 +22,7 @@
    @retval  -EIO     パス検索時にI/Oエラーが発生した
  */
 static int 
-path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
+path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 	char            *p;
 	char       *next_p;
 	vnode      *curr_v;
@@ -30,7 +30,7 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 	vfs_vnode_id  vnid;
 	int             rc;
 
-	kassert( ioctxp->ioc_root != NULL );
+	kassert( ioctx->ioc_root != NULL );
 
 	p = path;
 	
@@ -38,19 +38,19 @@ path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv){
 
 		for( p += 1 ; *p == VFS_PATH_DELIM; ++p);  /*  連続した'/'を飛ばす  */
 
-		curr_v = ioctxp->ioc_root;  /*  現在のルートディレクトリから検索を開始  */
+		curr_v = ioctx->ioc_root;  /*  現在のルートディレクトリから検索を開始  */
 		kassert( curr_v != NULL );
 
 		vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
 	} else { /* 相対パス指定  */
 
-		mutex_lock(&ioctxp->ioc_mtx);
+		mutex_lock(&ioctx->ioc_mtx);
 
-		curr_v = ioctxp->ioc_cwd;    /*  現在のディレクトリから検索を開始  */
+		curr_v = ioctx->ioc_cwd;    /*  現在のディレクトリから検索を開始  */
 		kassert( curr_v != NULL );
 
 		vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
-		mutex_unlock(&ioctxp->ioc_mtx);
+		mutex_unlock(&ioctx->ioc_mtx);
 	}
 
 	/*
@@ -158,7 +158,7 @@ error_out:
 
 /**
    指定されたディレクトリのvnodeの参照を獲得する (実処理関数)
-   @param[in]  ioctxp   パス検索に使用するI/Oコンテキスト
+   @param[in]  ioctx    パス検索に使用するI/Oコンテキスト
    @param[in]  path     検索対象のパス文字列
    @param[in]  pathlen  pathが指し示す領域の長さ
    @param[out] outv     見つかったvnodeを指し示すポインタのアドレス
@@ -169,7 +169,7 @@ error_out:
    @retval  -EIO      パス検索時にI/Oエラーが発生した
 */
 static int 
-path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv, 
+path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv, 
     char *filename, size_t fnamelen){
 	char *p;
 
@@ -212,12 +212,12 @@ path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv,
 	/* 
 	 * パス中のディレクトリ部分(親ディレクトリ)のvnodeを得る
 	 */
-	return path_to_vnode(ioctxp, path, outv);  
+	return path_to_vnode(ioctx, path, outv);
 }
 
 /**
    指定されたパスのvnodeの参照を獲得する
-   @param[in]  ioctxp  パス検索に使用するI/Oコンテキスト
+   @param[in]  ioctx   パス検索に使用するI/Oコンテキスト
    @param[in]  path    検索対象のパス文字列
    @param[out] outv    見つかったvnodeを指し示すポインタのアドレス
    @retval  0        正常終了
@@ -225,17 +225,17 @@ path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv,
    @retval  -EIO      パス検索時にI/Oエラーが発生した
  */
 int 
-vfs_path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv) {
+vfs_path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv) {
 
 	/*
 	 * パスのvnodeを得る
 	 */
-	return path_to_vnode(ioctxp, path, outv);
+	return path_to_vnode(ioctx, path, outv);
 }
 
 /**
    指定されたディレクトリのvnodeの参照を獲得する
-   @param[in]  ioctxp   パス検索に使用するI/Oコンテキスト
+   @param[in]  ioctx    パス検索に使用するI/Oコンテキスト
    @param[in]  path     検索対象のパス文字列
    @param[in]  pathlen  検索対象のパス文字列領域の長さ
    @param[out] outv     見つかったvnodeを指し示すポインタのアドレス
@@ -247,13 +247,13 @@ vfs_path_to_vnode(vfs_ioctx *ioctxp, char *path, vnode **outv) {
    @note parenti相当のIF
  */
 int  
-vfs_path_to_dir_vnode(vfs_ioctx *ioctxp, char *path, size_t pathlen, vnode **outv, 
+vfs_path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
     char *filename, size_t fnamelen) {
 
 	/*
 	 * ファイルの親ディレクトリのvnodeを得る  
 	 */
-	return path_to_dir_vnode(ioctxp, path, pathlen, outv, filename, fnamelen); 
+	return path_to_dir_vnode(ioctx, path, pathlen, outv, filename, fnamelen);
 }
 
 /**

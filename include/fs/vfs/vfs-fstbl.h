@@ -19,6 +19,7 @@
 #include <klib/rbtree.h>
 
 struct _vfs_file_stat;
+struct _fs_calls;
 
 /**
    ファイルシステム情報

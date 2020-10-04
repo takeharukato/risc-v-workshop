@@ -59,6 +59,8 @@ kern_common_tests(void){
 	tst_vfs_fstbl();
 	tst_vfs_mount();
 	tst_vfs_fd();
+
+	tst_simplefs();
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);

@@ -67,7 +67,7 @@ close_fd(vfs_ioctx *cur_ioctx, int fd){
 	if ( rc != 0 )
 		goto error_out;
 
-	rc = vfs_fd_free(cur_ioctx, f);
+	rc = vfs_fd_remove(cur_ioctx, f);
 	kassert( rc == -EBUSY );
 
 	rc = vfs_fd_put(f);
