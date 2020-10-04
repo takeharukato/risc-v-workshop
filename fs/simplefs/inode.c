@@ -12,7 +12,6 @@
 
 #include <kern/mutex.h>
 #include <kern/vfs-if.h>
-#include <kern/timer-if.h>
 
 #include <fs/simplefs/simplefs.h>
 
@@ -120,7 +119,6 @@ simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	off_t          blk_off;
 	simplefs_blkno  rw_blk;
 	ssize_t          rwsiz;
-	ktimespec           ts;
 
 	if ( ( pos > fs_inode->i_size ) || ( pos > ( pos + len ) ) ) {
 
@@ -190,20 +188,11 @@ simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	
 		if ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) {  /* I-nodeの更新を行う場合 */
 
-			tim_walltime_get(&ts); /* 現在時刻を得る */
-
 			if ( rw_flag == SIMPLEFS_RW_WRITE ) {  /* 書き込みの場合 */
 
 				/* サイズ更新 */
 				if ( ( pos + total - remains ) > fs_inode->i_size )
 					fs_inode->i_size = pos + total - remains;
-
-				/* 最終書き込み時刻を更新する */
-				fs_inode->i_mtime = ts.tv_sec;
-			} else {
-
-				/* 最終読み込み時刻を更新する */
-				fs_inode->i_atime = ts.tv_sec;
 			}
 
 			/* I-node情報を更新 */
@@ -522,7 +511,6 @@ int
 simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
     simplefs_inode *fs_inode, off_t len){
 	int       rc;
-	ktimespec ts;
 	
 	if ( len == 0 )
 		return 0;  /* サイズ変更がない場合は即時正常復帰する */
@@ -543,11 +531,6 @@ simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 
 	if ( rc != 0 )
 		goto error_out;  /* エラー復帰する  */
-	/*
-	 * ファイル書き込み時刻を更新する
-	 */
-	tim_walltime_get(&ts);  /* 現在時刻を得る */
-	fs_inode->i_mtime = ts.tv_sec;  /* 最終書き込み時刻を更新する */
 
 	rc = simplefs_write_inode(fs_super, fs_vnid, fs_inode); /* I-nodeを書き戻す */
 	if ( rc != 0 )

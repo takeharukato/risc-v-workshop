@@ -1031,7 +1031,7 @@ simplefs_setattr(vfs_fs_super fs_super,  vfs_vnode_id fs_vnid, vfs_fs_vnode fs_v
 
 	if ( attr & VFS_VSTAT_MASK_CTIME )
 		inode->i_ctime = stat->st_ctime; /* 最終属性更新時刻の更新 */
-	else {
+	else if ( attr & ~VFS_VSTAT_MASK_TIMES ) {  /* 時刻以外を更新した場合 */
 
 		tim_walltime_get(&ts);  /* 現在時刻を取得 */
 		inode->i_ctime = ts.tv_sec; /* 最終属性更新時刻の更新 */

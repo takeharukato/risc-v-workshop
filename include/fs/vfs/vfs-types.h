@@ -24,7 +24,7 @@ typedef uint64_t       vfs_ioctx_id;  /**< I/OコンテキストID            */
 typedef int32_t        vfs_fs_nlink;  /**< リンク数                     */
 typedef uint32_t        vfs_fs_mode;  /**< ファイル種別/アクセスモード  */
 typedef uint32_t     vfs_open_flags;  /**< open  フラグ                 */
-typedef vfs_fs_mode vfs_vnode_flags;  /**< Vnode フラグ                 */
+typedef uint64_t    vfs_vnode_flags;  /**< Vnode フラグ                 */
 typedef uint32_t       vfs_fd_flags;  /**< ファイルディスクリプタフラグ */
 typedef uint32_t     vfs_vstat_mask;  /**< ファイル属性マスク           */
 typedef uint32_t      vfs_mnt_flags;  /**< マウントフラグ               */

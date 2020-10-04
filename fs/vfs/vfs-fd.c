@@ -10,8 +10,6 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <kern/spinlock.h>
-#include <kern/wqueue.h>
 #include <kern/mutex.h>
 #include <kern/vfs-if.h>
 #include <kern/page-if.h>

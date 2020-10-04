@@ -10,11 +10,7 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <kern/spinlock.h>
-#include <kern/wqueue.h>
-#include <kern/mutex.h>
 #include <kern/vfs-if.h>
-#include <kern/page-if.h>
 
 /**
    open処理共通関数 (内部関数)
@@ -120,10 +116,11 @@ out:
  */
 int
 vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags omode, int *fdp) {
-	vnode *v;
-	int   rc;
-	int   fd;
-
+	int                   rc;
+	int                   fd;
+	vnode                 *v;
+	vfs_open_flags dir_omode;
+	
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
@@ -136,14 +133,15 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags omode, int *fdp) {
 
 	if ( !( v->v_mode & VFS_VNODE_MODE_DIR ) ) {
 
-		rc = -ENOTDIR; /* ディレクトリを開こうとした */
+		rc = -ENOTDIR; /* ディレクトリ以外のファイルを開こうとした */
 		goto unref_vnode_out;
 	}
 
-	/*
-	 * vnodeに対するファイルディスクリプタを取得
+	dir_omode =  omode & VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
+	
+	/* vnodeに対するファイルディスクリプタを取得
 	 */
-	rc = open_common(ioctx, v, omode, &fd);
+	rc = open_common(ioctx, v, dir_omode, &fd);
 	if ( rc != 0 ) {
 
 		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
@@ -179,16 +177,34 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags omode, int *fdp) {
 	int   rc;
 	int   fd;
 
+	if ( omode & VFS_O_DIRECTORY )
+		return vfs_opendir(ioctx, path, omode, fdp);  /* ディレクトリを開く */
+	
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
 	rc = vfs_path_to_vnode(ioctx, path, &v);
-	if (rc != 0) {
+	
+	if ( ( rc != 0 ) && ( ( rc != -ENOENT ) || ( ( omode & VFS_O_CREAT ) != 0 ) ) ) {
 
+		/* ファイルが存在しない */
 		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
 		goto out;
 	}
 
+	if ( ( omode & VFS_O_CREAT ) != 0 ) {  /* ファイル生成処理 */
+
+		if ( ( rc == 0 ) && ( ( omode & VFS_O_EXCL ) != 0 ) ) {
+
+			rc = -EEXIST;  /* ファイルが存在する場合はエラーとする */
+			goto unref_vnode_out;
+		}
+		/* create処理 */
+	}
+
+	//if ( omode & VFS_O_TRUNC ) /* ファイルサイズを0にする */
+	//if ( omode & VFS_O_APPEND ) /* ファイルポジションを末尾に設定する */
+	
 	if ( v->v_mode & VFS_VNODE_MODE_DIR ) {
 
 		rc = -EISDIR; /* ディレクトリを開こうとした */
