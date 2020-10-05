@@ -19,6 +19,12 @@
 #include <fs/vfs/vfs-fd.h>
 #include <fs/vfs/vfs-attr.h>
 
+void vfs_init_attr_helper(struct _vfs_file_stat *_stat);
+void vfs_copy_attr_helper(struct _vfs_file_stat *_dest, struct _vfs_file_stat *_src,
+			  vfs_vstat_mask _stat_mask);
+int vfs_setattr(struct _vnode *_v, vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
+int vfs_getattr(struct _vnode *_v, vfs_vstat_mask _stat_mask, struct _vfs_file_stat *_statp);
+
 int vfs_opendir(struct _vfs_ioctx *_ioctx, char *_path, vfs_open_flags _omode, int *_fdp);
 int vfs_open(struct _vfs_ioctx *_ioctx, char *_path, vfs_open_flags _oflags,
     vfs_fs_mode _omode, int *_fdp);

@@ -36,7 +36,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	vfs_dirent      *d;
 	int           bpos;
 	char        d_type;
-	
+
 	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -82,7 +82,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
-		
+
 		d = (vfs_dirent *) (buf + bpos);
 		kprintf("%8ld  ", d->d_ino);
 		d_type = *(buf + bpos + d->d_reclen - 1);
@@ -108,7 +108,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
-		
+
 		d = (vfs_dirent *) (buf + bpos);
 		kprintf("%8ld  ", d->d_ino);
 		d_type = *(buf + bpos + d->d_reclen - 1);
@@ -134,7 +134,7 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
 
 	/* ルートファイルシステムをマウントする */
-	rc = vfs_mount_with_fsname(NULL, "/", FS_INVALID_DEVID, SIMPLEFS_FSNAME, NULL);
+	rc = vfs_mount_with_fsname(NULL, "/", VFS_VSTAT_INVALID_DEVID, SIMPLEFS_FSNAME, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

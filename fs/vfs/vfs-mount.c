@@ -189,7 +189,7 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	mutex_init(&mount->m_mtx);       /*  マウントテーブル排他用mutexの初期化     */
 	refcnt_init(&mount->m_refs);     /*  参照カウンタの初期化                    */
 	mount->m_id = VFS_INVALID_MNTID; /*  マウントIDの初期化                      */
-	mount->m_dev = FS_INVALID_DEVID; /*  デバイスIDの初期化                      */
+	mount->m_dev = VFS_VSTAT_INVALID_DEVID; /*  デバイスIDの初期化               */
 	RB_INIT(&mount->m_head);         /*  マウントテーブル内のv-nodeリストの初期化 */
 	mount->m_fs_super = NULL;        /*  ファイルシステム固有情報の初期化        */
 	mount->m_fs = fs;                /*  ファイルシステム情報の初期化            */

@@ -39,7 +39,7 @@ simplefs_mount(vfs_mnt_id mntid, dev_id dev,
 	kassert( root_vnidp != NULL );
 
 	for( ; ; ) {
-		
+
 		rc = simplefs_get_super(&free_super);  /* 未マウントのスーパブロックを検索 */
 		if ( rc != 0 )
 			goto error_out;  /* 空きスーパーブロックが見つからなかった */
@@ -77,7 +77,7 @@ simplefs_unmount(vfs_fs_super fs_super){
 	simplefs_super_block *super;
 
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
-	
+
 	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
 
 	if ( ( super->s_state & SIMPLEFS_SUPER_MOUNTED ) == 0 )
@@ -107,7 +107,7 @@ simplefs_sync(vfs_fs_super fs_super){
 }
 
 /**
-   単純なファイルシステムのディレクトリエントリを検索し, 
+   単純なファイルシステムのディレクトリエントリを検索し,
    指定された名前に対応するI-node番号を返却する
    @param[in] fs_super    単純なファイルシステムのスーパブロック情報
    @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
@@ -129,7 +129,7 @@ simplefs_lookup(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 	dir_inode = (simplefs_inode *)fs_dir_vnode; /* I-node情報を参照 */
 
 	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
-	
+
 	/* 名前をキーにディレクトリエントリ内を検索 */
 	rc = simplefs_dirent_lookup(super, dir_inode, name, &vnid);
 	if ( rc != 0 )
@@ -138,7 +138,7 @@ simplefs_lookup(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 	if ( vnidp != NULL )
 		*vnidp = (vfs_vnode_id)vnid;  /* 対応するI-node番号を返却する */
 
-	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */	
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 	return 0;
 
 unlock_out:
@@ -151,7 +151,7 @@ unlock_out:
    @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
    @param[in]  vnid        獲得対象ファイルのv-node ID
    @param[out] fs_modep    ファイル属性値返却領域
-   @param[out] fs_vnodep   獲得したv-node情報を指し示すポインタのアドレス   
+   @param[out] fs_vnodep   獲得したv-node情報を指し示すポインタのアドレス
    @retval     0           正常終了
    @retval    -ENOENT      無効なv-node IDまたは未割り当てのv-node IDを指定した
  */
@@ -164,7 +164,7 @@ simplefs_getvnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_mode *fs_mode
 
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
 
-	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */	
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
 
 	/* I-node情報を参照 */
 	rc = simplefs_refer_inode(super, vnid, &inode);
@@ -175,10 +175,10 @@ simplefs_getvnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_mode *fs_mode
 
 	if ( fs_modep != NULL )
 		*fs_modep = (vfs_fs_mode)inode->i_mode; /* ファイル属性を返却 */
-	
+
 	if ( fs_vnodep != NULL )
 		*fs_vnodep = (vfs_fs_vnode)inode;  /* I-node情報を返却 */
-	
+
 	return 0;
 
 unlock_out:
@@ -264,7 +264,7 @@ simplefs_open(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode, vfs_open_flags omode
  */
 int
 simplefs_close(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode, vfs_file_private file_priv){
-	
+
 	/* 本ファイルシステムでは, 物理ファイルシステム固有の処理はない
 	 */
 	return 0;
@@ -817,7 +817,7 @@ simplefs_getdents(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 	size_t              namelen;
 	vfs_dirent           *v_ent;
 	uint8_t              d_type;
-	
+
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
 	dir_inode = (simplefs_inode *)fs_dir_vnode; /* ディレクトリのI-node情報 */
 
@@ -878,7 +878,7 @@ simplefs_getdents(vfs_fs_super fs_super, vfs_fs_vnode fs_dir_vnode,
 		d_type = DT_UNKNOWN;  /* 不明 */
 
 		/* 対象のI-nodeを参照 */
-		rc = simplefs_refer_inode(super, d_ent.d_inode, &ent_inode);  
+		rc = simplefs_refer_inode(super, d_ent.d_inode, &ent_inode);
 		if ( rc == 0 ) { /* ファイル種別を設定 */
 
 			if (S_ISREG(ent_inode->i_mode))
@@ -1001,9 +1001,10 @@ simplefs_getattr(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
    @param[in]  stat          設定する属性情報
    @param[in]  stat_mask     設定する属性情報を指示するビットマスク
    @retval     0      正常終了
+   @retval    -EINVAL ファイルサイズが不正
 */
 int
-simplefs_setattr(vfs_fs_super fs_super,  vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vnode,
+simplefs_setattr(vfs_fs_super fs_super, vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vnode,
     vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	int                      rc;
 	simplefs_super_block *super;

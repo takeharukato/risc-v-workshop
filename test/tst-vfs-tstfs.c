@@ -27,30 +27,30 @@ static tst_vfs_tstfs_db g_tstfs_db={.initialized = false,	\
 
 /** スーパブロックRB木
  */
-static int _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *_key, 
+static int _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *_key,
 				  struct _tst_vfs_tstfs_super *_ent);
-RB_GENERATE_STATIC(_tst_vfs_tstfs_super_tree, _tst_vfs_tstfs_super, ent, 
+RB_GENERATE_STATIC(_tst_vfs_tstfs_super_tree, _tst_vfs_tstfs_super, ent,
 		   _tst_vfs_tstfs_super_cmp);
 
 /** I-nodeRB木
  */
-static int _tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *_key, 
+static int _tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *_key,
 				  struct _tst_vfs_tstfs_inode *_ent);
-RB_GENERATE_STATIC(_tst_vfs_tstfs_inode_tree, _tst_vfs_tstfs_inode, ent, 
+RB_GENERATE_STATIC(_tst_vfs_tstfs_inode_tree, _tst_vfs_tstfs_inode, ent,
 		   _tst_vfs_tstfs_inode_cmp);
 
 /** ディレクトリエントリRB木
  */
-static int _tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *_key, 
+static int _tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *_key,
 				  struct _tst_vfs_tstfs_dent *_ent);
-RB_GENERATE_STATIC(_tst_vfs_tstfs_dent_tree, _tst_vfs_tstfs_dent, ent, 
+RB_GENERATE_STATIC(_tst_vfs_tstfs_dent_tree, _tst_vfs_tstfs_dent, ent,
 		   _tst_vfs_tstfs_dent_cmp);
 
 /** データページRB木
  */
-static int _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *_key, 
+static int _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *_key,
 				  struct _tst_vfs_tstfs_dpage *_ent);
-RB_GENERATE_STATIC(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage, ent, 
+RB_GENERATE_STATIC(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage, ent,
 		   _tst_vfs_tstfs_dpage_cmp);
 
 /**
@@ -62,8 +62,8 @@ RB_GENERATE_STATIC(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage, ent,
    @retval 0   keyが entに等しい
  */
 static int
-_tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key, 
-				    struct _tst_vfs_tstfs_super *ent){	
+_tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key,
+				    struct _tst_vfs_tstfs_super *ent){
 
 	if ( key->s_devid < ent->s_devid )
 		return 1;
@@ -71,7 +71,7 @@ _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key,
 	if ( ent->s_devid < key->s_devid )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -83,8 +83,8 @@ _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key,
    @retval 0   keyが entに等しい
  */
 static int
-_tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *key, 
-			 struct _tst_vfs_tstfs_inode *ent){	
+_tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *key,
+			 struct _tst_vfs_tstfs_inode *ent){
 
 	if ( key->i_ino < ent->i_ino )
 		return 1;
@@ -92,7 +92,7 @@ _tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *key,
 	if ( ent->i_ino < key->i_ino )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -104,8 +104,8 @@ _tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *key,
    @retval 0   keyが entに等しい
  */
 static int
-_tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *key, 
-			struct _tst_vfs_tstfs_dent *ent){	
+_tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *key,
+			struct _tst_vfs_tstfs_dent *ent){
 
 	if ( strncmp(key->name, ent->name, TST_VFS_TSTFS_FNAME_LEN) > 0 )
 		return 1;
@@ -113,7 +113,7 @@ _tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *key,
 	if ( strncmp(key->name, ent->name, TST_VFS_TSTFS_FNAME_LEN) < 0 )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -125,8 +125,8 @@ _tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *key,
    @retval 0   keyが entに等しい
  */
 static int
-_tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key, 
-			struct _tst_vfs_tstfs_dpage *ent){	
+_tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key,
+			struct _tst_vfs_tstfs_dpage *ent){
 
 	if ( key->index < ent->index )
 		return 1;
@@ -134,7 +134,7 @@ _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key,
 	if ( ent->index < key->index )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -178,7 +178,7 @@ error_out:
    @retval -ENOENT データページが見つからなかった
  */
 static int
-tst_vfs_tstfs_dpage_find_nolock(tst_vfs_tstfs_inode *inode, off_t offset, 
+tst_vfs_tstfs_dpage_find_nolock(tst_vfs_tstfs_inode *inode, off_t offset,
     tst_vfs_tstfs_dpage **dpagep){
 	tst_vfs_tstfs_dpage *dpage;
 	tst_vfs_tstfs_dpage    key;
@@ -203,7 +203,7 @@ tst_vfs_tstfs_dpage_find_nolock(tst_vfs_tstfs_inode *inode, off_t offset,
    @retval -ENOENT ディレクトリエントリが見つからなかった
  */
 static int
-tst_vfs_tstfs_dent_find_nolock(tst_vfs_tstfs_inode *inode, const char *name, 
+tst_vfs_tstfs_dent_find_nolock(tst_vfs_tstfs_inode *inode, const char *name,
     tst_vfs_tstfs_dent **dentp){
 	tst_vfs_tstfs_dent   *dent;
 	tst_vfs_tstfs_dent     key;
@@ -230,11 +230,11 @@ tst_vfs_tstfs_dent_find_nolock(tst_vfs_tstfs_inode *inode, const char *name,
    @retval -ENOENT I-nodeが見つからなかった
  */
 static int
-tst_vfs_tstfs_inode_find_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino, 
+tst_vfs_tstfs_inode_find_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino,
     tst_vfs_tstfs_inode **inodep){
 	tst_vfs_tstfs_inode *inode;
 	tst_vfs_tstfs_inode    key;
-	
+
 	key.i_ino = ino;
 	inode = RB_FIND(_tst_vfs_tstfs_inode_tree, &super->s_inodes, &key);
 	if ( inode == NULL )
@@ -255,14 +255,14 @@ tst_vfs_tstfs_inode_find_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino in
    @retval -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int
-tst_vfs_tstfs_dent_add_nolock(tst_vfs_tstfs_inode *inode, tst_vfs_tstfs_ino ino, 
+tst_vfs_tstfs_dent_add_nolock(tst_vfs_tstfs_inode *inode, tst_vfs_tstfs_ino ino,
     const char *name){
 	int                     rc;
 	tst_vfs_tstfs_dent   *dent;
 	tst_vfs_tstfs_dent    *res;
 
 	rc = slab_kmem_cache_alloc(&tstfs_dent, KMALLOC_NORMAL, (void **)&dent);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		return rc;
 
 	dent->ino = ino;
@@ -277,12 +277,12 @@ tst_vfs_tstfs_dent_add_nolock(tst_vfs_tstfs_inode *inode, tst_vfs_tstfs_ino ino,
 	}
 
 	/* ディレクトリエントリのサイズを加算 */
-	inode->i_size += sizeof(tst_vfs_tstfs_dent); 
+	inode->i_size += sizeof(tst_vfs_tstfs_dent);
 
 	return 0;
 
 free_dent_out:
-	slab_kmem_cache_free((void *)dent);  /* ディレクトリエントリを解放    */	
+	slab_kmem_cache_free((void *)dent);  /* ディレクトリエントリを解放    */
 	return rc;
 }
 
@@ -332,7 +332,7 @@ tst_vfs_tstfs_dpage_free_nolock(tst_vfs_tstfs_inode *inode, off_t offset){
 	tst_vfs_tstfs_dpage   *res;
 
 	rc = tst_vfs_tstfs_dpage_find_nolock(inode, offset, &dpage);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		return  -ENOENT;
 
 	res = RB_REMOVE(_tst_vfs_tstfs_dpage_tree, &inode->dpages, dpage);
@@ -358,7 +358,7 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 	tst_vfs_tstfs_ino  new_ino;
 
 	rc = slab_kmem_cache_alloc(&tstfs_inode, KMALLOC_NORMAL, (void **)&inode);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto error_out;
 
 	new_ino = bitops_ffc(&super->s_inode_map);
@@ -369,7 +369,7 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 	}
 	mutex_init(&inode->mtx);
 	inode->i_ino = new_ino - 1;
-	inode->i_rdev = FS_INVALID_DEVID;
+	inode->i_rdev = VFS_VSTAT_INVALID_DEVID;
 	inode->i_mode = VFS_VNODE_MODE_NONE;
 	inode->i_nlinks = 1;
 	inode->i_size = 0;
@@ -416,13 +416,13 @@ tst_vfs_tstfs_inode_free_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode 
 
 		/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 		RB_FOREACH_SAFE(dent, _tst_vfs_tstfs_dent_tree, &inode->dents, next_dent) {
-			
+
 			rc = tst_vfs_tstfs_dent_del_nolock(inode, dent->name);
 			kassert( rc == 0 );
 		}
 	} else {
 
-		for(off = 0; inode->i_size > off; off += PAGE_SIZE) 
+		for(off = 0; inode->i_size > off; off += PAGE_SIZE)
 			tst_vfs_tstfs_dpage_free_nolock(inode, off/PAGE_SIZE);
 	}
 
@@ -445,7 +445,7 @@ error_out:
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int
-tst_vfs_tstfs_make_directory_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+tst_vfs_tstfs_make_directory_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
 	const char *name){
 	int                          rc;
 	tst_vfs_tstfs_inode  *new_inode;
@@ -509,8 +509,8 @@ error_out:
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int
-tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
-			       const char *name, vfs_fs_mode mode, fs_dev_id major, 
+tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
+			       const char *name, vfs_fs_mode mode, fs_dev_id major,
 				 fs_dev_id minor, tst_vfs_tstfs_ino  *new_inop,
 			       tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
@@ -571,9 +571,9 @@ error_out:
    @retval    -ENOMEM メモリ不足
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
-static int __unused 
-tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
-    const char *name, vfs_fs_mode mode, fs_dev_id major, fs_dev_id minor, 
+static int __unused
+tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
+    const char *name, vfs_fs_mode mode, fs_dev_id major, fs_dev_id minor,
     tst_vfs_tstfs_ino  *new_inop, tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
 
@@ -583,7 +583,7 @@ tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 
 	/* ファイル用I-nodeの割当て
 	 */
-	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, major, 
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, major,
 	    minor, new_inop, new_inodep);
 	if ( rc != 0 )
 		goto error_out;
@@ -609,8 +609,8 @@ error_out:
    @retval    -EBUSY  ディレクトリエントリ内に同じ名前のファイルが存在する
  */
 static int  __unused
-tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
-    const char *name, vfs_fs_mode mode, tst_vfs_tstfs_ino  *new_inop, 
+tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
+    const char *name, vfs_fs_mode mode, tst_vfs_tstfs_ino  *new_inop,
     tst_vfs_tstfs_inode **new_inodep){
 	int  rc;
 
@@ -619,8 +619,8 @@ tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 
 	/* ファイル用I-nodeの割当て
 	 */
-	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, FS_INVALID_DEVID, 
-	    FS_INVALID_DEVID, new_inop, new_inodep);
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, VFS_VSTAT_INVALID_DEVID,
+	    VFS_VSTAT_INVALID_DEVID, new_inop, new_inodep);
 	if ( rc != 0 )
 		goto error_out;
 
@@ -639,7 +639,7 @@ error_out:
    @retval    -ENOENT ディレクトリエントリ中にファイル名が見つからなかった
  */
 static int  __unused
-tst_vfs_tstfs_unlink_file_common(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+tst_vfs_tstfs_unlink_file_common(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
     const char *name){
 	int rc;
 	tst_vfs_tstfs_inode *inode;
@@ -664,22 +664,22 @@ tst_vfs_tstfs_unlink_file_common(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 		/* スーパブロック中にI-nodeが見つからなかった
 		 * 整合性をとるためにディレクトリエントリ中の対象エントリを削除
 		 */
-		rc = tst_vfs_tstfs_dent_del_nolock(dv, name); 
+		rc = tst_vfs_tstfs_dent_del_nolock(dv, name);
 		kassert( rc == 0 );  /* 上記でディレクトリエントリを獲得済み, 成功するはず */
-		goto error_out; 
+		goto error_out;
 	}
 
 	/* ディレクトリエントリ中の対象エントリを削除 */
 	rc = tst_vfs_tstfs_dent_del_nolock(dv, name);
 	kassert( rc == 0 ); /* 上記でディレクトリエントリを獲得済み, 成功するはず */
 
-	
+
 	mutex_lock(&inode->mtx);
-	if ( inode->i_nlinks > 0 ) 
+	if ( inode->i_nlinks > 0 )
 		--inode->i_nlinks;  /* I-nodeのリンク数を削除 */
 
 	if ( inode->i_nlinks > 0 ) {
-		
+
 		/* I-nodeを参照中のディレクトリエントリエントリがあればエラー復帰 */
 		rc = -EBUSY;
 		goto unlock_out;
@@ -707,14 +707,14 @@ error_out:
    @retval -ENOMEM メモリ不足
  */
 static int
-tst_vfs_tstfs_mount(vfs_mnt_id id, dev_id dev, void *args, 
+tst_vfs_tstfs_mount(vfs_mnt_id id, dev_id dev, void *args,
 		 vfs_fs_super *fs_superp, vfs_vnode_id *root_vnidp){
 	int                       rc;
 	uint32_t               major;
 	tst_vfs_tstfs_super   *super;
-	
+
 	major = dev >> 32;
-	
+
 	if ( major != TST_VFS_TSTFS_DEV_MAJOR )
 		return -ENOENT;
 
@@ -786,7 +786,7 @@ tst_vfs_tstfs_getvnode(vfs_fs_super fs_super, vfs_vnode_id id, vfs_fs_mode *mode
 		return -EINVAL;
 
 	super=(tst_vfs_tstfs_super *)fs_super;
-	ino = (tst_vfs_tstfs_ino)id; 
+	ino = (tst_vfs_tstfs_ino)id;
 
 	mutex_lock(&super->mtx);
 	rc = tst_vfs_tstfs_inode_find_nolock(super, ino, &inode);
@@ -829,7 +829,7 @@ tst_vfs_tstfs_putvnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_vnode __
  */
 static int
 tst_vfs_tstfs_removevnode(vfs_fs_super fs_super, vfs_vnode_id vnid, vfs_fs_vnode v){
-	tst_vfs_tstfs_inode *inode;	
+	tst_vfs_tstfs_inode *inode;
 	tst_vfs_tstfs_super *super;
 
 	super = (tst_vfs_tstfs_super *)fs_super;
@@ -862,7 +862,7 @@ tst_vfs_tstfs_lookup(vfs_fs_super fs_super, vfs_fs_vnode dir,
 	super = (tst_vfs_tstfs_super *)fs_super;
 	if ( super->s_magic != TST_VFS_TSTFS_MAGIC )
 		return -EINVAL;
-	
+
 	dv = (tst_vfs_tstfs_inode *)dir;
 	if ( !( S_ISDIR(dv->i_mode) ) )
 		return -EINVAL;
@@ -911,7 +911,7 @@ tst_vfs_tstfs_seek(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode, off_t pos, int 
    @retval   -EINVAL    スーパブロック情報が不正
  */
 int
-tst_vfs_tstfs_open(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode, 
+tst_vfs_tstfs_open(vfs_fs_super fs_super, vfs_fs_vnode v, vfs_open_flags omode,
     vfs_file_private *file_privp){
 	tst_vfs_tstfs_super *super;
 
@@ -1026,7 +1026,7 @@ tst_vfs_tstfs_dpage_free(tst_vfs_tstfs_inode *inode, off_t offset){
    @retval -EBUSY  指定されたオフセットのデータページが存在する
  */
 int
-tst_vfs_tstfs_dpage_alloc(tst_vfs_tstfs_inode *inode, off_t offset, 
+tst_vfs_tstfs_dpage_alloc(tst_vfs_tstfs_inode *inode, off_t offset,
     tst_vfs_tstfs_dpage **dpagep){
 	int                     rc;
 	tst_vfs_tstfs_dpage *dpage;
@@ -1035,7 +1035,7 @@ tst_vfs_tstfs_dpage_alloc(tst_vfs_tstfs_inode *inode, off_t offset,
 	mutex_lock(&inode->mtx);
 
 	rc = slab_kmem_cache_alloc(&tstfs_dpage, KMALLOC_NORMAL, (void **)&dpage);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto unlock_out;
 
 	rc = pgif_get_free_page(&dpage->page, KMALLOC_NORMAL, PAGE_USAGE_PCACHE);
@@ -1058,7 +1058,7 @@ free_cache_page_out:
 	pgif_free_page(dpage->page);
 
 free_dpage_out:
-	slab_kmem_cache_free((void *)dpage);  /* データページを解放    */	
+	slab_kmem_cache_free((void *)dpage);  /* データページを解放    */
 
 unlock_out:
 	mutex_unlock(&inode->mtx);
@@ -1073,7 +1073,7 @@ unlock_out:
    @retval -ENOENT ディレクトリエントリが見つからなかった
  */
 int
-tst_vfs_tstfs_dent_find(tst_vfs_tstfs_inode *dv, const char *name, 
+tst_vfs_tstfs_dent_find(tst_vfs_tstfs_inode *dv, const char *name,
     tst_vfs_tstfs_dent **dentp){
 	int                     rc;
 	tst_vfs_tstfs_dent   *dent;
@@ -1086,7 +1086,7 @@ tst_vfs_tstfs_dent_find(tst_vfs_tstfs_inode *dv, const char *name,
 
 	if ( dentp != NULL )
 		*dentp = dent;
-	
+
 	return 0;
 
 unlock_out:
@@ -1162,7 +1162,7 @@ tst_vfs_tstfs_inode_alloc(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode **inod
 	mutex_lock(&super->mtx);
 
 	rc = tst_vfs_tstfs_inode_alloc_nolock(super, inodep);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto unlock_out;
 
 
@@ -1191,7 +1191,7 @@ tst_vfs_tstfs_inode_free(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *inode)
 	mutex_lock(&inode->mtx);
 
 	rc = tst_vfs_tstfs_inode_free_nolock(super, inode);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto unlock_out;
 
 	mutex_unlock(&inode->mtx);
@@ -1231,10 +1231,10 @@ tst_vfs_tstfs_superblock_alloc(dev_id devid, tst_vfs_tstfs_super **superp){
 	super->s_state = TST_VFS_TSTFS_SSTATE_NONE;
 	RB_INIT(&super->s_inodes);
 	bitops_zero(&super->s_inode_map);
-	for(i = 0; TST_VFS_TSTFS_ROOT_VNID > i; ++i) 
+	for(i = 0; TST_VFS_TSTFS_ROOT_VNID > i; ++i)
 		bitops_set(i, &super->s_inode_map);
 
-	/* ルートI-nodeの割当て, ディレクトリエントリの生成 
+	/* ルートI-nodeの割当て, ディレクトリエントリの生成
 	 */
 	rc = tst_vfs_tstfs_inode_alloc(super, &dir_inode); /* ルートI-node割り当て */
 	kassert( rc == 0 );
@@ -1314,7 +1314,7 @@ tst_vfs_tstfs_superblock_free(tst_vfs_tstfs_super *super){
    @retval -ENOENT I-nodeが見つからなかった
  */
 int
-tst_vfs_tstfs_inode_find(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino, 
+tst_vfs_tstfs_inode_find(tst_vfs_tstfs_super *super, tst_vfs_tstfs_ino ino,
     tst_vfs_tstfs_inode **inodep){
 	int                     rc;
 	tst_vfs_tstfs_inode *inode;
@@ -1348,7 +1348,7 @@ unlock_out:
    @retval    -EBUSY   ディレクトリが空でない
  */
 int
-tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
 	const char *name){
 	int                          rc;
 	tst_vfs_tstfs_dent        *dent;
@@ -1359,15 +1359,15 @@ tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *
 	mutex_lock(&dv->mtx);
 
 	if ( !S_ISDIR(dv->i_mode) ) {
-		
+
 		rc = -ENOTDIR;  /* ディレクトリではない */
-		goto unlock_out;  
+		goto unlock_out;
 	}
-	
+
 	rc = tst_vfs_tstfs_dent_find_nolock(dv, name, &dent); /* ディレクトリエントリ検索 */
 	if ( rc != 0 )
 		goto unlock_out;  /* 指定された名前のディレクトリが存在しない */
-	
+
 	/*
 	 * 削除対象ディレクトリの検索, 状態確認
 	 */
@@ -1376,21 +1376,21 @@ tst_vfs_tstfs_remove_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *
 		goto unlock_out;  /* 指定された名前のディレクトリのI-nodeが存在しない */
 
 	if ( !S_ISDIR(rm_inode->i_mode) ) {
-		
+
 		rc = -ENOTDIR;  /* ディレクトリではない */
-		goto unlock_out;  
+		goto unlock_out;
 	}
 
 	if ( rm_inode->i_size > ( sizeof(tst_vfs_tstfs_dent) * 2 ) ) {
 
 		rc = -EBUSY; /* ディレクトリが空ではない */
-		goto unlock_out;  
+		goto unlock_out;
 	}
 
 	if ( rm_inode->i_nlinks > 2 ) {
 
 		rc = -EBUSY; /* ディレクトリが空ではない */
-		goto unlock_out;  
+		goto unlock_out;
 	}
 
 	/* ディレクトリエントリの削除 */
@@ -1426,7 +1426,7 @@ unlock_out:
    @note LO:   スーパブロック情報のロック, 親ディレクトリのI-node情報のロックの順に獲得する
  */
 int
-tst_vfs_tstfs_make_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv, 
+tst_vfs_tstfs_make_directory(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
 	const char *name){
 	int                      rc;
 
@@ -1446,30 +1446,30 @@ void
 tst_vfs_tstfs_init(void){
 	int rc;
 
-	if ( g_tstfs_db.initialized ) 
+	if ( g_tstfs_db.initialized )
 		return;
 
 	/* テスト用ファイルシステムsuperblock用SLABキャッシュの初期化 */
-	
-	rc = slab_kmem_cache_create(&tstfs_super, "test file system superblock", 
+
+	rc = slab_kmem_cache_create(&tstfs_super, "test file system superblock",
 	    sizeof(tst_vfs_tstfs_super), SLAB_ALIGN_NONE, 0, KMALLOC_NORMAL,
 	    NULL, NULL);
 	kassert( rc == 0 );
-	
+
 	/* テスト用ファイルシステムI-node用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_inode, "test file system I-node", 
+	rc = slab_kmem_cache_create(&tstfs_inode, "test file system I-node",
 	    sizeof(tst_vfs_tstfs_inode), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
 	    NULL, NULL);
 	kassert( rc == 0 );
-	
+
 	/* テスト用ファイルシステムディレクトリエントリ用SLABキャッシュの初期化 */
 	rc = slab_kmem_cache_create(&tstfs_dent, "test file system directory entries",
 	    sizeof(tst_vfs_tstfs_dent), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
 	    NULL, NULL);
 	kassert( rc == 0 );
-	
+
 	/* テスト用ファイルシステムデータページ用SLABキャッシュの初期化 */
-	rc = slab_kmem_cache_create(&tstfs_dpage, "test file system data pages", 
+	rc = slab_kmem_cache_create(&tstfs_dpage, "test file system data pages",
 	    sizeof(tst_vfs_tstfs_dpage), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL,
 	    NULL, NULL);
 	kassert( rc == 0 );

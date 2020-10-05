@@ -14,11 +14,11 @@
 
 /**
    open処理共通関数 (内部関数)
-   @param[in]  ioctx I/Oコンテキスト
-   @param[in]  v     openするファイルのvnode
+   @param[in]  ioctx  I/Oコンテキスト
+   @param[in]  v      openするファイルのvnode
    @param[in]  oflags open時に指定したモード
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
-   @retval  0     正常終了
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EPERM  ディレクトリを書き込みで開こうとした
@@ -26,7 +26,7 @@
    @retval -EIO    I/Oエラー
    @retval -ENOSYS open/opendirをサポートしていない
  */
-static int 
+static int
 open_common(vfs_ioctx *ioctx, vnode *v, vfs_open_flags oflags, int *fdp){
 	int                     fd;
 	vfs_file_private file_priv;
@@ -43,7 +43,7 @@ open_common(vfs_ioctx *ioctx, vnode *v, vfs_open_flags oflags, int *fdp){
 		goto out;
 	}
 
-	kassert( f->f_vn != NULL );  
+	kassert( f->f_vn != NULL );
 	kassert( f->f_vn->v_mount != NULL );
 	kassert( f->f_vn->v_mount->m_fs != NULL );
 	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
@@ -69,24 +69,24 @@ open_common(vfs_ioctx *ioctx, vnode *v, vfs_open_flags oflags, int *fdp){
 		 */
 
 		file_priv = NULL;  /* ファイルディスクリプタプライベート情報を初期化 */
-		
-		rc = v->v_mount->m_fs->c_calls->fs_open(v->v_mount->m_fs_super, 
+
+		rc = v->v_mount->m_fs->c_calls->fs_open(v->v_mount->m_fs_super,
 		    v->v_fs_vnode, oflags, &file_priv);
 		if (rc != 0) {
-			
+
 			kassert( ( rc == -ENOMEM ) || ( rc == -EIO ) );
 			goto put_fd_out;
 		}
-		
+
 		f->f_private = file_priv;
 	} else {
-		
+
 		rc = -ENOSYS;
 		goto put_fd_out;
 	}
-	
+
 	*fdp = fd;  /*  ユーザファイルディスクリプタを返却  */
-	
+
 	return 0;
 
 put_fd_out:
@@ -120,7 +120,7 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 	int                   fd;
 	vnode                 *v;
 	vfs_open_flags dir_oflags;
-	
+
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
@@ -138,7 +138,7 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 	}
 
 	dir_oflags =  oflags & VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
-	
+
 	/* vnodeに対するファイルディスクリプタを取得
 	 */
 	rc = open_common(ioctx, v, dir_oflags, &fd);
@@ -159,11 +159,11 @@ out:
 
 /**
    指定されたパスのファイルを開く
-   @param[in]  ioctx  自プロセスのI/Oコンテキスト
+   @param[in]  ioctx  I/Oコンテキスト
    @param[in]  path   openするファイルのパス
    @param[in]  oflags open時に指定したフラグ値
    @param[in]  omode  open時に指定したファイル種別/アクセス権
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOMEM メモリ不足
@@ -178,15 +178,15 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 	int             fd;
 	vnode           *v;
 	vfs_file_stat   st;
-	
+
 	if ( oflags & VFS_O_DIRECTORY )
 		return vfs_opendir(ioctx, path, oflags, fdp);  /* ディレクトリを開く */
-	
+
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
 	rc = vfs_path_to_vnode(ioctx, path, &v);
-	
+
 	if ( ( rc != 0 ) && ( ( rc != -ENOENT ) || ( ( oflags & VFS_O_CREAT ) != 0 ) ) ) {
 
 		/* ファイルが存在しない */
@@ -203,7 +203,7 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		}
 		if ( rc == -ENOENT ) { /* ファイルが存在しない場合はファイルを生成する */
 
-			memset(&st, 0, sizeof(vfs_file_stat));
+			vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 			st.st_mode = omode;  /* ファイルモード */
 			rc = vfs_create(ioctx, path, &st); /* ファイルを生成する */
 			if ( rc != 0 )
@@ -211,9 +211,17 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		}
 	}
 
-	//if ( oflags & VFS_O_TRUNC ) /* ファイルサイズを0にする */
+	if ( oflags & VFS_O_TRUNC ) { /* ファイルサイズを0にする */
+
+		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
+		st.st_size = 0;    /* ファイルサイズを0にする */
+		rc = vfs_setattr(v, &st, VFS_VSTAT_MASK_SIZE); /* ファイルサイズのみを設定する */
+		if ( rc != 0 )
+			goto unref_vnode_out;  /* サイズ更新に失敗した */
+	}
+
 	//if ( oflags & VFS_O_APPEND ) /* ファイルポジションを末尾に設定する */
-	
+
 	if ( v->v_mode & VFS_VNODE_MODE_DIR ) {
 
 		rc = -EISDIR; /* ディレクトリを開こうとした */

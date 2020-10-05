@@ -3,7 +3,7 @@
 /*  Yet Another Teachable Operating System                            */
 /*  Copyright 2016 Takeharu KATO                                      */
 /*                                                                    */
-/*  vfs getdents operations                                               */
+/*  vfs getdents operations                                           */
 /*                                                                    */
 /**********************************************************************/
 
@@ -46,7 +46,7 @@ vfs_getdents(vfs_ioctx *ioctx, int fd, void *buf, off_t off,
 		goto error_out;
 	}
 
-	kassert(f->f_vn != NULL);  
+	kassert(f->f_vn != NULL);
 	kassert(f->f_vn->v_mount != NULL);
 	kassert(f->f_vn->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
@@ -63,21 +63,21 @@ vfs_getdents(vfs_ioctx *ioctx, int fd, void *buf, off_t off,
 		rc = f->f_vn->v_mount->m_fs->c_calls->fs_getdents(
 			f->f_vn->v_mount->m_fs_super,
 			f->f_vn->v_fs_vnode, buf, off, buflen, &rd_bytes);
-		if ( 0 > rc ) 
+		if ( 0 > rc )
 			goto put_fd_out;  /* エラー復帰する */
 	}
 
 	if ( rdlenp != NULL )
 		*rdlenp = rd_bytes;  /* 読み取り長を返却 */
-	
+
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
-		
+
 	return 0;
 
 put_fd_out:
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
-	
+
 error_out:
 	return rc;
-	
+
 }
