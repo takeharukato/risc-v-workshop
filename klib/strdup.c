@@ -29,7 +29,7 @@ kstrdup(const char *src){
 
 	strcpy(m, src);
 
-	*((char *)m +(len - 1)) = '\0'; /* ヌル終端をつける */
+	*( (char *)m + ( len - 1 ) ) = '\0'; /* ヌル終端をつける */
 	
 error_out:
 	return m;
