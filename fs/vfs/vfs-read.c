@@ -58,8 +58,6 @@ vfs_read(vfs_ioctx *ioctx, int fd, void *buf, ssize_t len, ssize_t *rdlenp){
 		goto put_fd_out;
 	}
 
-	rd_bytes = len; /* 読込み長を設定 */
-
 	/* ファイルからの読込みを実施 */
 	rd_bytes = f->f_vn->v_mount->m_fs->c_calls->fs_read(
 		f->f_vn->v_mount->m_fs_super,

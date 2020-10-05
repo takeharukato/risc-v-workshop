@@ -70,8 +70,6 @@ vfs_write(vfs_ioctx *ioctx, int fd, const void *buf, ssize_t len, ssize_t *wrlen
 		goto put_fd_out;
 	}
 
-	wr_bytes = len; /* 書き込み長を設定 */
-
 	/* ファイルへの書き込みを実施 */
 	wr_bytes = f->f_vn->v_mount->m_fs->c_calls->fs_write(
 		f->f_vn->v_mount->m_fs_super,

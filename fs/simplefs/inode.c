@@ -60,7 +60,7 @@ simplefs_init_inode_common(simplefs_inode *fs_inode){
 static bool
 simplefs_inode_is_alloced(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
 
-	/* 無効なI-node番号でなく, かつ,  最大I-node数を超えておらず, かつ, 
+	/* 無効なI-node番号でなく, かつ,  最大I-node数を超えておらず, かつ,
 	 * I-nodeが割り当て済みであることを確認
 	 */
 	return ( (fs_vnid != SIMPLEFS_INODE_INVALID_INO) &&
@@ -138,7 +138,7 @@ simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 		total = len;  /* 書き込みサイズ */
 
 	remains = total; /* 残転送サイズ */
-	
+
 	for(rwsiz = 0, cur_pos = pos; remains > 0; remains -= rwsiz, cur_pos += rwsiz ){
 
 		rc = simplefs_read_mapped_block(fs_super, fs_inode,
@@ -185,7 +185,7 @@ simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	}
 
 	if ( total != remains ) {  /* 読み書きを行った場合 */
-	
+
 		if ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) {  /* I-nodeの更新を行う場合 */
 
 			if ( rw_flag == SIMPLEFS_RW_WRITE ) {  /* 書き込みの場合 */
@@ -200,12 +200,12 @@ simplefs_inode_rw_blocks(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 			if ( rc != 0 )
 				goto error_out;
 		}
-
-		if ( rwlenp != NULL )
-			*rwlenp = total - remains;  /* 読み書きを行えたサイズを返却 */
 	}
 
+	if ( rwlenp != NULL )
+		*rwlenp = total - remains;  /* 読み書きを行えたサイズを返却 */
 success:
+
 	return 0;
 
 error_out:
@@ -223,7 +223,7 @@ error_out:
    @retval -EFBIG      ファイル長よりoffの方が小さい
  */
 static int
-simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 			     simplefs_inode *fs_inode, off_t len){
 	int                       rc;
 	int                      res;
@@ -238,7 +238,7 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	simplefs_blkno       new_blk;
 
 	kassert( len != 0 );  /* 解放長が0の場合の処理は呼び出し元で実施済み */
-	
+
 	if ( 0 > len )
 		return -EINVAL;      /* 伸長長に負の値を設定した */
 
@@ -268,20 +268,20 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 
 			/* クリア開始オフセットを算出 */
 			clr_start = cur_pos % blksiz;
-			
+
 			/* クリアサイズを算出 */
 			clr_siz = blksiz - clr_start;
-			
+
 			/* 開始ブロック内をクリアする */
 			rc = simplefs_clear_block(fs_super, fs_inode, new_blk,
 			    clr_start, clr_siz);
 			kassert( rc == 0 );
-		
+
 			++cur_rel_blk; /* 伸長対象ブロックを更新 */
 			cur_pos = roundup_align(cur_pos, blksiz); /* 伸張対象位置を更新 */
 		}
 	}
-	
+
 	/* 伸長範囲中のゾーンを割り当てるループ
 	 */
 	for( ; end_rel_blk > cur_rel_blk; ++cur_rel_blk ) {
@@ -296,7 +296,7 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 			kassert( rc == 0 );
 		} else {
 
-			/* @note 通常, ブロックが割り当てられていない場合は, 
+			/* @note 通常, ブロックが割り当てられていない場合は,
 			 * 新たにブロックを割り当てる。
 			 * 割り当てに失敗した場合は, 割り当てたブロックを解放する。
 			 * ファイル長のみでファイルを管理する場合は不要
@@ -333,7 +333,7 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	/* 終端がブロック境界に沿っていない場合, ファイルサイズを伸長範囲に
 	 * 収めるように補正する。
 	 */
-	if ( fs_inode->i_size > ( old_siz + len ) ) { 
+	if ( fs_inode->i_size > ( old_siz + len ) ) {
 
 		/*
 		 * 終端がブロック境界に沿っていない場合
@@ -342,7 +342,7 @@ simplefs_inode_truncate_up(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 		fs_inode->i_size = cur_pos;  /* ファイルサイズを更新 */
 	}
 
-	/* 二次記憶上のI-node情報を更新 
+	/* 二次記憶上のI-node情報を更新
 	 */
 	rc = simplefs_write_inode(fs_super, fs_vnid, fs_inode);
 	if ( rc != 0 ) {
@@ -361,7 +361,7 @@ unmap_block_out:
 	kassert( res == 0 );
 
 	/* ゾーン解放に伴って元のサイズに更新されていることを確認  */
-	kassert( fs_inode->i_size == old_siz );  
+	kassert( fs_inode->i_size == old_siz );
 
 	return rc;
 }
@@ -378,7 +378,7 @@ unmap_block_out:
    @retval -EFBIG      ファイル長よりoffの方が大きい
  */
 static int
-simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 				 simplefs_inode *fs_inode, off_t off, off_t len){
 	int                       rc;
 	size_t                blksiz;
@@ -389,12 +389,12 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 	simplefs_blkno first_rel_blk;
 	simplefs_blkno   end_rel_blk;
 	simplefs_blkno    remove_blk;
-	
+
 	kassert( len != 0 );  /* 解放長が0の場合の処理は呼び出し元で実施済み */
 
 	if ( ( 0 > off ) || ( 0 > len ) )
 		return -EINVAL; /* オフセットまたは解放長に負の値を設定した  */
-	
+
 	if ( ( off > fs_inode->i_size ) || ( off > ( off + len ) ) )
 		return -EFBIG; /* ファイル長よりオフセットの方が大きい */
 
@@ -426,16 +426,16 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 		    cur_rel_blk * fs_inode->i_size, &remove_blk); /* 物理ブロック番号を算出 */
 		kassert( ( rc != -EINVAL ) && ( rc != -E2BIG ) );
 		if ( rc == 0 ) {  /* ブロックが割り当て済みの場合 */
-			
+
 			rc = simplefs_clear_block(fs_super, fs_inode, remove_blk,
 			    clr_start, clr_siz);  /* ブロック内をクリアする */
 			kassert( rc == 0 );
 		}
-		
+
 		++cur_rel_blk; /* 次のブロックから削除を継続する */
 		cur_pos = roundup_align(cur_pos, blksiz);   /*  削除位置を更新する  */
 	}
-	
+
 	/* 削除範囲中のブロックをクリアする
 	 */
 	for( ; end_rel_blk > cur_rel_blk; ++cur_rel_blk ) {
@@ -448,15 +448,15 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 			/* ブロックをアンマップする */
 			rc = simplefs_unmap_block(fs_super, fs_vnid, fs_inode,
 			    cur_rel_blk * blksiz, blksiz);
-			if ( rc != 0 ) 
+			if ( rc != 0 )
 				continue;  /* 無効化できなかったブロックをスキップする */
-			
+
 			/* ブロックを解放する */
 			simplefs_free_block(fs_super, fs_inode, remove_blk);
 		}
 		cur_pos += blksiz;  /*  削除位置を更新する  */
 	}
-	
+
 	if ( ( off + len ) > cur_pos ) { /* 最終ブロック内をクリアする */
 
 		rc = simplefs_read_mapped_block(fs_super, fs_inode,
@@ -485,13 +485,13 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 			/* ブロックを解放する
 			 * アンマップできなかったブロックは解放しない
 			 */
-			if ( rc == 0 ) 
+			if ( rc == 0 )
 				simplefs_free_block(fs_super, fs_inode, remove_blk);
 		}
 	}
 
 	/* ファイル終端までクリアした場合は, ファイルサイズを更新する
-	 */	
+	 */
 	if ( ( off + len ) == fs_inode->i_size )
 		fs_inode->i_size = off;  /* ファイルサイズを更新 */
 
@@ -508,10 +508,10 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
    @retval -EINVAL     ファイルサイズが不正
  */
 int
-simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
     simplefs_inode *fs_inode, off_t len){
 	int       rc;
-	
+
 	if ( len == 0 )
 		return 0;  /* サイズ変更がない場合は即時正常復帰する */
 
@@ -520,13 +520,13 @@ simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 
 	if ( len >= SIMPLEFS_SUPER_MAX_FILESIZE )
 		return -EINVAL;   /* 最大ファイル長さを超えている  */
-	
+
 	if ( fs_inode->i_size > len )
-		rc = simplefs_inode_truncate_down(fs_super, fs_vnid, 
+		rc = simplefs_inode_truncate_down(fs_super, fs_vnid,
 		    fs_inode, len,
 		    fs_inode->i_size - len);  /*  ファイルサイズを伸縮する  */
 	else
-		rc = simplefs_inode_truncate_up(fs_super, fs_vnid, 
+		rc = simplefs_inode_truncate_up(fs_super, fs_vnid,
 		    fs_inode, len - fs_inode->i_size);  /*  ファイルサイズを伸長する  */
 
 	if ( rc != 0 )
@@ -537,7 +537,7 @@ simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 		goto error_out;  /* エラー復帰する  */
 
 	return 0;
-	
+
 error_out:
 	return rc;
 }
@@ -552,7 +552,7 @@ error_out:
 int
 simplefs_alloc_inode(simplefs_super_block *fs_super, simplefs_ino *fs_vnidp){
 	size_t idx;
-	
+
 	idx = bitops_ffc(&fs_super->s_inode_map);
 	if ( idx == 0 )
 		return -ENOSPC;  /*  I-nodeに空きがない  */
@@ -563,7 +563,7 @@ simplefs_alloc_inode(simplefs_super_block *fs_super, simplefs_ino *fs_vnidp){
 
 	if ( fs_vnidp != NULL )
 		*fs_vnidp = idx;  /* I-node番号を返却 */
-	
+
 	return 0;
 }
 
@@ -594,7 +594,7 @@ simplefs_inode_remove(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
 	/* データブロックを解放 */
 	rc = simplefs_inode_truncate(fs_super, fs_vnid, fs_inode, 0);
 	kassert( rc == 0 );
-	
+
 	simplefs_init_inode_common(fs_inode); /* I-nodeを初期化 */
 
 	return 0;
@@ -639,7 +639,7 @@ simplefs_refer_inode(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
    @retval -ENOSPC    空きブロックがない
  */
 ssize_t
-simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
     simplefs_inode *fs_inode, simplefs_file_private file_priv,
     void *buf, off_t pos, ssize_t len){
 	int        rc;
@@ -648,9 +648,9 @@ simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	if ( ( !simplefs_inode_is_alloced(fs_super, fs_vnid) ) &&
 	    ( fs_vnid != SIMPLEFS_INODE_INVALID_INO ) )
 		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
-	
+
 	/* ブロックから読み込む */
-	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid, 
+	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid,
 	    fs_inode, file_priv, buf, pos, len, SIMPLEFS_RW_READ, &rwlen);
 	if ( 0 > rc )
 		goto error_out;
@@ -658,7 +658,7 @@ simplefs_inode_read(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	return rwlen;  /* 読み込んだ長さを返却する */
 
 error_out:
-	return rc;  /* エラーコードを返却する */	
+	return rc;  /* エラーコードを返却する */
 }
 
 /**
@@ -676,7 +676,7 @@ error_out:
    @retval -ENOSPC    空きブロックがない
  */
 ssize_t
-simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid, 
+simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
     simplefs_inode *fs_inode, simplefs_file_private file_priv,
     const void *buf, off_t pos, ssize_t len){
 	int        rc;
@@ -687,7 +687,7 @@ simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
 
 	/* ブロックに書き込む */
-	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid, 
+	rc = simplefs_inode_rw_blocks(fs_super, fs_vnid,
 	    fs_inode, file_priv, (void *)buf, pos, len, SIMPLEFS_RW_WRITE, &rwlen);
 	if ( 0 > rc )
 		goto error_out;
@@ -695,7 +695,7 @@ simplefs_inode_write(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 	return rwlen;  /* 書き込んだ長さを返却する */
 
 error_out:
-	return rc;  /* エラーコードを返却する */	
+	return rc;  /* エラーコードを返却する */
 }
 
 /**
@@ -745,5 +745,3 @@ simplefs_inode_init(simplefs_inode *fs_inode, uint16_t mode){
 
 	return 0;
 }
-
-

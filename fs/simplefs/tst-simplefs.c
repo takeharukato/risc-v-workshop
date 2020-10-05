@@ -18,6 +18,8 @@
 
 static ktest_stats tstat_simplefs1=KTEST_INITIALIZER;
 
+#define BUF_SIZE (1024)
+
 /**
    テスト用のI/Oコンテキスト
  */
@@ -26,23 +28,25 @@ static struct _simplefs_vfs_ioctx{
 	vfs_ioctx          *cur;
 }tst_ioctx;
 
+
 static void
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	int             rc;
 	int             fd;
 	ssize_t      nread;
 	vfs_file_stat   st;
-	char     buf[1024];
+	char buf[BUF_SIZE];
 	vfs_dirent      *d;
 	int           bpos;
 	char        d_type;
+	ssize_t   rw_bytes;
+	size_t         len;
 
 	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
 
 	rc = vfs_closedir(tst_ioctx.cur, fd);
 	if ( rc == 0 )
@@ -67,6 +71,34 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* ファイルの書き込み
+	 */
+	len = strlen("Hello, VFS\n");
+	rc = vfs_write(tst_ioctx.cur, fd, "Hello, VFS\n", len + 1, &rw_bytes);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rw_bytes == ( len + 1 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* TODO: seek処理 */
+	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rw_bytes == ( len + 1 ) ) {
+
+		ktest_pass( sp );
+		kprintf("Read: %s", buf);
+	} else
+		ktest_fail( sp );
+
 	/* 生成したファイルのクローズ
 	 */
 	rc = vfs_close(tst_ioctx.cur, fd);
@@ -79,7 +111,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
 	kassert( rc == 0 );
-	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
+	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, BUF_SIZE, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
 
