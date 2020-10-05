@@ -9,12 +9,9 @@
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
-
 #include <kern/mutex.h>
-#include <kern/dev-pcache.h>
-#include <kern/vfs-if.h>
 
-#include <kern/timer-if.h>
+#include <kern/vfs-if.h>
 
 #include <fs/simplefs/simplefs.h>
 
@@ -977,13 +974,13 @@ simplefs_getattr(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
 			/ SIMPLEFS_SUPER_BLOCK_SIZE;
 
 	if ( attr & VFS_VSTAT_MASK_ATIME )
-		stat.st_atime = inode->i_atime;  /* 最終アクセス時刻 */
+		stat.st_atime.tv_sec = inode->i_atime;  /* 最終アクセス時刻 */
 
 	if ( attr & VFS_VSTAT_MASK_MTIME )
-		stat.st_mtime = inode->i_mtime;  /* 最終更新時刻 */
+		stat.st_mtime.tv_sec = inode->i_mtime;  /* 最終更新時刻 */
 
 	if ( attr & VFS_VSTAT_MASK_CTIME )
-		stat.st_ctime = inode->i_ctime;  /* 最終属性更新時刻 */
+		stat.st_ctime.tv_sec = inode->i_ctime;  /* 最終属性更新時刻 */
 
 	if ( statp != NULL )
 		memmove(statp, &stat, sizeof(vfs_file_stat));
@@ -1010,7 +1007,6 @@ simplefs_setattr(vfs_fs_super fs_super, vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vn
 	simplefs_super_block *super;
 	simplefs_inode       *inode;
 	vfs_vstat_mask         attr;
-	ktimespec                ts;
 
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
 	inode = (simplefs_inode *)fs_vnode;        /* I-node情報を参照         */
@@ -1054,18 +1050,13 @@ simplefs_setattr(vfs_fs_super fs_super, vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vn
 		inode->i_gid = stat->st_gid;  /* グループIDを更新 */
 
 	if ( attr & VFS_VSTAT_MASK_ATIME )
-		inode->i_atime = stat->st_atime; /* 最終アクセス時刻の更新 */
+		inode->i_atime = stat->st_atime.tv_sec; /* 最終アクセス時刻の更新 */
 
 	if ( attr & VFS_VSTAT_MASK_MTIME )
-		inode->i_mtime = stat->st_mtime; /* 最終更新時刻の更新 */
+		inode->i_mtime = stat->st_mtime.tv_sec; /* 最終更新時刻の更新 */
 
 	if ( attr & VFS_VSTAT_MASK_CTIME )
-		inode->i_ctime = stat->st_ctime; /* 最終属性更新時刻の更新 */
-	else if ( attr & ~VFS_VSTAT_MASK_TIMES ) {  /* 時刻以外を更新した場合 */
-
-		tim_walltime_get(&ts);  /* 現在時刻を取得 */
-		inode->i_ctime = ts.tv_sec; /* 最終属性更新時刻の更新 */
-	}
+		inode->i_ctime = stat->st_ctime.tv_sec; /* 最終属性更新時刻の更新 */
 
 	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 

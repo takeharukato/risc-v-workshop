@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_FD_H)
-#define  _FS_VFS_VFS_ATTR_H 
+#define  _FS_VFS_VFS_ATTR_H
 
 #if !defined(ASM_FILE)
 
@@ -15,6 +15,7 @@
 #include <fs/vfs/vfs-types.h>
 #include <klib/refcount.h>
 #include <kern/mutex.h>
+#include <kern/timer-if.h>
 
 struct _vnode;
 
@@ -22,24 +23,24 @@ struct _vnode;
    ファイル属性
  */
 typedef struct _vfs_file_stat {
-	vfs_vnode_id   st_vnid; /**< vnode id                                */
-	dev_id          st_dev; /**< ファイルがあるデバイスの ID             */
-	vfs_fs_mode    st_mode; /**< ファイル種別/アクセス権                 */
-	vfs_fs_nlink  st_nlink; /**< リンク数                                */  
-	cred_id         st_uid; /**< ユーザID                                */
-	cred_id         st_gid; /**< グループID                              */
-	dev_id         st_rdev; /**< デバイスドライバのデバイスID            */
-	off_t          st_size; /**< ファイルサイズ                          */
-	off_t       st_blksize; /**< ファイルシステム I/O でのブロックサイズ */
-	obj_cnt_type st_blocks; /**< 割り当てられたブロック数                */
-	epoch_time    st_atime; /**< 最終アクセス時刻                        */
-	epoch_time    st_mtime; /**< 最終修正時刻                            */
-	epoch_time    st_ctime; /**< 最終状態変更時刻                        */
+	vfs_vnode_id          st_vnid; /**< vnode id                                */
+	dev_id                 st_dev; /**< ファイルがあるデバイスの ID             */
+	vfs_fs_mode           st_mode; /**< ファイル種別/アクセス権                 */
+	vfs_fs_nlink         st_nlink; /**< リンク数                                */
+	cred_id                st_uid; /**< ユーザID                                */
+	cred_id                st_gid; /**< グループID                              */
+	dev_id                st_rdev; /**< デバイスドライバのデバイスID            */
+	off_t                 st_size; /**< ファイルサイズ                          */
+	off_t              st_blksize; /**< ファイルシステム I/O でのブロックサイズ */
+	obj_cnt_type        st_blocks; /**< 割り当てられたブロック数                */
+	struct _ktimespec    st_atime; /**< 最終アクセス時刻                        */
+	struct _ktimespec    st_mtime; /**< 最終修正時刻                            */
+	struct _ktimespec    st_ctime; /**< 最終状態変更時刻                        */
 }vfs_file_stat;
 /*
  * 操作対象メンバ
  */
-#define VFS_VSTAT_MASK_NONE      (0x0000)  /**< 属性情報をコピーしない      */
+#define VFS_VSTAT_MASK_NONE      (0x0000)  /**< 属性情報を操作しない        */
 #define VFS_VSTAT_MASK_VNID      (0x0001)  /**< Vnode ID                    */
 #define VFS_VSTAT_MASK_DEV       (0x0002)  /**< ファイルがあるデバイスのID  */
 #define VFS_VSTAT_MASK_MODE_FMT  (0x0004)  /**< ファイル種別                */
@@ -51,9 +52,9 @@ typedef struct _vfs_file_stat {
 #define VFS_VSTAT_MASK_SIZE      (0x0100)  /**< ファイルサイズ              */
 #define VFS_VSTAT_MASK_BLKSIZE   (0x0200)  /**< ブロックサイズ              */
 #define VFS_VSTAT_MASK_NRBLKS    (0x0400)  /**< ブロック数                  */
-#define VFS_VSTAT_MASK_ATIME     (0x0800)  /**< アクセス時刻                */
-#define VFS_VSTAT_MASK_MTIME     (0x1000)  /**< 修正時刻                    */
-#define VFS_VSTAT_MASK_CTIME     (0x2000)  /**< 最終状態変更時刻            */
+#define VFS_VSTAT_MASK_ATIME     (0x0800)  /**< 最終アクセス時刻            */
+#define VFS_VSTAT_MASK_MTIME     (0x1000)  /**< 最終更新時刻                */
+#define VFS_VSTAT_MASK_CTIME     (0x2000)  /**< 最終状態更新時刻            */
 
 #define VFS_VSTAT_UID_ROOT      (0)       /**< rootユーザID                 */
 #define VFS_VSTAT_GID_ROOT      (0)       /**< rootグループID               */

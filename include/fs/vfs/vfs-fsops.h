@@ -21,7 +21,9 @@
 
 void vfs_init_attr_helper(struct _vfs_file_stat *_stat);
 void vfs_copy_attr_helper(struct _vfs_file_stat *_dest, struct _vfs_file_stat *_src,
-			  vfs_vstat_mask _stat_mask);
+    vfs_vstat_mask _stat_mask);
+int vfs_time_attr_helper(struct _vnode *v, struct _vfs_file_stat *_stat,
+    vfs_vstat_mask stat_mask);
 int vfs_setattr(struct _vnode *_v, vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
 int vfs_getattr(struct _vnode *_v, vfs_vstat_mask _stat_mask, struct _vfs_file_stat *_statp);
 

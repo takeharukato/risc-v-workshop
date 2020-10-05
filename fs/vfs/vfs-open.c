@@ -20,6 +20,7 @@
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
+   @retval -EROFS  読み取り専用でマウントしているボリュームに書き込もうとした
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EPERM  ディレクトリを書き込みで開こうとした
    @retval -ENOMEM メモリ不足
@@ -29,70 +30,28 @@
 static int
 open_common(vfs_ioctx *ioctx, vnode *v, vfs_open_flags oflags, int *fdp){
 	int                     fd;
-	vfs_file_private file_priv;
 	file_descriptor         *f;
 	int                     rc;
 
 	/*
-	 * ファイルディスクリプタを獲得する
+	 * ファイルディスクリプタを獲得し, ファイルシステム固有のopen処理を呼び出す
 	 */
 	rc = vfs_fd_alloc(ioctx, v, oflags, &fd, &f);
-	if ( rc != 0 ) {
-
-		kassert( rc == -ENOMEM );
+	if ( rc != 0 )
 		goto out;
-	}
 
 	kassert( f->f_vn != NULL );
 	kassert( f->f_vn->v_mount != NULL );
 	kassert( f->f_vn->v_mount->m_fs != NULL );
 	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
 
-	if ( ( f->f_vn->v_mode & VFS_VNODE_MODE_DIR )
-	    && ( oflags & VFS_O_WRONLY ) ) {
-
-		/* 書き込みでディレクトリを開こうとした */
-		rc = -EPERM;
-		goto put_fd_out;
-	}
-
-	/*
-	 * Close On Exec指定フラグの設定
-	 */
-	if ( oflags & VFS_O_CLOEXEC )
-		f->f_flags |=  VFS_FDFLAGS_COE;
-
-	if ( v->v_mount->m_fs->c_calls->fs_open != NULL ) {
-
-		/*
-		 * ファイルシステム固有のオープン処理を実施
-		 */
-
-		file_priv = NULL;  /* ファイルディスクリプタプライベート情報を初期化 */
-
-		rc = v->v_mount->m_fs->c_calls->fs_open(v->v_mount->m_fs_super,
-		    v->v_fs_vnode, oflags, &file_priv);
-		if (rc != 0) {
-
-			kassert( ( rc == -ENOMEM ) || ( rc == -EIO ) );
-			goto put_fd_out;
-		}
-
-		f->f_private = file_priv;
-	} else {
-
-		rc = -ENOSYS;
-		goto put_fd_out;
-	}
-
 	*fdp = fd;  /*  ユーザファイルディスクリプタを返却  */
 
 	return 0;
 
-put_fd_out:
-	/*  vfs_fd_allocで加算したvnodeカウント, ファイルディスクリプタカウントを減算  */
-	vfs_fd_put(f);
 out:
+	kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO )
+	    || ( rc == -EROFS ) || ( rc == -EPERM ) ) ;
 	return rc;
 }
 
@@ -142,11 +101,8 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 	/* vnodeに対するファイルディスクリプタを取得
 	 */
 	rc = open_common(ioctx, v, dir_oflags, &fd);
-	if ( rc != 0 ) {
-
-		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
+	if ( rc != 0 )
 		goto unref_vnode_out;
-	}
 
 	*fdp = fd;
 
@@ -232,11 +188,8 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 	 * vnodeに対するファイルディスクリプタを取得
 	 */
 	rc = open_common(ioctx, v, oflags, &fd);
-	if ( rc != 0 ) {
-
-		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
+	if ( rc != 0 )
 		goto unref_vnode_out;
-	}
 
 	*fdp = fd;
 

@@ -30,6 +30,7 @@ vfs_closedir(vfs_ioctx *ioctx, int fd){
 		return -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
 
 	kassert( f->f_vn != NULL );
+
 	if ( !( f->f_vn->v_mode & VFS_VNODE_MODE_DIR ) ) { /* ディレクトリでない場合 */
 
 		/*
@@ -58,7 +59,6 @@ put_fd_out:
    @param[in] fd    ユーザファイルディスクリプタ
    @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
-   @retval -EISDIR ユーザファイルディスクリプタがディレクトリを指している
  */
 int
 vfs_close(vfs_ioctx *ioctx, int fd){
@@ -70,13 +70,11 @@ vfs_close(vfs_ioctx *ioctx, int fd){
 		return -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
 
 	kassert( f->f_vn != NULL );
+
 	if ( f->f_vn->v_mode & VFS_VNODE_MODE_DIR ) { /* ディレクトリの場合 */
-		
-		/*
-		 * ユーザファイルディスクリプタがディレクトリを指している
-		 */
-		rc = -EISDIR;
-		goto put_fd_out;
+
+		rc = vfs_closedir(ioctx, fd);  /* ディレクトリをクローズする */
+		goto put_fd_out;  /* ファイルディスクリプタの参照を解放して復帰する */
 	}
 
 	rc = vfs_fd_remove(ioctx, f);  /*  ユーザファイルディスクリプタを解放  */
