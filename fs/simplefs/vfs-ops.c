@@ -980,7 +980,7 @@ simplefs_getattr(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
    @retval     0      正常終了
 */
 int
-simplefs_setattr(vfs_fs_super fs_super,  vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vnode,
+simplefs_setattr(vfs_fs_super fs_super, vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vnode,
     vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	int                      rc;
 	simplefs_super_block *super;

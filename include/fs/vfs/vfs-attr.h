@@ -57,6 +57,7 @@ typedef struct _vfs_file_stat {
 
 #define VFS_VSTAT_UID_ROOT      (0)       /**< rootユーザID                 */
 #define VFS_VSTAT_GID_ROOT      (0)       /**< rootグループID               */
+#define VFS_VSTAT_INVALID_DEVID (0)       /**< 無効デバイスID               */
 
 /** ファイル作成時の状態コピーマスク  */
 #define VFS_VSTAT_MASK_CREATE \

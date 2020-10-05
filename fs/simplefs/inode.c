@@ -37,8 +37,8 @@ simplefs_init_inode_common(simplefs_inode *fs_inode){
 	fs_inode->i_mode   = S_IRWXU|S_IRWXG|S_IRWXO; /* アクセス権を設定             */
 	fs_inode->i_nlinks = 1;                       /* リンク数を設定               */
 
-	fs_inode->i_uid   = FS_ROOT_UID;              /* ユーザIDを設定               */
-	fs_inode->i_gid   = FS_ROOT_GID;              /* グループIDを設定             */
+	fs_inode->i_uid   = VFS_VSTAT_UID_ROOT;       /* ユーザIDを設定               */
+	fs_inode->i_gid   = VFS_VSTAT_GID_ROOT;       /* グループIDを設定             */
 	fs_inode->i_major = 0;                        /* デバイスのメジャー番号を設定 */
 	fs_inode->i_minor = 0;                        /* デバイスのマイナー番号を設定 */
 	fs_inode->i_size  = 0;                        /* サイズを設定                 */

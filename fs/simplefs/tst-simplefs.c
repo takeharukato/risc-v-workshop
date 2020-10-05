@@ -88,7 +88,7 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
 
 	/* ルートファイルシステムをマウントする */
-	rc = vfs_mount_with_fsname(NULL, "/", FS_INVALID_DEVID, SIMPLEFS_FSNAME, NULL);
+	rc = vfs_mount_with_fsname(NULL, "/", VFS_VSTAT_INVALID_DEVID, SIMPLEFS_FSNAME, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

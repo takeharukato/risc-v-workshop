@@ -369,7 +369,7 @@ tst_vfs_tstfs_inode_alloc_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 	}
 	mutex_init(&inode->mtx);
 	inode->i_ino = new_ino - 1;
-	inode->i_rdev = FS_INVALID_DEVID;
+	inode->i_rdev = VFS_VSTAT_INVALID_DEVID;
 	inode->i_mode = VFS_VNODE_MODE_NONE;
 	inode->i_nlinks = 1;
 	inode->i_size = 0;
@@ -619,8 +619,8 @@ tst_vfs_tstfs_new_regfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode
 
 	/* ファイル用I-nodeの割当て
 	 */
-	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, FS_INVALID_DEVID, 
-	    FS_INVALID_DEVID, new_inop, new_inodep);
+	rc = tst_vfs_tstfs_new_node_nolock(super, dv, name, mode, VFS_VSTAT_INVALID_DEVID, 
+	    VFS_VSTAT_INVALID_DEVID, new_inop, new_inodep);
 	if ( rc != 0 )
 		goto error_out;
 
