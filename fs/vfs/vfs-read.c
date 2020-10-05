@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/vfs-if.h>
+#include <kern/timer-if.h>
 
 /**
    ファイルから読み込む
@@ -28,6 +29,8 @@
 int
 vfs_read(vfs_ioctx *ioctx, int fd, void *buf, ssize_t len, ssize_t *rdlenp){
 	file_descriptor *f;
+	vfs_file_stat   st;
+	ktimespec       ts;
 	int             rc;
 	ssize_t   rd_bytes;
 
@@ -74,6 +77,19 @@ vfs_read(vfs_ioctx *ioctx, int fd, void *buf, ssize_t len, ssize_t *rdlenp){
 	if ( rdlenp != NULL )
 		*rdlenp = rd_bytes;    /* 読み取り長を返却 */
 	f->f_pos += rd_bytes; /* ファイルポジションを更新 */
+
+	if ( ( rd_bytes > 0 ) 
+	     && ( !( f->f_flags & VFS_O_NOATIME ) ) ) {  /* アクセス時刻更新が必要な場合 */
+
+		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
+		/* TODO: 時刻更新ヘルパを作成して, アクセス時刻を更新する  */
+		tim_walltime_get(&ts);  /* 現在時刻を取得 */
+		st.st_atime = ts.tv_sec;    
+		/* アクセス時刻のみを設定する */
+		rc = vfs_setattr(f->f_vn, &st, VFS_VSTAT_MASK_ATIME);
+		if ( rc != 0 )
+			goto put_fd_out;  /* 時刻更新に失敗した */
+	}
 
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 

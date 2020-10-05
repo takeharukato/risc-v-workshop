@@ -978,6 +978,7 @@ simplefs_getattr(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
    @param[in]  stat          設定する属性情報
    @param[in]  stat_mask     設定する属性情報を指示するビットマスク
    @retval     0      正常終了
+   @retval    -EINVAL ファイルサイズが不正
 */
 int
 simplefs_setattr(vfs_fs_super fs_super, vfs_vnode_id fs_vnid, vfs_fs_vnode fs_vnode,

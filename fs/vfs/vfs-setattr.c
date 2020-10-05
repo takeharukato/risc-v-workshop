@@ -19,9 +19,9 @@
    @param[in] stat      設定する属性情報
    @param[in] stat_mask 設定する属性情報を指示するビットマスク
    @retval  0      正常終了
-   @retval -ENOENT 削除中のv-nodeを指定した
    @retval -EIO    I/Oエラー
    @retval -ENOSYS setattrをサポートしていない 
+   @note v-nodeへの参照を呼び出し元でも獲得してから呼び出す
 */
 int
 vfs_setattr(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
@@ -36,11 +36,7 @@ vfs_setattr(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	vfs_copy_attr_helper(&st, stat, attr_mask);  /* 属性情報をコピーする */
 
 	res = vfs_vnode_ref_inc(v);  /* v-nodeへの参照を加算 */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 削除中のv-nodeを指定した */
-		goto unref_vnode_out;
-	}
+	kassert( res ); /* v-nodeへの参照を呼び出し元でも獲得してから呼び出す */
 
 	kassert(v != NULL);  
 	kassert(v->v_mount != NULL);

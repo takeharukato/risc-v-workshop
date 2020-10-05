@@ -21,7 +21,8 @@
    @retval  0      正常終了
    @retval -ENOENT 削除中のv-nodeを指定した
    @retval -EIO    I/Oエラー
-   @retval -ENOSYS setattrをサポートしていない 
+   @retval -ENOSYS setattrをサポートしていない
+   @note v-nodeへの参照を呼び出し元でも獲得してから呼び出す
 */
 int
 vfs_getattr(vnode *v, vfs_vstat_mask stat_mask, vfs_file_stat *statp){
@@ -35,11 +36,7 @@ vfs_getattr(vnode *v, vfs_vstat_mask stat_mask, vfs_file_stat *statp){
 	vfs_init_attr_helper(&st); /* 属性情報をクリアする */
 
 	res = vfs_vnode_ref_inc(v);  /* v-nodeへの参照を加算 */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 削除中のv-nodeを指定した */
-		goto unref_vnode_out;
-	}
+	kassert( res ); /* v-nodeへの参照を呼び出し元でも獲得してから呼び出す */
 
 	kassert(v != NULL);  
 	kassert(v->v_mount != NULL);

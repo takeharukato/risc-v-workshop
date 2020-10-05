@@ -14,11 +14,11 @@
 
 /**
    open処理共通関数 (内部関数)
-   @param[in]  ioctx I/Oコンテキスト
-   @param[in]  v     openするファイルのvnode
+   @param[in]  ioctx  I/Oコンテキスト
+   @param[in]  v      openするファイルのvnode
    @param[in]  oflags open時に指定したモード
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
-   @retval  0     正常終了
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EPERM  ディレクトリを書き込みで開こうとした
@@ -102,11 +102,11 @@ out:
 
 /**
    指定されたパスのディレクトリを開く
-   @param[in]  ioctx 自プロセスのI/Oコンテキスト
-   @param[in]  path  openするディレクトリのパス
+   @param[in]  ioctx  自プロセスのI/Oコンテキスト
+   @param[in]  path   openするディレクトリのパス
    @param[in]  oflags open時に指定したモード
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
-   @retval  0      正常終了
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
+   @retval  0       正常終了
    @retval -EBADF   不正なユーザファイルディスクリプタを指定した
    @retval -ENOMEM  メモリ不足
    @retval -ENOENT  パスが見つからなかった
@@ -163,7 +163,7 @@ out:
    @param[in]  path   openするファイルのパス
    @param[in]  oflags open時に指定したフラグ値
    @param[in]  omode  open時に指定したファイル種別/アクセス権
-   @param[out] fdp   ユーザファイルディスクリプタを返却する領域
+   @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOMEM メモリ不足
@@ -203,7 +203,7 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		}
 		if ( rc == -ENOENT ) { /* ファイルが存在しない場合はファイルを生成する */
 
-			memset(&st, 0, sizeof(vfs_file_stat));
+			vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 			st.st_mode = omode;  /* ファイルモード */
 			rc = vfs_create(ioctx, path, &st); /* ファイルを生成する */
 			if ( rc != 0 )
@@ -211,9 +211,17 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		}
 	}
 
-	//if ( oflags & VFS_O_TRUNC ) /* ファイルサイズを0にする */
+	if ( oflags & VFS_O_TRUNC ) { /* ファイルサイズを0にする */
+
+		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
+		st.st_size = 0;    /* ファイルサイズを0にする */
+		rc = vfs_setattr(v, &st, VFS_VSTAT_MASK_SIZE); /* ファイルサイズのみを設定する */
+		if ( rc != 0 )
+			goto unref_vnode_out;  /* サイズ更新に失敗した */
+	}
+
 	//if ( oflags & VFS_O_APPEND ) /* ファイルポジションを末尾に設定する */
-	
+		
 	if ( v->v_mode & VFS_VNODE_MODE_DIR ) {
 
 		rc = -EISDIR; /* ディレクトリを開こうとした */
