@@ -372,6 +372,7 @@ vfs_fd_alloc(vfs_ioctx *ioctx, vnode *v, vfs_open_flags omode, int *fdp,
 
 	if ( fdp != NULL )
 		*fdp = fd;  /*  ユーザファイルディスクリプタを返却  */
+
 	if ( fpp != NULL )
 		*fpp = f;   /*  ファイルディスクリプタを返却  */
 
