@@ -36,8 +36,11 @@ int vfs_close(struct _vfs_ioctx *_ioctx, int _fd);
 int vfs_read(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, ssize_t _len, ssize_t *_rdlenp);
 int vfs_write(struct _vfs_ioctx *_ioctx, int _fd, const void *_buf, ssize_t _len,
     ssize_t *_wrlenp);
+int vfs_lseek(struct _vfs_ioctx *_ioctx, int _fd, off_t _pos, vfs_seek_whence _whence);
 int vfs_create(struct _vfs_ioctx *_ioctx, char *_path, struct _vfs_file_stat *_stat);
 int vfs_unlink(struct _vfs_ioctx *_ioctx, char *_path);
+int vfs_mkdir(struct _vfs_ioctx *_ioctx, char *_path);
+int vfs_rmdir(struct _vfs_ioctx *_ioctx, char *_path);
 int vfs_getdents(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, off_t _off,
     ssize_t _buflen, ssize_t *_rdlenp);
 #endif  /*  ASM_FILE  */
