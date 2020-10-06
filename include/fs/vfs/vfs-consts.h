@@ -9,8 +9,6 @@
 #if !defined(_FS_VFS_VFS_CONSTS_H)
 #define  _FS_VFS_VFS_CONSTS_H
 
-#if !defined(ASM_FILE)
-#include <klib/freestanding.h>
 #include <klib/misc.h>
 
 /*
@@ -73,7 +71,7 @@
 /**
    v-nodeフラグ (64bit fs/vfs/vfs-types.h 参照)
  */
-#define VFS_VFLAGS_SHIFT          UINT64_C(16)  /**< v-nodeフラグ情報へのシフト値  */
+#define VFS_VFLAGS_SHIFT            UINT64_C(16)  /**< v-nodeフラグ情報へのシフト値  */
 /**  空きvnodeフラグ値  */
 #define VFS_VFLAGS_FREE           ( UINT64_C(0x0) << VFS_VFLAGS_SHIFT )
 /**  ロード済みvnodeフラグ値  */
@@ -97,7 +95,7 @@
    @return ファイルディスクリプタフラグ値
  */
 #define VFS_OFLAGS_TO_FDFLAGS(_oflags)			\
-	( ( (uint64_t)(_oflags) & VFS_FDFLAGS_MASK ) << VFS_FDFLAGS_SHIFT )
+	( ( (_oflags) & VFS_FDFLAGS_MASK ) << VFS_FDFLAGS_SHIFT )
 
 /** 読み取りオープン */
 #define VFS_FDFLAGS_RDONLY         VFS_OFLAGS_TO_FDFLAGS(VFS_O_RDONLY)
@@ -127,6 +125,18 @@
 #define VFS_FDFLAGS_NOATIME        VFS_OFLAGS_TO_FDFLAGS(VFS_O_NOATIME)
 /**  Close On Exec vnodeフラグ値  */
 #define VFS_FDFLAGS_CLOEXEC        VFS_OFLAGS_TO_FDFLAGS(VFS_O_CLOEXEC)
+
+/*
+ * lseekの探索開始位置
+ */
+#define VFS_SEEK_WHENCE_SET   (0)  /**< ファイルの先頭からシークする */
+#define VFS_SEEK_WHENCE_CUR   (1)  /**< 現在位置からシークする       */
+#define VFS_SEEK_WHENCE_END   (2)  /**< ファイルの末尾からシークする */
+#define VFS_SEEK_WHENCE_DATA  (3)  /**< 指定位置以降の次にデータがある位置をシークする */
+#define VFS_SEEK_WHENCE_HOLE  (4)  /**< 指定位置以降の次のホール位置をシークする */
+
+#if !defined(ASM_FILE)
+#include <klib/freestanding.h>
 
 #endif  /*  !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_CONSTS_H  */

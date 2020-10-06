@@ -27,8 +27,8 @@
 */
 int
 vfs_read(vfs_ioctx *ioctx, int fd, void *buf, ssize_t len, ssize_t *rdlenp){
-	file_descriptor *f;
 	int             rc;
+	file_descriptor *f;
 	ssize_t   rd_bytes;
 
 	if ( 0 > len )

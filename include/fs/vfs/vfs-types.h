@@ -28,6 +28,7 @@ typedef uint64_t    vfs_vnode_flags;  /**< v-node フラグ                */
 typedef uint32_t     vfs_vstat_mask;  /**< ファイル属性マスク           */
 typedef uint32_t      vfs_mnt_flags;  /**< マウントフラグ               */
 typedef uint64_t   vfs_fstype_flags;  /**< ファイルシステム属性         */
+typedef int         vfs_seek_whence;  /**< lseekのシーク原点            */
 
 typedef void *      vfs_fs_super;  /**< ファイルシステム固有のスーパブロック情報          */
 typedef void *     vfs_fs_dirent;  /**< ファイルシステム固有ディレクトリエントリ情報      */

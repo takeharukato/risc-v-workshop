@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_FSTBL_H)
-#define  _FS_VFS_VFS_FSTBL_H 
+#define  _FS_VFS_VFS_FSTBL_H
 
 #if !defined(ASM_FILE)
 
@@ -69,7 +69,7 @@ typedef struct _fs_calls {
 	    vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
 	    const void *_buf, off_t _pos, ssize_t _len);
 	int (*fs_seek)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
-	    off_t _pos, int _whence, vfs_file_private _file_priv, off_t *_new_posp);
+	    off_t _pos, vfs_seek_whence _whence, vfs_file_private _file_priv, off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
 	int (*fs_create)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
@@ -95,7 +95,7 @@ typedef struct _fs_calls {
 
 #define VFS_FSTBL_FSTYPE_NONE       UINT64_C(0)    /**< ファイルシステム属性なし */
 #define VFS_FSTBL_FSTYPE_PSEUDO_FS  UINT64_C(0x1)  /**< 疑似ファイルシステム     */
-/** 
+/**
     ファイルシステムテーブル初期化子
     @param[in] _fstbl ファイルシステムテーブルへのポインタ
  */

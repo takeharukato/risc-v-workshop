@@ -396,7 +396,7 @@ unlock_out:
  */
 int
 simplefs_seek(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
-    off_t pos, int whence, vfs_file_private file_priv, off_t *new_posp){
+    off_t pos, vfs_seek_whence whence, vfs_file_private file_priv, off_t *new_posp){
 
 	/* VFS層が設定した値をそのまま使うため特に処理はない
 	 */
