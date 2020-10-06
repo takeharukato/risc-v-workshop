@@ -29,7 +29,7 @@ static struct _simplefs_vfs_ioctx{
 }tst_ioctx;
 
 
-static void
+static void __unused
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	int             rc;
 	int             fd;
@@ -231,7 +231,17 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 
 	simplefs2(sp, arg);
 
-	vfs_unmount_rootfs();  /* rootfsのアンマウント */
+	/* 子I/Oコンテキスト解放 */
+	vfs_ioctx_free(tst_ioctx.cur);
+
+	/* 親I/Oコンテキスト解放 */
+	vfs_ioctx_free(tst_ioctx.parent);
+
+	rc = vfs_unmount_rootfs();  /* rootfsのアンマウント */
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 }
 
 void

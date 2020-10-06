@@ -23,21 +23,25 @@ vfs_mount1(struct _ktest_stats *sp, void __unused *arg){
 	int                        rc;
 	dev_id                    dev;
 	dev_id                  minor;
-	
+
 	tst_vfs_tstfs_init();
 	ktest_pass( sp );
 
 	minor = 0;
 	dev = (dev_id)TST_VFS_TSTFS_DEV_MAJOR << 32|minor;
-	
+
 	rc = vfs_mount(NULL, "/", dev, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
 
-	vfs_unmount_rootfs();  /* rootfsのアンマウント */
+
+	rc = vfs_unmount_rootfs();  /* rootfsのアンマウント */
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 	tst_vfs_tstfs_finalize();
 }
 
@@ -47,4 +51,3 @@ tst_vfs_mount(void){
 	ktest_def_test(&tstat_vfs_mount, "vfs_mount", vfs_mount1, NULL);
 	ktest_run(&tstat_vfs_mount);
 }
-
