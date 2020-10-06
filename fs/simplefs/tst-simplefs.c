@@ -154,6 +154,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+
 	/* ディレクトリ作成
 	 */
 	rc = vfs_mkdir(tst_ioctx.cur, "/dev");
@@ -161,6 +162,21 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* 単純なファイルシステムをマウントする */
+	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/dev", VFS_VSTAT_INVALID_DEVID,
+	    SIMPLEFS_FSNAME, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 単純なファイルシステムをアンマウントする */
+	rc = vfs_unmount(tst_ioctx.cur, "/dev");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 
 	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");

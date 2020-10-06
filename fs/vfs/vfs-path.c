@@ -21,7 +21,7 @@
    @retval  -ENOENT  パスが見つからなかった
    @retval  -EIO     パス検索時にI/Oエラーが発生した
  */
-static int 
+static int
 path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 	char            *p;
 	char       *next_p;
@@ -33,7 +33,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 	kassert( ioctx->ioc_root != NULL );
 
 	p = path;
-	
+
 	if ( *p == VFS_PATH_DELIM ) { /* 絶対パス指定  */
 
 		for( p += 1 ; *p == VFS_PATH_DELIM; ++p);  /*  連続した'/'を飛ばす  */
@@ -67,7 +67,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		/*
 		 * 文字列の終端またはパスデリミタを検索
 		 */
-		for(next_p = p + 1; 
+		for(next_p = p + 1;
 		    ( *next_p != '\0' ) && ( *next_p != VFS_PATH_DELIM );
 		    ++next_p);
 
@@ -76,7 +76,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			*next_p = '\0'; /* 文字列を終端 */
 
 			/*  連続した'/'を飛ばす  */
-			for( next_p += 1; *next_p == VFS_PATH_DELIM; ++next_p);   
+			for( next_p += 1; *next_p == VFS_PATH_DELIM; ++next_p);
 		}
 
 		/*
@@ -85,9 +85,11 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 
 		if ( (strcmp("..", p) == 0 ) && ( curr_v->v_mount->m_root == curr_v ) ) {
 
-			/* ボリューム内のルートディレクトリより上位のディレクトリへ移動する場合 */
+			/* ボリューム内のルートディレクトリより
+			 * 上位のディレクトリへ移動する場合
+			 */
 			if ( curr_v->v_mount->m_mount_point != NULL ) {
-				
+
 				/*  マウントポイントであれば, マウント元のFSの
 				 *  vnodeに切り替え
 				 */
@@ -107,7 +109,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		rc = curr_v->v_mount->m_fs->c_calls->fs_lookup(curr_v->v_mount->m_fs_super,
 							 curr_v->v_fs_vnode, p, &vnid);
 		if (rc != 0) {
-			
+
 			if ( ( rc != -EIO ) && ( rc != -ENOENT ) )
 				rc = -EIO;  /*  IFを満たさないエラーは-EIOに変換  */
 
@@ -122,7 +124,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		if (rc != 0) {
 
 			kprintf(KERN_ERR "path_to_vnode: could not lookup vnode"
-			    " (fsid 0x%x vnid 0x%Lx)\n",  
+			    " (fsid 0x%x vnid 0x%Lx)\n",
 			    (unsigned)curr_v->v_mount->m_id, (unsigned long long)vnid);
 			vfs_vnode_ref_dec(curr_v);
 			goto error_out;
@@ -139,7 +141,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 
 		if ( curr_v->v_mount_on != NULL ) {
 
-			/* マウントポイントだった場合は, 
+			/* マウントポイントだった場合は,
 			 * マウント先のファイルシステム上の
 			 * root v-nodeを参照
 			 */
@@ -168,8 +170,8 @@ error_out:
    @retval  -ENOENT   パスが見つからなかった
    @retval  -EIO      パス検索時にI/Oエラーが発生した
 */
-static int 
-path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv, 
+static int
+path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
     char *filename, size_t fnamelen){
 	char *p;
 
@@ -189,12 +191,12 @@ path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
 		strncpy(path, ".", pathlen);
 		filename[pathlen - 1] = '\0';
 	} else {
-		
+
 		/* ディレクトリのvnodeを獲得する
 		 * 末尾の/の後にカレントディレクトリを表す.だけを
 		 * 含むエレメントを作成して文字列を終端させることで
 		 * ディレクトリのvnodeを獲得する
-		 * e.g., path: "/xxx/yyy"の場合なら"/xxx/."に置き換えて, 
+		 * e.g., path: "/xxx/yyy"の場合なら"/xxx/."に置き換えて,
 		 *             "/xxx/"のvnodeを獲得させる
 		 *       pathが'/'で終わる場合はpathを修正せずに検索パスに引き渡す
 		 * filenameには, path中の/の後に続く文字列(ファイル部)をコピーして返却する
@@ -208,8 +210,8 @@ path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
 			p[2] = '\0';
 		}
 	}
-	
-	/* 
+
+	/*
 	 * パス中のディレクトリ部分(親ディレクトリ)のvnodeを得る
 	 */
 	return path_to_vnode(ioctx, path, outv);
@@ -224,7 +226,7 @@ path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
    @retval  -ENOENT   パスが見つからなかった
    @retval  -EIO      パス検索時にI/Oエラーが発生した
  */
-int 
+int
 vfs_path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv) {
 
 	/*
@@ -246,12 +248,12 @@ vfs_path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv) {
    @retval  -EIO      パス検索時にI/Oエラーが発生した
    @note parenti相当のIF
  */
-int  
+int
 vfs_path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
     char *filename, size_t fnamelen) {
 
 	/*
-	 * ファイルの親ディレクトリのvnodeを得る  
+	 * ファイルの親ディレクトリのvnodeを得る
 	 */
 	return path_to_dir_vnode(ioctx, path, pathlen, outv, filename, fnamelen);
 }
@@ -279,7 +281,7 @@ vfs_new_path(const char *path, char *conv){
 
 	if ( path_len >= VFS_PATH_MAX )
 		return -ENAMETOOLONG;  /* パス長が長すぎる */
-	
+
 	sp = path;
 
 	/*
@@ -327,12 +329,12 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 
 	len1 = len2 = 0;
 
-	if ( path1 != NULL ) 		
+	if ( path1 != NULL )
 		len1 = strlen(path1);
-	
-	if ( path2 != NULL ) 
+
+	if ( path2 != NULL )
 		len2 = strlen(path2);
-	
+
 	if ( ( len1 == 0 ) && ( len2 == 0 ) )
 		return -ENOENT;  /* 両者にパスが含まれていない */
 
@@ -340,23 +342,23 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	 *一つ目のパスの終端のパスデリミタを取り除く
 	 */
 	if ( len1 > 0 ) {
-		
+
 		ep = &path1[len1 - 1];
 		while( *ep == VFS_PATH_DELIM ) {
-			
+
 			*ep-- = '\0';
 			--len1;
 		}
 	}
-	
+
 	/*
 	 *二つ目のパスの先頭のパスデリミタを取り除く
 	 */
 	if ( len2 > 0 ) {
-		
+
 		sp = path2;
 		while( *sp == VFS_PATH_DELIM ) {
-			
+
 			++sp;
 			--len2;
 		}
@@ -367,7 +369,7 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	 */
 	len = len1 + len2;
 
-	if ( len >= VFS_PATH_MAX ) 
+	if ( len >= VFS_PATH_MAX )
 		return -ENAMETOOLONG;
 
 	if ( len1 == 0 ) { /* 二つ目のパスを返却 */
@@ -383,10 +385,10 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	}
 
 	len += 2;  /* パスデリミタとヌル終端分の長さを追加 */
-	if ( len >= VFS_PATH_MAX ) 
+	if ( len >= VFS_PATH_MAX )
 		return -ENAMETOOLONG;
 
 	ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
-	
+
 	return 0;
 }
