@@ -33,24 +33,17 @@ tst_vfs_fstbl_lookup(vfs_fs_super fs_priv, vfs_fs_vnode dir,
 
 	return 0;
 }
-static int
-tst_vfs_fstbl_seek(vfs_fs_super fs_priv, vfs_fs_vnode v, 
-    off_t pos,  int whence, vfs_file_private file_priv, off_t *new_posp){
 
-	return 0;
-}
 static 	fs_calls tst_vfs_fstbl_calls={
 		.fs_getvnode = tst_vfs_fstbl_getvnode,
 		.fs_putvnode = tst_vfs_fstbl_putvnode,
 		.fs_lookup = tst_vfs_fstbl_lookup,
-		.fs_seek = tst_vfs_fstbl_seek,
 };
 
 static 	fs_calls bad_calls={
 		.fs_getvnode = tst_vfs_fstbl_getvnode,
 		.fs_putvnode = tst_vfs_fstbl_putvnode,
-		.fs_lookup = tst_vfs_fstbl_lookup,
-		.fs_seek = NULL,
+		.fs_lookup = NULL,
 };
 
 static void

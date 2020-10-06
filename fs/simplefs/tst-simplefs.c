@@ -84,14 +84,30 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
-	/* TODO: seek処理 */
+	/* EOFリード
+	 */
 	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
+	if ( rw_bytes == 0 )  /* EOF */
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* seek処理
+	 */
+	rc = vfs_lseek(tst_ioctx.cur, fd, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイル読み取り
+	 */
+	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
 	if ( rw_bytes == ( len + 1 ) ) {
 
 		ktest_pass( sp );

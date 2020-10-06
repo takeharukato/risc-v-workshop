@@ -19,9 +19,9 @@
    @param[in] fd        ユーザファイルディスクリプタ
    @param[in] pos       ファイルポジション
    @param[in] whence    ファイルポジションの意味
-   - VFS_SEEK_TYPE_SEEK_SET オフセットは pos バイトに設定される。
-   - VFS_SEEK_TYPE_SEEK_CUR オフセットは現在位置に pos バイトを足した位置になる。
-   - VFS_SEEK_TYPE_SEEK_END オフセットはファイルのサイズに pos バイトを足した位置になる。
+   - VFS_SEEK_WHENCE_SET オフセットは pos バイトに設定される。
+   - VFS_SEEK_WHENCE_CUR オフセットは現在位置に pos バイトを足した位置になる。
+   - VFS_SEEK_WHENCE_END オフセットはファイルのサイズに pos バイトを足した位置になる。
    @retval  0      正常終了
    @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -EINVAL whenceが不正
@@ -66,6 +66,12 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 		/* ファイルサイズを取得する */
 		getattr_res = vfs_getattr(f->f_vn, VFS_VSTAT_MASK_SIZE, &st);
+
+		/* ファイルサイズが取れない場合は,
+		 * 現在のポジションを仮に設定する
+		 */
+		if ( getattr_res != 0 )
+			new_pos = f->f_pos;
 	}
 
 	/*

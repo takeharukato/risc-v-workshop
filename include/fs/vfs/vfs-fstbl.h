@@ -110,10 +110,9 @@ typedef struct _fs_calls {
 */
 #define is_valid_fs_calls(_calls)				 \
 	( ( (_calls) != NULL )					 \
-	    && ( (_calls)->fs_getvnode != NULL ) 		 \
-	    && ( (_calls)->fs_putvnode != NULL ) 		 \
-	    && ( (_calls)->fs_lookup != NULL )			 \
-	    && ( (_calls)->fs_seek != NULL ) )
+	  && ( (_calls)->fs_getvnode != NULL )			 \
+	  && ( (_calls)->fs_putvnode != NULL )			 \
+	  && ( (_calls)->fs_lookup != NULL ) )
 
 bool vfs_fs_ref_inc(fs_container *_container);
 bool vfs_fs_ref_dec(fs_container *_container);
