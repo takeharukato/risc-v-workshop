@@ -755,7 +755,7 @@ simplefs_rmdir(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_
 
 	/* ディレクトリエントリを削除する
 	 */
-	rc = simplefs_dirent_del(super, dir_inum, dir_inode, inum, name);
+	rc = simplefs_dirent_del(super, dir_inum, dir_inode, name);
 	if ( rc != 0 )
 		goto unlock_out;
 
