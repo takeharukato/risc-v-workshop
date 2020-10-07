@@ -182,6 +182,8 @@ vfs_time_attr_helper(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	if ( rc != 0 )
 		goto unref_vnode_out;  /* 属性情報更新に失敗した */
 
+	vfs_vnode_ref_dec(v);  /* v-nodeへの参照を減算 */
+
 	return 0;
 
 unref_vnode_out:
