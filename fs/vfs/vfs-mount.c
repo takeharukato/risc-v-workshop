@@ -194,9 +194,9 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	mount->m_fs_super = NULL;        /*  ファイルシステム固有情報の初期化        */
 	mount->m_fs = fs;                /*  ファイルシステム情報の初期化            */
 	mount->m_mnttbl = NULL;          /*  登録先マウントテーブルの初期化          */
-	mount->m_root = NULL;            /*  ルートv-nodeの初期化                     */
-	mount->m_mount_point = NULL;     /*  マウントポイント文字列の初期化          */
-	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化           */
+	mount->m_root = NULL;            /*  ルートv-nodeの初期化                    */
+	mount->m_mount_point = NULL;     /*  マウントポイントvnodeの初期化           */
+	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化    */
 	mount->m_mount_path = kstrdup(path);    /*  マウントポイントパスの複製       */
 
 	if ( mount->m_mount_path == NULL ) {
@@ -958,9 +958,14 @@ unmount_common(vnode *root_vnode){
 	free_vnodes_in_fs_mount(mount);
 
 	vfs_vnode_ref_dec( mount->m_root ); /*  root v-nodeの参照を解放する */
-	if ( mount->m_mount_point != NULL )
-		vfs_vnode_ref_dec( mount->m_mount_point ); /*  root v-nodeの参照を解放する */
+	if ( mount->m_mount_point != NULL ) {
 
+		/* マウントポイントv-nodeからの参照を除去 */
+		mount->m_mount_point->v_mount_on = NULL;
+		/*  マウントポイントディレクトリのv-nodeへの参照を解放する */
+		vfs_vnode_ref_dec( mount->m_mount_point );
+		mount->m_mount_point = NULL;  /* マウントポイントv-nodeを無効化 */
+	}
 	/*
 	 * マウント情報の登録を抹消
 	 */
