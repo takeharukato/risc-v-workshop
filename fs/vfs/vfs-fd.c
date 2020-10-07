@@ -49,7 +49,7 @@ alloc_fd(vnode *v, file_descriptor **fpp){
 	/*  ファイルディスクリプタからv-nodeを参照するため,
 	 *  v-node参照カウンタを加算
 	 */
-	vfs_vnode_ref_inc(v);
+	vfs_vnode_ref_inc(f->f_vn);
 
 	*fpp = f;  /*  ファイルディスクリプタを返却  */
 
