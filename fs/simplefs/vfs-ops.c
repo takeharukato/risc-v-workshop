@@ -695,15 +695,28 @@ simplefs_mkdir(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_
 	if ( rc != 0 )
 		goto free_inode_out;  /* 作成したI-nodeを解放・削除する */
 
+	/* ディレクトリの".", ".."エントリを作成する */
+	rc = simplefs_dirent_add(fs_super, inum, inode, inum, ".");
+	if ( rc != 0 )
+		goto free_inode_out;   /* 作成したI-nodeを解放する */
+	rc = simplefs_dirent_add(fs_super, inum, inode, dir_inum, "..");
+	if ( rc != 0 )
+		goto truncate_inode_out; /* "."エントリと作成したI-nodeを解放する */
+
 	/* ディレクトリエントリを作成する
 	 */
 	rc = simplefs_dirent_add(super, dir_inum, dir_inode, inum, name);
 	if ( rc != 0 )
-		goto free_inode_out;  /* 作成したI-nodeを解放・削除する */
+		goto truncate_inode_out; /* "."エントリと作成したI-nodeを解放する */
 
 	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 
 	return 0;
+
+truncate_inode_out:
+	/* ディレクトリエントリを解放する */
+	res = simplefs_inode_truncate(super, inum, inode, 0);
+	kassert( res == 0 );
 
 free_inode_out:
 	res = simplefs_inode_remove(super, inum);  /* I-nodeを解放・削除する */
