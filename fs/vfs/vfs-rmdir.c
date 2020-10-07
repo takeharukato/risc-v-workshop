@@ -104,6 +104,8 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 
 	vfs_vnode_ptr_put(dir_v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
+	vfs_vnode_ptr_put(v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
+
 	return 0;
 
 put_dir_vnode:

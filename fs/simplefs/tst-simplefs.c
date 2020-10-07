@@ -211,6 +211,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		kprintf("%4d %10lld  %s\n", d->d_reclen,
 		    (long long) d->d_off, d->d_name);
 	}
+
 	/* ディレクトリ削除
 	 */
 	rc = vfs_rmdir(tst_ioctx.cur, "/dev");
