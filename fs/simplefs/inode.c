@@ -381,8 +381,9 @@ static int
 simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 				 simplefs_inode *fs_inode, off_t off, off_t len){
 	int                       rc;
-	size_t                blksiz;
 	off_t                cur_pos;
+	off_t               old_size;
+	size_t                blksiz;
 	size_t               clr_siz;
 	size_t             clr_start;
 	simplefs_blkno   cur_rel_blk;
@@ -401,6 +402,8 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 	/* ファイルの終端を越える場合は, 削除長をファイル終端に補正する */
 	if ( ( off + len ) > fs_inode->i_size )
 		len = fs_inode->i_size - off;
+
+	old_size = fs_inode->i_size; /* 削除前前のサイズを獲得 */
 
 	blksiz = fs_super->s_blksiz; /* ブロックサイズ取得 */
 	first_rel_blk = truncate_align(off, blksiz) / blksiz; /* 開始ブロック算出 */
@@ -492,7 +495,7 @@ simplefs_inode_truncate_down(simplefs_super_block *fs_super, simplefs_ino fs_vni
 
 	/* ファイル終端までクリアした場合は, ファイルサイズを更新する
 	 */
-	if ( ( off + len ) == fs_inode->i_size )
+	if ( ( off + len ) == old_size )
 		fs_inode->i_size = off;  /* ファイルサイズを更新 */
 
 	return 0;
@@ -512,7 +515,7 @@ simplefs_inode_truncate(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
     simplefs_inode *fs_inode, off_t len){
 	int       rc;
 
-	if ( len == 0 )
+	if ( fs_inode->i_size == len )
 		return 0;  /* サイズ変更がない場合は即時正常復帰する */
 
 	if ( 0 > len )
