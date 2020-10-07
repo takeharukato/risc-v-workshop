@@ -57,8 +57,6 @@ vfs_getattr(vnode *v, vfs_vstat_mask stat_mask, vfs_file_stat *statp){
 	if ( rc != 0 )
 		goto unref_vnode_out;  /* エラー復帰する */
 
-	vfs_vnode_ref_dec(v);  /* v-nodeへの参照を減算 */
-
 	if ( statp != NULL )
 		vfs_copy_attr_helper(statp, &st, attr_mask);  /* 属性情報をコピーする */
 
