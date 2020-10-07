@@ -589,14 +589,17 @@ simplefs_inode_remove(simplefs_super_block *fs_super, simplefs_ino fs_vnid){
 	if ( !bitops_isset(fs_vnid, &fs_super->s_inode_map) )
 		return -ENOENT;  /*  未割り当てのI-nodeを指定した  */
 
-	bitops_clr(fs_vnid, &fs_super->s_inode_map); /* I-nodeを解放 */
-
 	rc = simplefs_refer_inode(fs_super, fs_vnid, &fs_inode);  /* 削除対象のI-nodeを参照 */
 	kassert( rc == 0 );
 
 	/* データブロックを解放 */
 	rc = simplefs_inode_truncate(fs_super, fs_vnid, fs_inode, 0);
 	kassert( rc == 0 );
+
+	/* @note I-nodeの参照やサイズ変更処理中で未割り当てのI-nodeに対する
+	 * エラーチェックを行うため上記処理の後でI-nodeを解放する
+	 */
+	bitops_clr(fs_vnid, &fs_super->s_inode_map); /* I-nodeを解放 */
 
 	simplefs_init_inode_common(fs_inode); /* I-nodeを初期化 */
 
