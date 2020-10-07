@@ -512,6 +512,7 @@ unlock_out:
    @retval     0            正常終了
    @retval    -EISDIR ディレクトリを削除しようとした
    @retval    -EINVAL 通常ファイル, デバイス, ディレクトリ以外を削除しようとした
+   @retval    -EBUSY  ファイルの削除ができなかった(リンク数が0でない)
  */
 int
 simplefs_unlink(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_dir_vnode,
@@ -559,6 +560,12 @@ simplefs_unlink(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs
 	/* I-nodeのリンクカウントを減算する
 	 */
 	--inode->i_nlinks;
+
+	if ( inode->i_nlinks != 0 ) {  /* 参照数が残っている */
+
+		rc = -EBUSY;
+		goto unlock_out;
+	}
 
 	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 
