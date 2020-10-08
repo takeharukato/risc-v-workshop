@@ -108,12 +108,23 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	 */
 	if ( rc == 0 )
 		vfs_vnode_ptr_remove(file_v);
-	else if ( ( rc != -EIO ) && ( rc != -ENOSYS ) && ( rc != -EISDIR ) )
+	else if ( ( rc != -EIO ) && ( rc != -ENOSYS ) && ( rc != -EISDIR ) ) {
+
 		rc = -EIO;  /*  エラーコードを補正  */
+		goto dirv_put_out;
+	}
 
 	/*
 	 * v-node/一時領域を解放
 	 */
+
+	vfs_vnode_ptr_put(dir_v);  /* パス検索時に取得したディレクトリv-nodeの参照を解放 */
+	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	kfree(filename);  /*  パス(ファイル名)検索時に使用した一時領域を解放  */
+	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
+
+	return 0;
+
 dirv_put_out:
 	vfs_vnode_ptr_put(dir_v);  /* パス検索時に取得したディレクトリv-nodeの参照を解放 */
 

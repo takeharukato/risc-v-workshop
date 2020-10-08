@@ -106,6 +106,19 @@ unmark_vnode_flag_nolock(vnode *v, vfs_vnode_flags flags) {
 }
 
 /**
+   v-nodeのフラグ値を確認する (内部関数)
+   @param[in] v 操作対象のv-node
+   @param[in] flags 確認するフラグ値
+   @retval    真 フラグのいずれかがセットされている
+   @retval    偽 フラグのいずれもがセットされていない
+ */
+static bool
+check_vnode_flags_nolock(vnode *v, vfs_vnode_flags flags) {
+
+	return ( ( v->v_flags & flags ) != 0 );
+}
+
+/**
    v-nodeのフラグ値を設定する (内部関数)
    @param[in] v     操作対象のv-node
    @param[in] flags 設定するフラグ値
@@ -115,7 +128,8 @@ unmark_vnode_flag_nolock(vnode *v, vfs_vnode_flags flags) {
  */
 static bool
 mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
-	bool res;
+	bool          res;
+	bool flag_changed;
 
 	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
 	if ( !res )
@@ -123,16 +137,26 @@ mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
 
 	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
 
+	flag_changed = false;  /* フラグ変更未 */
+
+	if ( check_vnode_flags_nolock(v, flags) )
+		goto unlock_out;  /* フラグ設定済み */
+
 	mark_vnode_flag_nolock(v, flags);  /* フラグを設定 */
+	flag_changed = true;  /* フラグ変更 */
 
 	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
 		wque_wakeup(&v->v_waiters, WQUE_RELEASED);
 
+unlock_out:
 	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 
 	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
 
-	return !res;      /* 最終参照でなければフラグをセットできている  */
+	if ( flag_changed )
+		return !res;      /* 最終参照でなければフラグをセットできている  */
+
+	return false;  /* フラグが変更されていない */
 }
 
 /**
@@ -162,16 +186,24 @@ unmark_vnode_flag(vnode *v, vfs_vnode_flags flags) {
 }
 
 /**
-   v-nodeのフラグ値を確認する (内部関数)
-   @param[in] v 操作対象のv-node
-   @param[in] flags 確認するフラグ値
-   @retval    真 フラグのいずれかがセットされている
-   @retval    偽 フラグのいずれもがセットされていない
+   v-nodeの削除を予約する (内部関数)
+   @param[in] v  操作対象のv-node
+   @retval    真 v-nodeの最終参照者だった
+   @retval    偽 v-nodeの参照が残っている
  */
 static bool
-check_vnode_flags_nolock(vnode *v, vfs_vnode_flags flags) {
+mark_vnode_delete_common(vnode *v){
+	bool deleted;
+	bool     res;
 
-	return ( ( v->v_flags & flags ) != 0 );
+	/* ディスクI-nodeの削除予約をかける */
+	deleted = mark_vnode_flag(v, VFS_VFLAGS_DELETE);
+	if ( !deleted )
+		return false;
+
+	res = vfs_vnode_ref_dec(v);  /* マウント情報からの参照を解放する */
+
+	return res;
 }
 
 /**
@@ -1194,12 +1226,18 @@ vfs_vnode_ptr_put(vnode *v){
 
 	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
 
-	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
+	/* @note 削除予約済みv-nodeの場合, 削除予約フラグを設定した時点で
+	 * マウントテーブルへの参照を減算しており, かつ,
+	 * 上記のv-node参照解放処理の延長でマウントテーブル操作用の参照を
+	 * 解放済みであるため, 本関数でマウントテーブル操作用の参照を解放する必要はない。
+	 */
+	if ( !res ) {
 
-	if ( res )
-		return 0;  /* 最終参照者だった       */
+		vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
+		return -EAGAIN;    /* 最終参照者ではなかった */
+	}
 
-	return -EAGAIN;    /* 最終参照者ではなかった */
+	return 0;  /* 最終参照者だった       */
 
 put_mount_out:
 	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
@@ -1236,8 +1274,7 @@ vfs_vnode_remove(vfs_mnt_id mntid, vfs_vnode_id vnid){
 	if ( rc != 0 )
 		goto put_mount_out;
 
-	res = mark_vnode_flag(v, VFS_VFLAGS_DELETE);   /* ディスクI-nodeの削除予約をかける */
-	kassert( res );
+	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
 
 	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
 	if ( res )
@@ -1255,9 +1292,9 @@ error_out:
 /**
    v-nodeの削除フラグをセットする
    @param[in] v      操作対象のv-node
-   @retval    0      正常終了
+   @retval    0      v-nodeをマウント情報から削除した
    @retval   -ENOENT 操作対象のv-nodeの参照を獲得できなかった
-   @retval   -EAGAIN フラグの更新に失敗した
+   @retval   -EAGAIN v-nodeの最終参照者ではなかった
  */
 int
 vfs_vnode_ptr_remove(vnode *v){
@@ -1274,13 +1311,12 @@ vfs_vnode_ptr_remove(vnode *v){
 		goto error_out;
 	}
 
-	res = mark_vnode_flag(v, VFS_VFLAGS_DELETE);   /* ディスクI-nodeの削除予約をかける */
-	kassert( res );
+	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
 
 	vfs_vnode_ref_dec(v);  /* 削除予約処理用の参照を解放する */
 
 	if ( !res )
-		return -EAGAIN;  /* フラグ更新に失敗した */
+		return -EAGAIN;  /* v-nodeの最終参照者ではなかった */
 
 	return 0;
 
