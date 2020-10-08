@@ -207,6 +207,8 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 		goto error_out;
 	}
 
+	vfs_fs_ref_inc(mount->m_fs);  /* ファイルシステムへの参照を加算 */
+
 	return 0;
 
 error_out:
@@ -257,6 +259,8 @@ alloc_new_fsmount(char *path, const char *fs_name, fs_mount **mntp){
 
 	*mntp = new_mount;  /*  マウント情報を返却  */
 
+	vfs_fs_put(fs);  /* ファイルシステムへの参照を返却する */
+
 	return 0;
 
 free_mount_out:
@@ -279,7 +283,8 @@ free_fsmount(fs_mount *mount) {
 
 	kassert( mount->m_fs != NULL );
 
-	vfs_fs_put(mount->m_fs);      /*  ファイルシステムへの参照を解放  */
+	vfs_fs_ref_dec(mount->m_fs);   /*  ファイルシステムへの参照を解放  */
+
 	/*  対象のマウント情報を待ち合わせているスレッドを起床 */
 	mutex_destroy(&mount->m_mtx);
 	kfree(mount->m_mount_path);  /*  マウントポイント文字列を解放  */
