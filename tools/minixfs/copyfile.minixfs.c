@@ -79,8 +79,8 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	minix_rw_disk_inode(&handle->msb, new_inum, MINIX_RW_READING, &newinode);
 	rdlen = read(fd, &buf[0], BUFSIZ);
 	for(off = 0; rdlen > 0; ) {
-		
-		rc = minix_rw_zone(&handle->msb, new_inum, &newinode, &buf[0], off, 
+
+		rc = minix_rw_zone(&handle->msb, new_inum, &newinode, &buf[0], off,
 		    rdlen, MINIX_RW_WRITING, &wrlen);
 		off += wrlen;
 		rdlen = read(fd, &buf[0], BUFSIZ);
@@ -94,10 +94,10 @@ copy_regular_file_from_host_to_image(fs_image *handle, char *hostpath, char *ima
 	return 0;
 
 free_newfile_out:
-	rc = minix_del_dentry(&handle->msb, MKFS_MINIXFS_ROOT_INO, 
+	rc = minix_del_dentry(&handle->msb, MKFS_MINIXFS_ROOT_INO,
 				      &dirinode, name, &del_inum);
 	minix_bitmap_free(&handle->msb, MKFS_MINIXFS_ROOT_INO, del_inum);
-	
+
 free_tmppath_out:
 	free(tmppath);
 
@@ -155,10 +155,10 @@ main(int argc, char *argv[]){
 	printf("Image file: %s\n", imagefile);
 
 	rc = fsimg_pagecache_init(imagefile, &handle);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 	rc = copy_regular_file_from_host_to_image(handle, hostfile, imagefile);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 
 	return 0;

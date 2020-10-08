@@ -34,7 +34,7 @@ sched_thread_add_nosched(thread *thr){
 		goto error_out;  /* 終了中スレッドだった場合 */
 
 	/* スレッドがどこにもリンクされていないことを確認する */
-	kassert(list_not_linked(&thr->link));  
+	kassert(list_not_linked(&thr->link));
 	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
 
 	/* レディキューをロック */
@@ -68,14 +68,14 @@ error_out:
    @return 実行可能なスレッド
    @return NULL 実行可能なスレッドがない
  */
-static thread * 
+static thread *
 get_next_thread(void){
 	thread          *thr;
 	singned_cnt_type idx;
 	intrflags     iflags;
 
 	/* レディキューをロック */
-	spinlock_lock_disable_intr(&ready_queue.lock, &iflags); 
+	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);
 
 	/* ビットマップの最初に立っているビットの位置を確認  */
 	idx = bitops_ffs(&ready_queue.bitmap);
@@ -139,30 +139,30 @@ sched_schedule(void) {
 
 	if ( ti_dispatch_disabled() ) {
 
-		/* プリエンプション不可能な区間から呼ばれた場合は, 
+		/* プリエンプション不可能な区間から呼ばれた場合は,
 		 * 遅延ディスパッチ要求をセットして呼び出し元へ復帰し,
 		 * 例外出口処理でディスパッチを実施
 		 */
-		ti_set_delay_dispatch(prev->tinfo);  
+		ti_set_delay_dispatch(prev->tinfo);
 		goto schedule_out;
 	}
-		
+
 	ti_set_preempt_active();         /* プリエンプションの抑止 */
 	cinf = krn_current_cpuinfo_get(); /* 動作中CPUのCPU情報を取得 */
-	
-	do{	
+
+	do{
 		next = get_next_thread();        /* 次に実行するスレッドの管理情報を取得 */
 		if ( next == NULL )
 			next = cinf->idle_thread; /* アイドルスレッドを参照 */
 		kassert( next != NULL ); /* 少なくともアイドルスレッドを参照しているはず */
-		
+
 		ti_clr_delay_dispatch();  /* ディスパッチ要求をクリア */
 
 		if ( prev == next ) /* ディスパッチする必要なし  */
 			goto ena_preempt_out;
 
 		/* アイドルスレッドはキューに入れない */
-		if ( !( prev->flags & THR_THRFLAGS_IDLE ) 
+		if ( !( prev->flags & THR_THRFLAGS_IDLE )
 		    && ( prev->state == THR_TSTATE_RUN ) ) {
 
 			/*  実行中スレッドの場合は, 実行可能に遷移し, レディキューに戻す
@@ -177,7 +177,7 @@ sched_schedule(void) {
 		 * @note スレッド生成直後は, 例外出口にジャンプするのでスレッド切り替え前に
 		 * 次スレッドの状態を更新する
 		 */
-		next->state = THR_TSTATE_RUN;    
+		next->state = THR_TSTATE_RUN;
 		thr_thread_switch(prev, next);   /* スレッド切り替え */
 
 		cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
@@ -194,7 +194,7 @@ schedule_out:
 /**
    遅延ディスパッチを処理する
    @retval 真 イベント到着
-   @retval 偽 遅延ディスパッチ処理を実施 
+   @retval 偽 遅延ディスパッチ処理を実施
  */
 bool
 sched_delay_disptach(void) {
@@ -208,9 +208,9 @@ sched_delay_disptach(void) {
 		 * ディパッチ不可能区間内にいる
 		 * 遅延ディスパッチ要求がない
 		 */
-		if ( ( ti_dispatch_disabled() ) || 
+		if ( ( ti_dispatch_disabled() ) ||
 		     ( !ti_dispatch_delayed() ) )
-			break;  
+			break;
 
 		sched_schedule();  /*  ディスパッチ処理実施 */
 	}while(1);

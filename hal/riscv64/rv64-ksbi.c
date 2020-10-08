@@ -22,7 +22,7 @@
    @param[in] _hart IPI送信先hartid
 */
 #define msip_reg(_hart) ((volatile uint32_t *)(RV64_CLINT_MSIP((_hart))))
- 
+
 /**
    IPI割込み要求を発行する
    @param[in] _hart IPI送信先hartid
@@ -35,7 +35,7 @@
    プロセッサ間割込みを発行する
    @param[in] hart_mask 割込み送信先CPUのビットマップ
  */
-void 
+void
 ksbi_send_ipi(const cpu_bitmap *hart_mask){
 	cpu_id cpu;
 
@@ -47,7 +47,7 @@ ksbi_send_ipi(const cpu_bitmap *hart_mask){
 }
 
 /**
-   Supervisor Binary Interface呼び出しを処理する   
+   Supervisor Binary Interface呼び出しを処理する
    @param[in] func SBI callの機能番号 (Function ID)
    @param[in] ext  SBI callの拡張番号 (Extension ID)
    @param[in] arg0 SBI callの第1引数
@@ -57,9 +57,9 @@ ksbi_send_ipi(const cpu_bitmap *hart_mask){
  */
 void
 ksbi_handle_sbicall(reg_type __unused func, reg_type __unused ext,
-    reg_type __unused arg0, reg_type __unused arg1, 
+    reg_type __unused arg0, reg_type __unused arg1,
     reg_type __unused arg2, reg_type __unused arg3)  __section(".boot.text"){
-	
+
 	return;
 }
 

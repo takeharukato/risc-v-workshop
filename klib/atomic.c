@@ -20,7 +20,7 @@
 */
 atomic_val
 atomic_add_fetch(atomic *val, atomic_val incr){
-	
+
 	return hal_atomic_add_fetch(val, incr);
 }
 
@@ -80,7 +80,7 @@ atomic_xor_fetch(atomic *val, atomic_val v){
 */
 atomic_val
 atomic_set_fetch(atomic *val, atomic_val set_to){
-	
+
 	return hal_atomic_set_fetch(val, set_to);
 }
 
@@ -91,9 +91,9 @@ atomic_set_fetch(atomic *val, atomic_val set_to){
 	@param[in]  new      更新する値
 	@return 更新前の値
 */
-atomic_val 
+atomic_val
 atomic_cmpxchg_fetch(atomic *val, atomic_val old, atomic_val new){
-	
+
 	return hal_atomic_cmpxchg_fetch(val, old, new);
 }
 
@@ -107,7 +107,7 @@ atomic_cmpxchg_fetch(atomic *val, atomic_val old, atomic_val new){
 void *
 atomic_cmpxchg_ptr_fetch(void **valp, void *old, void *new){
 
-	return hal_atomic_cmpxchg_ptr_fetch(valp, old, new);	
+	return hal_atomic_cmpxchg_ptr_fetch(valp, old, new);
 }
 
 /**
@@ -122,12 +122,12 @@ atomic_cmpxchg_ptr_fetch(void **valp, void *old, void *new){
 bool
 atomic_try_cmpxchg_fetch(atomic *val, atomic_val *oldp, atomic_val new){
 	atomic_val r, old;
-	
+
 	old = *oldp;
 	r = hal_atomic_cmpxchg_fetch(val, old, new);
 	if ( r != old )
 		*oldp = r;
-	
+
 	return ( r == old );
 }
 
@@ -194,7 +194,7 @@ atomic_xor_return(atomic *val, atomic_val v){
 /**
    整数をアトミックに減算し, 減算後の状態と値を返却する
    @param[out] val      更新する変数のアドレス
-   @param[in]  decr     減算値 
+   @param[in]  decr     減算値
    @param[out] newp     更新後の値を返却する領域
    @retval     真       参照カウンタが0になった
    @retval     偽       参照カウンタが0以上
@@ -205,11 +205,11 @@ atomic_sub_and_test(atomic *val, atomic_val decr, atomic_val *newp){
 
 	new = atomic_sub_return(val, decr);  /* カウンタを減算し減算後の値を得る */
 	kassert( new >= 0 );  /*  減算後に負にならないことを確認する  */
-	
+
 	if ( newp != NULL )
 		*newp = new;  /*  更新後の値を返却する  */
 
-	if ( new == 0 ) 
+	if ( new == 0 )
 		return true;  /*  更新後に0になった */
 
 	kassert( new > 0 );
@@ -226,7 +226,7 @@ atomic_val
 atomic_read(atomic *val){
 
 	/* 参照後の競合は避けえないので単なる整数の参照でも許容されうるが,
-	 * 念のためアトミックに0を加算し, 加算前の値を得ることで値を参照  
+	 * 念のためアトミックに0を加算し, 加算前の値を得ることで値を参照
 	 */
 	return atomic_add_fetch(val, 0);
 }
@@ -246,7 +246,7 @@ atomic_set(atomic *val, atomic_val new){
 /**
    変数の内容がunexpectedでなければ整数をアトミックに加え, 更新前の値を返却する
    @param[out] val 更新する変数のアドレス
-   @param[in] unexpected 更新不可能条件となる変数の値 
+   @param[in] unexpected 更新不可能条件となる変数の値
    @param[in] incr 加算する整数
    @return 更新前の値
  */
@@ -265,7 +265,7 @@ atomic_add_fetch_unless(atomic *val, atomic_val unexpected, atomic_val incr){
 /**
    変数の内容がunexpectedでなければ整数をアトミックに減算, 更新前の値を返却する
    @param[out] val 更新する変数のアドレス
-   @param[in] unexpected 更新不可能条件となる変数の値 
+   @param[in] unexpected 更新不可能条件となる変数の値
    @param[in] decr 減算する整数
    @return 更新前の値
  */

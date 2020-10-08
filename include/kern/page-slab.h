@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_PAGE_SLAB_H)
-#define  _PAGE_SLAB_H 
+#define  _PAGE_SLAB_H
 
 #include <kern/kern-types.h>
 #include <kern/kern-cpuinfo.h>
@@ -28,7 +28,7 @@
 
 /** 引数で指定可能なフラグ  */
 #define KM_SFLAGS_ARGS		     \
-	( KM_SFLAGS_CLR_NONE | KM_SFLAGS_ATOMIC | KM_SFLAGS_ALIGN_HW | KM_SFLAGS_COLORING ) 
+	( KM_SFLAGS_CLR_NONE | KM_SFLAGS_ATOMIC | KM_SFLAGS_ALIGN_HW | KM_SFLAGS_COLORING )
 
 #define KM_LIMITS_DEFAULT            (0)  /*< デフォルトのリミット(即時解放)       */
 #define KM_SLAB_TYPE_DIVISOR         (8)  /*< ページの1/8未満は, オンスラブキャッシュ使用  */
@@ -93,7 +93,7 @@
 /**  事前割当て済みカーネルキャッシュの最小サイズ 8Byte (単位:バイト)  */
 #define SLAB_PREALLOC_MIN	(SLAB_PREALLOC_BASE << 0)
 /**  事前割当て済みカーネルキャッシュの最大サイズ 1MiB  */
-#define SLAB_PREALLOC_MAX       (SLAB_PREALLOC_BASE << (SLAB_PREALLOC_CACHE_NR - 1)) 
+#define SLAB_PREALLOC_MAX       (SLAB_PREALLOC_BASE << (SLAB_PREALLOC_CACHE_NR - 1))
 
 /**  事前割当て済みカーネルキャッシュのアラインメント(アラインメントを設定しない)  */
 #define SLAB_ALIGN_NONE         (0) /** アラインメントをつけない  */

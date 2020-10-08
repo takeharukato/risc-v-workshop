@@ -22,7 +22,7 @@ static thread_db  g_thrdb = __THRDB_INITIALIZER(&g_thrdb);  /**< スレッド管
 static int _thread_cmp(struct _thread *_key, struct _thread *_ent);
 RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
 
-/** 
+/**
     スレッド管理情報比較関数
     @param[in] key 比較対象1
     @param[in] ent RB木内の各エントリ
@@ -30,16 +30,16 @@ RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
     @retval 負  keyのスレッドIDがentより後にある
     @retval 0   keyのスレッドIDがentに等しい
  */
-static int 
+static int
 _thread_cmp(struct _thread *key, struct _thread *ent){
-	
+
 	if ( key->id < ent->id )
 		return 1;
 
 	if ( key->id > ent->id  )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -54,13 +54,13 @@ alloc_new_tid_nolock(tid *idp){
 	tid         newid;
 
 	newid = bitops_ffc(&g_thrdb.idmap);  /* 空きIDを取得 */
-	if ( newid == 0 ) 
+	if ( newid == 0 )
 		return  -ENOSPC;  /* 空IDがない */
 
 	--newid;  /* スレッドIDに変換 */
 
 	/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
-	bitops_set(newid, &g_thrdb.idmap); 
+	bitops_set(newid, &g_thrdb.idmap);
 
 	if ( idp != NULL )
 		*idp = newid;  /* スレッドIDを返却 */
@@ -111,10 +111,10 @@ add_child_thread_nolock(thread *thr, thread *parent){
 	 */
 
 	/* 以前の親スレッドキューから取り外し済みであることを確認 */
-	kassert( list_not_linked(&thr->children_link) ); 
+	kassert( list_not_linked(&thr->children_link) );
 
 	/* 親スレッドのキューに追加する */
-	queue_add(&parent->children, &thr->children_link);  
+	queue_add(&parent->children, &thr->children_link);
 	res = thr_ref_inc(thr);   /*  親スレッドのキューから子スレッドの参照を加算    */
 	kassert( res );
 
@@ -142,7 +142,7 @@ error_out:
    @param[in] parent 削除元の親スレッド
    @note 親スレッドの子スレッドキューから指定したスレッドを取り除くが,
    子スレッドから親スレッドへの通知を行うために親スレッドへの参照は解放できない。
-   子スレッドから親スレッドへの参照は, スレッド管理情報への全ての参照が完了し, 
+   子スレッドから親スレッドへの参照は, スレッド管理情報への全ての参照が完了し,
    親プロセスへスレッドの終了を通知可能になった時点(notify_parent_child_exit)で
    解放する。
 */
@@ -162,13 +162,13 @@ del_child_thread_nolock(thread *thr, thread *parent){
 	 */
 
 	/* スレッドキューに追加されていることを確認 */
-	kassert( !list_not_linked(&thr->children_link) ); 
-	
+	kassert( !list_not_linked(&thr->children_link) );
+
 	/* 指定された親スレッドの子を削除することを確認 */
 	kassert( thr->parent == parent );
-	
+
 	/* 親スレッドのキューから削除する */
-	queue_del(&parent->children, &thr->children_link);  
+	queue_del(&parent->children, &thr->children_link);
 	res = thr_ref_dec(thr);   /*  親スレッドのキューから子スレッドの参照を減算    */
 	kassert( !res );
 
@@ -201,8 +201,8 @@ del_child_thread_nolock(thread *thr, thread *parent){
    スレッド情報の初期化を除いている
 */
 static int
-create_thread_common(tid id, entry_addr entry, thread_args *args, 
-    proc *p, void *usp, void *kstktop, thr_prio prio, thr_flags flags, 
+create_thread_common(tid id, entry_addr entry, thread_args *args,
+    proc *p, void *usp, void *kstktop, thr_prio prio, thr_flags flags,
     thread *parent, thread **thrp){
 	int            rc;
 	tid         newid;
@@ -255,7 +255,7 @@ create_thread_common(tid id, entry_addr entry, thread_args *args,
 	newstk = kstktop;        /* 指定されたカーネルスタックの先頭アドレスをセットする */
 	if ( newstk == NULL ) {  /* スタックを動的に割り当てる場合 */
 
-		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER, 
+		rc = pgif_get_free_page_cluster(&newstk, KC_KSTACK_ORDER,
 		    KMALLOC_NORMAL, PAGE_USAGE_KSTACK);  /* カーネルスタックページの割当て */
 		if ( rc != 0 ) {
 
@@ -268,10 +268,10 @@ create_thread_common(tid id, entry_addr entry, thread_args *args,
 	thr->attr.kstack_top = newstk;  /* カーネルスタックの先頭アドレスを設定 */
 
 	/* スレッド情報アドレスを算出  */
-	thr->tinfo = calc_thread_info_from_kstack_top(newstk);  
+	thr->tinfo = calc_thread_info_from_kstack_top(newstk);
 
 	/* スレッド管理情報を指すようにスタック位置を初期化 */
-	thr->ksp = (void *)thr->tinfo;   
+	thr->ksp = (void *)thr->tinfo;
 
 	/* スレッドコンテキスト, 例外コンテキストの初期化
 	 */
@@ -311,7 +311,7 @@ create_thread_common(tid id, entry_addr entry, thread_args *args,
 		kassert( ref_res );            /* 親スレッドは存在するはず  */
 
 		 /* 親スレッドの子スレッドキューに追加し参照を更新する  */
-		add_child_thread_nolock(thr, parent); 
+		add_child_thread_nolock(thr, parent);
 
 		ref_res = thr_ref_dec(parent); /*  親スレッドの参照を解放 */
 		/* 自スレッドから親スレッドへの参照があるため最終参照ではない */
@@ -339,7 +339,7 @@ error_out:
 
 /**
    スレッド資源(スレッド管理情報とカーネルスタック)を解放する
-   @param[in] thr 
+   @param[in] thr
  */
 static void
 free_thread(thread *thr){
@@ -359,13 +359,13 @@ static void
 reap_thread(void __unused *arg){
 	thr_wait_res child;
 	intrflags   iflags;
-	
+
 	for( ; ; ) {
 
 		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
-		
+
 		thr_thread_wait(&child); /* 子スレッドを待ち合せる */
-		
+
 		krn_cpu_restore_interrupt(&iflags);   /* 割込みを許可する */
 	}
 }
@@ -391,14 +391,14 @@ notify_parent_child_exit(thread *thr){
 	spinlock_lock(&thr->lock);
 
 	queue_add(&thr->parent->waiters, &thr->link);  /* 終了するスレッドを登録 */
-	thr->state = THR_TSTATE_DEAD;                 /* 回収待ち中に遷移 */	
+	thr->state = THR_TSTATE_DEAD;                 /* 回収待ち中に遷移 */
 
 
 	/* 終了するスレッドのロックを解放 */
-	spinlock_unlock(&thr->lock);   
+	spinlock_unlock(&thr->lock);
 
 	/* 親スレッドのロックを解放 */
-	spinlock_unlock_restore_intr(&thr->parent->lock, &iflags); 
+	spinlock_unlock_restore_intr(&thr->parent->lock, &iflags);
 
 	wque_wakeup(&thr->parent->pque, WQUE_RELEASED);  /* 親スレッドを起床 */
 
@@ -423,7 +423,7 @@ handle_waiter_thread(thread *thr){
 	queue_for_each_safe(lp, &thr->waiters, np){
 
 		child = container_of(queue_get_top(&thr->waiters), thread, link);
-		kassert( ( child->state == THR_TSTATE_WAIT ) || 
+		kassert( ( child->state == THR_TSTATE_WAIT ) ||
 		    ( child->state == THR_TSTATE_DEAD ) ); /* wait待ち状態であることを確認 */
 
 		if ( child->state == THR_TSTATE_WAIT ) {  /*  終了したスレッドでない場合 */
@@ -436,7 +436,7 @@ handle_waiter_thread(thread *thr){
 
 			res = thr_ref_dec(child);          /*  子スレッドの参照を取得  */
 			kassert( !res );
-		} else if ( child->state == THR_TSTATE_DEAD ) 
+		} else if ( child->state == THR_TSTATE_DEAD )
 			free_thread(child);  /*  子スレッドの資源を解放 */
 	}
 }
@@ -444,7 +444,7 @@ handle_waiter_thread(thread *thr){
 /**
    子スレッドを回収スレッドの子スレッドに移動する
    @param[in] old_parent 操作対象のスレッド
-   @note LO: old_parentのロック, 回収スレッドのロック, 
+   @note LO: old_parentのロック, 回収スレッドのロック,
    回収スレッドの子スレッドとして追加するスレッドのロックの順に獲得する
  */
 static void
@@ -474,7 +474,7 @@ handle_orphan_thread(thread *old_parent){
 
 	res = thr_ref_inc(reaper); /* 回収スレッドの参照を取得 */
 	kassert( res );
-	
+
 	/**
 	   回収スレッドの子スレッドに追加
 	 */
@@ -524,7 +524,7 @@ static void
 create_reaper_thread(void){
 	int          rc;
 	thread     *thr;
-	cpu_info  *cinf; 
+	cpu_info  *cinf;
 
 	/* 起動時の初期化処理中から呼ばれるためカレントを親スレッド
 	 * として設定しないように, thr_kernel_thread_createを使わずに
@@ -533,12 +533,12 @@ create_reaper_thread(void){
 	 */
 	cinf = krn_current_cpuinfo_get();    /* CPU情報を参照          */
 	rc = create_thread_common(THR_TID_REAPER, (vm_vaddr)reap_thread,
-	    NULL, proc_kernel_process_refer(), NULL, NULL, THR_PRIO_REAPER, 
+	    NULL, proc_kernel_process_refer(), NULL, NULL, THR_PRIO_REAPER,
 	    THR_THRFLAGS_KERNEL, cinf->idle_thread, &thr);
 	kassert( rc == 0 );
 
 	ti_thread_info_init(thr->tinfo, thr);  /* スレッド情報初期化 */
-	
+
 	sched_thread_add(thr);  /* 回収スレッドを実行可能にする */
 }
 
@@ -570,12 +570,12 @@ thr_thread_wait(thr_wait_res *resp){
 		/* wait待ちキューで休眠する */
 		reason = wque_wait_for_curthr(&cur->pque);
 		if ( reason == WQUE_DELIVEV ) {
-			
+
 			rc = -EINTR; /* イベントを受信した */
 			goto unlock_out;
 		}
-		kassert( reason == WQUE_RELEASED );	
-	}	
+		kassert( reason == WQUE_RELEASED );
+	}
 
 	/**
 	   wait待ち中の子スレッドを取り出し, 終了状態を取得
@@ -635,7 +635,7 @@ thr_thread_exit(exit_code ec){
 
 
 	/* レディキューに繋がっていないことを確認 */
-	kassert( list_not_linked(&cur->link) ); 
+	kassert( list_not_linked(&cur->link) );
 
 	handle_waiter_thread(cur);      /*  wait待ち状態のスレッドの資源を解放 */
 	handle_orphan_thread(cur);      /*  子スレッドを回収スレッドの子スレッドに移動 */
@@ -690,7 +690,7 @@ thr_user_thread_create(tid id, entry_addr entry, thread_args *args, proc *p, voi
 		return -EINVAL;
 
 	/* スレッドを生成したスレッドを親スレッドに設定 */
-	parent = ti_get_current_thread(); 
+	parent = ti_get_current_thread();
 
 	/**
 	   スレッド管理情報を生成, 登録する
@@ -724,7 +724,7 @@ error_out:
    @retval    -ENOSPC スレッドIDに空きがない
 */
 int
-thr_kernel_thread_create(tid id, entry_addr entry, thread_args *args, thr_prio prio, 
+thr_kernel_thread_create(tid id, entry_addr entry, thread_args *args, thr_prio prio,
 		  thr_flags flags, thread **thrp){
 	int            rc;
 	thread       *thr;
@@ -734,12 +734,12 @@ thr_kernel_thread_create(tid id, entry_addr entry, thread_args *args, thr_prio p
 		return -EINVAL;
 
 	/* スレッドを生成したスレッドを親スレッドに設定 */
-	parent = ti_get_current_thread(); 
+	parent = ti_get_current_thread();
 
 	/**
 	   スレッド管理情報を生成, 登録する
 	 */
-	rc = create_thread_common(id, entry, args, proc_kernel_process_refer(), 
+	rc = create_thread_common(id, entry, args, proc_kernel_process_refer(),
 	    NULL, NULL, prio, flags, parent, &thr);
 	if ( rc != 0 )
 		goto error_out;  /* スレッド生成失敗 */
@@ -787,8 +787,8 @@ thr_thread_switch(thread *prev, thread *next){
 bool
 thr_ref_inc(thread *thr){
 
-	/*  スレッド終了中(スレッド管理ツリーから外れているスレッド)でなければ, 
-	 *  利用カウンタを加算し, 加算前の値を返す  
+	/*  スレッド終了中(スレッド管理ツリーから外れているスレッド)でなければ,
+	 *  利用カウンタを加算し, 加算前の値を返す
 	 */
 	return ( refcnt_inc_if_valid(&thr->refs) != 0 );  /* 以前の値が0の場合加算できない */
 }
@@ -821,14 +821,14 @@ thr_ref_dec(thread *thr){
 		spinlock_unlock_restore_intr(&g_thrdb.lock, &iflags);
 
 		 /* レディキューに繋がっていないことを確認 */
-		kassert( list_not_linked(&thr->link) ); 
+		kassert( list_not_linked(&thr->link) );
 		cur = ti_get_current_thread(); /* カレントスレッドを参照 */
 		/* スレッド管理情報の解放準備ができたことを親スレッドに通知 */
-		notify_parent_child_exit(thr); 
+		notify_parent_child_exit(thr);
 
 		/*  自プロセッサのカレントスレッドだった場合はCPUを解放 */
-		if ( cur == thr ) 
-			sched_schedule();  
+		if ( cur == thr )
+			sched_schedule();
 	}
 
 	return res;
@@ -848,11 +848,11 @@ thr_idle_loop(void __unused *arg){
 
 		krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込みを禁止する */
 
-		if ( ti_dispatch_delayed() ) 
+		if ( ti_dispatch_delayed() )
 			sched_schedule();  /* ディスパッチ要求に従って再スケジュール */
 		else {
 
-			/** 
+			/**
 			    @note 多くのCPUでは, 割込み禁止状態に遷移した後でCPU休眠命令を
 			    発行することでCPUの休眠と割込み通知とのレースコンディションを
 			    避ける機能をCPU休眠命令が提供しているのでアーキごとに休眠処理を
@@ -897,8 +897,8 @@ thr_idlethread_create(cpu_id cpu, thread **thrp){
 	 * また, ブート時に初期化したスレッド情報を使用するため, カーネルスタックの
 	 * 開始アドレス(のカーネル仮想アドレス)を指定してカーネルスレッドを生成する。
 	 */
-	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL, 
-	    proc_kernel_process_refer(), NULL, ti->kstack, SCHED_MIN_RR_PRIO, 
+	rc = create_thread_common(id, (vm_vaddr)thr_idle_loop, NULL,
+	    proc_kernel_process_refer(), NULL, ti->kstack, SCHED_MIN_RR_PRIO,
 	    THR_THRFLAGS_KERNEL|THR_THRFLAGS_IDLE, NULL, &thr);
 	if ( rc != 0 )
 		goto error_out;

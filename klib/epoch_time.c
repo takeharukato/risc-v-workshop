@@ -120,8 +120,8 @@
  *  100年ごとに4で割り切れるが閏年にならない年があり, 400年で割り切れる年は閏年として
  *  扱う。
  *
- *   400年/4年(閏年になる年) - 400年/100年(100年に１回閏年にならない年) 
- *      + 1年(400年に一回閏年になる年) 
+ *   400年/4年(閏年になる年) - 400年/100年(100年に１回閏年にならない年)
+ *      + 1年(400年に一回閏年になる年)
  *  = 100 - 4 + 1 = 97回
 */
 #define LEAP_YEARS_PER_400Y  ( INT64_C(97) )
@@ -202,11 +202,11 @@ enum _days_through_month{
    各月の初日までの経過秒数(非閏年)
  */
 static const int64_t secs_through_month[] = {
-	DAYS_THR_JAN, DAYS_THR_FEB*SECS_PER_DAY, 
-	DAYS_THR_MAR*SECS_PER_DAY, DAYS_THR_APR*SECS_PER_DAY, 
-	DAYS_THR_MAY*SECS_PER_DAY, DAYS_THR_JUN*SECS_PER_DAY, 
-	DAYS_THR_JUL*SECS_PER_DAY, DAYS_THR_AUG*SECS_PER_DAY, 
-	DAYS_THR_SEP*SECS_PER_DAY, DAYS_THR_OCT*SECS_PER_DAY, 
+	DAYS_THR_JAN, DAYS_THR_FEB*SECS_PER_DAY,
+	DAYS_THR_MAR*SECS_PER_DAY, DAYS_THR_APR*SECS_PER_DAY,
+	DAYS_THR_MAY*SECS_PER_DAY, DAYS_THR_JUN*SECS_PER_DAY,
+	DAYS_THR_JUL*SECS_PER_DAY, DAYS_THR_AUG*SECS_PER_DAY,
+	DAYS_THR_SEP*SECS_PER_DAY, DAYS_THR_OCT*SECS_PER_DAY,
 	DAYS_THR_NOV*SECS_PER_DAY, DAYS_THR_DEC*SECS_PER_DAY
 };
 
@@ -231,14 +231,14 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	int64_t              wday, yday, leap;
 
 	/* カーネル内タイム構造体中のtm_yearメンバ(int型)の範囲に収まらない年数を
-	 * 引き渡した場合引数異常を返す 
+	 * 引き渡した場合引数異常を返す
 	 */
-	if ( ( t < INT_MIN * SECS_PER_LEAP_YEAR ) || 
+	if ( ( t < INT_MIN * SECS_PER_LEAP_YEAR ) ||
 	    ( t > INT_MAX * SECS_PER_LEAP_YEAR ) )
 		return -EINVAL;
 
 	secs = t - LEAPOCH; /* 基準時間(2000年03月01日 00:00:00 水曜日)からの経過秒数算出 */
-	
+
 	/*
 	 * 日数算出
 	 */
@@ -257,7 +257,7 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	wday = ( LEAPOCH_WDAY + days ) % DAYS_PER_WEEK;
 	if (wday < 0) /*  経過秒数が負の場合, 前週での曜日を算出 */
 		wday += DAYS_PER_WEEK;  /* 前週での曜日を算出 */
-	
+
 	/*
 	 * 最初の100年を0とした経過年数(年数-100年)を算出
 	 */
@@ -286,12 +286,12 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	/* 4年周期での周期回数を算出
 	 */
 	q_cycles = remdays / DAYS_PER_4Y;  /* 4年周期の周期回数を算出 */
-	/* 100年間の日数は36524日なので, 300年未満の場合, 
+	/* 100年間の日数は36524日なので, 300年未満の場合,
 	 * 4年間の日数(1461日) * 25周期 ( = 36525日)を含みうる
 	 * ちょうど25周期目にあたる場合は周期回数を減算することで周期0を
 	 * 100年周期に該当しない年として扱えるようにする。
 	 */
-	if ( q_cycles == 25 ) 
+	if ( q_cycles == 25 )
 		q_cycles--;  /*  4年周期の25周期目にあたる場合は閏年扱いにする */
 	remdays -= q_cycles * DAYS_PER_4Y; /* 4年内での経過日数を算出 */
 
@@ -299,7 +299,7 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	/* 4年周期の4年目は非閏年扱いにすることで4年周期の0周期を閏年
 	 * として扱えるようにする
 	 */
-	if ( remyears == 4 ) 
+	if ( remyears == 4 )
 		remyears--;  /* 4年周期の4年目は非閏年扱いにする */
 	remdays -= remyears * DAYS_PER_YEAR;  /*  年内での経過日数を算出 */
 
@@ -333,7 +333,7 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	for (months=0; remdays >= mar2feb_days_in_month[months]; ++months)
 		remdays -= mar2feb_days_in_month[months];
 
-	/* 
+	/*
 	 * 月を算出
 	 */
 	if ( months >= MAR2FEB_MAX_MON ) {  /* 次の年にまたがった場合 */
@@ -349,7 +349,7 @@ __secs_to_tm(int64_t t, kernel_tm *tm){
 	    ( ( years + NON_LEAP_YEAR_PER_100Y ) < INT_MIN ) )
 		return -ERANGE;
 
-	/* 
+	/*
 	 * カーネル内タイム構造体の値を設定する
 	 */
 	tm->tm_year = years + YEARS_PER_CENTURY;  /* 年数 (100年目からの経過年に100加算)   */
@@ -392,7 +392,7 @@ static int64_t
    - 非閏年の場合は0を引き渡された領域に設定
    @return 年数を秒に変換した値 (単位: 秒)
 */
-static int64_t 
+static int64_t
 __year_to_secs(int64_t year, int *is_leap){
 	int64_t                              y;
 	int64_t  cycles, centuries, leaps, rem;
@@ -402,7 +402,7 @@ __year_to_secs(int64_t year, int *is_leap){
 	 * 基準として最終UNIX時間以前の年(2038年以前の年)であることを
 	 * 確認する
 	 */
-	if ( ( year - UNIXEAPOCH_OFFSET_TO_FIRST_LEAP_YEAR ) 
+	if ( ( year - UNIXEAPOCH_OFFSET_TO_FIRST_LEAP_YEAR )
 	    <= UNIXTIME_END_OF_TM_YEAR_FROM_FIRST_LEAP_YEAR ) {
 
 		/* 最終UNIX時間(2038年01月19日 03:14:07)の年(2038年)以前の
@@ -410,7 +410,7 @@ __year_to_secs(int64_t year, int *is_leap){
 		 */
 
 		/* UNIX紀元年以前の最後の閏年(1968年)からの経過年数を算出する */
-		y = year - UNIXTIME_LAST_LEAP_YEAR_IN_TM_YEAR; 
+		y = year - UNIXTIME_LAST_LEAP_YEAR_IN_TM_YEAR;
 		leaps = y / LEAP_YEAR_PER_4Y; /* 経過年数中の閏年の回数を算出 */
 		if ( ( y % LEAP_YEAR_PER_4Y ) == 0 ) { /* 4年で割り切れる年の場合 */
 
@@ -459,7 +459,7 @@ __year_to_secs(int64_t year, int *is_leap){
 	} else {
 
 		if ( rem >= INT64_C(2) * YEARS_PER_CENTURY ) {
-			
+
 			/* 400年内の経過年数が200年以上ある場合
 			 */
 			if (rem >= INT64_C(3) * YEARS_PER_CENTURY) {
@@ -538,7 +538,7 @@ __tm_to_secs(const kernel_tm *tm){
 	year = tm->tm_year;  /* 年 */
 	month = tm->tm_mon;  /* 月 */
 
-	if ( ( month >= MONS_PER_YEAR ) || ( month < 0 ) ) { 
+	if ( ( month >= MONS_PER_YEAR ) || ( month < 0 ) ) {
 
 		/* 1年に収まらない月を指定した場合
 		 * 年と月度を補正する (mktime(3)では, 月を0から11までの範囲で指定する)
@@ -615,7 +615,7 @@ clock_epoch_time_to_tm(epoch_time et, kernel_tm *tmv){
 
 	/* 変換した値を指定された領域にコピーする
 	 */
-	memmove(tmv, &new, sizeof(kernel_tm));  
+	memmove(tmv, &new, sizeof(kernel_tm));
 
 	return 0;  /*  正常終了 */
 }

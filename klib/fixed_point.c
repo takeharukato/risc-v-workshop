@@ -20,7 +20,7 @@
  */
 int
 fixed_point_cmp_near(fpa32 x, fpa32 y) {
-	
+
 	if ( fixed_point_to_int_near(x) > fixed_point_to_int_near(y) )
 		return 1;
 
@@ -35,4 +35,3 @@ fixed_point_cmp_near(fpa32 x, fpa32 y) {
 
 	return 0;
 }
-

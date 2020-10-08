@@ -21,7 +21,7 @@
 */
 atomic64_val
 atomic64_add_fetch(atomic64 *val, atomic64_val incr){
-	
+
 	return hal_atomic64_add_fetch(val, incr);
 }
 
@@ -81,7 +81,7 @@ atomic64_xor_fetch(atomic64 *val, atomic64_val v){
 */
 atomic64_val
 atomic64_set_fetch(atomic64 *val, atomic64_val set_to){
-	
+
 	return hal_atomic64_set_fetch(val, set_to);
 }
 
@@ -92,9 +92,9 @@ atomic64_set_fetch(atomic64 *val, atomic64_val set_to){
 	@param[in]  new      更新する値
 	@return 更新前の値
 */
-atomic64_val 
+atomic64_val
 atomic64_cmpxchg_fetch(atomic64 *val, atomic64_val old, atomic64_val new){
-	
+
 	return hal_atomic64_cmpxchg_fetch(val, old, new);
 }
 
@@ -108,7 +108,7 @@ atomic64_cmpxchg_fetch(atomic64 *val, atomic64_val old, atomic64_val new){
 void *
 atomic64_cmpxchg_ptr_fetch(void **valp, void *old, void *new){
 
-	return hal_atomic64_cmpxchg_ptr_fetch(valp, old, new);	
+	return hal_atomic64_cmpxchg_ptr_fetch(valp, old, new);
 }
 
 /**
@@ -123,12 +123,12 @@ atomic64_cmpxchg_ptr_fetch(void **valp, void *old, void *new){
 bool
 atomic64_try_cmpxchg_fetch(atomic64 *val, atomic64_val *oldp, atomic64_val new){
 	atomic64_val r, old;
-	
+
 	old = *oldp;
 	r = hal_atomic64_cmpxchg_fetch(val, old, new);
 	if ( r != old )
 		*oldp = r;
-	
+
 	return ( r == old );
 }
 
@@ -195,7 +195,7 @@ atomic64_xor_return(atomic64 *val, atomic64_val v){
 /**
    64ビット整数をアトミックに減算し, 減算後の状態と値を返却する
    @param[out] val      更新する変数のアドレス
-   @param[in]  decr     減算値 
+   @param[in]  decr     減算値
    @param[out] newp     更新後の値を返却する領域
    @retval     真       参照カウンタが0になった
    @retval     偽       参照カウンタが0以上
@@ -206,11 +206,11 @@ atomic64_sub_and_test(atomic64 *val, atomic64_val decr, atomic64_val *newp){
 
 	new = atomic64_sub_return(val, decr);  /* カウンタを減算し減算後の値を得る */
 	kassert( new >= 0 );  /*  減算後に負にならないことを確認する  */
-	
+
 	if ( newp != NULL )
 		*newp = new;  /*  更新後の値を返却する  */
 
-	if ( new == 0 ) 
+	if ( new == 0 )
 		return true;  /*  更新後に0になった */
 
 	kassert( new > 0 );
@@ -227,7 +227,7 @@ atomic64_val
 atomic64_read(atomic64 *val){
 
 	/* 参照後の競合は避けえないので単なる64ビット整数の参照でも許容されうるが,
-	 * 念のためアトミックに0を加算し, 加算前の値を得ることで値を参照  
+	 * 念のためアトミックに0を加算し, 加算前の値を得ることで値を参照
 	 */
 	return atomic64_add_fetch(val, 0);
 }
@@ -247,7 +247,7 @@ atomic64_set(atomic64 *val, atomic64_val new){
 /**
    変数の内容がunexpectedでなければ64ビット整数をアトミックに加え, 更新前の値を返却する
    @param[out] val 更新する変数のアドレス
-   @param[in] unexpected 更新不可能条件となる変数の値 
+   @param[in] unexpected 更新不可能条件となる変数の値
    @param[in] incr 加算する64ビット整数
    @return 更新前の値
  */
@@ -266,7 +266,7 @@ atomic64_add_fetch_unless(atomic64 *val, atomic64_val unexpected, atomic64_val i
 /**
    変数の内容がunexpectedでなければ64ビット整数をアトミックに減算, 更新前の値を返却する
    @param[out] val 更新する変数のアドレス
-   @param[in] unexpected 更新不可能条件となる変数の値 
+   @param[in] unexpected 更新不可能条件となる変数の値
    @param[in] decr 減算する64ビット整数
    @return 更新前の値
  */

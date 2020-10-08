@@ -104,7 +104,7 @@ __bswap16(uint16_t x){
 bool
 __host_is_little_endian(void){
 	uint16_t v;
-	
+
 	v = 1;
 	return (bool)(*(uint8_t *)&v);  /* 最下位バイトに1が書かれていることを確認 */
 }

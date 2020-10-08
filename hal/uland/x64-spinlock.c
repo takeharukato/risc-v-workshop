@@ -18,9 +18,9 @@ extern void x64_pause(void);
 /** スピンロックの実装部
     @param[in] lock 獲得対象のスピンロック
  */
-void 
+void
 hal_spinlock_lock(spinlock *lock) {
-	
+
 	while(x64_xchg(&lock->locked, 1) != 0)
 		x64_pause();
 }
@@ -28,7 +28,7 @@ hal_spinlock_lock(spinlock *lock) {
 /** スピンアンロックの実装部
     @param[in] lock 解放対象のスピンロック
  */
-void 
+void
 hal_spinlock_unlock(spinlock *lock) {
 
 	x64_xchg(&lock->locked, 0);
@@ -38,7 +38,7 @@ hal_spinlock_unlock(spinlock *lock) {
 /** スピンロックの実装部(ユニプロセッサ版)
     @param[in] lock 獲得対象のスピンロック
  */
-void 
+void
 hal_spinlock_lock(spinlock *lock) {
 
 	lock->locked = 1;
@@ -47,7 +47,7 @@ hal_spinlock_lock(spinlock *lock) {
 /** スピンアンロックの実装部(ユニプロセッサ版)
     @param[in] lock 解放対象のスピンロック
  */
-void 
+void
 hal_spinlock_unlock(spinlock *lock) {
 
 	lock->locked = 0;

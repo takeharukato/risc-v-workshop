@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_SCHED_QUEUE_H)
-#define  _KERN_SCHED_QUEUE_H 
+#define  _KERN_SCHED_QUEUE_H
 
 /*
  * 優先度定義 (小さい数値ほど優先度が高い)

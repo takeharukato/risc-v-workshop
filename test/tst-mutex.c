@@ -28,7 +28,7 @@ threada(void *arg){
 
 		kprintf("ThreadA\n");
 		rc = mutex_try_lock(&mtxA);
-		if ( rc == 0 ) 
+		if ( rc == 0 )
 			break;
 
 		kprintf("ThreadA: can not trylock mutexA. wait lock\n");
@@ -57,7 +57,7 @@ threadb(void *arg){
 
 		kprintf("ThreadB: try lock mutexA\n");
 		rc = mutex_try_lock(&mtxA);
-		if ( rc == 0 ) 
+		if ( rc == 0 )
 			break;
 
 		kprintf("ThreadB: can not lock mutexA\n");
@@ -68,7 +68,7 @@ threadb(void *arg){
 
 	if ( mutex_locked_by_self(&mtxA) ) {
 
-		kprintf("ThreadA: unlock mutexA.\n");		
+		kprintf("ThreadA: unlock mutexA.\n");
 		mutex_unlock(&mtxA);
 	}
 	kprintf("ThreadB: exit\n");
@@ -88,11 +88,11 @@ mutex1(struct _ktest_stats *sp, void __unused *arg){
 	mutex_lock(&mtxA);
 	mutex_lock(&mtxB);
 
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL,
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thrA);
 	kassert( rc == 0 );
 
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threadb, NULL, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threadb, NULL,
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thrB);
 	kassert( rc == 0 );
 

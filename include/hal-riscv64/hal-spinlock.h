@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_SPINLOCK_H)
-#define  _HAL_SPINLOCK_H 
+#define  _HAL_SPINLOCK_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>

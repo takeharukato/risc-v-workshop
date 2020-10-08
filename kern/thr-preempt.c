@@ -25,17 +25,17 @@ preempt_dispatch(void){
 	thread_info   *ti;
 	intrflags  iflags;
 	bool    preempted;
-	
+
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
-	
+
 	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割り込み禁止 */
-	
+
 	/* プリエンプション条件の判定
 	 * - カレントスレッドに遅延ディスパッチ要求が来ており, かつ
 	 * - ディスパッチ禁止区間内にいなければ, プリエンプションを実施
 	 */
 	preempted = ( ( ti->flags & TI_DISPATCH_DELAYED ) && ( !ti_dispatch_disabled() ) );
-	
+
 	if ( !preempted )
 		goto error_out;  /*  プリエンプション不要  */
 
@@ -45,15 +45,15 @@ preempt_dispatch(void){
 	 * CPUをカレントスレッドから横取りする
 	 */
 	krn_cpu_restore_interrupt(&iflags);    /* 割り込み復元 */
-	
+
 	sched_schedule();  /*  プリエンプションによるスケジュール実施  */
-	
+
 	krn_cpu_save_and_disable_interrupt(&iflags);  /* 割込み禁止 */
 #endif  /*  CONFIG_PREEMPT  */
 
-error_out:	
+error_out:
 	krn_cpu_restore_interrupt(&iflags);   /* 割り込み復元 */
-	
+
 	return preempted;  /*  プリエンプション実施有無を返却  */
 
 }
@@ -159,13 +159,13 @@ ti_dispatch_disabled(void){
 	 * - プリエンプションカウントが0でない
 	 * - 割り込み処理中
 	 */
-	return ( (TI_PREEMPT_ACTIVE & ti->preempt)        
+	return ( (TI_PREEMPT_ACTIVE & ti->preempt)
 	    || ( ( ~TI_PREEMPT_ACTIVE & ti->preempt ) != 0 )
 	    || ( ti->intrcnt != 0 ) );
 }
 
 /**
-   プリエンプションカウンタを加算, プリエンプションを禁止する 
+   プリエンプションカウンタを加算, プリエンプションを禁止する
  */
 void
 ti_inc_preempt(void){
@@ -288,7 +288,7 @@ ti_dispatch_delayed(void){
 
 	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&cur->lock, &iflags);
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	res = ( ti->flags & TI_DISPATCH_DELAYED ); /* 遅延ディスパッチ要求を確認 */
@@ -317,11 +317,11 @@ ti_set_delay_dispatch(thread_info *ti) {
 
 	thr = ti->thr;  /* スレッドを参照 */
 	res = thr_ref_inc(thr);  /* スレッドの参照を獲得 */
-	if ( !res ) 
+	if ( !res )
 		goto error_out;  /* 解放処理中のスレッド */
 
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&thr->lock, &iflags); 
+	spinlock_lock_disable_intr(&thr->lock, &iflags);
 
 	ti->flags |= TI_DISPATCH_DELAYED;   /* 遅延ディスパッチ要求を設定する  */
 
@@ -345,13 +345,13 @@ ti_clr_delay_dispatch(void) {
 	thread          *cur;
 	intrflags     iflags;
 
-#if defined(CONFIG_HAL) 
+#if defined(CONFIG_HAL)
 	kassert( krn_cpu_interrupt_disabled() ); /* 割り込み禁止中に呼び出されたことを確認 */
 #endif  /*  CONFIG_HAL  */
 
 	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&cur->lock, &iflags);
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags &= ~TI_DISPATCH_DELAYED;  /* 遅延ディスパッチ要求をクリアする  */
@@ -376,7 +376,7 @@ ti_has_events(void){
 
 	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&cur->lock, &iflags);
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	res = ( ti->flags & TI_EVENT_PENDING );  /*  非同期イベント通知要求有無を返却  */
@@ -400,15 +400,15 @@ ti_set_events(thread_info *ti) {
 	/* イベント配送先スレッドをスレッド管理ツリーから検索しているはずなので
 	 * スレッド情報中のスレッド管理情報を設定済み
 	 */
-	kassert( ti->thr != NULL );  
+	kassert( ti->thr != NULL );
 
 	thr = ti->thr;
         res = thr_ref_inc(thr);  /* スレッドの参照を獲得 */
         if ( !res )
                 goto error_out;  /* 解放処理中のスレッド */
-	
+
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&thr->lock, &iflags); 
+	spinlock_lock_disable_intr(&thr->lock, &iflags);
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags |= TI_EVENT_PENDING;   /* イベント通知を設定する  */
@@ -436,7 +436,7 @@ ti_clr_events(void) {
 
 	cur = ti_get_current_thread();  /* カレントスレッドを参照 */
 	/* スレッドをロック */
-	spinlock_lock_disable_intr(&cur->lock, &iflags); 
+	spinlock_lock_disable_intr(&cur->lock, &iflags);
 
 	ti = ti_get_current_thread_info();  /* スレッド情報を取得  */
 	ti->flags &= ~TI_EVENT_PENDING;     /* イベント通知をクリアする  */

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_REGBITS_H)
-#define  _KLIB_REGBITS_H 
+#define  _KLIB_REGBITS_H
 
 #include <klib/align.h>
 #include <klib/misc.h>

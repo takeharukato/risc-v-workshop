@@ -22,7 +22,7 @@ strstr(const char *haystack, const char *needle){
 	char *cr;
 
 	for ( ; *haystack != '\0'; ++haystack){
-		
+
 		if (*haystack == *needle) {
 
 			cq = (char *)haystack;

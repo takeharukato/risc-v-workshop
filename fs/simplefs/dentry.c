@@ -31,20 +31,20 @@ simplefs_lookup_dirent_full(simplefs_super_block *fs_super, simplefs_inode *fs_d
     const char *name, simplefs_ino *fs_vnidp, off_t *entp){
 	int                 rc;
 	off_t          cur_pos;
-	simplefs_dent  cur_ent;	
+	simplefs_dent  cur_ent;
 	size_t          cmplen;
-	
+
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
 	cmplen = MIN(strlen(name) + 1,SIMPLEFS_DIRSIZ); /* ヌル文字を含めた長さで比較する */
-	
+
 	/* ディレクトリエントリを順にたどる
 	 */
 	for(cur_pos = 0; fs_dir_inode->i_size > cur_pos; cur_pos += sizeof(simplefs_dent)) {
 
 		/* ディレクトリエントリを読込む */
-		rc = simplefs_inode_read(fs_super, SIMPLEFS_INODE_INVALID_INO, 
+		rc = simplefs_inode_read(fs_super, SIMPLEFS_INODE_INVALID_INO,
 		    fs_dir_inode, NULL, &cur_ent, cur_pos, sizeof(simplefs_dent));
 
 		if ( rc != sizeof(simplefs_dent) )
@@ -52,7 +52,7 @@ simplefs_lookup_dirent_full(simplefs_super_block *fs_super, simplefs_inode *fs_d
 
 		if ( cur_ent.d_inode == SIMPLEFS_INODE_INVALID_INO )
 			continue;  /* 無効なディレクトリエントリだった */
-		
+
 		/* ディレクトリエントリの名前が指定された名前と一致した場合 */
 		if ( memcmp(name, cur_ent.d_name, cmplen) == 0 ) {
 
@@ -65,7 +65,7 @@ simplefs_lookup_dirent_full(simplefs_super_block *fs_super, simplefs_inode *fs_d
 	}
 
 	return -ENOENT;  /* ディレクトリエントリが見つからなかった  */
-	
+
 success:
 	return 0;
 }
@@ -94,7 +94,7 @@ simplefs_get_free_dirent(simplefs_super_block *fs_super, simplefs_inode *fs_dir_
 	for(cur_pos = 0; fs_dir_inode->i_size > cur_pos; cur_pos += sizeof(simplefs_dent) ) {
 
 		/* ディレクトリエントリを読込む */
-		rdlen = simplefs_inode_read(fs_super, SIMPLEFS_INODE_INVALID_INO, 
+		rdlen = simplefs_inode_read(fs_super, SIMPLEFS_INODE_INVALID_INO,
 		    fs_dir_inode, NULL, &cur_ent, cur_pos, sizeof(simplefs_dent));
 
 		if ( rdlen !=  sizeof(simplefs_dent) )
@@ -121,7 +121,7 @@ simplefs_get_free_dirent(simplefs_super_block *fs_super, simplefs_inode *fs_dir_
 	}
 
 	return -ENOSPC;  /* 空きディレクトリエントリが見つからなかった  */
-	
+
 success:
 	return 0;
 }
@@ -146,7 +146,7 @@ simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
 	ssize_t          wrlen;
 	off_t          new_pos;
 	simplefs_dent  new_ent;
-	
+
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
@@ -157,7 +157,7 @@ simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
 		rc = -EEXIST; /*  同じ名前のディレクトリエントリがすでに存在する */
 		goto error_out;
 	}
-	
+
 	/* ディレクトリエントリ追加位置を探す
 	 */
 	rc = simplefs_get_free_dirent(fs_super, fs_dir_inode, &new_pos);
@@ -175,7 +175,7 @@ simplefs_dirent_add(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
 
 	/* ディレクトリエントリを書き込む
 	 */
-	wrlen = simplefs_inode_write(fs_super, fs_dir_vnid, 
+	wrlen = simplefs_inode_write(fs_super, fs_dir_vnid,
 	    fs_dir_inode, NULL, &new_ent, new_pos, sizeof(simplefs_dent));
 	if ( wrlen != sizeof(simplefs_dent) ) {
 
@@ -207,7 +207,7 @@ simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
 	ssize_t          wrlen;
 	off_t          ent_pos;
 	simplefs_dent  new_ent;
-	
+
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
@@ -256,7 +256,7 @@ simplefs_dirent_lookup(simplefs_super_block *fs_super, simplefs_inode *fs_dir_in
     const char *name, simplefs_ino *fs_vnidp){
 	int                 rc;
 	simplefs_ino      inum;
-	
+
 	if ( !S_ISDIR(fs_dir_inode->i_mode) )
 		return -ENOTDIR;  /*  ディレクトリではないI-nodeを指定した */
 
@@ -272,7 +272,7 @@ simplefs_dirent_lookup(simplefs_super_block *fs_super, simplefs_inode *fs_dir_in
 
 	if ( fs_vnidp != NULL )
 		*fs_vnidp = inum;  /* I-node番号を返却  */
-	
+
 	return 0;
 
 error_out:

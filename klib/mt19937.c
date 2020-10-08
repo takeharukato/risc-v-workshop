@@ -1,13 +1,13 @@
 /* -*- mode: C; coding:utf-8 -*- */
-/* 
+/*
    A C-program for MT19937, with initialization improved 2002/1/26.
    Coded by Takuji Nishimura and Makoto Matsumoto.
 
-   Before using, initialize the state by using init_genrand(seed)  
+   Before using, initialize the state by using init_genrand(seed)
    or init_by_array(init_key, key_length).
 
    Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
-   All rights reserved.                          
+   All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions
@@ -20,8 +20,8 @@
         notice, this list of conditions and the following disclaimer in the
         documentation and/or other materials provided with the distribution.
 
-     3. The names of its contributors may not be used to endorse or promote 
-        products derived from this software without specific prior written 
+     3. The names of its contributors may not be used to endorse or promote
+        products derived from this software without specific prior written
         permission.
 
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -70,14 +70,14 @@ static uint32_t mt[MT_N]; /* the array for the state vector  */
 static int    mti=MT_N+1; /* mti==MT_N+1 means mt[MT_N] is not initialized */
 
 /* initializes mt[MT_N] with a seed */
-void 
+void
 mt19937_init_genrand(uint32_t s){
 
 	mt[0]= s & ULONG_C(0xffffffff);
 	for (mti = 1; mti < MT_N; mti++) {
 
-		mt[mti] = 
-			(ULONG_C(1812433253) * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti); 
+		mt[mti] =
+			(ULONG_C(1812433253) * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti);
 		/* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
 		/* In the previous versions, MSBs of the seed affect   */
 		/* only MSBs of the array mt[].                        */
@@ -91,7 +91,7 @@ mt19937_init_genrand(uint32_t s){
 /* init_key is the array for initializing keys */
 /* key_length is its length */
 /* slight change for C++, 2004/2/26 */
-void 
+void
 mt19937_init_by_array(uint32_t init_key[], int key_length){
 	int i, j, k;
 
@@ -118,11 +118,11 @@ mt19937_init_by_array(uint32_t init_key[], int key_length){
 		if (i>=MT_N) { mt[0] = mt[MT_N-1]; i=1; }
 	}
 
-	mt[0] = ULONG_C(0x80000000); /* MSB is 1; assuring non-zero initial array */ 
+	mt[0] = ULONG_C(0x80000000); /* MSB is 1; assuring non-zero initial array */
 }
 
 /* generates a random number on [0,0xffffffff]-interval */
-uint32_t 
+uint32_t
 mt19937_genrand_int32(void){
 	uint32_t                                 y;
 	int                                     kk;
@@ -130,10 +130,10 @@ mt19937_genrand_int32(void){
 
 	/* mag01[x] = x * MATRIX_A  for x=0,1 */
 	if (mti >= MT_N) { /* generate N words at one time */
-		
+
 		if (mti == MT_N+1)   /* if init_genrand() has not been called, */
 			mt19937_init_genrand(ULONG_C(5489)); /* a default initial seed is used */
-		
+
 		for (kk=0;kk<MT_N-MT_M;kk++) {
 
 			y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
@@ -148,23 +148,23 @@ mt19937_genrand_int32(void){
 
 		y = (mt[MT_N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
 		mt[MT_N-1] = mt[MT_M-1] ^ (y >> 1) ^ mag01[y & ULONG_C(0x1)];
-		
+
 		mti = 0;
 	}
-	
+
 	y = mt[mti++];
-	
+
 	/* Tempering */
 	y ^= (y >> 11);
 	y ^= (y << 7) & ULONG_C(0x9d2c5680);
 	y ^= (y << 15) & ULONG_C(0xefc60000);
 	y ^= (y >> 18);
-	
+
 	return y;
 }
 
 /* generates a random number on [0,0x7fffffff]-interval */
-int32_t 
+int32_t
 mt19937_genrand_int31(void){
 
 	return (int32_t)(mt19937_genrand_int32()>>1);

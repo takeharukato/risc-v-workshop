@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_HAL_CPUINFO_H)
-#define  _HAL_HAL_CPUINFO_H 
+#define  _HAL_HAL_CPUINFO_H
 
 #define  HAL_CPUCACHE_HW_ALIGN (sizeof(void *) * 2)
 #if !defined(ASM_FILE)

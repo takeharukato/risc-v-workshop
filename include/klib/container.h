@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_CONTAINER_H)
-#define  _KLIB_CONTAINER_H 
+#define  _KLIB_CONTAINER_H
 
 #include <klib/freestanding.h>
 

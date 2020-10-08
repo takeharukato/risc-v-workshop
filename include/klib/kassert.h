@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_KASSERT_H)
-#define  _KLIB_KASSERT_H 
+#define  _KLIB_KASSERT_H
 
 #include <klib/freestanding.h>
 #include <klib/kprintf.h>

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_THR_IF_H)
-#define  _KERN_THR_IF_H 
+#define  _KERN_THR_IF_H
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

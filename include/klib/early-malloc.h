@@ -13,7 +13,7 @@
 #include <kern/kern-types.h>
 
 #include <klib/early-kheap.h>
-#include <klib/emalloc-params.h> 
+#include <klib/emalloc-params.h>
 
 int eposix_memalign(void**_ptrp, size_t _align, size_t _siz);
 
@@ -64,7 +64,7 @@ extern "C" {
 #define dlbulk_free            bulk_free
 #endif /* USE_DL_PREFIX */
 
-#if !NO_MALLINFO 
+#if !NO_MALLINFO
 #ifndef HAVE_USR_INCLUDE_MALLOC_H
 #ifndef _MALLOC_H
 #ifndef MALLINFO_FIELD_TYPE
@@ -245,7 +245,7 @@ size_t dlmalloc_max_footprint(void);
   malloc_set_footprint_limit, or the maximum size_t value if
   never set. The returned value reflects a permission. There is no
   guarantee that this number of bytes can actually be obtained from
-  the system.  
+  the system.
 */
 size_t dlmalloc_footprint_limit(void);
 
@@ -489,7 +489,7 @@ int  dlmalloc_trim(size_t);
 
   malloc_stats prints only the most commonly interesting statistics.
   More information can be obtained by calling mallinfo.
-  
+
   malloc_stats is not compiled if NO_MALLOC_STATS is defined.
 */
 void  dlmalloc_stats(void);
@@ -600,7 +600,7 @@ size_t mspace_footprint(mspace msp);
 size_t mspace_max_footprint(mspace msp);
 size_t mspace_footprint_limit(mspace msp);
 size_t mspace_set_footprint_limit(mspace msp, size_t bytes);
-void mspace_inspect_all(mspace msp, 
+void mspace_inspect_all(mspace msp,
                         void(*handler)(void *, void *, size_t, void*),
                         void* arg);
 #endif  /* MSPACES */

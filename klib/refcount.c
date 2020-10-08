@@ -15,7 +15,7 @@
 /**
    参照カウンタを減算し, 減算後の参照カウンタの状態と値を返却する(内部関数)
    @param[in]  counterp 参照カウンタ
-   @param[in]  v        減算値 
+   @param[in]  v        減算値
    @param[out] newp     更新後の値を返却する領域
    @retval     真       参照カウンタが0になった
    @retval     偽       参照カウンタが0以上
@@ -27,7 +27,7 @@ sub_and_test_refcounter(refcounter *counterp, refcounter_val v, refcounter_val *
 
 	rc = atomic_sub_and_test(&counterp->counter, (atomic_val)v, (atomic_val *)&new);
 	kassert( new >= 0 );  /*  減算後に負にならないことを確認する  */
-	
+
 	if ( newp != NULL )
 		*newp = new;  /*  更新後の値を返却する  */
 
@@ -41,7 +41,7 @@ sub_and_test_refcounter(refcounter *counterp, refcounter_val v, refcounter_val *
  */
 void
 refcnt_init_with_value(refcounter *counterp, refcounter_val val){
-	
+
 	/* 各メンバを初期化する
 	 */
 	atomic_set_fetch(&counterp->counter, val);
@@ -52,7 +52,7 @@ refcnt_init_with_value(refcounter *counterp, refcounter_val val){
  */
 void
 refcnt_init(refcounter *counterp){
-	
+
 	refcnt_init_with_value(counterp, REFCNT_INITIAL_VAL);
 }
 
@@ -82,15 +82,15 @@ refcnt_read(refcounter *counterp){
 /**
    参照カウンタがゼロでない場合, 参照カウンタに加算する
    @param[in] counterp 参照カウンタ
-   @param[in] v        加算値 
+   @param[in] v        加算値
    @return    更新前の参照カウンタ値
    @note 参照カウンタは通常1に初期化されるため, 解放済みのカウンタを
    操作しないようにしつつ加算操作を行う
  */
-refcounter_val 
+refcounter_val
 refcnt_add_if_valid(refcounter *counterp, refcounter_val v){
 	refcounter_val ret;
-	
+
 	ret = atomic_add_fetch_unless(&counterp->counter, 0, v);
 	kassert( ret > 0 );
 
@@ -100,13 +100,13 @@ refcnt_add_if_valid(refcounter *counterp, refcounter_val v){
 /**
    参照カウンタに加算する
    @param[in] counterp 参照カウンタ
-   @param[in] v        加算値 
+   @param[in] v        加算値
    @return    更新前の参照カウンタ値
  */
-refcounter_val 
+refcounter_val
 refcnt_add(refcounter *counterp, refcounter_val v){
 	refcounter_val ret;
-	
+
 	ret = atomic_add_fetch(&counterp->counter, v);
 
 	return ret;
@@ -117,7 +117,7 @@ refcnt_add(refcounter *counterp, refcounter_val v){
    @param[in] counterp 参照カウンタ
    @return    更新前の参照カウンタ値
  */
-refcounter_val 
+refcounter_val
 refcnt_inc(refcounter *counterp){
 
 	return refcnt_add(counterp, 1);
@@ -130,10 +130,10 @@ refcnt_inc(refcounter *counterp){
    @note 参照カウンタは通常1に初期化されるため, 解放済みのカウンタを
    操作しないようにしつつ加算操作を行う
  */
-refcounter_val 
+refcounter_val
 refcnt_inc_if_valid(refcounter *counterp){
 	refcounter_val ret;
-	
+
 	ret = atomic_add_fetch_unless(&counterp->counter, 0, 1);
 
 	return ret;
@@ -142,7 +142,7 @@ refcnt_inc_if_valid(refcounter *counterp){
 /**
    参照カウンタを減算し, 減算後の参照カウンタの状態を返却する
    @param[in] counterp 参照カウンタ
-   @param[in] v        減算値 
+   @param[in] v        減算値
    @retval    真       参照カウンタが0になった
    @retval    偽       参照カウンタが0以上
  */
@@ -160,7 +160,7 @@ refcnt_sub_and_test(refcounter *counterp, refcounter_val v) {
  */
 bool
 refcnt_dec_and_test(refcounter *counterp) {
-	
+
 	return sub_and_test_refcounter(counterp, 1, NULL);
 }
 
@@ -169,7 +169,7 @@ refcnt_dec_and_test(refcounter *counterp) {
    @param[in] counterp 参照カウンタ
    @return 操作後のカウンタ値
  */
-refcounter_val 
+refcounter_val
 refcnt_dec(refcounter *counterp){
 	refcounter_val new;
 

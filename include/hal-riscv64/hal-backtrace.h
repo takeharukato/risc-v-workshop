@@ -7,11 +7,11 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_BACKTRACE_H)
-#define  _HAL_BACKTRACE_H 
+#define  _HAL_BACKTRACE_H
 
 #include <klib/freestanding.h>
 
-void hal_backtrace(int (*_trace_out)(int depth, uintptr_t *_bpref, void *_caller, 
+void hal_backtrace(int (*_trace_out)(int depth, uintptr_t *_bpref, void *_caller,
 	void *_next_bp, void *_argp), void *_basep, void *argp);
 
 

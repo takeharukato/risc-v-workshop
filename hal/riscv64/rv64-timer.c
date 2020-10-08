@@ -37,8 +37,8 @@ show_timer_count(trap_context *ctx, void __unused *private){
 
 	msinfo = rv64_current_mscratch();
 	kprintf("timer[%lu] next: %qd last: %qd boot: %qd epc=%p\n",
-	    count, 
-	    msinfo->last_time_val + msinfo->timer_interval_cyc - msinfo->boot_time_val, 
+	    count,
+	    msinfo->last_time_val + msinfo->timer_interval_cyc - msinfo->boot_time_val,
 	    msinfo->last_time_val - msinfo->boot_time_val, msinfo->boot_time_val,
 	    ctx->epc);
 
@@ -47,7 +47,7 @@ show_timer_count(trap_context *ctx, void __unused *private){
 	rc = tim_callout_add(1000, show_timer_count, NULL, &ent);
 	kassert( rc == 0);
 
-#endif 
+#endif
 }
 
 /**
@@ -77,7 +77,7 @@ rv64_setup_next_timer(void) {
    @retval    IRQ_HANDLED 割込みを処理した
    @retval    IRQ_NOT_HANDLED 割込みを処理した
  */
-static int 
+static int
 rv64_timer_handler(irq_no irq, trap_context *ctx, void *private){
 	reg_type  sip;
 	ktimespec dif;
@@ -89,10 +89,10 @@ rv64_timer_handler(irq_no irq, trap_context *ctx, void *private){
 	tim_update_walltime(ctx, &dif);  /* 時刻更新 */
 
 	rv64_setup_next_timer();  /* 次のタイマを設定する */
-	
+
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_STIP; 	/* スーパーバイザタイマ割込みを落とす */
-	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */	
+	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */
 
 	return IRQ_HANDLED;
 }
@@ -122,14 +122,14 @@ rv64_timer_init(void) {
 	call_out_ent  *ent;
 
 	/* タイマハンドラを登録 */
-	rc = irq_register_handler(CLINT_TIMER_IRQ, IRQ_ATTR_NON_NESTABLE|IRQ_ATTR_EXCLUSIVE, 
+	rc = irq_register_handler(CLINT_TIMER_IRQ, IRQ_ATTR_NON_NESTABLE|IRQ_ATTR_EXCLUSIVE,
 	    CLINT_TIMER_PRIO, rv64_timer_handler, NULL);
 	kassert( rc == 0);
 
 	rc = tim_callout_add(1000, show_timer_count, NULL, &ent);
 	kassert( rc == 0);
 
-#if defined(CONFIG_HAL_USE_SBI)	
+#if defined(CONFIG_HAL_USE_SBI)
 	rv64_init_sbi_timer();  /* SBI用の初期化処理を実施  */
 #endif  /*  CONFIG_HAL_USE_SBI  */
 }

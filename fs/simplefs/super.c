@@ -27,19 +27,19 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	int                         rc;
 	int                          i;
 	simplefs_inode *root_dir_inode;
-	
+
 	mutex_init(&fs_super->mtx);  /*  排他用mutexを初期化する */
 
 	fs_super->s_blksiz = SIMPLEFS_SUPER_BLOCK_SIZE;  /* ブロック長を初期化  */
 	fs_super->s_private = NULL;  /* プライベート情報を初期化  */
 	bitops_zero(&fs_super->s_inode_map);	/* I-nodeマップをクリア */
 	/* 予約I-nodeを使用済みに設定 */
-	bitops_set(SIMPLEFS_INODE_RESERVED_INO, &fs_super->s_inode_map); 
+	bitops_set(SIMPLEFS_INODE_RESERVED_INO, &fs_super->s_inode_map);
 	/* ルートI-nodeを使用済みに設定 */
-	bitops_set(SIMPLEFS_INODE_ROOT_INO, &fs_super->s_inode_map); 
+	bitops_set(SIMPLEFS_INODE_ROOT_INO, &fs_super->s_inode_map);
 
 	/* I-nodeをゼロ初期化する */
-	for(i = 0; SIMPLEFS_INODE_NR > i; ++i) 
+	for(i = 0; SIMPLEFS_INODE_NR > i; ++i)
 		memset(&fs_super->s_inode[i], 0, sizeof(simplefs_inode));
 
 	/* ルートディレクトリのディレクトリエントリを作成する
@@ -63,7 +63,7 @@ simplefs_init_super(simplefs_super_block *fs_super){
 	kassert( rc == 0 );
 
 	fs_super->s_state = SIMPLEFS_SUPER_INITIALIZED;  /* 初期化済みに設定 */
-	
+
 	return;
 }
 
@@ -78,7 +78,7 @@ int
 simplefs_get_super(simplefs_super_block **fs_superp){
 	int                       i;
 	simplefs_super_block *super;
-	
+
 	/* 単純なファイルシステム全体をロックする  */
 	mutex_lock(&g_simplefs_tbl.mtx);
 
@@ -88,7 +88,7 @@ simplefs_get_super(simplefs_super_block **fs_superp){
 
 		mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
 		if ( super->s_state == SIMPLEFS_SUPER_INITIALIZED ) {
-			
+
 			mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 			goto success;  /* 空きスーパブロックが見つかった */
 		}
@@ -117,11 +117,11 @@ int
 simplefs_init(void){
 	int    i;
 	int   rc;
-	
+
 	/* 単純なファイルシステム全体をロックする  */
 	mutex_lock(&g_simplefs_tbl.mtx);
 
-	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i) 
+	for( i = 0; SIMPLEFS_SUPER_NR > i; ++i)
 		simplefs_init_super(&g_simplefs_tbl.super_blocks[i]); /* スーパブロックを初期化 */
 
 	/* 単純なファイルシステム全体に対するロックを解放する  */

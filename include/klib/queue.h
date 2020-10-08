@@ -42,7 +42,7 @@ typedef struct _queue{
 #define queue_for_each(_itr, _que)				   \
 	for((_itr) = queue_ref_top((struct _queue *)(_que));	   \
 	    (_itr) != ((struct _list *)(_que));			   \
-	    (_itr) = (_itr)->next) 
+	    (_itr) = (_itr)->next)
 
 /**
    キューの中を順に探索するマクロ (ループ内でのキューの変更がある場合)
@@ -53,7 +53,7 @@ typedef struct _queue{
 #define queue_for_each_safe(_itr, _que, _np)				\
 	for((_itr) = queue_ref_top((struct _queue *)(_que)), (_np) = (_itr)->next; \
 	    (_itr) != ((struct _list *)(_que));				\
-	    (_itr) = (_np), (_np) = (_itr)->next ) 
+	    (_itr) = (_np), (_np) = (_itr)->next )
 
 /**
    キューの中を逆順に探索するマクロ
@@ -63,7 +63,7 @@ typedef struct _queue{
 #define queue_reverse_for_each(_itr, _que)		      \
 	for((_itr) = queue_ref_last((struct _queue *)(_que)); \
 	    (_itr) != (struct _list *)(_que);		      \
-	    (_itr) = (_itr)->prev ) 
+	    (_itr) = (_itr)->prev )
 
 /**
    キューの中を逆順に探索するマクロ (ループ内でのキューの変更がある場合)
@@ -74,7 +74,7 @@ typedef struct _queue{
 #define queue_reverse_for_each_safe(_itr, _que, _np)			\
 	for((_itr) = queue_ref_last((struct _queue *)(_que)), (_np) = (_itr)->prev; \
 	    (_itr) != (struct _list *)(_que);				\
-	    (_itr) = (_np), (_np) = (_itr)->prev ) 
+	    (_itr) = (_np), (_np) = (_itr)->prev )
 
 /**
     リストをソートしてつなぐマクロ

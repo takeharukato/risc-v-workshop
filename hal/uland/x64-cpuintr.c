@@ -16,12 +16,12 @@
 
 /**
     RFLAGSを検査しCPUレベルで割込みが禁止されていることを確認する
-    @param[in] iflags CPUレベルの割込み禁止状態保存領域のアドレス 
+    @param[in] iflags CPUレベルの割込み禁止状態保存領域のアドレス
     @retval 真     CPUレベルで割込みが禁止されている
     @retval 偽     CPUレベルで割込みが禁止されていない
-    @note 割込みフラグの扱い(1の時割込み許可, 0の時禁止)については, 
-    Intel 64 and IA-32 Architectures Software Developer’s Manual, 
-    Combined Volumes: 1, 2A, 2B, 2C, 3A, 3B and 3C 
+    @note 割込みフラグの扱い(1の時割込み許可, 0の時禁止)については,
+    Intel 64 and IA-32 Architectures Software Developer’s Manual,
+    Combined Volumes: 1, 2A, 2B, 2C, 3A, 3B and 3C
     3.4.3.3 System Flags and IOPL Field参照
  */
 bool
@@ -51,7 +51,7 @@ void
 hal_cpu_restore_interrupt(intrflags *iflags){
 
 
-	x64_cpu_restore_flags(iflags);	
+	x64_cpu_restore_flags(iflags);
 }
 
 /**
@@ -125,9 +125,9 @@ hal_cpu_enable_interrupt(void){
     CPUレベルで割込みが禁止されていることを確認する
     @retval 真     CPUレベルで割込みが禁止されている
     @retval 偽     CPUレベルで割込みが禁止されていない
-    @note 割込みフラグの扱い(1の時割込み許可, 0の時禁止)については, 
-    Intel 64 and IA-32 Architectures Software Developer’s Manual, 
-    Combined Volumes: 1, 2A, 2B, 2C, 3A, 3B and 3C 
+    @note 割込みフラグの扱い(1の時割込み許可, 0の時禁止)については,
+    Intel 64 and IA-32 Architectures Software Developer’s Manual,
+    Combined Volumes: 1, 2A, 2B, 2C, 3A, 3B and 3C
     3.4.3.3 System Flags and IOPL Field参照
  */
 bool

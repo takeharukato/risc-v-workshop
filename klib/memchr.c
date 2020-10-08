@@ -21,7 +21,7 @@ void *
 memchr(const void *s, int c, size_t count){
 
 	for(; count > 0 ; ++s, --count)
-		if ( *(char *)s == (char)c ) 
+		if ( *(char *)s == (char)c )
 			return (void *)s;
 	return NULL;
 }

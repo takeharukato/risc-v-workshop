@@ -42,7 +42,7 @@ typedef struct _slist_head{
 #define slist_for_each(_itr, _sh)					\
 	for((_itr) = slist_ref_top((struct _slist_head *)(_sh));	\
 	    (_itr) != NULL;						\
-	    (_itr) = (_itr)->next) 
+	    (_itr) = (_itr)->next)
 
 /**
     単方向リストの中を順に探索するマクロ
@@ -55,7 +55,7 @@ typedef struct _slist_head{
 		    (_np) = ((_itr) != NULL) ? (_itr)->next : NULL;	\
 	    (_itr) != NULL;						\
 	    (_itr) = (_np),			\
-		    (_np) = ((_itr) != NULL) ? (_itr)->next : NULL) 
+		    (_np) = ((_itr) != NULL) ? (_itr)->next : NULL)
 
 void slist_init_head(struct _slist_head *_head);
 struct _slist_node *slist_ref_top(struct _slist_head *head);

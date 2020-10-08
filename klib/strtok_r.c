@@ -53,7 +53,7 @@ strtok_r(char *str, const char *delim, char **saveptr){
 	str = *saveptr;  /*  解析用一次領域の先頭(次のトークンの先頭)から解析開始 */
 
 	/* 文字列str中でデリミタ文字だけで構成される最初の部分文字列の長さ分
-	 * 解析位置を進める 
+	 * 解析位置を進める
 	 */
 	str += strspn(str, delim);
 
@@ -72,7 +72,7 @@ strtok_r(char *str, const char *delim, char **saveptr){
 
 		**saveptr = '\0';  /* デリミタ位置を文字列の終端に設定 */
 		++(*saveptr); /* 次のトークンの先頭またはトークンとの間にあるデリミタを指す */
-	} else 
+	} else
 		*saveptr = NULL; /* 次のトークンがなかった */
 
 	return str;  /* 切り出したトークンの先頭を返却 */

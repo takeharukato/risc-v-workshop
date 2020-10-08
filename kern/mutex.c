@@ -20,11 +20,11 @@
    @retval   -EAGAIN 他のスレッドがミューテックス獲得済み
    @note     ミューテックス内のウエイトキューへのロック獲得済みで呼び出すこと
  */
-static int 
+static int
 lock_mutex_common(mutex *mtx){
 	int           rc;
 
-	kassert( spinlock_locked_by_self(&mtx->lock) );  
+	kassert( spinlock_locked_by_self(&mtx->lock) );
 
 	if ( mtx->resources == 0 ) {  /* 他のスレッドがミューテックスを使用中 */
 
@@ -50,7 +50,7 @@ unlock_out:
    ミューテックスを初期化する
    @param[in] mtx 操作対象のミューテックス
  */
-void 
+void
 mutex_init(mutex *mtx){
 
 	spinlock_init(&mtx->lock);            /* ロックの初期化                     */
@@ -63,7 +63,7 @@ mutex_init(mutex *mtx){
    ミューテックスを破棄する
    @param[in] mtx 操作対象のミューテックス
  */
-void 
+void
 mutex_destroy(mutex *mtx){
 	intrflags iflags;
 
@@ -89,7 +89,7 @@ mutex_locked_by_self(mutex *mtx){
 	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
 
 	/*  自スレッドがミューテックスオーナであることを確認  */
-	rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) ); 
+	rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) );
 
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
 
@@ -101,7 +101,7 @@ mutex_locked_by_self(mutex *mtx){
    @retval    0      正常終了
    @retval   -EAGAIN 他のスレッドがミューテックス獲得済み
  */
-int 
+int
 mutex_try_lock(mutex *mtx){
 	int           rc;
 	intrflags iflags;

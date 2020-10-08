@@ -29,7 +29,7 @@ swap_diskdent(minix_super_block *sbp, minix_dentry *in_de, minix_dentry *out_de)
 	 */
 	if ( MINIX_SB_IS_V3(sbp) ) {
 
-		out_de->d_dentry.v3.inode = *(minixv3_ino *)in_de;		
+		out_de->d_dentry.v3.inode = *(minixv3_ino *)in_de;
 		if ( sbp->swap_needed )
 			out_de->d_dentry.v3.inode = __bswap32( *(minixv3_ino *)in_de );
 	} else {
@@ -52,14 +52,14 @@ swap_diskdent(minix_super_block *sbp, minix_dentry *in_de, minix_dentry *out_de)
    @param[out] out_de 出力ディレクトリエントリ
 */
 static void
-fill_minix_dent(minix_super_block *sbp, const char *name, minix_ino inum, 
+fill_minix_dent(minix_super_block *sbp, const char *name, minix_ino inum,
     minix_dentry *out_de){
 	size_t namelen;
 
 	namelen = strlen(name);  /* ファイル名長を得る */
 
 	/* I-node番号を設定 */
-	if ( MINIX_SB_IS_V3(sbp) ) 
+	if ( MINIX_SB_IS_V3(sbp) )
 		out_de->d_dentry.v3.inode = inum;
 	else
 		out_de->d_dentry.v12.inode = inum;
@@ -86,7 +86,7 @@ fill_minix_dent(minix_super_block *sbp, const char *name, minix_ino inum,
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name, 
+lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name,
     minix_dentry *dep, off_t *offp){
 	int                rc;  /* 返り値                                        */
 	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ              */
@@ -101,8 +101,8 @@ lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *na
 
 	for(pos = 0; nr_ents > pos; ++pos) {
 
-		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
-		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip,
+		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp),
 		    MINIX_RW_READING, &rdlen);
 
 		if ( rc != 0 )
@@ -113,7 +113,7 @@ lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *na
 
 		swap_diskdent(sbp, &d_ent, &m_ent); /* ネイティブエンディアンに変換 */
 
-		if ( strncmp(name, 
+		if ( strncmp(name,
 			(void *)&m_ent + MINIX_D_DIRNAME_OFFSET(sbp),
 			MINIX_D_DIRSIZ(sbp)) == 0 ) { /* ディレクトリエントリが見つかった */
 
@@ -147,9 +147,9 @@ lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *na
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name, 
+minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const char *name,
     minix_dentry *de){
-	
+
 	/* ディレクトリエントリを検索し, その内容を返却する */
 	return lookup_dentry_by_name(sbp, dirip, name, de, NULL);
 }
@@ -170,7 +170,7 @@ minix_lookup_dentry_by_name(minix_super_block *sbp, minix_inode *dirip, const ch
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip, 
+minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
     const char *name, minix_ino inum){
 	int                rc;  /* 返り値                                         */
 	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ               */
@@ -199,8 +199,8 @@ minix_add_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 	nr_ents = MINIX_D_INODE(sbp, dirip, i_size) / MINIX_D_DENT_SIZE(sbp);
 	for(pos = 0; nr_ents > pos; ++pos) {
 
-		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
-		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip,
+		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp),
 		    MINIX_RW_READING, &rdlen);
 
 		if ( rc != 0 )
@@ -220,8 +220,8 @@ write_dent:
 	fill_minix_dent(sbp, name, inum, &new_ent); /* ディレクトリエントリを生成 */
 	/* ディスク上のディレクトリエントリに変換 */
 	swap_diskdent(sbp, &new_ent, &d_ent);
-	rc = minix_rw_zone(sbp, dir_inum, dirip, 
-	    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
+	rc = minix_rw_zone(sbp, dir_inum, dirip,
+	    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp),
 	    MINIX_RW_WRITING, &wrlen);
 	if ( rc != 0 )
 		goto error_out;  /* ディレクトリエントリの書き込みに失敗した場合 */
@@ -229,7 +229,7 @@ write_dent:
 	if ( wrlen != MINIX_D_DENT_SIZE(sbp) ) { /* 書き込みが途中で失敗した場合 */
 
 		/* 書き込んだ内容をクリアする */
-		rc = minix_unmap_zone(sbp, dir_inum, dirip, 
+		rc = minix_unmap_zone(sbp, dir_inum, dirip,
 		    pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp));
 		if ( rc != 0 )
 			goto error_out;
@@ -258,7 +258,7 @@ error_out:
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip, 
+minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
     const char *name, minix_ino *inump){
 	int             rc; /* 返り値                                         */
 	minix_dentry m_ent; /* ネイティブエンディアンでのディレクトリエントリ */
@@ -267,7 +267,7 @@ minix_del_dentry(minix_super_block *sbp, minix_ino dir_inum, minix_inode *dirip,
 	/* @note diripがディレクトリのI-nodeであることは呼び出し元で確認
 	 */
 	rc = lookup_dentry_by_name(sbp, dirip, name, &m_ent, &off);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto error_out; /* ディレクトリエントリが見つからなかった */
 
 	/* ディレクトリエントリを消去する */
@@ -300,7 +300,7 @@ error_out:
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf, 
+minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
     off_t off, ssize_t len, ssize_t *rdlenp){
 	int                rc;  /* 返り値                                         */
 	minix_dentry    d_ent;  /* ディスク上のディレクトリエントリ               */
@@ -336,8 +336,8 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 		v_ent = (vfs_dirent *)curp;  /* 次に書き込むVFSディレクトリエントリ */
 
-		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip, 
-		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp), 
+		rc = minix_rw_zone(sbp, MINIX_NO_INUM(sbp), dirip,
+		    &d_ent, pos*MINIX_D_DENT_SIZE(sbp), MINIX_D_DENT_SIZE(sbp),
 		    MINIX_RW_READING, &rdlen);
 
 		if ( rc != 0 )
@@ -345,9 +345,9 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 		if ( rdlen != MINIX_D_DENT_SIZE(sbp) )
 			break;  /* ディレクトリエントリの終了 */
-		
+
 		swap_diskdent(sbp, &d_ent, &m_ent); /* ネイティブエンディアンに変換 */
-		
+
 		/*
 		 * ファイル名長を算出
 		 */
@@ -360,13 +360,13 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 		v_ent->d_ino = MINIX_D_DENT_INUM(sbp, &m_ent); /* I-node番号 */
 		/* 次のエントリのオフセットアドレス */
-		v_ent->d_off = ( pos + 1 ) * MINIX_D_DENT_SIZE(sbp); 
+		v_ent->d_off = ( pos + 1 ) * MINIX_D_DENT_SIZE(sbp);
 		v_ent->d_reclen = VFS_DIRENT_DENT_SIZE(namelen);
 		memmove(&v_ent->d_name[0], ((void *)&m_ent + MINIX_D_DIRNAME_OFFSET(sbp)),
 		    namelen);
 		v_ent->d_name[namelen] = '\0'; /* ヌルターミネートする */
 		/* d_typeメンバを設定 */
-		*(uint8_t *)((void *)v_ent + VFS_DIRENT_DENT_TYPE_OFF(namelen)) 
+		*(uint8_t *)((void *)v_ent + VFS_DIRENT_DENT_TYPE_OFF(namelen))
 			= DT_UNKNOWN;
 
 		curp += VFS_DIRENT_DENT_SIZE(namelen); /* 次のエントリに書き込む */
@@ -375,7 +375,7 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 	kassert( curp >= buf );
 	if ( rdlenp != NULL )
 		*rdlenp = (ssize_t)( curp - buf );
-	
+
 	return 0;
 }
-    
+

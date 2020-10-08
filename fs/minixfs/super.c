@@ -52,7 +52,7 @@ read_minixv3_super(void *dsb, minix_super_block *sbp){
 
 	if ( ( mv3->s_magic != MINIX_V3_SUPER_MAGIC ) && ( mv3->s_magic != swapped_magic ) )
 		goto error_out;
-	
+
 	sbp->s_magic = MINIX_V3_SUPER_MAGIC;  /* MinixV3ファイルシステム */
 	if  ( mv3->s_magic == swapped_magic )
 		sbp->swap_needed = true;  /* 要バイトスワップ */
@@ -61,10 +61,10 @@ read_minixv3_super(void *dsb, minix_super_block *sbp){
 	 * スーパブロックの内容をコピーする
 	 */
 	if ( sbp->swap_needed ) /* バイトオーダ変換してコピーする */
-		swap_minixv3_super_block((minixv3_super_block *)&sbp->d_super, 
+		swap_minixv3_super_block((minixv3_super_block *)&sbp->d_super,
 		    (minixv3_super_block *)dsb);
 	else
-		memmove((void *)&sbp->d_super, (void *)dsb, 
+		memmove((void *)&sbp->d_super, (void *)dsb,
 		    sizeof(minixv3_super_block));
 	return 0;
 
@@ -109,7 +109,7 @@ read_minixv2_super(void *dsb, minix_super_block *sbp){
 	swapped_magic = __bswap16( MINIX_V2_SUPER_MAGIC2 ); /* バイトオーダを反転 */
 	if ( ( mv2->s_magic == MINIX_V2_SUPER_MAGIC2 ) ||
 	    ( mv2->s_magic == swapped_magic ) ){
-		
+
 		/* MinixV2 30バイトファイル名
 		 */
 		sbp->s_magic = MINIX_V2_SUPER_MAGIC2;
@@ -123,7 +123,7 @@ read_minixv2_super(void *dsb, minix_super_block *sbp){
 		if ( ( mv2->s_magic == MINIX_V2_SUPER_MAGIC ) ||
 		    ( mv2->s_magic == swapped_magic ) ) {
 
-	
+
 			sbp->s_magic = MINIX_V2_SUPER_MAGIC;
 			if  ( mv2->s_magic == swapped_magic )
 				sbp->swap_needed = true;  /* 要バイトスワップ */
@@ -135,10 +135,10 @@ read_minixv2_super(void *dsb, minix_super_block *sbp){
 	 * スーパブロックの内容をコピーする
 	 */
 	if ( sbp->swap_needed ) /* バイトオーダ変換してコピーする */
-		swap_minixv12_super_block((minixv12_super_block *)&sbp->d_super, 
+		swap_minixv12_super_block((minixv12_super_block *)&sbp->d_super,
 		    (minixv12_super_block *)dsb);
 	else
-		memmove((void *)&sbp->d_super, (void *)dsb, 
+		memmove((void *)&sbp->d_super, (void *)dsb,
 		    sizeof(minixv12_super_block));
 
 	return 0;
@@ -164,7 +164,7 @@ read_minixv1_super(void *dsb, minix_super_block *sbp){
 	swapped_magic = __bswap16( MINIX_V1_SUPER_MAGIC2 ); /* バイトオーダを反転 */
 	if ( ( mv1->s_magic == MINIX_V1_SUPER_MAGIC2 ) ||
 	    ( mv1->s_magic == swapped_magic ) ){
-		
+
 		/* MinixV1 30バイトファイル名
 		 */
 		sbp->s_magic = MINIX_V1_SUPER_MAGIC2;
@@ -178,7 +178,7 @@ read_minixv1_super(void *dsb, minix_super_block *sbp){
 		if ( ( mv1->s_magic == MINIX_V1_SUPER_MAGIC ) ||
 		    ( mv1->s_magic == swapped_magic ) ) {
 
-	
+
 			sbp->s_magic = MINIX_V1_SUPER_MAGIC;
 			if  ( mv1->s_magic == swapped_magic )
 				sbp->swap_needed = true;  /* 要バイトスワップ */
@@ -190,10 +190,10 @@ read_minixv1_super(void *dsb, minix_super_block *sbp){
 	 * スーパブロックの内容をコピーする
 	 */
 	if ( sbp->swap_needed ) /* バイトオーダ変換してコピーする */
-		swap_minixv12_super_block((minixv12_super_block *)&sbp->d_super, 
+		swap_minixv12_super_block((minixv12_super_block *)&sbp->d_super,
 		    (minixv12_super_block *)dsb);
 	else
-		memmove((void *)&sbp->d_super, (void *)dsb, 
+		memmove((void *)&sbp->d_super, (void *)dsb,
 		    sizeof(minixv12_super_block));
 
 	return 0;
@@ -215,7 +215,7 @@ error_out:
 */
 static int
 minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int map_type,
-			  minix_bitmap_idx bit_off, minix_bitmap_idx nr_bits, 
+			  minix_bitmap_idx bit_off, minix_bitmap_idx nr_bits,
 			  minix_bitmap_idx *idxp) {
 	int                        rc;
 	int                         i;
@@ -236,7 +236,7 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 	 * ビットマップ開始位置を算出する
 	 */
 	if (map_type == INODE_MAP)  /* I-nodeビットマップから空きビットを探す */
-		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			% pgsiz; /* ビットマップ開始オフセットバイト */
 	 else  /* ゾーンビットマップから空きビットを探す */
 		bmap_off = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
@@ -264,18 +264,18 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 				v3val = __bswap32(*v3ptr);  /* バイトスワップ */
 			else
 				v3val = *v3ptr;
-			
+
 			/*
 			 * ビットマップチャンク中のビットを探査する
 			 * @note 上記で空きビットの存在を確認しているので必ず見つかる
 			 */
-			for (i = 0; (v3val & (1 << i)) != 0; ++i); 
+			for (i = 0; (v3val & (1 << i)) != 0; ++i);
 
 			/* found_numはビットマップ領域内でのビット位置を表す
 			 */
-			found_num = bit_off + 
+			found_num = bit_off +
 				( ( (uintptr_t)v3ptr - (uintptr_t)(pc->pc_data + bmap_off) )
-				  / sizeof(minixv3_bitchunk) ) * 
+				  / sizeof(minixv3_bitchunk) ) *
 				( sizeof(minixv3_bitchunk) * BITS_PER_BYTE ) + i;
 
 			/* ビットマップの範囲を越えていないことを確認
@@ -292,7 +292,7 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 			*idxp = found_num;  /* 見つかったビットを返却 */
 
 			goto success;
-		} 
+		}
 	} else { /* MinixV1, MinixV2ファイルシステム */
 
 			kassert( MINIX_SB_IS_V2(sbp) || MINIX_SB_IS_V1(sbp) );
@@ -303,24 +303,24 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 
 				if ( *v12ptr == ~((minixv12_bitchunk)0) )
 					continue;  /*  空きビットがない  */
-				
+
 				if ( sbp->swap_needed )
 					v12val = __bswap16(*v12ptr);  /* バイトスワップ */
 				else
 					v12val = *v12ptr;
-				
+
 				/*
 				 * ビットマップチャンク中のビットを探査する
 				 * @note 上記で空きビットの存在を確認しているので必ず見つかる
 				 */
-				for (i = 0; (v12val & (1 << i)) != 0; ++i); 
-			
+				for (i = 0; (v12val & (1 << i)) != 0; ++i);
+
 				/* found_numはビットマップ領域内でのビット位置を表す
 				 */
-				found_num = bit_off + 
-					( ( (uintptr_t)v12ptr 
+				found_num = bit_off +
+					( ( (uintptr_t)v12ptr
 					    - (uintptr_t)(pc->pc_data + bmap_off) )
-					  / sizeof(minixv12_bitchunk) ) * 
+					  / sizeof(minixv12_bitchunk) ) *
 					( sizeof(minixv12_bitchunk) * BITS_PER_BYTE ) + i;
 
 				/* ビットマップの範囲を越えていないことを確認
@@ -344,11 +344,11 @@ put_pcache_out:
 	return -ESRCH;
 
 success:
-	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
 	return 0;
 }
 
-/** 
+/**
     ビットマップ中の指定したビットを割り当て済みにする
     @param[in] sbp      スーパブロック情報
     @param[in] map_type 検索対象ビットマップ種別
@@ -379,15 +379,15 @@ minix_bitmap_alloc_at(minix_super_block *sbp, int map_type, minix_bitmap_idx idx
 
 	if (map_type == INODE_MAP) { /* I-nodeビットマップから空きビットを探す */
 
-		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
-		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			% pgsiz; /* ビットマップ開始オフセットバイト */
 	} else { /* ゾーンビットマップから空きビットを探す */
 
 		/* ゾーンビットマップのデバイス上のページ番号 */
 		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
-			* MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
+			* MINIX_BLOCK_SIZE(sbp)  / pgsiz;
 		bmap_off = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
 		    * MINIX_BLOCK_SIZE(sbp) % pgsiz;  /* ビットマップ開始オフセットバイト */
 	}
@@ -409,15 +409,15 @@ minix_bitmap_alloc_at(minix_super_block *sbp, int map_type, minix_bitmap_idx idx
 		v3ptr = (minixv3_bitchunk *)(pc->pc_data + bmap_off);
 
 		/* ビットチャンクのインデクス */
-		off_chunk = off_byte / sizeof(minixv3_bitchunk); 
-		off_bit = idx % ( sizeof(minixv3_bitchunk) * BITS_PER_BYTE ); 
+		off_chunk = off_byte / sizeof(minixv3_bitchunk);
+		off_bit = idx % ( sizeof(minixv3_bitchunk) * BITS_PER_BYTE );
 		kassert( ( pgsiz / sizeof(minixv3_bitchunk) ) > off_chunk );
 
 		/* ビットマップチャンクを読み込み */
 		if ( sbp->swap_needed )
 			v3val = __bswap32(v3ptr[off_chunk]);  /* バイトスワップ */
 		else
-			v3val = v3ptr[off_chunk];  
+			v3val = v3ptr[off_chunk];
 
 		if ( (v3val & (1 << off_bit) ) != 0 )
 			goto put_pcache_out;  /* すでに使用中 */
@@ -435,15 +435,15 @@ minix_bitmap_alloc_at(minix_super_block *sbp, int map_type, minix_bitmap_idx idx
 		v12ptr = (minixv12_bitchunk *)(pc->pc_data + bmap_off);
 
 		/* ビットチャンクのインデクス */
-		off_chunk = off_byte / sizeof(minixv12_bitchunk); 
-		off_bit = idx % ( sizeof(minixv12_bitchunk) * BITS_PER_BYTE ); 
+		off_chunk = off_byte / sizeof(minixv12_bitchunk);
+		off_bit = idx % ( sizeof(minixv12_bitchunk) * BITS_PER_BYTE );
 		kassert( ( pgsiz / sizeof(minixv12_bitchunk) ) > off_chunk );
 
 		/* ビットマップチャンクを読み込み */
 		if ( sbp->swap_needed )
 			v12val = __bswap16(v12ptr[off_chunk]);  /* バイトスワップ */
 		else
-			v12val = v12ptr[off_chunk];  
+			v12val = v12ptr[off_chunk];
 
 		if ( (v12val & (1 << off_bit) ) != 0 )
 			goto put_pcache_out;  /* すでに使用中 */
@@ -455,9 +455,9 @@ minix_bitmap_alloc_at(minix_super_block *sbp, int map_type, minix_bitmap_idx idx
 			v12ptr[off_chunk] = __bswap16(v12val);  /* バイトスワップ */
 		else
 			v12ptr[off_chunk] = v12val;
-	}	
+	}
 
-	pagecache_put(pc);  /* ページキャッシュを解放する     */	
+	pagecache_put(pc);  /* ページキャッシュを解放する     */
 
 	return 0;
 
@@ -467,7 +467,7 @@ put_pcache_out:
 	return -EBUSY;
 }
 
-/** 
+/**
     ビットマップ中の空きビットを割り当てる
     @param[in] sbp      スーパブロック情報
     @param[in] map_type 検索対象ビットマップ種別
@@ -493,33 +493,33 @@ minix_bitmap_alloc(minix_super_block *sbp, int map_type, minix_bitmap_idx *idxp)
 
 	if (map_type == INODE_MAP) { /* I-nodeビットマップから空きビットを探す */
 
-		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
 		nr_bits = MINIX_D_SUPER_BLOCK(sbp,s_ninodes) + 1;
-		nr_pages = 
+		nr_pages =
 			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks)
 			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
 	} else { /* ゾーンビットマップから空きビットを探す */
 
 		/* ゾーンビットマップのデバイス上のページ番号 */
 		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
-		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;  
-		nr_bits = MINIX_SB_ZONES_NR(sbp) - 
+		    * MINIX_BLOCK_SIZE(sbp)  / pgsiz;
+		nr_bits = MINIX_SB_ZONES_NR(sbp) -
 			MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1;
-		nr_pages = 
+		nr_pages =
 			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks)
 			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
 	}
 
 	end_page = first_page + nr_pages;
 
-	/*  
+	/*
 	 * Search bitmap blocks
 	 */
 	for(cur_page = first_page; end_page > cur_page; ++cur_page) {
 
 		rc = minix_bitmap_alloc_freebit(sbp, cur_page, map_type,
-		    ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz, 
+		    ( cur_page - first_page ) * BITS_PER_BYTE * pgsiz,
 					       nr_bits, &idx);
 		if ( rc != 0 )
 			goto error_out;
@@ -569,24 +569,24 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 
 	if ( map_type == INODE_MAP ) { /* I-nodeビットマップから空きビットを探す */
 
-		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		first_page = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			/ pgsiz; /* I-nodeビットマップのデバイス上のページ番号 */
-		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp)) 
+		bmap_off = (MINIX_IMAP_BLKNO * MINIX_BLOCK_SIZE(sbp))
 			% pgsiz; /* ビットマップ開始オフセットバイト */
 		nr_bits = MINIX_D_SUPER_BLOCK(sbp,s_ninodes) + 1;
-		nr_pages = 
+		nr_pages =
 			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks)
 			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
 	} else { /* ゾーンビットマップから空きビットを探す */
 
 		/* ゾーンビットマップのデバイス上のページ番号 */
 		first_page = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
-		    * MINIX_BLOCK_SIZE(sbp) / pgsiz;  
+		    * MINIX_BLOCK_SIZE(sbp) / pgsiz;
 		bmap_off = ( MINIX_IMAP_BLKNO + MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks) )
 		    * MINIX_BLOCK_SIZE(sbp) % pgsiz; /* ビットマップ開始オフセットバイト */
-		nr_bits = MINIX_SB_ZONES_NR(sbp) - 
+		nr_bits = MINIX_SB_ZONES_NR(sbp) -
 			MINIX_D_SUPER_BLOCK(sbp,s_firstdatazone) + 1;
-		nr_pages = 
+		nr_pages =
 			roundup_align(MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks)
 			    * MINIX_BLOCK_SIZE(sbp), pgsiz) / pgsiz;
 	}
@@ -600,7 +600,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 	bit_idx = fbit / ( BITS_PER_BYTE * MINIX_BMAPCHUNK_SIZE(sbp) );
 	bit_idx = bit_idx % ( pgsiz / MINIX_BMAPCHUNK_SIZE(sbp) );
 	bit_off = fbit % ( BITS_PER_BYTE * MINIX_BMAPCHUNK_SIZE(sbp) );
-	
+
 	mask = 1 << bit_off;
 
 	rc = pagecache_get(sbp->dev, cur_page * pgsiz, &pc);
@@ -646,7 +646,7 @@ minix_bitmap_free(minix_super_block *sbp, int map_type, minix_bitmap_idx fbit) {
 		else
 			v12ptr[bit_idx] = v12val;
 	}
-	
+
 	pagecache_put(pc);  /* ページキャッシュを解放する     */
 
 	return 0;
@@ -666,7 +666,7 @@ minix_write_super(minix_super_block *sbp){
 	void       *dsb;
 
 	/* デバイスの先頭からのオフセット位置を算出する */
-	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;	
+	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;
 
 	/* ページキャッシュを獲得する */
 	rc = pagecache_get(sbp->dev, sboff, &pc);
@@ -685,10 +685,10 @@ minix_write_super(minix_super_block *sbp){
 		 * MinixV3ファイルシステムの場合
 		 */
 		if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
-			swap_minixv3_super_block((minixv3_super_block *)dsb, 
+			swap_minixv3_super_block((minixv3_super_block *)dsb,
 			    (minixv3_super_block *)&sbp->d_super);
 		else
-			memmove((void *)dsb, (void *)&sbp->d_super, 
+			memmove((void *)dsb, (void *)&sbp->d_super,
 			    sizeof(minixv3_super_block));
 	} else if ( ( MINIX_SB_IS_V1(sbp) ) || ( MINIX_SB_IS_V2(sbp) ) ) {
 
@@ -696,17 +696,17 @@ minix_write_super(minix_super_block *sbp){
 		 * MinixV1, MinixV2ファイルシステムの場合
 		 */
 		if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
-			swap_minixv12_super_block((minixv12_super_block *)dsb, 
+			swap_minixv12_super_block((minixv12_super_block *)dsb,
 			    (minixv12_super_block *)&sbp->d_super);
 		else
-			memmove((void *)dsb, (void *)&sbp->d_super, 
+			memmove((void *)dsb, (void *)&sbp->d_super,
 			    sizeof(minixv12_super_block));
 	} else {
 
 		rc = -EINVAL;  /* 不正なスーパブロック */
 		goto put_pcache_out;
 	}
-	
+
 	pagecache_put(pc);  /* ページキャッシュを解放する     */
 
 	return 0;
@@ -735,7 +735,7 @@ minix_read_super(dev_id dev, minix_super_block *sbp){
 	kassert( sbp != NULL );
 
 	/* デバイスの先頭からのオフセット位置を算出する */
-	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;	
+	sboff = MINIX_SUPERBLOCK_BLKNO * MINIX_OLD_BLOCK_SIZE;
 
 	/* ページキャッシュを獲得する */
 	rc = pagecache_get(dev, sboff, &pc);
@@ -751,17 +751,17 @@ minix_read_super(dev_id dev, minix_super_block *sbp){
 	 * スーパブロックの検出
 	 */
 	rc = read_minixv3_super(dsb, sbp);
-	if ( rc == 0 ) 
+	if ( rc == 0 )
 		goto found;  /* MinixV3スーパブロックを検出 */
 
 	rc = read_minixv2_super(dsb, sbp);
-	if ( rc == 0 ) 
+	if ( rc == 0 )
 		goto found;  /* MinixV2スーパブロックを検出 */
 
 	rc = read_minixv1_super(dsb, sbp);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto put_pcache_out;  /* Minix スーパブロックが見つからなかった */
-	
+
 found:
 	pagecache_put(pc);  /* ページキャッシュを解放する     */
 	sbp->dev = dev;     /* ブロックデバイス番号を記録する */

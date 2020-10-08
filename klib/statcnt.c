@@ -40,7 +40,7 @@ statcnt_read(stat_cnt *cnt){
    @param[in] val 加算する整数
    @return 更新後の値
 */
-stat_cnt_val 
+stat_cnt_val
 statcnt_add(stat_cnt *cnt, stat_cnt_val val){
 
 	/** 統計情報値に値を加算する
@@ -67,7 +67,7 @@ statcnt_sub(stat_cnt *cnt, stat_cnt_val val){
    @param[out] cnt 更新する統計情報値のアドレス
    @return 更新後の値
 */
-stat_cnt_val 
+stat_cnt_val
 statcnt_inc(stat_cnt *cnt){
 
 	/** 統計情報値に1加算する
@@ -80,7 +80,7 @@ statcnt_inc(stat_cnt *cnt){
    @param[out] cnt 更新する統計情報値のアドレス
    @return 更新後の値
 */
-stat_cnt_val 
+stat_cnt_val
 statcnt_dec(stat_cnt *cnt){
 
 	/** 統計情報値から1減算する

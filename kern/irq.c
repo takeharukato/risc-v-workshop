@@ -21,7 +21,7 @@ static kmem_cache irq_handler_cache;  /* 割込みハンドラエントリのキ
 static int irq_line_cmp(struct _irq_line *_key, struct _irq_line *_ent);
 RB_GENERATE_STATIC(_irq_line_tree, _irq_line, ent, irq_line_cmp);
 
-/** 
+/**
     割込み線情報比較関数
     @param[in] key 比較対象割込み線情報
     @param[in] ent RB木内の各エントリ
@@ -29,16 +29,16 @@ RB_GENERATE_STATIC(_irq_line_tree, _irq_line, ent, irq_line_cmp);
     @retval 負  割込み線情報の優先度がentの優先度より後にある
     @retval 0   割込み線情報の優先度とentの優先度が等しい
  */
-static int 
+static int
 irq_line_cmp(struct _irq_line *key, struct _irq_line *ent){
-	
+
 	if ( key->prio > ent->prio )
 		return -1;
 
 	if ( key->prio < ent->prio )
 		return 1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -59,7 +59,7 @@ irq_ctrlr_cmp_by_irq(irq_ctrlr *key, irq_ctrlr *ent) {
 		return 1;
 
 	kassert( ( ent->min_irq <= key->min_irq ) && ( key->min_irq < ent->max_irq ) );
-	
+
 	return 0;
 }
 
@@ -99,7 +99,7 @@ irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
 
 	if ( key->handler > ent->handler )
 		return 1;
-		
+
 	return 0;
 }
 
@@ -134,33 +134,33 @@ irqline_put(irq_line *irqline){
 	if ( !refcnt_dec_and_test(&irqline->refs) ) /* 最終参照者でない場合は抜ける */
 		return false;
 
-	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */		
+	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
 
-	/* ハンドラキューが空になったら割込み線を優先度キューから外し, 
+	/* ハンドラキューが空になったら割込み線を優先度キューから外し,
 	 * 割込みをマスクする
 	 */
-	res = RB_REMOVE(_irq_line_tree, &inf->prio_que, 
+	res = RB_REMOVE(_irq_line_tree, &inf->prio_que,
 			irqline); /* 優先度キューから削除 */
 	kassert( res != NULL );
-	
+
 	/* 割込みをマスクする
-	 * 優先度割込みマスク方式のコントローラを搭載している場合, 
+	 * 優先度割込みマスク方式のコントローラを搭載している場合,
 	 * 割込み線に設定された優先度以下の割込みが上がらないように割込み
 	 * 優先度マスクを設定する。
 	 * 割込み線単位で割込みを制御可能な場合は対象の割込み線をマスクする。
 	 */
 	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) ) {
-		
-		/* 割込み線に設定された優先度以下の割込みが上がらないようにする 
+
+		/* 割込み線に設定された優先度以下の割込みが上がらないようにする
 		 */
 		ctrlr->get_priority(ctrlr, &prio);  /* 現在のマスク値を取得             */
 		if ( irqline->prio > prio )  /* 割込み線の優先度 > 現在のマスク値の場合 */
 			ctrlr->set_priority(ctrlr, irqline->prio);  /* 割込みマスク更新 */
 	}
-	
+
 	/* 割込み線単位で割込みをマスクする */
 	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )
-		ctrlr->disable_irq(ctrlr, irqline->irq); 
+		ctrlr->disable_irq(ctrlr, irqline->irq);
 
 	return true; /* 最終参照者であることを返却 */
 }
@@ -205,7 +205,7 @@ invoke_irq_handler(irq_line *irqline, struct _trap_context *ctx){
 		 */
 		if ( irqline->attr & IRQ_ATTR_NESTABLE )
 			krn_cpu_enable_interrupt(); /* 多重割り込みを許可する */
-		
+
 		/* ハンドラ呼び出し */
 		is_handled = ent->handler(irqline->irq, ctx, ent->private);
 
@@ -253,13 +253,13 @@ handle_irq_line(irq_line *irqline, struct _trap_context *ctx) {
 
 		ctrlr->get_priority(ctrlr, &prio);  /* 現在の優先度割込みマスク値を取得 */
 		/* 割込み線の割込み優先度以下の割込みをマスク */
-		ctrlr->set_priority(ctrlr, irqline->prio); 
+		ctrlr->set_priority(ctrlr, irqline->prio);
 	}
 
 	/* 指定された割込み線への割込みをマスク */
-	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )	 
+	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )
 		ctrlr->disable_irq(ctrlr, irqline->irq);
-	
+
 	ctrlr->eoi(ctrlr, irqline->irq);  /* 割込み完了通知を発行 */
 
 	/* 割込み線に登録された割込みハンドラを呼び出す */
@@ -268,11 +268,11 @@ handle_irq_line(irq_line *irqline, struct _trap_context *ctx) {
 	irqline_put(irqline);     /* 割込み線への参照を解放 */
 
 	/* 指定された割込み線への割込みを許可 */
-	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )	 
+	if ( IRQ_CTRLR_OPS_HAS_LINEMASK(ctrlr) )
 		ctrlr->enable_irq(ctrlr, irqline->irq);
 
 	/* 割込み前の割込み優先度に設定 */
-	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )	
+	if ( IRQ_CTRLR_OPS_HAS_PRIMASK(ctrlr) )
 		ctrlr->set_priority(ctrlr, prio);
 
 	if ( rc != 0 ) {
@@ -331,7 +331,7 @@ irq_handle_irq(struct _trap_context *ctx){
 			is_handled = handle_irq_line(irqline, ctx);
 			if ( is_handled == -ESRCH )  /* 割込み処理失敗 */
 				kprintf(KERN_WAR "Spurious interrupt: irq=%d on "
-				    "IRQ controller %s [%p]\n", irqline->irq, ctrlr->name, 
+				    "IRQ controller %s [%p]\n", irqline->irq, ctrlr->name,
 				    ctrlr);
 			irqline_put(irqline);     /* 割込み線への参照を解放 */
 
@@ -387,14 +387,14 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 
 	ctrlr_key.min_irq = irq;  /* キーを設定 */
 	/* 割込み管理情報のロックを獲得 */
-	spinlock_lock_disable_intr(&inf->lock, &iflags);	
+	spinlock_lock_disable_intr(&inf->lock, &iflags);
 
 	/* キューから登録されたコントローラを検索する */
 	ctrlr = NULL;
-	queue_find_element(&inf->ctrlr_que, irq_ctrlr, link, &ctrlr_key, 
+	queue_find_element(&inf->ctrlr_que, irq_ctrlr, link, &ctrlr_key,
 	    irq_ctrlr_cmp_by_irq, &ctrlr);
 	if ( ctrlr == NULL ) { /* 指定されたコントローラが見つからなかった */
-		
+
 		rc = -ENOENT;  /* コントローラが未登録 */
 		goto unlock_out;
 	}
@@ -402,18 +402,18 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 	irqline = &inf->irqs[irq];        /* 割込み線情報を参照 */
 
 	if ( !queue_is_empty(&irqline->handlers) ) { /* 既存の設定値との整合性を確認 */
-		
-		if ( ( ( irqline->attr & IRQ_ATTR_TRIGGER_MASK ) 
-		    != ( attr & IRQ_ATTR_TRIGGER_MASK ) ) || 
+
+		if ( ( ( irqline->attr & IRQ_ATTR_TRIGGER_MASK )
+		    != ( attr & IRQ_ATTR_TRIGGER_MASK ) ) ||
 		    ( irqline->prio != prio ) ) {
 
 			rc = -EINVAL;  /* 割込み優先度/トリガの設定値が合わない */
 			goto unlock_out;
 		}
-		
+
 		if ( ( irqline->attr & IRQ_ATTR_EXCLUSIVE ) ||
 		    ( attr & IRQ_ATTR_EXCLUSIVE ) ) {
-			
+
 			rc = -EBUSY;  /* 割込み線の共有不可能  */
 			goto unlock_out;
 		}
@@ -447,7 +447,7 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 	/* 割込みハンドラ情報を割り当て */
 	rc = slab_kmem_cache_alloc(&irq_handler_cache, KMALLOC_NORMAL, (void **)&hdlr);
 	if ( rc != 0 ) {
-	
+
 		kprintf(KERN_PNC "Can not allocate irq handler cache.\n");
 		kassert_no_reach();
 	}
@@ -460,14 +460,14 @@ irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handl
 
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
-	
+
 	return 0;
 
 remove_irqline_out:
 	res = RB_REMOVE(_irq_line_tree, &inf->prio_que, irqline);
 	kassert( res != NULL );
 
-unlock_out:	
+unlock_out:
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
@@ -506,10 +506,10 @@ irq_unregister_handler(irq_no irq, irq_handler handler){
 
 	/* 指定されたハンドラを検索
 	 */
-	queue_find_element(&irqline->handlers, irq_handler_ent, link, &key, 
+	queue_find_element(&irqline->handlers, irq_handler_ent, link, &key,
 			   irq_handler_cmp, &hdlr);
 	if ( hdlr == NULL ) { /* 指定された割込みハンドラが見つからなかった */
-		
+
 		rc = -ENOENT;  /* 割込みハンドラが未登録 */
 		goto unlock_out;
 	}
@@ -521,17 +521,17 @@ irq_unregister_handler(irq_no irq, irq_handler handler){
 
 	statcnt_dec(&ctrlr->nr_handlers);  /* コントローラ内のハンドラ統計情報量を減算 */
 
-	if ( queue_is_empty(&irqline->handlers) ) 
+	if ( queue_is_empty(&irqline->handlers) )
 		irqline_put(irqline);  /* 参照を返却 */
 
 	slab_kmem_cache_free(hdlr);  /* 割込みハンドラエントリを解放 */
 
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
-	
+
 	return 0;
 
-unlock_out:	
+unlock_out:
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
@@ -564,13 +564,13 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
 	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
 
 	/* 割込み管理情報のロックを獲得 */
-	spinlock_lock_disable_intr(&inf->lock, &iflags);	
-	
+	spinlock_lock_disable_intr(&inf->lock, &iflags);
+
 	/* キューから登録されたコントローラを検索する */
 	found = NULL;
 	queue_find_element(&inf->ctrlr_que, irq_ctrlr, link, ctrlr, irq_ctrlr_cmp, &found);
 	if ( found != NULL ) { /* 指定されたコントローラが見つかった */
-		
+
 		rc = -EBUSY;  /* コントローラの多重登録 */
 		goto unlock_out;
 	}
@@ -587,18 +587,18 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
 		 * 見つかった要素の最大IRQが指定されたコントローラの割込み番号範囲内にあるか,
 		 * または,
 		 * 指定されたコントローラの割込み番号全体が見つかった要素の割込み番号を
-		 * 包含するコントローラが既に登録されているか, 
-		 * または, 
+		 * 包含するコントローラが既に登録されているか,
+		 * または,
 		 * 見つかった要素の割込み番号全体が指定されたコントローラの割込み番号を
 		 * 包含する場合は, 割込み番号の重複とみなす。
 		 */
-		if ( ( ( ctrlr->min_irq <= found->min_irq ) 
+		if ( ( ( ctrlr->min_irq <= found->min_irq )
 		    && ( found->min_irq < ctrlr->max_irq ) ) ||
-		    ( ( ctrlr->min_irq < found->max_irq ) 
+		    ( ( ctrlr->min_irq < found->max_irq )
 			&& ( found->max_irq < ctrlr->max_irq ) ) ||
-		    ( ( ctrlr->min_irq <= found->min_irq ) 
+		    ( ( ctrlr->min_irq <= found->min_irq )
 			&& ( found->max_irq < ctrlr->max_irq ) ) ||
-		    ( ( found->min_irq <= ctrlr->min_irq ) 
+		    ( ( found->min_irq <= ctrlr->min_irq )
 			&& ( ctrlr->max_irq < found->max_irq ) ) ) {
 
 			rc = -EBUSY;  /* コントローラの多重登録 */
@@ -607,20 +607,20 @@ irq_register_ctrlr(irq_ctrlr *ctrlr){
  	}
 
 	rc = ctrlr->initialize(ctrlr); /* 割込みコントローラを初期化 */
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto unlock_out;  /* 初期化に失敗した  */
 
 	statcnt_set(&ctrlr->nr_handlers, 0);  /* 登録割込みハンドラ数を初期化 */
 	list_init(&ctrlr->link);              /* リストエントリを初期化       */
 
-	queue_add(&inf->ctrlr_que, &ctrlr->link);  /* コントローラを登録する */	
+	queue_add(&inf->ctrlr_que, &ctrlr->link);  /* コントローラを登録する */
 
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
 	return 0;
 
-unlock_out:	
+unlock_out:
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 
@@ -640,7 +640,7 @@ irq_unregister_ctrlr(irq_ctrlr *ctrlr){
 	inf = &g_irq_info;   /* 割込み管理情報へのポインタを取得 */
 
 	/* 割込み管理情報のロックを獲得 */
-	spinlock_lock_disable_intr(&inf->lock, &iflags);	
+	spinlock_lock_disable_intr(&inf->lock, &iflags);
 
 	if ( statcnt_read(&ctrlr->nr_handlers) > 0 ) { /* 登録されているハンドラがある場合 */
 
@@ -653,7 +653,7 @@ irq_unregister_ctrlr(irq_ctrlr *ctrlr){
 	found = NULL;
 	queue_find_element(&inf->ctrlr_que, irq_ctrlr, link, ctrlr, irq_ctrlr_cmp, &found);
 	if ( found == NULL ) { /* 指定されたコントローラが見つからなかった */
-		
+
 		kprintf(KERN_WAR "ctrlr: %s has not been registered.\n");
 		goto unlock_out;
 	}
@@ -663,7 +663,7 @@ irq_unregister_ctrlr(irq_ctrlr *ctrlr){
 	kassert( ctrlr->finalize != NULL );
 	ctrlr->finalize(ctrlr); /* 割込みコントローラの終了処理を呼び出す */
 
-unlock_out:	
+unlock_out:
 	/* 割込み管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&inf->lock, &iflags);
 }
@@ -688,7 +688,7 @@ irq_init(void){
 	 * 割込み線情報の初期化
 	 */
 	for(i = 0; NR_IRQS > i; ++i) {
-		
+
 		irqline = &inf->irqs[i];        /* 割込み線情報を参照                     */
 
 		irqline->irq = i;                /* 割込み番号                             */
@@ -701,10 +701,9 @@ irq_init(void){
 
 	/* 割込みハンドラキャッシュを初期化する
 	 */
-	rc = slab_kmem_cache_create(&irq_handler_cache, "irq handler cache", 
+	rc = slab_kmem_cache_create(&irq_handler_cache, "irq handler cache",
 	    sizeof(irq_handler_ent), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
 
 	return ;
 }
-

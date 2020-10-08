@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_STACK_H)
-#define  _KLIB_STACK_H 
+#define  _KLIB_STACK_H
 
 #include <klib/freestanding.h>
 #include <klib/compiler.h>

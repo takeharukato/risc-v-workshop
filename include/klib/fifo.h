@@ -7,11 +7,11 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_FIFO_H)
-#define  _KLIB_FIFO_H 
+#define  _KLIB_FIFO_H
 
 #include <klib/freestanding.h>
 
-/** 
+/**
     FIFOの状態
  */
 typedef enum _fifo_state{
@@ -20,7 +20,7 @@ typedef enum _fifo_state{
 	FULL   /**< 満杯になった  */
 }fifo_state;
 
-/** 
+/**
     FIFO管理情報
  */
 typedef struct _fifo{

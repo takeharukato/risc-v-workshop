@@ -52,7 +52,7 @@ vm_unmap_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size size, bool
 			goto error_out;
 
 		unmap_flags = flags | map_flags; /* アンマップに使用するフラグ値を算出 */
-		
+
 		/* ページをアンマップする
 		 * ページプール内で管理されているページを割り当てている場合は,
 		 * ページを解放する
@@ -96,13 +96,13 @@ vm_map_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, vm_siz
 
 	/* ページオーダを算出する */
 	rc = pgif_calc_page_order((size_t)pgsize, &order);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto error_out;
 
 	/* メモリを獲得する */
-	rc = pgif_get_free_page_cluster(&kvaddr, order, KMALLOC_NORMAL, 
+	rc = pgif_get_free_page_cluster(&kvaddr, order, KMALLOC_NORMAL,
 	    PAGE_USAGE_ANON);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto error_out;
 
 	/* 割り当てたメモリの物理アドレスを求める */
@@ -111,7 +111,7 @@ vm_map_common(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, vm_siz
 
 	/* ページをマップする */
 	rc = hal_pgtbl_enter(pgt, vaddr, paddr, prot, flags, pgsize);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		goto error_out;
 
 	rc = pfdb_kvaddr_to_page_frame(kvaddr, &pf);
@@ -166,7 +166,7 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 	end_vaddr = PAGE_ROUNDUP(vaddr + size);   /* 終了仮想アドレス */
 
 	/*  コピー先アドレス空間のページテーブルmutexを獲得する */
-	rc = mutex_lock(&dest->mtx);	
+	rc = mutex_lock(&dest->mtx);
 	if ( rc != 0 )
 		goto error_out;
 	/*  コピー元アドレス空間のページテーブルmutexを獲得する */
@@ -200,7 +200,7 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 			/* 非管理対象メモリの場合同一物理アドレスを
 			 *  同一サイズでマップする
 			 */
-			dest_paddr = src_paddr;  
+			dest_paddr = src_paddr;
 			dest_pgsize = src_pgsize;
 		} else {
 
@@ -216,9 +216,9 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 			kassert( src_pgsize == dest_pgsize );
 
 			/* メモリを獲得する */
-			rc = pgif_get_free_page_cluster(&dest_kvaddr, order, KMALLOC_NORMAL, 
+			rc = pgif_get_free_page_cluster(&dest_kvaddr, order, KMALLOC_NORMAL,
 			    PAGE_USAGE_ANON);
-			if ( rc != 0 ) 
+			if ( rc != 0 )
 				goto unmap_out;
 
 			/*  ページの内容をコピーする
@@ -230,17 +230,17 @@ vm_copy_range(vm_pgtbl dest, vm_pgtbl src, vm_vaddr vaddr, vm_flags flags, vm_si
 			end_cpy = (vm_vaddr)src_kvaddr + src_pgsize;
 			for( cur_cpy = sta_cpy; end_cpy > cur_cpy; cur_cpy += PAGE_SIZE)
 				vm_copy_kmap_page(dest_kvaddr, (void *)cur_cpy);
-			
+
 			/* コピー先ページの物理アドレスを得る */
 			rc = pfdb_kvaddr_to_paddr(dest_kvaddr, (void *)&dest_paddr);
 			kassert( rc == 0 );  /* マネージドページなので成功するはず */
 		}
 
 		/*  ページをマップする */
-		rc = hal_pgtbl_enter(dest, cur_vaddr, dest_paddr, dest_prot, dest_flags, 
+		rc = hal_pgtbl_enter(dest, cur_vaddr, dest_paddr, dest_prot, dest_flags,
 		    dest_pgsize);
 		if ( ( rc != 0 ) && ( ( dest_flags & VM_FLAGS_UNMANAGED ) == 0 ) ) {
-			
+
 			/* 管理ページを獲得済みの場合は, 獲得したページを解放 */
 			pgif_free_page(dest_kvaddr);
 			goto unmap_out;
@@ -330,7 +330,7 @@ vm_unmap(vm_pgtbl pgt, vm_vaddr vaddr, vm_flags flags, vm_size size){
 	mutex_unlock(&pgt->mtx); /*  アドレス空間のページテーブルmutexを解放する */
 	return 0;
 
-unlock_out:	
+unlock_out:
 	mutex_unlock(&pgt->mtx); /*  アドレス空間のページテーブルmutexを解放する */
 
 error_out:
@@ -355,7 +355,7 @@ error_out:
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
 int
-vm_map_userpage(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags, 
+vm_map_userpage(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags,
     vm_size pgsize, vm_size size){
 	int                rc;
 	vm_vaddr    sta_vaddr;
@@ -403,4 +403,3 @@ unmap_out:
 error_out:
 	return rc;
 }
-

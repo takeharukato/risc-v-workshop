@@ -24,13 +24,13 @@
    @retval     負     最大深度に達した
  */
 static int
-_trace_kconsole(int depth, uintptr_t *bpref, void *caller, void *next_bp, 
+_trace_kconsole(int depth, uintptr_t *bpref, void *caller, void *next_bp,
     void __unused *argp) {
 
 	if ( depth >= BACKTRACE_MAX_DEPTH )
 		return -1;
 
-	kprintf(KERN_DBG "[%d] Caller:%p, bp:%p next-bp:%p\n", 
+	kprintf(KERN_DBG "[%d] Caller:%p, bp:%p next-bp:%p\n",
 	    depth, caller, bpref, next_bp);
 
 	return 0;

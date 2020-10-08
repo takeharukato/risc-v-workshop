@@ -38,7 +38,7 @@ pcache1(struct _ktest_stats *sp, void __unused *arg){
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
-		
+
 		pagecache_mark_dirty(pc);
 		if ( PCACHE_IS_DIRTY(pc) )
 			ktest_pass( sp );
@@ -66,7 +66,7 @@ pcache1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 }
 
 void

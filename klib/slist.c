@@ -30,7 +30,7 @@ find_slist_node_referer(slist_head *head, slist_node *node, slist_node **refp){
 	for(ref = (slist_node *)head; ref->next != NULL; ref = ref->next) {
 
 		if ( ref->next == node ) {  /*  ノードが見つかった  */
-			
+
 			*refp = ref;
 			return 0;
 		}
@@ -43,7 +43,7 @@ find_slist_node_referer(slist_head *head, slist_node *node, slist_node **refp){
    単方向リストのリストヘッドを初期化する
    @param[in] head 捜査対象リストヘッド
  */
-void 
+void
 slist_init_head(slist_head *head){
 
 	head->next = NULL;

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_HPTREE_H)
-#define  _KLIB_HPTREE_H 
+#define  _KLIB_HPTREE_H
 
 #include <klib/freestanding.h>
 
@@ -31,13 +31,13 @@ typedef struct _heap_tree {
 	int (*compare)(void *_d1, void *_d2);  /*< 比較関数へのポインタ */
 	void (*delete_notifier)(void *_d);  /*< 削除通知関数へのポインタ */
 	/*< 表示関数へのポインタ */
-	void (*show_handler)(struct _heap_tree *_h, struct _heap_node *_n, void *_d); 
+	void (*show_handler)(struct _heap_tree *_h, struct _heap_node *_n, void *_d);
 	uintptr_t        offset; /*< 埋め込みデータ構造へのオフセット  */
 }heap_tree;
 
 /**
    ヒープノードを埋め込んだ構造体のアドレスをヒープノードメンバの
-   アドレスから算出する 
+   アドレスから算出する
    @param[in] p   ヒープノードメンバのアドレス
    @param[in] off ヒープノードメンバのオフセット
  */
@@ -52,9 +52,9 @@ typedef struct _heap_tree {
 #define hptree_offset(t, m) \
 	( (uintptr_t)offset_of(t, m) )
 
-int hptree_create(int _heap_type, uintptr_t offset, 
+int hptree_create(int _heap_type, uintptr_t offset,
     int (*compare)(void *_d1, void *_d2), void (*delete_notifier)(void *d),
-    void (*show_handler)(struct _heap_tree *_h, struct _heap_node *_n, void *_d), 
+    void (*show_handler)(struct _heap_tree *_h, struct _heap_node *_n, void *_d),
 		  struct _heap_tree **_hptp);
 void hptree_destroy_heap(struct _heap_tree **_hp);
 void hptree_delete_node(struct _heap_tree *_h, struct _heap_node *_n);

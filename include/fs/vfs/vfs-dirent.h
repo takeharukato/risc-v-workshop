@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_DIRENT_H)
-#define  _FS_VFS_VFS_DIRENT_H 
+#define  _FS_VFS_VFS_DIRENT_H
 
 #if !defined(ASM_FILE)
 
@@ -20,7 +20,7 @@
 /**
    VFSディレクトリエントリ情報
    (Linuxのlinux_dirent 構造体相当)
-   @note d_nameの先頭アドレスからヌルターミネートされた文字列が続き, 
+   @note d_nameの先頭アドレスからヌルターミネートされた文字列が続き,
    最後の1バイトにd_typeエントリが入る
  */
 typedef struct _vfs_dirent{

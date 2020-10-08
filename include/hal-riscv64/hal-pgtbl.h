@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_PGTBL_H)
-#define  _HAL_PGTBL_H 
+#define  _HAL_PGTBL_H
 
 #include <klib/freestanding.h>
 #include <hal/hal-types.h>
@@ -24,8 +24,8 @@ typedef struct _hal_pgtbl_md{
 	reg_type       satp;  /*< SATPレジスタ値                   */
 }hal_pgtbl_md;
 
-typedef uint64_t        hal_asid;  /*< アドレス空間ID 
-				    * (44bitシフトするため符号なし64bit) 
+typedef uint64_t        hal_asid;  /*< アドレス空間ID
+				    * (44bitシフトするため符号なし64bit)
 				    */
 typedef uint64_t        hal_pte;  /* ページテーブルエントリ型 */
 
@@ -33,7 +33,7 @@ struct _vm_pgtbl_type *hal_refer_kernel_pagetable(void);
 void hal_pgtbl_init(struct _vm_pgtbl_type *_pgt);
 int hal_pgtbl_enter(struct _vm_pgtbl_type *_pgt, vm_vaddr _vaddr, vm_paddr _paddr,
     vm_prot _prot, vm_flags _flags, vm_size _len);
-int hal_pgtbl_extract(struct _vm_pgtbl_type *_pgt, vm_vaddr _vaddr, vm_paddr *_paddrp, 
+int hal_pgtbl_extract(struct _vm_pgtbl_type *_pgt, vm_vaddr _vaddr, vm_paddr *_paddrp,
     vm_prot *_protp, vm_flags *_flagsp, vm_size *_pgsizep);
 void hal_pgtbl_remove(struct _vm_pgtbl_type *_pgt, vm_vaddr _vaddr, vm_flags _flags,
     vm_size _len);

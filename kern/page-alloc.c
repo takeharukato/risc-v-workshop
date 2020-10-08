@@ -26,7 +26,7 @@ pgif_calc_page_order(size_t size, page_order *res){
 
 	/*  指定されたサイズを格納するために必要なページ数を算出する  */
 	nr_pages = PAGE_ROUNDUP(size) >> PAGE_SHIFT;
-	
+
 	/*   ページサイズは, 典型的なデータ構造を格納可能なサイズとなるように規定
 	 * されていることから典型的なケースでは小オーダでのメモリ獲得となると考えられる。
 	 *   従って, コード上は, PAGE_POOL_MAX_ORDER - 1から小さいサイズに対して順に
@@ -70,14 +70,14 @@ success:
    @retval -ENOMEM メモリ不足
  */
 int
-pgif_get_free_page_cluster(void **addrp, page_order order, 
+pgif_get_free_page_cluster(void **addrp, page_order order,
     pgalloc_flags alloc_flags, page_usage usage){
 	int           rc;
 	obj_cnt_type pfn;
 	void     *kvaddr;
 
 	do{
-		rc = pfdb_buddy_dequeue(order, usage, 
+		rc = pfdb_buddy_dequeue(order, usage,
 		    alloc_flags, &pfn);  /* 指定されたオーダーのページを取り出す */
 		if ( ( rc != 0 ) && ( rc != -ESRCH ) )
 			rc = -ENOMEM;  /*  ページが見つからなかった  */
@@ -102,7 +102,7 @@ error_out:
 	return rc;
 }
 /**
-   物理メモリを1ノーマルページ獲得する   
+   物理メモリを1ノーマルページ獲得する
    @param[out] addrp       ページに対するカーネル領域内のアドレスを返却する領域
    @param[in]  alloc_flags ページ獲得条件
    @param[in]  usage       ページ利用用途
@@ -110,7 +110,7 @@ error_out:
    @retval -ESRCH  格納可能なページオーダを越えている
    @retval -ENOMEM メモリ不足
  */
-int 
+int
 pgif_get_free_page(void **addrp, pgalloc_flags alloc_flags, page_usage usage){
 
 	/*  ページオーダー0 (1ページ)のページを取得する  */

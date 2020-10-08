@@ -66,21 +66,21 @@ aligned_mmap(size_t length, int prot, int flags, size_t align, void **addrp) {
 	/* 指定アラインメントに開始アドレスがそろっていない場合
 	 * 領域の開始から指定境界までの領域をアンマップする
 	 */
-	if ( addr_not_aligned(m, align) ) { 
-		
+	if ( addr_not_aligned(m, align) ) {
+
 		kassert( area_start > ( (uintptr_t)m ) );
 		/* 領域の先頭から指定境界の直前までの領域をアンマップする  */
 		rc = munmap(m, area_start - ( (uintptr_t)m) - 1 );
 		kassert( rc == 0 );
 
 		/* 獲得サイズからアンマップした領域長を減算する */
-		alloc_size -= area_start - ( (uintptr_t)m );  
+		alloc_size -= area_start - ( (uintptr_t)m );
 	}
 
 	/* 末尾を獲得サイズに合わせてアンマップする
 	 */
 	if ( alloc_size > length ) {
-		
+
 		/* 要求サイズ以降のメモリ領域をアンマップする */
 		rc = munmap((void *)(area_start + length),
 		    alloc_size - length - 1 );
@@ -105,7 +105,7 @@ aligned_mmap(size_t length, int prot, int flags, size_t align, void **addrp) {
    @note   カーネル仮想アドレスやページフレーム番号が搭載物理メモリの
            範囲内にあることを保証しないことに留意すること
  */
-int 
+int
 tflib_kvaddr_to_pfn(void *kvaddr, obj_cnt_type *pfnp){
 	void *phys_addr;
 
@@ -184,12 +184,12 @@ tflib_kernlayout_init(void){
 		length = roundup_align( MEM_AREA_SIZE, PAGE_SIZE );
 		/* ページプールの最大ページ長にアラインメントを合わせる
 		 */
-		rc = aligned_mmap(length, PROT_READ|PROT_WRITE, 
+		rc = aligned_mmap(length, PROT_READ|PROT_WRITE,
 		    MAP_PRIVATE|MAP_ANONYMOUS|MAP_POPULATE,
 		    PAGE_SIZE << ( PAGE_POOL_MAX_ORDER - 1),
 		    &m);
 		kassert( rc == 0 );
-		
+
 		/* 疑似メモリ領域管理情報を更新する
 		 */
 		area[i].pmem = (void *)m;
@@ -218,7 +218,7 @@ tflib_kernlayout_init(void){
 	ekheap_init((vm_paddr)phys_start, uland_minfo.kheap, uland_minfo.kheap_size);
 
 	/* ヒープ領域を予約   */
-	pfdb_mark_phys_range_reserved((vm_paddr)phys_start, 
+	pfdb_mark_phys_range_reserved((vm_paddr)phys_start,
 	    (vm_paddr)phys_start + uland_minfo.kheap_size - 1);
 
 	return 0;
@@ -236,12 +236,12 @@ tflib_kernlayout_finalize(void){
 	/* ヒープ領域の予約を解除
 	 */
 	hal_kvaddr_to_phys(area[KHEAP_IDX].pmem, &phys_start);
-	pfdb_unmark_phys_range_reserved((vm_paddr)phys_start, 
+	pfdb_unmark_phys_range_reserved((vm_paddr)phys_start,
 	    (vm_paddr)phys_start + uland_minfo.kheap_size - 1);
 
 	pfdb_free();  /*  ページフレームDBを破棄する  */
 	for(i = 0; AREA_NUM > i; ++i) {
-		
+
 		if ( area[i].pmem == NULL )
 			continue;
 

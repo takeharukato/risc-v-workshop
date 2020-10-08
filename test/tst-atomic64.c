@@ -34,7 +34,7 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 	atomic64_val inc, v1, v2, res;
 	void *p1, *p2, *pr;
 	bool  rc;
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL1);
 	inc=1;
 	kprintf("64bit atomic add(%qd,%qd)", atomic64_read(&dest), inc);
@@ -58,7 +58,7 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL4);
 	inc=ATOMIC64_VAL3;
 	kprintf("64bit atomic or(%qx,%qx)", atomic64_read(&dest), inc);
@@ -68,7 +68,7 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 	if ( ( atomic64_read(&dest) == (atomic64_val)( ATOMIC64_VAL3 | ATOMIC64_VAL4 ) ) &&
 	    ( res == (atomic64_val)(ATOMIC64_VAL4) ) )
 		ktest_pass( sp );
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL5 );
 	inc=ATOMIC64_VAL3;
 	kprintf("64bit atomic xor(%qx,%qx)", atomic64_read(&dest), inc);
@@ -139,7 +139,7 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL1);
 	inc=1;
 	kprintf("64bit atomic add_return(%qd,%qd)", atomic64_read(&dest), inc);
@@ -170,12 +170,12 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 	res = atomic64_and_return(&dest, inc);
 	kprintf("=%qx\n", res);
 	kprintf("now: %qx\n", atomic64_read(&dest));
-	if ( ( atomic64_read(&dest) == (atomic64_val)(ATOMIC64_VAL3 & ATOMIC64_VAL3 ) ) && 
+	if ( ( atomic64_read(&dest) == (atomic64_val)(ATOMIC64_VAL3 & ATOMIC64_VAL3 ) ) &&
 	    ( atomic64_read(&dest) == res ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL4);
 	inc=ATOMIC64_VAL3;
 	kprintf("64bit atomic or_return(%qx,%qx)", atomic64_read(&dest), inc);
@@ -184,7 +184,7 @@ atomic64_test1(struct _ktest_stats *sp, void __unused *arg){
 	if ( ( atomic64_read(&dest) == (atomic64_val)(ATOMIC64_VAL4 | ATOMIC64_VAL3 ) ) &&
 	    ( atomic64_read(&dest) == res ) )
 		ktest_pass( sp );
-	
+
 	atomic64_set(&dest, ATOMIC64_VAL5);
 	inc=ATOMIC64_VAL3;
 	kprintf("64bit atomic xor_return(%qx,%qx)", atomic64_read(&dest), inc);

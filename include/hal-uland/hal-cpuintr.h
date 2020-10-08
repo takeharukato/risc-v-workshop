@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_CPUINTR_H)
-#define  _HAL_CPUINTR_H 
+#define  _HAL_CPUINTR_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

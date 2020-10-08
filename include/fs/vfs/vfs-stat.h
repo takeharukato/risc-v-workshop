@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_STAT_H)
-#define  _FS_VFS_VFS_STAT_H 
+#define  _FS_VFS_VFS_STAT_H
 
 #if !defined(ASM_FILE)
 
@@ -74,7 +74,7 @@
 #define S_IXGRP   (UINT32_C(00010))		/* group:  -----x--- */
 
 #define S_IRWXO   (UINT32_C(00007))		/* others: ------rwx */
-#define S_IROTH   (UINT32_C(00004))		/* others: ------r-- */ 
+#define S_IROTH   (UINT32_C(00004))		/* others: ------r-- */
 #define S_IWOTH   (UINT32_C(00002))		/* others: -------w- */
 #define S_IXOTH   (UINT32_C(00001))		/* others: --------x */
 

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_HASH_H)
-#define  _KLIB_HASH_H 
+#define  _KLIB_HASH_H
 
 #include <klib/freestanding.h>
 #include <klib/container.h>
@@ -94,6 +94,6 @@ int hash_create(int table_size, int64_t _link_offset,
 		struct _hash_table **_tablep,
 		int compare_func(void *_key, void *_e),
 		int hash_func(void *_key, int _size),
-		void (*key_destroy_func)(void *_key), 
+		void (*key_destroy_func)(void *_key),
 		void (*value_destroy_func)(void *_value));
 #endif  /*  _KLIB_HASH_H   */

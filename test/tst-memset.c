@@ -25,18 +25,18 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 	uint8_t                     *cp8;
 	size_t                       len;
 	uint32_t                    i, j;
-	
+
 	for( i = 0; TST_NR > i; ++i)
 		tst_ch[i] = TST_CH0 + i;
 
 	len = sizeof(uint64_t) * TST_MEMSET1_BUF_NR;
 	/* メモリを0でフィル */
-	for(i = 0; sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
+	for(i = 0; sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i)
 		*((uint8_t *)&buf[0] + i)= 0;
 
 	/* メモリをチェック */
 	for(i = 0, cp8 = (uint8_t*)&buf[0];
-	    sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
+	    sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i)
 		if ( *(cp8 + i) == 0 )
 			ktest_pass( sp );
 		else
@@ -52,7 +52,7 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 		memset(cp8, tst_ch[j], len - j); /* memset実行       */
 
 		/* メモリをチェック */
-		for(i = 0, cp8 = (uint8_t*)&buf[0] + j; (len - j) > i; ++i) 
+		for(i = 0, cp8 = (uint8_t*)&buf[0] + j; (len - j) > i; ++i)
 			if ( *cp8 == tst_ch[j] )
 				ktest_pass( sp );
 			else
@@ -62,7 +62,7 @@ memset1(struct _ktest_stats *sp, void __unused *arg){
 		else
 			ktest_fail( sp );
 		/* メモリを0でフィル */
-		for(i = 0; sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i) 
+		for(i = 0; sizeof(uint64_t) * TST_MEMSET1_BUF_NR > i; ++i)
 			*((uint8_t *)&buf[0] + i)= 0;
 	}
 }

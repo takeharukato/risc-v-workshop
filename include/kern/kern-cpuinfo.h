@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_CPUINFO_H)
-#define  _KERN_CPUINFO_H 
+#define  _KERN_CPUINFO_H
 
 #include <klib/misc.h>
 

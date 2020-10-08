@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_KERN_AUTOCONF_H)
-#define  _KERN_KERN_AUTOCONF_H 
+#define  _KERN_KERN_AUTOCONF_H
 
 #include <kern/autoconf.h>
 

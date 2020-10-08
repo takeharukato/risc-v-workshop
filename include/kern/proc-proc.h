@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_PROC_PROC_H)
-#define  _KERN_PROC_PROC_H 
+#define  _KERN_PROC_PROC_H
 
 #define PROC_NAME_LEN      (32)  /* プロセス名(ヌルターミネート含む) */
 #define PROC_KERN_PID      (0)   /* カーネルプロセスID */
@@ -82,8 +82,8 @@ struct _proc *proc_find_by_pid(pid _target);
 struct _thread *proc_find_thread(pid _target);
 int proc_add_thread(struct _proc *_p, struct _thread *_thr);
 bool proc_del_thread(struct _proc *_p, struct _thread *_thr);
-int proc_argument_copy(struct _proc *_src, vm_prot _prot, const char *_argv[], 
-    const char *_environment[], struct _proc *_dest, vm_vaddr *_cursp, 
+int proc_argument_copy(struct _proc *_src, vm_prot _prot, const char *_argv[],
+    const char *_environment[], struct _proc *_dest, vm_vaddr *_cursp,
     vm_vaddr *_argcp, vm_vaddr *_argvp, vm_vaddr *_envp);
 int proc_grow_stack(struct _proc *_dest, vm_vaddr _newsp);
 void proc_init(void);

@@ -84,12 +84,12 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 	/*
 	 * I-nodeが格納されている領域のページオフセットアドレスを算出する
 	 */
-	pc_off = MINIX_IMAP_BLKNO 
+	pc_off = MINIX_IMAP_BLKNO
 		+ MINIX_D_SUPER_BLOCK(sbp, s_imap_blocks)
 		+ MINIX_D_SUPER_BLOCK(sbp, s_zmap_blocks); /* ブロック単位でのオフセット */
-	
+
 	/* I-node格納先ブロック(単位: ブロック) */
-	/* @note MinixのファイルシステムのI-node番号は1から始まるのに対し, 
+	/* @note MinixのファイルシステムのI-node番号は1から始まるのに対し,
 	 * ビットマップのビットは0から割り当てられるので, Minixファイルシステムの
 	 * フォーマット(mkfs)時点で, 0番のI-node/ゾーンビットマップは予約されいている
 	 * それに対して, I-nodeテーブルやゾーンは1番のディスクI-node情報や
@@ -97,7 +97,7 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 	 * I-node番号は等しく, ディレクトリエントリ中のI-node番号からI-nodeテーブルの
 	 * インデクスへの変換式は,
 	 * インデクス = ディレクトリエントリ中のI-node番号 - 1
-	 * となる. 
+	 * となる.
 	 * 参考: Minixのalloc_zoneのコメント
 	 * Note that the routine alloc_bit() returns 1 for the lowest possible
 	 * zone, which corresponds to sp->s_firstdatazone.  To convert a value
@@ -106,17 +106,17 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 	 *     z = b + sp->s_firstdatazone - 1
 	 * Alloc_bit() never returns 0, since this is used for NO_BIT (failure).
 	 */
-	pc_off += 
-		(off_t)( (i_num - 1) / ( MINIX_BLOCK_SIZE(sbp) / MINIX_DINODE_SIZE(sbp) ) ); 
+	pc_off +=
+		(off_t)( (i_num - 1) / ( MINIX_BLOCK_SIZE(sbp) / MINIX_DINODE_SIZE(sbp) ) );
 	pc_off = pc_off * MINIX_BLOCK_SIZE(sbp); /* 格納先アドレス ( 単位:バイト )*/
 	pc_off += (off_t)( (i_num - 1) * MINIX_DINODE_SIZE(sbp) ); /* I-node配列 */
 
 	/* ページキャッシュを獲得する */
 	rc = pagecache_get(sbp->dev, pc_off, &pc);
 	if ( rc != 0 ) {
-		
+
 		rc = -ENODEV; /* ページが読み取れなかった */
-		goto error_out;  
+		goto error_out;
 	}
 
 	off = pc_off % pc->pgsiz;   /* ページ内オフセットを算出   */
@@ -131,10 +131,10 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 
 
 			if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
-				swap_minixv1_inode((minixv1_inode *)&dip->d_inode, 
+				swap_minixv1_inode((minixv1_inode *)&dip->d_inode,
 				    (minixv1_inode *)dinode);
 			else
-				memmove((void *)dinode, (void *)&dip->d_inode, 
+				memmove((void *)dinode, (void *)&dip->d_inode,
 				    sizeof(minixv1_inode));
 			pagecache_mark_dirty(pc);
 		} else {
@@ -143,7 +143,7 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 				swap_minixv1_inode((minixv1_inode *)dinode,
 				    (minixv1_inode *)&dip->d_inode);
 			else
-				memmove((void *)&dip->d_inode, (void *)dinode, 
+				memmove((void *)&dip->d_inode, (void *)dinode,
 				    sizeof(minixv1_inode));
 		}
 	} else if ( ( MINIX_SB_IS_V2(sbp) ) || ( MINIX_SB_IS_V3(sbp) ) ) {
@@ -156,10 +156,10 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 
 
 			if ( sbp->swap_needed ) /* バイトオーダ変換して書き込む */
-				swap_minixv2_inode((minixv2_inode *)&dip->d_inode, 
+				swap_minixv2_inode((minixv2_inode *)&dip->d_inode,
 				    (minixv2_inode *)dinode);
 			else
-				memmove((void *)dinode, (void *)&dip->d_inode, 
+				memmove((void *)dinode, (void *)&dip->d_inode,
 				    sizeof(minixv2_inode));
 			pagecache_mark_dirty(pc);
 		} else {
@@ -168,7 +168,7 @@ minix_rw_disk_inode(minix_super_block *sbp, minix_ino i_num, int rw_flag, minix_
 				swap_minixv2_inode((minixv2_inode *)dinode,
 				    (minixv2_inode *)&dip->d_inode);
 			else
-				memmove((void *)&dip->d_inode, (void *)dinode, 
+				memmove((void *)&dip->d_inode, (void *)dinode,
 				    sizeof(minixv2_inode));
 		}
 

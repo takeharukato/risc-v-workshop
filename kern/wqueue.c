@@ -25,7 +25,7 @@ static void
 enque_wque_entry(wque_waitqueue *wque, wque_entry *ent){
 	intrflags iflags;
 
-	kassert(list_not_linked(&ent->thr->link));  
+	kassert(list_not_linked(&ent->thr->link));
 	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
 
 	ent->reason = WQUE_WAIT;            /* 待ち中に遷移する */
@@ -61,7 +61,7 @@ wque_is_empty(wque_waitqueue *wque){
 	spinlock_lock_disable_intr(&wque->lock, &iflags); /* ウエイトキューをロック */
 	res = queue_is_empty(&wque->que); /* キューの状態を確認 */
 	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
-	
+
 	return res;
 }
 
@@ -206,7 +206,7 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 
 		res = thr_ref_dec(ent->thr);    /* スレッドの参照を解放     */
 		kassert( !res );                /* スレッドは終了していないはず */
-		
+
 		if ( wque->wqflag == WQUE_WAKEFLAG_ONE )
 			break;  /* 先頭のスレッドだけを起こして抜ける */
 	}

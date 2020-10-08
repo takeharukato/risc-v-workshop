@@ -50,7 +50,7 @@ typedef struct _tst_vfs_tstfs_inode{
 	RB_ENTRY(_tst_vfs_tstfs_inode)  ent; /**< スーパブロック中のI-node情報のリンク */
 	RB_HEAD(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage) dpages;  /**< データページ  */
 	/** ディレクトリエントリ  */
-	RB_HEAD(_tst_vfs_tstfs_dent_tree, _tst_vfs_tstfs_dent) dents;  
+	RB_HEAD(_tst_vfs_tstfs_dent_tree, _tst_vfs_tstfs_dent) dents;
 }tst_vfs_tstfs_inode;
 
 /**
@@ -75,26 +75,26 @@ typedef struct _tst_vfs_tstfs_db{
 	RB_HEAD(_tst_vfs_tstfs_super_tree, _tst_vfs_tstfs_super) supers; /**< スーパブロック */
 }tst_vfs_tstfs_db;
 
-int tst_vfs_tstfs_dpage_alloc(struct _tst_vfs_tstfs_inode *_inode, off_t _index, 
+int tst_vfs_tstfs_dpage_alloc(struct _tst_vfs_tstfs_inode *_inode, off_t _index,
     struct _tst_vfs_tstfs_dpage **_dpagep);
 int tst_vfs_tstfs_dpage_free(struct _tst_vfs_tstfs_inode *_inode, off_t _index);
-int tst_vfs_tstfs_dent_add(struct _tst_vfs_tstfs_inode *_inode, tst_vfs_tstfs_ino _ino, 
+int tst_vfs_tstfs_dent_add(struct _tst_vfs_tstfs_inode *_inode, tst_vfs_tstfs_ino _ino,
     const char *_name);
-int tst_vfs_tstfs_dent_find(struct _tst_vfs_tstfs_inode *_dv, const char *_name, 
+int tst_vfs_tstfs_dent_find(struct _tst_vfs_tstfs_inode *_dv, const char *_name,
     struct _tst_vfs_tstfs_dent **_dentp);
 int tst_vfs_tstfs_dent_del(struct _tst_vfs_tstfs_inode *_inode, const char *_name);
-int tst_vfs_tstfs_inode_find(struct _tst_vfs_tstfs_super *_super, tst_vfs_tstfs_ino _ino, 
+int tst_vfs_tstfs_inode_find(struct _tst_vfs_tstfs_super *_super, tst_vfs_tstfs_ino _ino,
     struct _tst_vfs_tstfs_inode **_inodep);
-int tst_vfs_tstfs_inode_alloc(struct _tst_vfs_tstfs_super *_super, 
+int tst_vfs_tstfs_inode_alloc(struct _tst_vfs_tstfs_super *_super,
     struct _tst_vfs_tstfs_inode **_inodep);
-int tst_vfs_tstfs_inode_free(struct _tst_vfs_tstfs_super *_super, 
+int tst_vfs_tstfs_inode_free(struct _tst_vfs_tstfs_super *_super,
     struct _tst_vfs_tstfs_inode *_inode);
 int tst_vfs_tstfs_superblock_find(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
 int tst_vfs_tstfs_superblock_alloc(dev_id _devid, struct _tst_vfs_tstfs_super **_superp);
 void tst_vfs_tstfs_superblock_free(struct _tst_vfs_tstfs_super *_super);
-int tst_vfs_tstfs_make_directory(struct _tst_vfs_tstfs_super *_super, 
+int tst_vfs_tstfs_make_directory(struct _tst_vfs_tstfs_super *_super,
     struct _tst_vfs_tstfs_inode *_dv, const char *_name);
-int tst_vfs_tstfs_remove_directory(struct _tst_vfs_tstfs_super *_super, 
+int tst_vfs_tstfs_remove_directory(struct _tst_vfs_tstfs_super *_super,
     struct _tst_vfs_tstfs_inode *_dv, const char *_name);
 void tst_vfs_tstfs_init(void);
 void tst_vfs_tstfs_finalize(void);

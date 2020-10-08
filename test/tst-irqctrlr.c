@@ -27,28 +27,28 @@ static tst_irqctrlr_regs g_regs;
 
 
 static int
-tst_config_irq(irq_ctrlr *ctrlr, irq_no irq, irq_attr attr, 
+tst_config_irq(irq_ctrlr *ctrlr, irq_no irq, irq_attr attr,
     irq_prio prio){
 	tst_irqctrlr_regs *regs;
 
 	regs = (tst_irqctrlr_regs *)ctrlr->private;
 
-	kprintf("config: name:%s irq:%d attr=%x prio=%d\n", 
+	kprintf("config: name:%s irq:%d attr=%x prio=%d\n",
 	    ctrlr->name, irq, attr, prio);
 
 	regs->pending &= ~(1 << irq);
 	regs->mask &= ~(1 << irq);
-	
+
 	return 0;
 }
 static bool
-tst_irq_is_pending(irq_ctrlr *ctrlr, irq_no irq, 
+tst_irq_is_pending(irq_ctrlr *ctrlr, irq_no irq,
     irq_prio prio, struct _trap_context *ctx){
 	tst_irqctrlr_regs *regs;
 
 	regs = (tst_irqctrlr_regs *)ctrlr->private;
 
-	kprintf("pending: name:%s irq:%d prio=%d\n", 
+	kprintf("pending: name:%s irq:%d prio=%d\n",
 	    ctrlr->name, irq, prio);
 
 	if ( regs->pending & (1 << irq) )
@@ -78,7 +78,7 @@ tst_disable_irq(irq_ctrlr *ctrlr, irq_no irq){
 	regs->mask |= (1 << irq);
 }
 
-static void 
+static void
 tst_get_priority(irq_ctrlr *ctrlr, irq_prio *prio){
 	tst_irqctrlr_regs *regs;
 
@@ -134,16 +134,16 @@ tst_finalize(irq_ctrlr *ctrlr){
 
 	return ;
 }
-static int 
+static int
 tst_irq_handler(irq_no irq, struct _trap_context *ctx, void *private){
 	tst_irqctrlr_regs *regs;
 
 	kprintf("handler: irq:%d\n", irq);
 
 	regs = (tst_irqctrlr_regs *)private;
-	kprintf("handler: irq: %d regs->pending:0x%lx regs-mask:0x%lx regs-prio:%d\n", 
+	kprintf("handler: irq: %d regs->pending:0x%lx regs-mask:0x%lx regs-prio:%d\n",
 	    irq, regs->pending, regs->mask, regs->prio);
-	
+
 	return IRQ_HANDLED;
 }
 static irq_ctrlr tst_ctrlr={
@@ -172,13 +172,13 @@ irqctrlr1(struct _ktest_stats *sp, void __unused *arg){
 
 	regs->pending = 0;
 	regs->mask = 0;
-	
+
 	rc = irq_register_ctrlr(&tst_ctrlr);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	rc = irq_register_handler(1, IRQ_ATTR_NESTABLE, 7, tst_irq_handler, regs);
 	if ( rc == 0 )
 		ktest_pass( sp );

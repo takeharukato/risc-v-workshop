@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_VFS_IF_H)
-#define  _KERN_VFS_IF_H 
+#define  _KERN_VFS_IF_H
 
 #include <fs/vfs/vfs-types.h>
 #include <fs/vfs/vfs-consts.h>

@@ -59,7 +59,7 @@ spinlock1(ktest_stats *statp, void __unused *arg){
 		ktest_pass(statp);
 	else
 		ktest_fail(statp);
-	
+
 	spinlock_raw_unlock_restore_intr(&lock, &iflags);
 	if ( !spinlock_locked_by_self(&lock) )
 		ktest_pass(statp);

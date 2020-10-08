@@ -40,7 +40,7 @@
 #define MINIX_TOOLS_FIFO_MODE        (0010000)  /**< FIFOのi_mode */
 #define MINIX_TOOLS_IFMT_MODE        (0170000)  /**< ファイル種別のi_modeマスク */
 #define MINIX_TOOLS_ACS_MODE         (0000777)  /**< アクセス権   */
-/**                                  
+/**
    ファイルシステムイメージ情報
  */
 typedef struct _fs_image{
@@ -55,12 +55,12 @@ typedef struct _fs_image{
 	minix_ino             cwd_inum;  /**< カレントワーキングディレクトリI-node番号  */
 	struct _minix_inode        cwd;  /**< カレントワーキングディレクトリI-node      */
 }fs_image;
-int fsimg_create(char *filename, int _version, int _nr_inodes, size_t _imgsiz, 
+int fsimg_create(char *filename, int _version, int _nr_inodes, size_t _imgsiz,
     fs_image **_handlep);
 int fsimg_pagecache_init(char *_filename, fs_image **_handlep);
 int create_superblock(struct _fs_image *img, int _version, int _nr_inodes);
 int path_get_basename(char *_path, char **_dir, char **_name);
-int path_to_minix_inode(struct _minix_super_block *_sbp, struct _minix_inode *_root, 
+int path_to_minix_inode(struct _minix_super_block *_sbp, struct _minix_inode *_root,
     char *_path, struct _minix_inode *_outv);
 int create_regular_file(struct _fs_image *_handle, const char *_name, uint32_t _mode,
     minix_ino *_new_inum);

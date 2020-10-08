@@ -28,7 +28,7 @@ vm_copy_kmap_page(void *dest, void *src){
 	dp = (uint64_t *)PAGE_TRUNCATE(dest);
 
 	/* 8バイト単位でページをコピーする  */
-	for(i = 0; PAGE_SIZE/sizeof(uint64_t) > i; ++i) 
+	for(i = 0; PAGE_SIZE/sizeof(uint64_t) > i; ++i)
 		dp[i] = sp[i];
 }
 
@@ -67,14 +67,14 @@ vm_strlen(vm_pgtbl pgt, char const *s){
 		rc = hal_pgtbl_extract(pgt, (vm_vaddr)sp, &paddr, &prot, &flags, &pgsize);
 		if ( rc != 0 )
 			goto unlock_out;
-	
+
 		/* 参照先ページのカーネル仮想アドレスを求める */
 		rc = pfdb_paddr_to_kvaddr((void *)paddr, &kpage);
 		kassert( rc == 0 );
 
 		/* ページ内オフセットを求める */
 		off = (uintptr_t)sp % pgsize;
-		
+
 		/* 参照可能量を求める */
 		remain = pgsize - off;
 
@@ -85,7 +85,7 @@ vm_strlen(vm_pgtbl pgt, char const *s){
 
 			if ( *s_kmem++ == '\0' )
 				goto success; /* ヌル文字が見つかった */
-			
+
 			++cur_len; /* 文字列長をインクリメント */
 		}
 	}
@@ -163,9 +163,9 @@ vm_memmove(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t le
 		kassert( rc == 0 );
 
 		/* コピー元ページの物理アドレスを求める */
-		rc = hal_pgtbl_extract(src_pgt, (vm_vaddr)sp, &paddr, &prot, &flags, 
+		rc = hal_pgtbl_extract(src_pgt, (vm_vaddr)sp, &paddr, &prot, &flags,
 		    &src_pgsize);
-		if ( rc != 0 ) 
+		if ( rc != 0 )
 			goto unlock_out;
 
 		/* コピー元ページのカーネル仮想アドレスを求める */
@@ -176,7 +176,7 @@ vm_memmove(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t le
 		 */
 		/* コピー先のページ内オフセットを求める */
 		dest_off = (uintptr_t)dp % dest_pgsize;
-		
+
 		/* コピー先の転送可能量を求める */
 		dest_remain = dest_pgsize - dest_off;
 
@@ -185,10 +185,10 @@ vm_memmove(vm_pgtbl dest_pgt, void *dest, vm_pgtbl src_pgt, void *src, size_t le
 
 		/* コピー元のページ内オフセットを求める */
 		src_off = (uintptr_t)sp % src_pgsize;
-		
+
 		/* コピー元の転送可能量を求める */
 		src_remain = src_pgsize - src_off;
-		
+
 		/* カーネルメモリ中でのコピー先アドレスを求める */
 		src_kmem = src_kpage + src_off;
 

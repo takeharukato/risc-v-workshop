@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_STACK_H)
-#define  _HAL_STACK_H 
+#define  _HAL_STACK_H
 
 #define HAL_STACK_ALIGN_SIZE (16)   /*< スタックアラインメント  */
 

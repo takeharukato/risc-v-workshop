@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_PAGE_PFDB_H)
-#define  _PAGE_PFDB_H 
+#define  _PAGE_PFDB_H
 
 #include <klib/freestanding.h>
 #include <klib/queue.h>
@@ -63,7 +63,7 @@ typedef struct _page_buddy{
        マップ先の開始アドレスkvaddrと領域長lengthを指定して, pfdb_addを呼び出すことで
        領域を追加する
 
-          kvaddr +----------------------+<-ページフレーム配列[0], 
+          kvaddr +----------------------+<-ページフレーム配列[0],
                  |                      |   min_pfnに対応するページの先頭
                  |                      |
                  |  利用可能ページ      |
@@ -81,7 +81,7 @@ typedef struct _page_buddy{
                  | (buddy含む)          |
 kvaddr + length  +----------------------+<-ページフレーム配列[max_pfn-min_pfn],
                                            max_pfnに対応するページの末尾
-   
+
  */
 
 /** ページフレーム管理情報(バディページプール含む)
@@ -107,7 +107,7 @@ typedef struct _page_frame_db{
 }page_frame_db;
 
 /** ページフレームDB初期化子
-   @param[in] _pfque ページフレームDBのポインタ 
+   @param[in] _pfque ページフレームDBのポインタ
  */
 #define __PFDB_INITIALIZER(_pfque) {		                            \
 	.lock = __SPINLOCK_INITIALIZER,		                            \
@@ -120,7 +120,7 @@ int pfdb_remove(pfdb_ent *_ent);
 
 void pfdb_free(void);
 
-int pfdb_buddy_dequeue(page_order _order, page_usage _usage, pgalloc_flags _alloc_flags, 
+int pfdb_buddy_dequeue(page_order _order, page_usage _usage, pgalloc_flags _alloc_flags,
     obj_cnt_type *_pfnp);
 void pfdb_mark_phys_range_reserved(vm_paddr _start, vm_paddr _end);
 void pfdb_unmark_phys_range_reserved(vm_paddr _start, vm_paddr _end);

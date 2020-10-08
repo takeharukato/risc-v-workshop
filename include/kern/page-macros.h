@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_PAGE_MACROS_H)
-#define  _PAGE_MACROS_H 
+#define  _PAGE_MACROS_H
 
 /* アセンブラ部からインクルードされるthr/preempt.hなどが
  * PAGE_SIZEの参照のため本ヘッダをインクルードしているので

@@ -33,7 +33,7 @@ safe_open_common(int link_is_ok, const char *pathname, int flags){
 		rc = -errno;
 		goto error_out;
 	}
- 
+
 	if ( (!S_ISREG(lstat_result.st_mode)) &&
 	     ( !(link_is_ok) || !S_ISLNK(lstat_result.st_mode) ) ) {
 
@@ -41,7 +41,7 @@ safe_open_common(int link_is_ok, const char *pathname, int flags){
 		rc = -errno;
 		goto error_out;
 	}
- 
+
 	fd = open(pathname, O_RDWR|flags);
 
 	if ( fd < 0 ) {
@@ -70,7 +70,7 @@ safe_open_common(int link_is_ok, const char *pathname, int flags){
 	return fd;
 
 close_fd_out:
-	    close(fd);	    
+	    close(fd);
 error_out:
 	    return rc;
 }
@@ -97,9 +97,9 @@ str2int_common(const char *str, long long lim, int base, int *rcp) {
 	char *endptr;
 	long long val;
 	int old_error;
-	
+
 	old_error = errno;
-	errno = 0; 
+	errno = 0;
 	val = strtoll(str, &endptr, base);
 
 	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
@@ -116,7 +116,7 @@ str2int_common(const char *str, long long lim, int base, int *rcp) {
 
 	errno = old_error;
 
-	
+
 	return (long long)val;
 
 error_out:
@@ -137,7 +137,7 @@ str2uint(const char *str, int *rcp) {
 	return (int)str2int_common(str, INT_MAX, 10, rcp);
 }
 
-int32_t 
+int32_t
 str2int32(const char *str, int *rcp) {
 
 	if (sizeof(long) == 4)

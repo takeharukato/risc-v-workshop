@@ -32,20 +32,20 @@ init_asidmap(void){
    @param[out] idp    アドレス空間ID返却域
    @retval     0      正常終了
    @retval    -ENOSPC IDに空きがない
- 
+
   */
 static int
 alloc_asid(hal_asid *idp){
 	tid         newid;
 
 	newid = bitops_ffc(&g_asidmap.idmap);  /* 空きIDを取得 */
-	if ( newid == 0 ) 
+	if ( newid == 0 )
 		return  -ENOSPC;  /* 空IDがない */
 
 	--newid;  /* アドレス空間IDに変換 */
 
 	/* 割当てたIDに対応するビットマップ中のビットを使用中にセット */
-	bitops_set(newid, &g_asidmap.idmap); 
+	bitops_set(newid, &g_asidmap.idmap);
 
 	if ( idp != NULL )
 		*idp = newid;  /* アドレス空間IDを返却 */
@@ -83,11 +83,11 @@ pgtbl_alloc_pgtbl_page(vm_pgtbl pgt, hal_pte **tblp, vm_paddr *paddrp){
 	 */
 	rc = pgif_get_free_page(&tbl, KMALLOC_NORMAL, PAGE_USAGE_PGTBL);
 	if ( rc != 0 ) {
-		
+
 		rc = -ENOMEM;   /* メモリ不足  */
 		goto error_out;
 	}
-	
+
 	/* ページテーブルの物理アドレスを算出 */
 	rc = hal_kvaddr_to_phys(tbl, &paddr);
 	kassert( rc == 0 );
@@ -119,7 +119,7 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp, hal_asid asid){
 	/*  ページテーブル情報のキャッシュからメモリを割り当てる */
 	rc = slab_kmem_cache_alloc(&pgtbl_cache, KMALLOC_NORMAL, (void **)&pgt);
 	if ( rc != 0 ) {
-	
+
 		kprintf(KERN_PNC "Can not allocate kernel page table cache.\n");
 		kprintf("Machine Dependent (MD) part might have not called "
 		    "vm_pgtbl_cache_init().\n");
@@ -138,7 +138,7 @@ pgtbl_alloc_pgtbl(vm_pgtbl *pgtp, hal_asid asid){
 	 */
 	rc = pgtbl_alloc_pgtbl_page(pgt, &pgt->pgtbl_base, &pgt->tblbase_paddr);
 	if ( rc != 0 ) {
-	
+
 		kprintf(KERN_PNC "Can not allocate kernel page table base:rc = %d\n", rc);
 		kassert_no_reach();
 	}
@@ -216,7 +216,7 @@ pgtbl_free_user_pgtbl(vm_pgtbl pgt){
 	kassert( rc == 0 );  /* オブジェクト破棄にはならないはず */
 
 	/* ベースページテーブル以外のテーブルが解放済みであることを確認する */
-	kassert(statcnt_read(&pgt->nr_pages) == 1);  
+	kassert(statcnt_read(&pgt->nr_pages) == 1);
 
 	release_asid(pgt->asid);  /* アドレス空間ID解放 */
 

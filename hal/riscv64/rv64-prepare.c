@@ -86,25 +86,25 @@ rv64_prepare(reg_type hartid){
 
 		++prepare_inf.boot_cpus;  /* 起動CPU数を更新する  */
 		prepare_inf.bsp_hart = hartid;  /* BSPを記録する  */
-		
+
 		spinlock_lock(&prepare_inf.console_lock);
 		kprintf("Boot on supervisor mode on %d hart(BSP)\n", hartid);
 		spinlock_unlock(&prepare_inf.console_lock);
 
 		/* 物理メモリ領域を登録する */
-		kprintf("Add memory region [%p, %p) %ld MiB\n", 
+		kprintf("Add memory region [%p, %p) %ld MiB\n",
 		    HAL_KERN_PHY_BASE, HAL_KERN_PHY_BASE + MIB_TO_BYTE(KC_PHYSMEM_MB),
 			KC_PHYSMEM_MB);
 		pfdb_add(HAL_KERN_PHY_BASE, MIB_TO_BYTE(KC_PHYSMEM_MB), &pfdb);
 
 		/* カーネルメモリを予約する */
-		kprintf("Reserve kernel memory region [%p, %p)\n", 
+		kprintf("Reserve kernel memory region [%p, %p)\n",
 		    kernel_start_phy, kheap_end_phy);
 		pfdb_mark_phys_range_reserved(kernel_start_phy, kheap_end_phy);
 
 		/* Supervisor Binary Interfaceの領域を予約する  */
 #if defined(CONFIG_HAL_USE_SBI)
-		kprintf("Reserve SBI memory region [%p, %p)\n", 
+		kprintf("Reserve SBI memory region [%p, %p)\n",
 		    HAL_SBI_PHY_BASE, HAL_SBI_PHY_END);
 		pfdb_mark_phys_range_reserved(HAL_SBI_PHY_BASE, HAL_SBI_PHY_END);
 #endif  /*  CONFIG_HAL_USE_SBI  */
@@ -130,12 +130,12 @@ rv64_prepare(reg_type hartid){
 
 		/* 初期化処理ロックを解除する */
 		spinlock_unlock_restore_intr(&prepare_inf.lock, &iflags);
-		
+
 		kern_init();
 	} else {
 
 		++prepare_inf.boot_cpus;  /* 起動CPU数を更新する  */
-		
+
 		spinlock_lock(&prepare_inf.console_lock);
 		kprintf("Boot on supervisor mode on %d hart(AP)\n", hartid);
 		spinlock_unlock(&prepare_inf.console_lock);

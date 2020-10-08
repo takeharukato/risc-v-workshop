@@ -39,7 +39,7 @@ static page_cache  g_pc;
 
 int
 pagecache_pagesize(dev_id __unused dev, size_t *pgsizp){
-	
+
 	if ( pgsizp != NULL )
 		*pgsizp = PAGE_SIZE;
 
@@ -134,7 +134,7 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 	int rc;
 
 	rc = map_fsimage(filename);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 
 	rc = minix_read_super(MKFS_MINIX_FS_DEVID, &g_fsimg.msb);
@@ -147,7 +147,7 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 	/*
 	 * ルートI-node, カレントワーキングディレクトリの初期化
 	 */
-	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO, 
+	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO,
 	    MINIX_RW_READING, &g_fsimg.root);
 	if ( rc != 0 ) {
 
@@ -155,7 +155,7 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 		exit(1);
 	}
 
-	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO, 
+	rc = minix_rw_disk_inode(&g_fsimg.msb, MKFS_MINIXFS_ROOT_INO,
 	    MINIX_RW_READING, &g_fsimg.cwd);
 
 	if ( rc != 0 ) {
@@ -168,7 +168,7 @@ fsimg_pagecache_init(char *filename, fs_image **handlep){
 	g_fsimg.cwd_inum =  MKFS_MINIXFS_ROOT_INO;
 	g_fsimg.uid = MINIX_TOOLS_ROOT_UID;
 	g_fsimg.gid = MINIX_TOOLS_ROOT_GID;
-	
+
 	*handlep = &g_fsimg;
 
 	return 0;
@@ -190,7 +190,7 @@ fsimg_create(char *filename, int version, int nr_inodes, size_t imgsiz, fs_image
 	rc = ftruncate(fd, imgsiz);
 	if ( rc != 0 ){
 
-		fprintf(stderr, "Can not setup image-file:%s len=%lu", filename, 
+		fprintf(stderr, "Can not setup image-file:%s len=%lu", filename,
 		    (unsigned long)imgsiz);
 		exit(1);
 	}
@@ -198,11 +198,11 @@ fsimg_create(char *filename, int version, int nr_inodes, size_t imgsiz, fs_image
 	close(fd);
 
 	rc = map_fsimage(filename);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 
 	rc = create_superblock(&g_fsimg, version, nr_inodes);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 
 	return 0;

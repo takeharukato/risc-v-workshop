@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_STATCNT_H)
-#define  _KLIB_STATCNT_H 
+#define  _KLIB_STATCNT_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

@@ -20,7 +20,7 @@ static cpu_map  cpumap; /* CPUマップ */
 static int _cpu_info_cmp(struct _cpu_info *_key, struct _cpu_info *_ent);
 RB_GENERATE_STATIC(_cpu_map_tree, _cpu_info, ent, _cpu_info_cmp);
 
-/** 
+/**
     CPU情報エントリ比較関数
     @param[in] key 比較対象エントリ
     @param[in] ent CPU情報の各エントリ
@@ -28,16 +28,16 @@ RB_GENERATE_STATIC(_cpu_map_tree, _cpu_info, ent, _cpu_info_cmp);
     @retval 負  keyが物理CPUIDがentより大きい
     @retval 0   keyとentの物理CPUIDが等しい
  */
-static int 
+static int
 _cpu_info_cmp(struct _cpu_info *key, struct _cpu_info *ent){
-	
+
 	if ( key->phys_id < ent->phys_id )
 		return 1;
 
 	if ( key->phys_id > ent->phys_id )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -91,7 +91,7 @@ krn_cpuinfo_update(void){
 	cinf = krn_cpuinfo_get(cpu);   /* 自CPU情報を参照 */
 	ti = ti_get_current_thread_info(); /* スレッド情報参照 */
 
-	kassert( ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */	
+	kassert( ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */
 	cinf->cur_ti = ti;          /* スレッド情報を設定                       */
 }
 
@@ -179,9 +179,9 @@ krn_current_cpu_get(void){
 	spinlock_lock_disable_intr(&cmap->lock, &iflags);
 
 	key.phys_id = hal_get_physical_cpunum();  /* 物理CPUIDを取得 */
-	cinf = RB_FIND(_cpu_map_tree, &cmap->head, &key); 
+	cinf = RB_FIND(_cpu_map_tree, &cmap->head, &key);
 	if ( cinf != NULL ) {
-		
+
 		log_id = cinf->log_id; /* 論理CPUIDを返却 */
 		goto found;
 	}
@@ -292,13 +292,13 @@ krn_cpuinfo_cpu_register(cpu_id phys_id, cpu_id *log_idp){
 unlock_cmap_out:
 	/* CPUマップのロックを解放 */
 	spinlock_unlock_restore_intr(&cmap->lock, &iflags);
-	
+
 	return -ENOENT;
 }
 /**
    CPU情報の初期化
  */
-void 
+void
 krn_cpuinfo_init(void){
 	int i;
 	cpu_map  *cmap;

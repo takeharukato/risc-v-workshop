@@ -29,7 +29,7 @@ memmove(void *dest, const void *src, size_t count) {
 
 	if (d == s)
 		return dest;
-	
+
 	if ( ( s < d ) && ( d < ( s + count ) ) ) {
 
 		s += count;
@@ -37,7 +37,7 @@ memmove(void *dest, const void *src, size_t count) {
 		while( len-- > 0 )
 			*--d = *--s;
 	} else {
-		
+
 		while( len-- > 0 )
 			*d++ = *s++;
 	}

@@ -50,7 +50,7 @@
 /**
    トラップコンテキスト
  */
-typedef struct _trap_context{	
+typedef struct _trap_context{
 	reg_type rax;
 	reg_type rbx;
 	reg_type rcx;

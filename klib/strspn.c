@@ -66,7 +66,7 @@ strspn(const char *s, const char *accept){
 		bit = BIT(*accept);
 		tbl[idx] |= bit;
 	}
-	
+
 	/*
 	 * 文字検索テーブル内にある文字である限り先へ進める
 	 * 上記でNULL文字を文字検索テーブル内に含めているので

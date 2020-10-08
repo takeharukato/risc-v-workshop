@@ -46,7 +46,7 @@
 	sd t3,  RV64_TRAP_CONTEXT_T3(_ctx);        \
 	sd t4,  RV64_TRAP_CONTEXT_T4(_ctx);        \
 	sd t5,  RV64_TRAP_CONTEXT_T5(_ctx);        \
-	sd t6,  RV64_TRAP_CONTEXT_T6(_ctx);	   
+	sd t6,  RV64_TRAP_CONTEXT_T6(_ctx);
 
 /**
    スーパバイザモード割込みコンテスト退避処理
@@ -57,7 +57,7 @@
 	csrr s1, sepc;					\
 	sd   s1, RV64_TRAP_CONTEXT_EPC(_ctx);		\
         csrr s1, sstatus;				\
-        sd   s1, RV64_TRAP_CONTEXT_ESTATUS(_ctx);  
+        sd   s1, RV64_TRAP_CONTEXT_ESTATUS(_ctx);
 
 /**
    割込みコンテスト復元共通処理
@@ -105,7 +105,7 @@
    RISC-V ELF psABI specification
    https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md
  */
-typedef struct _trap_context{	
+typedef struct _trap_context{
 	reg_type       ra;  /*  x1 */
 	reg_type       sp;  /*  x2 */
 	reg_type       gp;  /*  x3 */

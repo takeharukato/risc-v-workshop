@@ -23,11 +23,11 @@ memcpy(void *dest, const void *src, size_t count){
 	char *d;
 	char *s;
 	size_t len;
-	
+
 	d = (char *)dest;
 	s = (char *)src;
-	for(len = count;len > 0;--len, ++s, ++d) 
+	for(len = count;len > 0;--len, ++s, ++d)
 		*d = *s;
-	
+
 	return dest;
 }

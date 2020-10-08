@@ -25,7 +25,7 @@ static proc   *kern_proc;    /**< カーネルプロセスのプロセス管理�
 static int _procdb_cmp(struct _proc *_key, struct _proc *_ent);
 RB_GENERATE_STATIC(_procdb_tree, _proc, ent, _procdb_cmp);
 
-/** 
+/**
     プロセス管理データベースエントリ比較関数
     @param[in] key 比較対象領域1
     @param[in] ent データベース内の各エントリ
@@ -33,16 +33,16 @@ RB_GENERATE_STATIC(_procdb_tree, _proc, ent, _procdb_cmp);
     @retval 負  keyのpidが entのpidより後にある
     @retval 0   keyのpidが entのpidに等しい
  */
-static int 
+static int
 _procdb_cmp(struct _proc *key, struct _proc *ent){
-	
+
 	if ( key->id < ent->id )
 		return 1;
 
 	if ( key->id > ent->id )
 		return -1;
 
-	return 0;	
+	return 0;
 }
 
 /**
@@ -69,7 +69,7 @@ allocate_process_common(proc **procp){
 
 	spinlock_init(&new_proc->lock); /* プロセス管理情報のロックを初期化  */
 	/* 参照カウンタを初期化(マスタースレッドからの参照分) */
-	refcnt_init(&new_proc->refs); 
+	refcnt_init(&new_proc->refs);
 	queue_init(&new_proc->thrque);  /* スレッドキューの初期化      */
 	new_proc->id = PROC_KERN_PID;   /* PIDをカーネル空間IDに設定   */
 
@@ -143,7 +143,7 @@ release_process_segment(proc *p, vm_vaddr start, vm_vaddr end, vm_flags flags){
 		rc = hal_pgtbl_extract(p->pgt, rm_vaddr, &rm_paddr, &rm_prot, &rm_flags,
 		    &rm_pgsize);
 		if ( rc == 0 ) { /* メモリがマップされている場合はマッピングを解放する */
-			
+
 			rc = vm_unmap(p->pgt, rm_vaddr, flags, rm_pgsize);
 			kassert( rc == 0 );
 		}
@@ -173,11 +173,11 @@ free_user_process(proc *p){
 		/* 領域を開放 */
 		release_process_segment(p, seg->start, seg->end, seg->flags);
 	}
-	
+
 	pgtbl_free_user_pgtbl(p->pgt);         /* ページテーブルを解放 */
 	p->id = HAL_PGTBL_KERNEL_ASID;  /* カーネル空間IDに設定 */
 
-	slab_kmem_cache_free(p); /* プロセス情報を解放する */	
+	slab_kmem_cache_free(p); /* プロセス情報を解放する */
 
 	return ;
 }
@@ -194,7 +194,7 @@ free_user_process(proc *p){
    @retval    -EFAULT      メモリアクセス不可
  */
 static int
-calc_argument_areasize(proc *src, const char *argv[], const char *environment[], 
+calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
     int *argv_nrp, int *env_nrp, size_t *sizp){
 	int           rc;
 	int            i;
@@ -235,7 +235,7 @@ calc_argument_areasize(proc *src, const char *argv[], const char *environment[],
 	 * アクセスできるようにサイズを調整する
 	 */
 	array_len = roundup_align(
-		sizeof(reg_type) + sizeof(char *) * nr_args + sizeof(char *) * nr_envs, 
+		sizeof(reg_type) + sizeof(char *) * nr_args + sizeof(char *) * nr_envs,
 		HAL_STACK_ALIGN_SIZE);
 	argv_len = roundup_align(argv_len, HAL_STACK_ALIGN_SIZE);
 	env_len = roundup_align(env_len, HAL_STACK_ALIGN_SIZE);
@@ -268,7 +268,7 @@ proc_find_by_pid(pid target){
 	proc          *p;
 	proc         key;
 	intrflags iflags;
-	
+
 	key.id = target; /* キーとなるpidを設定 */
 
 	/* プロセスDBのロックを獲得 */
@@ -299,7 +299,7 @@ proc_find_thread(pid target){
 	thread      *thr;
 	proc         key;
 	intrflags iflags;
-	
+
 	key.id = target; /* キーとなるpidを設定 */
 
 	/* プロセスDBのロックを獲得 */
@@ -352,7 +352,7 @@ proc_add_thread(proc *p, thread *thr){
 	spinlock_lock_disable_intr(&p->lock, &iflags);
 	is_first = queue_is_empty(&p->thrque);
 
-	queue_add(&p->thrque, &thr->proc_link);  /* スレッドキューに追加      */	
+	queue_add(&p->thrque, &thr->proc_link);  /* スレッドキューに追加      */
 	thr->p = p;  /*  プロセスへのポインタを更新 */
 
 	if ( is_first ) { /* 最初のスレッドだった場合 */
@@ -392,7 +392,7 @@ proc_del_thread(proc *p, thread *thr){
 	/* プロセス管理情報のロックを獲得 */
 	spinlock_lock_disable_intr(&p->lock, &iflags);
 
-	queue_del(&p->thrque, &thr->proc_link);  /* スレッドキューから削除  */	
+	queue_del(&p->thrque, &thr->proc_link);  /* スレッドキューから削除  */
 
 	/* プロセス管理情報のロックを解放 */
 	spinlock_unlock_restore_intr(&p->lock, &iflags);
@@ -440,7 +440,7 @@ proc_grow_stack(proc *dest, vm_vaddr newsp){
 	pg_start = truncate_align(newsp, PAGE_SIZE);    /* 割り当て対象開始アドレス */
 	/* 最終割り当て対象ページ開始アドレス */
 	pg_end = truncate_align(dest->segments[PROC_STACK_SEG].start - 1, PAGE_SIZE);
-	
+
 	for( pg_cur = pg_end; pg_cur >= pg_start; ) {
 
 		rc = hal_pgtbl_extract(dest->pgt, pg_cur, &map_paddr, &map_prot, &map_flags,
@@ -453,13 +453,13 @@ proc_grow_stack(proc *dest, vm_vaddr newsp){
 		}
 
 		/* スタックページを割り当てる */
-		rc = vm_map_userpage(dest->pgt, pg_cur, 
+		rc = vm_map_userpage(dest->pgt, pg_cur,
 		    dest->segments[PROC_STACK_SEG].prot, VM_FLAGS_USER, PAGE_SIZE, PAGE_SIZE);
 		if ( rc != 0 )
 			goto error_out;
 
 		/* 割当て済み先頭ページを更新 */
-		dest->segments[PROC_STACK_SEG].start = pg_cur; 
+		dest->segments[PROC_STACK_SEG].start = pg_cur;
 		pg_cur -= PAGE_SIZE;  /* 次のページの割り当て */
 	}
 
@@ -484,7 +484,7 @@ error_out:
    @retval    -EFAULT      メモリアクセス不可
  */
 int
-proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *environment[], 
+proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *environment[],
     proc *dest, vm_vaddr *cursp, vm_vaddr *argcp, vm_vaddr *argvp, vm_vaddr *envp){
 	int              rc;
 	int               i;
@@ -514,10 +514,10 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 		goto error_out;  /* アクセス不能 */
 
 	/* 引数領域のスタックポインタの先頭位置  */
-	sp = truncate_align(sp - len, HAL_STACK_ALIGN_SIZE); 
+	sp = truncate_align(sp - len, HAL_STACK_ALIGN_SIZE);
 
 	/* スタック伸張 */
-	rc = proc_grow_stack(dest, sp);  
+	rc = proc_grow_stack(dest, sp);
 	if ( rc != 0 )
 		goto error_out;  /* 伸張不能 */
 
@@ -525,7 +525,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	 */
 	cur_argcp = sp;  /* argc保存領域 */
 	/* argv[]配列の先頭アドレス */
-	argv_ptr = (char **)(cur_argcp + sizeof(char *));  
+	argv_ptr = (char **)(cur_argcp + sizeof(char *));
 	/* environment[]配列の先頭アドレス */
 	env_ptr = (char **)((uintptr_t)argv_ptr + sizeof(char *) * argv_nr);
 
@@ -534,7 +534,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	 */
 
 	/* 引数文字列の先頭アドレス */
-	cur_argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr, 
+	cur_argvp = roundup_align((uintptr_t)env_ptr + sizeof(char *) * env_nr,
 			      HAL_STACK_ALIGN_SIZE);
 	for(i = 0; argv[i] != NULL; ++i) {
 
@@ -545,7 +545,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		res = vm_memmove( dest->pgt, (void *)cur_argvp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)cur_argvp, src->pgt,
 		    (void *)argv[i], len + 1);
 		if ( res != 0 ) {
 
@@ -554,7 +554,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 		}
 
 		/* 転送先のargv配列に記録する */
-		res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
+		res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt,
 		    (void *)&cur_argvp, sizeof(char *));
 		if ( res != 0 ) {
 
@@ -565,10 +565,10 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	}
 
 	/* 転送先のargv配列にNULLを記録 */
-	res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt, 
+	res = vm_memmove( dest->pgt, (void *)&argv_ptr[i], dest->pgt,
 	    (void *)&term[0], sizeof(char *));
 	if ( res != 0 ) {
-		
+
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
 	}
@@ -588,7 +588,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 			goto error_out;
 		}
 		/* NULL終端を含めてコピーする */
-		res = vm_memmove( dest->pgt, (void *)cur_envp, src->pgt, 
+		res = vm_memmove( dest->pgt, (void *)cur_envp, src->pgt,
 		    (void *)environment[i], len + 1);
 		if ( res != 0 ) {
 
@@ -597,7 +597,7 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 		}
 
 		/* 転送先のenvironment配列に記録 */
-		res = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt, 
+		res = vm_memmove( dest->pgt, (void *)&env_ptr[i], kern_proc->pgt,
 		    (void *)&cur_envp, sizeof(char *));
 		if ( res != 0 ) {
 
@@ -609,10 +609,10 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	}
 
 	/* 転送先のenvironment配列にNULLを記録 */
-	res = vm_memmove( dest->pgt, (void *)&env_ptr[i], dest->pgt, 
+	res = vm_memmove( dest->pgt, (void *)&env_ptr[i], dest->pgt,
 	    (void *)&term[0], sizeof(char *));
 	if ( res != 0 ) {
-		
+
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
 	}
@@ -620,14 +620,14 @@ proc_argument_copy(proc *src, vm_prot prot, const char *argv[], const char *envi
 	/*
 	 * argcを設定
 	 */
-	res = vm_memmove( dest->pgt, (void *)cur_argcp, kern_proc->pgt, 
+	res = vm_memmove( dest->pgt, (void *)cur_argcp, kern_proc->pgt,
 	    (void *)&argc, sizeof(reg_type)); /* argcを設定       */
 	if ( res != 0 ) {
 
 		rc = -EFAULT;  /* アクセスできなかった */
 		goto error_out;
 	}
-	
+
 	*cursp = cur_argcp;     /* スタックを更新             */
 	*argcp = cur_argcp;     /* 引数の個数を返却           */
 	*argvp = (vm_vaddr)&argv_ptr[0];  /* 引数配列アドレスを返却     */
@@ -678,8 +678,8 @@ proc_user_allocate(proc **procp){
 	/* ページテーブルを割り当てる
 	 */
 	rc = pgtbl_alloc_user_pgtbl(&new_proc->pgt);
-	if ( rc != 0 ) 
-		goto free_proc_out;  
+	if ( rc != 0 )
+		goto free_proc_out;
 
 	new_proc->id = new_proc->pgt->asid;  /* アドレス空間IDをプロセスIDに設定 */
 
@@ -698,7 +698,7 @@ proc_user_allocate(proc **procp){
 	kassert( res == NULL );
 
 	*procp = new_proc;  /* プロセス管理情報を返却 */
-	
+
 	return 0;
 
 free_proc_out:
@@ -718,7 +718,7 @@ bool
 proc_ref_inc(proc *p){
 
 	/* プロセス終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
-	 * でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	 * でなければ, 利用カウンタを加算し, 加算前の値を返す
 	 */
 	return ( refcnt_inc_if_valid(&p->refs) != 0 );  /* 以前の値が0の場合加算できない */
 }
@@ -743,8 +743,8 @@ proc_ref_dec(proc *p){
 
 		/* スレッドキューが空であることを確認する
 		 */
-		spinlock_lock(&p->lock);	
-		kassert( queue_is_empty(&p->thrque) ); 
+		spinlock_lock(&p->lock);
+		kassert( queue_is_empty(&p->thrque) );
 		spinlock_unlock(&p->lock);
 
 		/* プロセスをツリーから削除 */

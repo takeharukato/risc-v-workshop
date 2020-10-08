@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_MISC_H)
-#define  _KLIB_MISC_H 
+#define  _KLIB_MISC_H
 
 #include <hal/hal-misc.h>
 

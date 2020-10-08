@@ -24,9 +24,9 @@
 /**
    第1引数で指定されたマクロ名で第2引数で指定された値を定義する
    @param[in] _mac マクロ名
-   @param[in] _val 値(例えば, sizeof(データ構造型) などC言語固有の値算出式) 
+   @param[in] _val 値(例えば, sizeof(データ構造型) などC言語固有の値算出式)
    @note 本マクロ自身は, 指定されたシンボルのデータサイズを表すアスキー文字列
-         定義アセンブラ文を出力する。具体的には, 
+         定義アセンブラ文を出力する。具体的には,
 	 .ascii "@ASM_OFFSET@シンボル名 アドレス値 アドレス値算出式"
          を出力する。上記出力を${top}/tools/asmoffset/gen-asm-offset.pyが
 	 ${top}/include/klib/asm-offset.h中のマクロ定義に変換する。
@@ -42,7 +42,7 @@
    @param[in] _str 構造体タグ名
    @param[in] _mem 構造体_str中のメンバ名
    @note  本マクロ自身は, 構造体メンバオフセットアドレスを表すアスキー文字列定義
-   アセンブラ文を出力する。具体的には, 
+   アセンブラ文を出力する。具体的には,
    .ascii "@ASM_OFFSET@シンボル名 メンバオフセットアドレス アドレス値算出式"
    を出力する。上記出力を${top}/tools/asmoffset/gen-asm-offset.pyが
    ${top}/include/klib/asm-offset.h中のマクロ定義に変換する。

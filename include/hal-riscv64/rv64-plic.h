@@ -22,7 +22,7 @@
 /**< 割込みコントローラレジスタ長(単位:バイト) */
 #define PLIC_REGSIZE         (ULONGLONG_C(4))
 /**< 優先度設定レジスタオフセット(単位:バイト) */
-#define PLIC_PRIO_OFFSET     (ULONGLONG_C(0x0)) 
+#define PLIC_PRIO_OFFSET     (ULONGLONG_C(0x0))
  /**< 保留割込みレジスタオフセット(単位:バイト) */
 #define PLIC_PEND_OFFSET     (ULONGLONG_C(0x1000))
 /**< マシンモード割込み許可レジスタオフセット(単位:バイト) */

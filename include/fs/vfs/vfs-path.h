@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_PATH_H)
-#define  _FS_VFS_VFS_PATH_H 
+#define  _FS_VFS_VFS_PATH_H
 
 #if !defined(ASM_FILE)
 

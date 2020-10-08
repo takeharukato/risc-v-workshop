@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_THR_PREEMPT_H)
-#define  _KERN_THR_PREEMPT_H 
+#define  _KERN_THR_PREEMPT_H
 
 #include <kern/kern-consts.h>
 #include <kern/page-macros.h>

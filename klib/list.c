@@ -16,10 +16,10 @@
    リストノードを初期化する
     @param[in] node 初期化対象のリストノード
  */
-void 
+void
 list_init(list *node){
 
-	node->prev = node->next = node;	
+	node->prev = node->next = node;
 }
 
 /**
@@ -45,6 +45,6 @@ list_del(list *node) {
  */
 bool
 list_not_linked(list *node) {
-	
+
 	return ( ( node->prev == node ) && ( node->next == node ) );
 }

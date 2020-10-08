@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_RISCV64_H)
-#define  _HAL_RISCV64_H 
+#define  _HAL_RISCV64_H
 #include <klib/misc.h>
 #include <klib/regbits.h>
 /*
@@ -193,11 +193,11 @@
 #define MCAUSE_USER_SINT      \
 	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_USER_SINT_BIT) )
 #define MCAUSE_SUPER_SINT     \
-	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_SUPER_SINT_BIT) )	
+	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_SUPER_SINT_BIT) )
 #define MCAUSE_RESERVED1      \
-	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_RESERVED1_BIT) )	
+	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_RESERVED1_BIT) )
 #define MCAUSE_MACHINE_SINT   \
-	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_MACHINE_SINT_BIT) )	
+	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_MACHINE_SINT_BIT) )
 #define MCAUSE_USER_TIMER     \
 	( regops_set_bit(MCAUSE_INTR_BIT) | regops_set_bit(MCAUSE_USER_TIMER_BIT) )
 #define MCAUSE_SUPER_TIMER    \

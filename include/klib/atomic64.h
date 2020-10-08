@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_ATOMIC64_H)
-#define  _KLIB_ATOMIC64_H 
+#define  _KLIB_ATOMIC64_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

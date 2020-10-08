@@ -11,7 +11,7 @@
 #include <klib/string.h>
 
 /**
-   文字列 s1 とs2とを比較する 
+   文字列 s1 とs2とを比較する
     @param[in] s1 比較対象のメモリ領域1
     @param[in] s2 比較対象のメモリ領域2
     @retval 負の整数 s1がs2よりも小さい(s1 < s2)

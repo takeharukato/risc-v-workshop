@@ -28,7 +28,7 @@ plic_ctrlr_shudown(void){
 
 	for( irq = PLIC_IRQ_MIN; PLIC_IRQ_MAX > irq; ++irq) {
 
-		reg = PLIC_PRIO_REG(irq);  
+		reg = PLIC_PRIO_REG(irq);
 		*reg = PLIC_PRIO_DIS; /* 割込みをマスク */
 	}
 }
@@ -43,12 +43,12 @@ plic_ctrlr_shudown(void){
    @retval   -EINVAL 引数異常
  */
 static int
-plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 
+plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
     irq_prio prio){
 	cpu_id       cpu;
 	cpu_info   *cinf;
 	plic_reg_ref reg;
-	
+
 	if ( irq >= PLIC_IRQ_MAX )
 		return -EINVAL;
 	if ( ( prio > PLIC_PRIO_MAX ) ||  ( prio < PLIC_PRIO_MIN ) )
@@ -59,7 +59,7 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 	/*
 	 * 割込み線の優先度を設定
 	 */
-	reg = PLIC_PRIO_REG(irq);  
+	reg = PLIC_PRIO_REG(irq);
 	*reg = prio;
 
 	/* 全てのCPUで割込みを有効化
@@ -85,7 +85,7 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
    @retval    偽    指定された割込みが処理可能となっていない
  */
 static bool
-plic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq, 
+plic_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
     irq_prio __unused prio, trap_context __unused *ctx){
 	cpu_id       hart;
 	plic_reg_ref  reg;
@@ -144,7 +144,7 @@ plic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
    @param[in]  ctrlr 割込みコントローラ
    @param[out] prio  割込み優先度返却領域
  */
-static void 
+static void
 plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
 	cpu_id        hart;
 	plic_reg_ref   reg;
@@ -159,7 +159,7 @@ plic_get_priority(irq_ctrlr __unused *ctrlr, irq_prio *prio){
 
 	*prio = cur_prio; /* 優先度を返却 */
 
-	return ;  
+	return ;
 }
 
 /**
@@ -172,7 +172,7 @@ plic_set_priority(irq_ctrlr __unused *ctrlr, irq_prio prio){
 
 	rv64_plic_set_priority_mask(prio); /* 優先度を設定 */
 
-	return;  
+	return;
 }
 
 /**
@@ -248,7 +248,7 @@ rv64_plic_set_priority_mask(irq_prio prio){
 	plic_reg_ref  reg;
 	irq_prio old_prio;
 
-	if ( prio > PLIC_PRIO_MAX ) 
+	if ( prio > PLIC_PRIO_MAX )
 		return PLIC_PRIO_DIS;  /* 引数異常 */
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */

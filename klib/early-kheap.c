@@ -44,7 +44,7 @@ ekheap_sbrk(vm_size inc){
  */
 void
 ekheap_stat(early_kernel_heap *st){
-	
+
 	memcpy(st, &ekheap, sizeof(early_kernel_heap));  /*  ヒープの状態を返却する  */
 }
 
@@ -62,7 +62,7 @@ ekheap_kvaddr_to_paddr(void *kvaddr, void **paddrp){
 
 	/*  ヒープ先頭からのオフセット位置を算出する  */
 	paddr_off = (vm_size)((uintptr_t)kvaddr - (uintptr_t)ekheap.start);
-	
+
 	/*  物理アドレスを算出して返却する  */
 	*paddrp = (void *)((uintptr_t)ekheap.pstart + (uintptr_t)paddr_off);
 }

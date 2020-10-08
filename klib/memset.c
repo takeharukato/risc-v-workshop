@@ -41,21 +41,21 @@ memset(void *s, int c, size_t n){
 
 	cp8 = (uint8_t *)s;  /* 残りバイトの先頭を指す */
 
-	if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
+	if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 )
 	    && ( len >= sizeof(uint64_t) ) ) {
-		
+
 		/* 8バイト境界で始まり, 残転送量が8バイト以上ある場合は, 8バイト単位で
 		 * 領域を埋める
 		 */
 retry64:
-		for( cp64 = (uint64_t *)cp8; len >= sizeof(uint64_t); 
-		     len -= sizeof(uint64_t)) 
+		for( cp64 = (uint64_t *)cp8; len >= sizeof(uint64_t);
+		     len -= sizeof(uint64_t))
 			*cp64++ = c64;
 
 		cp8 = (uint8_t *)cp64;  /* 残りバイトの先頭を指す */
 	}
 
-	if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 ) 
+	if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 )
 	     && ( len >= sizeof(uint32_t) ) ) {
 
 		/* 4バイト境界で始まり, 残転送量が4バイト以上ある場合は, 4バイト単位で
@@ -67,7 +67,7 @@ retry32:
 			*cp32++ = c32;
 			len -= sizeof(uint32_t);
 
-			if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
+			if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 )
 			    && ( len >= sizeof(uint64_t) ) ) {
 
 				cp8 = (uint8_t *)cp32; /* 残りバイトの先頭を指す */
@@ -82,13 +82,13 @@ retry32:
 	while ( len-- > 0 ) {
 
 		*cp8++ = (uint8_t)(c & 0xff);
-		
-		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 ) 
-		    && ( len >= sizeof(uint64_t) ) ) 
+
+		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 )
+		    && ( len >= sizeof(uint64_t) ) )
 			goto retry64;  /* 8バイト境界の場合8バイト単位でフィルをする */
 
-		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 ) 
-		    && ( len >= sizeof(uint32_t) ) ) 
+		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint32_t) - 1) ) == 0 )
+		    && ( len >= sizeof(uint32_t) ) )
 			goto retry32;  /* 4バイト境界に到達したら, 4バイト単位でフィルする */
 
 	}

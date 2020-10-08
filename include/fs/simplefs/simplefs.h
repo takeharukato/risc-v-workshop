@@ -22,11 +22,11 @@
 /** 最大ファイル数 (単位:個) */
 #define SIMPLEFS_INODE_NR     (64)
 /**< ファイル中の最大データブロック数 (単位:個)  */
-#define SIMPLEFS_IDATA_NR    (128)  
+#define SIMPLEFS_IDATA_NR    (128)
 /** NULL終端を含まない最大ファイル名長 (単位:バイト) */
-#define SIMPLEFS_DIRSIZ       (60)  
+#define SIMPLEFS_DIRSIZ       (60)
 /** データブロック長 (単位:バイト) */
-#define SIMPLEFS_SUPER_BLOCK_SIZE     (UINT64_C(4096))   
+#define SIMPLEFS_SUPER_BLOCK_SIZE     (UINT64_C(4096))
 /** 最大ファイルサイズ (単位:バイト) */
 #define SIMPLEFS_SUPER_MAX_FILESIZE   ( SIMPLEFS_SUPER_BLOCK_SIZE * SIMPLEFS_IDATA_NR )
 
@@ -44,7 +44,7 @@
 /** ファイルモードを抽出マスク */
 #define SIMPLEFS_INODE_MODE_MASK     ((UINT32_C(1) << 16) - 1)
 
-typedef uint32_t          simplefs_ino;   /**< I-node番号    */	
+typedef uint32_t          simplefs_ino;   /**< I-node番号    */
 typedef uint32_t        simplefs_blkno;   /**< ブロック番号  */
 typedef void *   simplefs_file_private;   /**< プライベート情報  */
 
@@ -84,7 +84,7 @@ typedef struct _simplefs_inode{
 		/* データブロック */
 		struct _simplefs_data i_data[SIMPLEFS_IDATA_NR];
 		/* ディレクトリエントリ */
-		struct _simplefs_dent i_dent[SIMPLEFS_SUPER_BLOCK_SIZE/64]; 
+		struct _simplefs_dent i_dent[SIMPLEFS_SUPER_BLOCK_SIZE/64];
 	}i_dblk; /**< データブロック */
 }simplefs_inode;
 
@@ -115,7 +115,7 @@ typedef struct _simplefs_table{
 #define __SIMPLEFS_TABLE_INITIALIZER(_tablep)		\
 	{						\
 	.mtx = __MUTEX_INITIALIZER(&((_tablep)->mtx)),	\
-	}		
+	}
 
 int simplefs_alloc_inode(struct _simplefs_super_block *_fs_super, simplefs_ino *_fs_vnidp);
 int simplefs_inode_remove(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid);
@@ -133,10 +133,10 @@ int simplefs_write_mapped_block(struct _simplefs_super_block *_fs_super,
 int simplefs_unmap_block(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode, off_t _off, ssize_t _len);
 
-ssize_t simplefs_inode_read(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
+ssize_t simplefs_inode_read(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
     void *_buf, off_t _pos, ssize_t _len);
-ssize_t simplefs_inode_write(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid, 
+ssize_t simplefs_inode_write(struct _simplefs_super_block *_fs_super, simplefs_ino _fs_vnid,
     struct _simplefs_inode *_fs_inode, simplefs_file_private _file_priv,
     const void *_buf, off_t _pos, ssize_t _len);
 

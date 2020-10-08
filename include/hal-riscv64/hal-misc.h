@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_HAL_MISC_H)
-#define  _HAL_HAL_MISC_H 
+#define  _HAL_HAL_MISC_H
 
 #if !defined(ASM_FILE)
 /**

@@ -8,7 +8,7 @@
 /**********************************************************************/
 
 #if !defined(_KERN_TIMER_H)
-#define  _KERN_TIMER_H 
+#define  _KERN_TIMER_H
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>

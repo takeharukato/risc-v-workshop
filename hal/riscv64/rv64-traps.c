@@ -49,19 +49,19 @@ static const char *fsxs_string[]={"Off","Initial","Clean","Dirty"};
    @param[in] depth   呼び出しの深さ
    @param[in] bpref   ベースポインタ
    @param[in] caller  呼び出し元アドレス
-   @param[in] next_bp 次のベースポインタ返却領域 
+   @param[in] next_bp 次のベースポインタ返却領域
    @param[in] argp    spinlockのアドレス
    @retval  0 正常終了
    @retval -ENOSPC 呼び出しネストが深すぎる
  */
 static int
-_trace_trap(int depth, uintptr_t __unused *bpref, void *caller, 
+_trace_trap(int depth, uintptr_t __unused *bpref, void *caller,
 		void __unused *next_bp, void  *argp){
 	void **array = (void **)argp;
 
 	if ( depth >= RV64_BACKTRACE_DEPTH )
 		return -ENOSPC;  /* 呼び出しネストが深すぎる */
-	
+
 	array[depth] = caller;  /*  呼び出し元を記録する  */
 
 	return 0;
@@ -119,8 +119,8 @@ rv64_show_trap_context(trap_context *ctx, scause_type cause, stval_type stval){
 	    ((ctx->estatus & SSTATUS_UPIE) ? ("UPIE") : ("----")),
 	    ((ctx->estatus & SSTATUS_SIE) ? ("SIE") : ("---")),
 	    ((ctx->estatus & SSTATUS_UIE) ? ("UIE") : ("---")) );
-	
-	kprintf("sstatus: XS=%-7s FS=%-7s UXL=%d\n", 
+
+	kprintf("sstatus: XS=%-7s FS=%-7s UXL=%d\n",
 	    fsxs_string[(ctx->estatus & SSTATUS_XS)],
 	    fsxs_string[(ctx->estatus & SSTATUS_FS)],
 	    (ctx->estatus & SSTATUS_UXL));
@@ -183,7 +183,7 @@ void
 handle_exception(trap_context *ctx, scause_type cause, stval_type stval){
 
 	if ( ctx->estatus & SSTATUS_SPP ) {
-		
+
 		kprintf("An exception occurs in kernel.\n");
 		rv64_show_trap_context(ctx, cause, stval);
 		while(1);
@@ -203,6 +203,6 @@ trap_common(trap_context *ctx, scause_type cause, stval_type stval){
 		handle_interrupt(ctx, cause, stval);
 	else if ( cause & (SCAUSE_ENVCALL_UMODE|SCAUSE_ENVCALL_SMODE ) )
 		handle_syscall(ctx, cause, stval);
-	else 
+	else
 		handle_exception(ctx, cause, stval);
 }

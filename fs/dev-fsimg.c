@@ -25,8 +25,8 @@ fsimg_strategy(page_cache *pc){
 	void *sp;
 
 	sp = (void *)((uintptr_t)&_fsimg_start + pc->offset);
-	if ( ( (uintptr_t)sp < (uintptr_t)&_fsimg_start ) 
-	     && ( (uintptr_t)&_fsimg_end <= (uintptr_t)sp ) ) 
+	if ( ( (uintptr_t)sp < (uintptr_t)&_fsimg_start )
+	     && ( (uintptr_t)&_fsimg_end <= (uintptr_t)sp ) )
 		return;
 
 	if ( PCACHE_IS_DIRTY(pc) )

@@ -36,7 +36,7 @@ hal_cpuinfo_fill(cpu_info *cinf){
 	/** キャッシュカラーリング数を初期化
 	 *  キャッシュサイズ32Kib / ( 8way * 64バイトキャッシュラインサイズ )
 	 */
-	cinf->l1_dcache_colornum = KIB_TO_BYTE(32) / (8*64);  
+	cinf->l1_dcache_colornum = KIB_TO_BYTE(32) / (8*64);
 	/* キャッシュサイズを初期化 */
 	cinf->l1_dcache_size = KIB_TO_BYTE(32);
 

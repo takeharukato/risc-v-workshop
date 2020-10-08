@@ -94,7 +94,7 @@ _name:
 #define ASMMAC_REPEAT(_count)
 #define ASMMAC_END_REPEAT()
 #define ASMMAC_FILL(_count)
-#define ASMMAC_SET_ORIGIN(_offset) 
+#define ASMMAC_SET_ORIGIN(_offset)
 #define ASMMAC_EXTERN_SYMBOL(_name)
 #define ASMMAC_DECLARE_NAME(_name)
 #define ASMMAC_FUNCTION(_name)

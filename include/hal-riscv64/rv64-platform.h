@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_RV64_PLATFORM_H)
-#define  _HAL_RV64_PLATFORM_H 
+#define  _HAL_RV64_PLATFORM_H
 
 #include <kern/kern-autoconf.h>
 
@@ -46,7 +46,7 @@
 /** QEMU Platform-Level Interrupt Controller (PLIC) レジスタ長 (単位: バイト) */
 #define RV64_PLIC_SIZE           (ULONGLONG_C(0x4000000))
 /* QEMU Platform-Level Interrupt Controller (PLIC) 配下の割込み数 */
-#define RV64_PLIC_NR_IRQS   (53)                
+#define RV64_PLIC_NR_IRQS   (53)
 
 /** QEMU Core Local Interruptor (CLINT)レジスタ物理アドレス            */
 #define RV64_CLINT_PADDR            (ULONGLONG_C(0x02000000))
@@ -59,14 +59,14 @@
 /** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ サイズ (単位:バイト) */
 #define RV64_CLINT_MSIP_SIZE        (4)
 
-/** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 物理アドレス   
+/** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 物理アドレス
     @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MSIP_PADDR(_hart)		\
 	( RV64_CLINT_PADDR + RV64_CLINT_MSIP_OFFSET	\
 	    + ( (_hart) * RV64_CLINT_MSIP_SIZE) )
 
-/** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 仮想アドレス   
+/** QEMU Core Local Interruptor (CLINT) MSIP レジスタ 仮想アドレス
     @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MSIP(_hart)			\
@@ -79,21 +79,21 @@
 /** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ サイズ (単位:バイト) */
 #define RV64_CLINT_MTIMECMP_SIZE    (8)
 
-/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 物理アドレス   
+/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 物理アドレス
     @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MTIMECMP_PADDR(_hart)		\
 	( RV64_CLINT_PADDR + RV64_CLINT_MTIMECMP_OFFSET	\
 	    + ( (_hart) * RV64_CLINT_MTIMECMP_SIZE) )
 
-/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 仮想アドレス   
+/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ 仮想アドレス
     @param[in] _hart コアのhartid
  */
 #define RV64_CLINT_MTIMECMP(_hart)			\
 	( RV64_CLINT + RV64_CLINT_MTIMECMP_OFFSET	\
 	    + ( (_hart) * RV64_CLINT_MTIMECMP_SIZE) )
 
-/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ のインターバル 
+/** QEMU Core Local Interruptor (CLINT) MTIMECMP レジスタ のインターバル
     (デフォルト:100ms周期)
  */
 #if defined(CONFIG_TIMER_INTERVAL_MS_1MS)
@@ -101,15 +101,15 @@
 #elif defined(CONFIG_TIMER_INTERVAL_MS_10MS)
 #define RV64_CLINT_MTIME_INTERVAL    (ULONGLONG_C(100000))
 #else
-#define RV64_CLINT_MTIME_INTERVAL    (ULONGLONG_C(1000000))              
-#endif 
+#define RV64_CLINT_MTIME_INTERVAL    (ULONGLONG_C(1000000))
+#endif
 
 /** QEMU Core Local Interruptor (CLINT) MTIME オフセットアドレス    */
 #define RV64_CLINT_MTIME_OFFSET      (ULONGLONG_C(0xBFF8))
 
 /** QEMU Core Local Interruptor (CLINT) MTIME レジスタのカウンタ更新周期
     (100us毎にカウントアップする)
- */ 
+ */
 #define RV64_CLINT_MTIME_FREQ        (ULONGLONG_C(1000000000))
 
 /** QEMU Core Local Interruptor (CLINT) MTIME レジスタのカウンタ1us単位での更新値

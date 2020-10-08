@@ -20,7 +20,7 @@
    @retval -EINVAL  2のべき等になっていないアラインメントを指定した
    @retval -ENOMEM  メモリ不足
  */
-int 
+int
 eposix_memalign(void**ptrp, size_t align, size_t siz){
 	int rc;
 

@@ -29,7 +29,7 @@
 #define UART_IIR_RDI	(0x04)	/* 受信完了 */
 #define UART_IIR_RLSI	(0x06)	/* 受信回線状態更新 */
 #define uart_getiir(val) ( (val) & (UART_IIR_IDMASK) )
-/*  
+/*
  *  モデムコントロール関連
  */
 #define UART_MCTL_DTR_LOW     (0x1)
@@ -47,7 +47,7 @@
 #define UART_LSR_TXHOLD      (0x20)
 
 /*
- * Interrupt Enable Register 
+ * Interrupt Enable Register
  */
 #define UART_INTR_DIS   (0x00) /*< 割込み通知を禁止   */
 #define UART_INTR_RDA   (0x01) /*< 受信割込みを有効化 */

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_BACKTRACE_H)
-#define  _KLIB_BACKTRACE_H 
+#define  _KLIB_BACKTRACE_H
 
 #include <klib/freestanding.h>
 

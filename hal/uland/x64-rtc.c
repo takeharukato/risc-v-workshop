@@ -27,7 +27,7 @@ hal_read_rtc(ktimespec *ktsp) {
 
 	rc = clock_gettime(CLOCK_REALTIME, &ts);  /* 時刻の取得 */
 	kassert( rc == 0 );
-	
+
 	ktsp->tv_sec = ts.tv_sec;   /* 秒 */
 	ktsp->tv_nsec = ts.tv_nsec; /* ナノ秒 */
 

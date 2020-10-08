@@ -5,7 +5,7 @@
 
 #include <klib/early-kheap.h>  /*  ekheap_sbrk  */
 
-#define MSPACES         (0) 
+#define MSPACES         (0)
 #define ONLY_MSPACES    (0)
 #define USE_LOCKS       (0)
 #define USE_SPIN_LOCKS  (0)

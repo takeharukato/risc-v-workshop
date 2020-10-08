@@ -19,8 +19,8 @@
    @param[in] basep  ベースポインタのアドレス
    @param[in] argp   呼び出し元から引き渡されるプライベートデータ
  */
-void 
-hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, void *_next_bp, 
+void
+hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, void *_next_bp,
 					   void *_argp), void *basep, void *argp) {
 	void *bp = basep;
 	uintptr_t *bpref;
@@ -34,14 +34,14 @@ hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, vo
 	if ( _trace_out == NULL )
 		return;  /*  出力関数がNULLの場合は何もしない  */
 
-	for(depth = 0, bpref = (uintptr_t *)bp; 
+	for(depth = 0, bpref = (uintptr_t *)bp;
 	    ( bpref != NULL ) && ( depth < BACKTRACE_MAX_DEPTH );
 	    ++depth) {
 
 #if !defined(CONFIG_HAL)
 		if ( (uintptr_t)bpref > 0x7fffffffffff )
 			break;
-		
+
 #endif  /*  CONFIG_HAL  */
 
 		/*

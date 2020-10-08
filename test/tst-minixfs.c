@@ -32,7 +32,7 @@ static char  vbuf[TST_BUFSIZ];
 static uint8_t dentbuf[TST_BUFSIZ];
 
 static int
-write_test(minix_super_block *sbp, minix_ino ino, minix_inode *dip, off_t off, 
+write_test(minix_super_block *sbp, minix_ino ino, minix_inode *dip, off_t off,
     size_t size, ssize_t *wrp){
 	int       rc;
 	int      vrc;
@@ -46,12 +46,12 @@ write_test(minix_super_block *sbp, minix_ino ino, minix_inode *dip, off_t off,
 
 	if ( rc == 0 ) {
 
-		vrc = minix_rw_zone(sbp, ino, dip, &vbuf[0], off, 
+		vrc = minix_rw_zone(sbp, ino, dip, &vbuf[0], off,
 				    MIN(wrlen, TST_BUFSIZ), MINIX_RW_READING, &rdlen);
 		if ( vrc != 0 )
 			return vrc;
 
-		if ( memcmp(&rwbuf[0], &vbuf[0], MIN(wrlen, TST_BUFSIZ)) != 0 ) 
+		if ( memcmp(&rwbuf[0], &vbuf[0], MIN(wrlen, TST_BUFSIZ)) != 0 )
 			return -ENXIO;
 	}
 
@@ -177,7 +177,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	    * MINIX_ZONE_SIZE(&sb) - 1;
 	min_dind = max_ind + 1;
 	max_dind = ( MINIX_NR_DZONES(&sb) +
-		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) + 
+		( MINIX_NR_IND_ZONES(&sb) * MINIX_INDIRECTS(&sb) ) +
 		( MINIX_NR_DIND_ZONES(&sb) * MINIX_INDIRECTS(&sb) * MINIX_INDIRECTS(&sb) ) )
 	    * MINIX_ZONE_SIZE(&sb) - 1;
 
@@ -231,7 +231,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	pos = 0;
 	while( len > 0 ) {
 
-		rc = minix_rw_zone(&sb, 1, &din1, &ent, pos, MINIX_D_DENT_SIZE(&sb), 
+		rc = minix_rw_zone(&sb, 1, &din1, &ent, pos, MINIX_D_DENT_SIZE(&sb),
 		    MINIX_RW_READING, &rdlen);
 		if ( rc != 0 )
 			break;
@@ -258,7 +258,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 	memset(&rwbuf[0], 0, TST_BUFSIZ);
-	rc = minix_rw_zone(&sb, ino, &din2, &rwbuf[0], 0, TST_BUFSIZ, 
+	rc = minix_rw_zone(&sb, ino, &din2, &rwbuf[0], 0, TST_BUFSIZ,
 	    MINIX_RW_READING, &rdlen);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -282,7 +282,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	/* 2重間接ブロック
 	 */
 	rc = minix_rw_disk_inode(&sb, TST_BIG, MINIX_RW_READING, &din3);
@@ -308,7 +308,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0, MINIX_D_INODE(&sb, &din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test(&sb, TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0,
 			 min_direct+1,
 			 &wrlen);
 	if  ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&sb, &din3, i_size) ) )
@@ -359,11 +359,11 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	/* 開始: ゾーン境界, ファイル先頭 
+	/* 開始: ゾーン境界, ファイル先頭
 	   終了: ゾーン境界, ファイル末尾残
 	 */
 	old_siz = MINIX_D_INODE(&sb, &din3, i_size);
-	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0, 
+	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0,
 			      truncate_align(MINIX_D_INODE(&sb, &din3, i_size),
 					     MINIX_ZONE_SIZE(&sb))
 			      - MINIX_ZONE_SIZE(&sb));
@@ -381,29 +381,29 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/* 開始: ゾーン境界, ファイル先頭 
+	/* 開始: ゾーン境界, ファイル先頭
 	   終了: ゾーン非境界, ファイル末尾残
 	 */
 	old_siz = MINIX_D_INODE(&sb, &din3, i_size);
-	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0, 
+	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0,
 	    truncate_align(MINIX_D_INODE(&sb, &din3, i_size), MINIX_ZONE_SIZE(&sb))
 			      - MINIX_ZONE_SIZE(&sb)/2);
 	if ( ( rc == 0 ) && ( old_siz == MINIX_D_INODE(&sb, &din3, i_size) ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	/* データ作成 */
 	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0, MINIX_D_INODE(&sb, &din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test(&sb, TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0,
 	    roundup_align(min_ind + 1, MINIX_ZONE_SIZE(&sb))
 	    - MINIX_ZONE_SIZE(&sb) / 2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&sb, &din3, i_size) ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	/* 開始: ゾーン境界, ファイル先頭 
+	/* 開始: ゾーン境界, ファイル先頭
 	   終了: ゾーン非境界, ファイル末尾まで消去
 	 */
 	old_siz = MINIX_D_INODE(&sb, &din3, i_size);
@@ -425,7 +425,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	   終了: ゾーン境界, ファイル末尾残
 	 */
 	old_siz = MINIX_D_INODE(&sb, &din3, i_size);
-	rc = minix_unmap_zone(&sb, TST_INO, &din3, MINIX_ZONE_SIZE(&sb)/2, 
+	rc = minix_unmap_zone(&sb, TST_INO, &din3, MINIX_ZONE_SIZE(&sb)/2,
 			      truncate_align(MINIX_D_INODE(&sb, &din3, i_size),
 					     MINIX_ZONE_SIZE(&sb))
 			      - MINIX_ZONE_SIZE(&sb));
@@ -454,11 +454,11 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	/* データ作成 */
 	rc = minix_unmap_zone(&sb, TST_INO, &din3, 0, MINIX_D_INODE(&sb, &din3, i_size));
 	kassert( rc == 0 );
-	rc = write_test(&sb, TST_INO, &din3, 0, 
+	rc = write_test(&sb, TST_INO, &din3, 0,
 	    roundup_align(min_ind + 1, MINIX_ZONE_SIZE(&sb))
 	    - MINIX_ZONE_SIZE(&sb) / 2, &wrlen);
 	if ( ( rc == 0 ) && ( wrlen == MINIX_D_INODE(&sb, &din3, i_size) ) )
@@ -569,14 +569,14 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	   終了: ゾーン非境界, ファイル末尾-1/4ゾーン (ファイルの末尾1/4ゾーン残留)
 	 */
 	old_siz = MINIX_D_INODE(&sb, &din3, i_size);
-	rc = minix_unmap_zone(&sb, TST_INO, &din3, MINIX_ZONE_SIZE(&sb)/4, 
+	rc = minix_unmap_zone(&sb, TST_INO, &din3, MINIX_ZONE_SIZE(&sb)/4,
 	    MINIX_ZONE_SIZE(&sb)/2 );
 	if ( ( rc == 0 ) && ( MINIX_D_INODE(&sb, &din3, i_size) == old_siz ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	/* 
+	/*
 	 * ディレクトリエントリ
 	 */
 	/* 検索 */
@@ -611,7 +611,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
-		
+
 		rc = minix_del_dentry(&sb, ROOT_INO, &din1, "no-file", &idx);
 		if ( rc != 0 )
 			ktest_pass( sp );
@@ -635,7 +635,7 @@ minixfs1(struct _ktest_stats *sp, void __unused *arg){
 	/*
 	 * ディレクトリエントリ情報取得
 	 */
-	rc = minix_getdents(&sb, &din1, &dentbuf[0], 0, TST_BUFSIZ, &rdlen); 
+	rc = minix_getdents(&sb, &din1, &dentbuf[0], 0, TST_BUFSIZ, &rdlen);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

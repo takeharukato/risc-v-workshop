@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_ATOMIC64_H)
-#define  _HAL_ATOMIC64_H 
+#define  _HAL_ATOMIC64_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

@@ -113,31 +113,31 @@ fill_minixv3_superblock(fs_image *img, int nr_inodes, minixv3_super_block *v3){
 	uint32_t      nr_inode_blocks;
 
 	nr_blocks = truncate_align(img->size, PAGE_SIZE)/PAGE_SIZE;
-		
+
 	memset(v3, 0, sizeof(minixv3_super_block));
-	
+
 	v3->s_blocksize = PAGE_SIZE;
 	v3->s_log_zone_size = 0;
-	
+
 	v3->s_ninodes = nr_inodes;
-	nr_inode_blocks = 
-		roundup_align(nr_inodes, (PAGE_SIZE/sizeof(minixv3_inode))) 
+	nr_inode_blocks =
+		roundup_align(nr_inodes, (PAGE_SIZE/sizeof(minixv3_inode)))
 		/ (PAGE_SIZE/sizeof(minixv3_inode));
-	v3->s_imap_blocks = roundup_align(v3->s_ninodes, 
+	v3->s_imap_blocks = roundup_align(v3->s_ninodes,
 	    v3->s_blocksize*BITS_PER_BYTE) / (v3->s_blocksize*BITS_PER_BYTE);
 
 	if ( ( 1 + v3->s_imap_blocks + nr_inode_blocks) >= nr_blocks ) {
 
 		fprintf(stderr, "Too many I-nodes: nr_blocks=%lu "
 		    "I-node map blocks:%lu I-node blocks: %lu reserved: 2\n",
-		    (unsigned long)nr_blocks, 
-		    (unsigned long)v3->s_imap_blocks, 
+		    (unsigned long)nr_blocks,
+		    (unsigned long)v3->s_imap_blocks,
 		    (unsigned long)nr_inode_blocks);
 		exit(1);
 	}
 
 	v3->s_zmap_blocks = roundup_align(nr_blocks -
-	    ( 1 + v3->s_imap_blocks + nr_inode_blocks), 
+	    ( 1 + v3->s_imap_blocks + nr_inode_blocks),
 	    v3->s_blocksize*BITS_PER_BYTE)/(v3->s_blocksize*BITS_PER_BYTE);
 	v3->s_firstdatazone = 2 + v3->s_imap_blocks +
 		v3->s_zmap_blocks + nr_inode_blocks;
@@ -156,7 +156,7 @@ fill_minixv12_superblock(fs_image *img, int version, int nr_inodes,
 	uint32_t      nr_inode_blocks;
 
 	nr_blocks = truncate_align(img->size, MINIX_V2_BLOCK_SIZE)/MINIX_V2_BLOCK_SIZE;
-		
+
 	memset(v12, 0, sizeof(minixv12_super_block));
 
 	/*
@@ -170,29 +170,29 @@ fill_minixv12_superblock(fs_image *img, int version, int nr_inodes,
 	if ( version == 2 ) { /* Minix Version2 ファイル名30文字 */
 
 		v12->s_log_zone_size = 0;
-	
+
 		v12->s_ninodes = alloc_inodes;
-		nr_inode_blocks = 
-			roundup_align(alloc_inodes, 
-			    (MINIX_V2_BLOCK_SIZE/sizeof(minixv2_inode))) 
+		nr_inode_blocks =
+			roundup_align(alloc_inodes,
+			    (MINIX_V2_BLOCK_SIZE/sizeof(minixv2_inode)))
 			/ (MINIX_V2_BLOCK_SIZE/sizeof(minixv2_inode));
-		v12->s_imap_blocks = roundup_align(v12->s_ninodes, 
-		    MINIX_V2_BLOCK_SIZE*BITS_PER_BYTE) 
+		v12->s_imap_blocks = roundup_align(v12->s_ninodes,
+		    MINIX_V2_BLOCK_SIZE*BITS_PER_BYTE)
 			/ (MINIX_V2_BLOCK_SIZE*BITS_PER_BYTE);
 
 		if ( ( 1 + v12->s_imap_blocks + nr_inode_blocks) >= nr_blocks ) {
 
 			fprintf(stderr, "Too many I-nodes: nr_blocks=%lu "
 			    "I-node map blocks:%lu I-node blocks: %lu reserved: 2\n",
-			    (unsigned long)nr_blocks, 
-			    (unsigned long)v12->s_imap_blocks, 
+			    (unsigned long)nr_blocks,
+			    (unsigned long)v12->s_imap_blocks,
 			    (unsigned long)nr_inode_blocks);
 			exit(1);
 		}
 
 
 		v12->s_zmap_blocks = roundup_align(nr_blocks -
-		    ( 1 + v12->s_imap_blocks + nr_inode_blocks), 
+		    ( 1 + v12->s_imap_blocks + nr_inode_blocks),
 		    MINIX_V2_BLOCK_SIZE*BITS_PER_BYTE)
 			/(MINIX_V2_BLOCK_SIZE*BITS_PER_BYTE);
 
@@ -204,30 +204,30 @@ fill_minixv12_superblock(fs_image *img, int version, int nr_inodes,
 		v12->s_magic = MINIX_V2_SUPER_MAGIC2;
 		v12->s_zones = nr_blocks / ( 1<< v12->s_log_zone_size );
 	} else { /* Minix Version1 ファイル名14文字 */
-		
+
 		v12->s_log_zone_size = 0;
-	
+
 		v12->s_ninodes = alloc_inodes;
-		nr_inode_blocks = 
-			roundup_align(alloc_inodes, 
-			    (MINIX_V1_BLOCK_SIZE/sizeof(minixv1_inode))) 
+		nr_inode_blocks =
+			roundup_align(alloc_inodes,
+			    (MINIX_V1_BLOCK_SIZE/sizeof(minixv1_inode)))
 			/ (MINIX_V1_BLOCK_SIZE/sizeof(minixv1_inode));
-		v12->s_imap_blocks = roundup_align(v12->s_ninodes, 
-		    MINIX_V1_BLOCK_SIZE*BITS_PER_BYTE) 
+		v12->s_imap_blocks = roundup_align(v12->s_ninodes,
+		    MINIX_V1_BLOCK_SIZE*BITS_PER_BYTE)
 			/ (MINIX_V1_BLOCK_SIZE*BITS_PER_BYTE);
 
 		if ( ( 1 + v12->s_imap_blocks + nr_inode_blocks) >= nr_blocks ) {
 
 			fprintf(stderr, "Too many I-nodes: nr_blocks=%lu "
 			    "I-node map blocks:%lu I-node blocks: %lu reserved: 2\n",
-			    (unsigned long)nr_blocks, 
-			    (unsigned long)v12->s_imap_blocks, 
+			    (unsigned long)nr_blocks,
+			    (unsigned long)v12->s_imap_blocks,
 			    (unsigned long)nr_inode_blocks);
 			exit(1);
 		}
 
 		v12->s_zmap_blocks = roundup_align(nr_blocks -
-		    ( 1 + v12->s_imap_blocks + nr_inode_blocks), 
+		    ( 1 + v12->s_imap_blocks + nr_inode_blocks),
 		    MINIX_V1_BLOCK_SIZE*BITS_PER_BYTE)
 			/(MINIX_V1_BLOCK_SIZE*BITS_PER_BYTE);
 
@@ -235,7 +235,7 @@ fill_minixv12_superblock(fs_image *img, int version, int nr_inodes,
 			v12->s_zmap_blocks + nr_inode_blocks;
 
 		v12->s_state = MINIX_SUPER_S_STATE_CLEAN;
-		v12->s_max_size = (MINIX_V1_NR_DZONES 
+		v12->s_max_size = (MINIX_V1_NR_DZONES
 		    + MINIX_V1_BLOCK_SIZE/sizeof(minixv1_zone)
 		    + (MINIX_V1_BLOCK_SIZE/sizeof(minixv1_zone))
 		    * (MINIX_V1_BLOCK_SIZE/sizeof(minixv1_zone)) )*

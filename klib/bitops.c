@@ -66,7 +66,7 @@
 /**
    16bit長のビットマップから最初にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の16bit値
-   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_ffs16(uint16_t n){
@@ -99,7 +99,7 @@ bitops_ffs16(uint16_t n){
 /**
    32bit長のビットマップから最初にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の32bit値
-   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_ffs32(uint32_t n){
@@ -132,7 +132,7 @@ bitops_ffs32(uint32_t n){
 /**
    64bit長のビットマップから最初にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の64bit値
-   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最初にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_ffs64(uint64_t n){
@@ -165,7 +165,7 @@ bitops_ffs64(uint64_t n){
 /**
    16bit長のビットマップから最後にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の16bit値
-   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_fls16(uint16_t n){
@@ -198,7 +198,7 @@ bitops_fls16(uint16_t n){
 /**
    32bit長のビットマップから最後にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の32bit値
-   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_fls32(uint32_t n){
@@ -231,7 +231,7 @@ bitops_fls32(uint32_t n){
 /**
    64bit長のビットマップから最後にセットされている(1になっている)ビット位置を探す
    @param[in] n 調査対象の64bit値
-   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す 
+   @return 1から数えた最後にセットされているビット位置、見つからなかった場合は, 0を返す
  */
 int
 bitops_fls64(uint64_t n){
@@ -274,13 +274,13 @@ bitops_fls64(uint64_t n){
 bool
 __bitops_equal(void *v1, void *v2, size_t v1_size, size_t v2_size, size_t elm_size){
 	size_t i;
-					
+
 	if ( v1_size != v2_size )
 		return false;  /*  配列長が異なる */
 
-	for (i = 0; (v1_size / elm_size ) > i; ++i) {  
+	for (i = 0; (v1_size / elm_size ) > i; ++i) {
 
-		/* 
+		/*
 		 * ビットマップ配列の各要素を比較する
 		 */
 		if ( elm_size == sizeof(uint64_t) ) {   /*  64bitビットマップ配列の場合  */
@@ -315,9 +315,9 @@ __bitops_ffs(void *v, size_t v_size, size_t elm_size){
 	unsigned int i;
 	int        off;
 	uint64_t   pos;
-	
+
 	pos = 0;  /*  見つからなかった場合を仮定する */
-	for (i = 0; (v_size / elm_size ) > i; ++i) {  
+	for (i = 0; (v_size / elm_size ) > i; ++i) {
 
 		if ( elm_size == sizeof(uint64_t) )  /*  64bitビットマップ配列の場合  */
 			off = bitops_ffs64(((uint64_t *)v)[i]);
@@ -352,9 +352,9 @@ __bitops_fls(void *v, size_t v_size, size_t elm_size){
 	int        idx;
 	int        off;
 	uint64_t   pos;
-	
+
 	pos = 0;  /*  見つからなかった場合を仮定する */
-	for (i = 0; (v_size / elm_size ) > i; ++i) {  
+	for (i = 0; (v_size / elm_size ) > i; ++i) {
 
 		idx = (v_size / elm_size ) - i - 1;  /*  配列の末尾から検索  */
 		if ( elm_size == sizeof(uint64_t) ) /*  64bitビットマップ配列の場合  */
@@ -389,9 +389,9 @@ __bitops_ffc(void *v, size_t v_size, size_t elm_size){
 	unsigned int i;
 	int        off;
 	uint64_t   pos;
-	
+
 	pos = 0;  /*  見つからなかった場合を仮定する */
-	for (i = 0; (v_size / elm_size ) > i; ++i) {  
+	for (i = 0; (v_size / elm_size ) > i; ++i) {
 
 		if ( elm_size == sizeof(uint64_t) )  /*  64bitビットマップ配列の場合  */
 			off = bitops_ffs64( ~(((uint64_t *)v)[i]) );
@@ -426,9 +426,9 @@ __bitops_flc(void *v, size_t v_size, size_t elm_size){
 	int        idx;
 	int        off;
 	uint64_t   pos;
-	
+
 	pos = 0;  /*  見つからなかった場合を仮定する */
-	for (i = 0; (v_size / elm_size ) > i; ++i) {  
+	for (i = 0; (v_size / elm_size ) > i; ++i) {
 
 		idx = (v_size / elm_size ) - i - 1;  /*  配列の末尾から検索  */
 		if ( elm_size == sizeof(uint64_t) ) /*  64bitビットマップ配列の場合  */

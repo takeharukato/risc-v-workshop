@@ -38,7 +38,7 @@ clint_ctrlr_shudown(void){
    @retval    0     正常終了
  */
 static int
-clint_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr, 
+clint_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
     irq_prio prio){
 	reg_type sie;
 
@@ -64,7 +64,7 @@ clint_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
    @retval    偽    指定された割込みが処理可能となっていない
  */
 static bool
-clint_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq, 
+clint_irq_is_pending(irq_ctrlr __unused *ctrlr, irq_no irq,
     irq_prio __unused prio, trap_context __unused *ctx){
 	reg_type sip;
 
@@ -127,7 +127,7 @@ clint_eoi(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	sip = rv64_read_sip();  /* Supervisor Interrupt Pendingレジスタの現在値を読み込む */
 	sip &= ~SIP_SSIP; 	/* スーパーバイザソフトウエア割込みを落とす */
-	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */	
+	rv64_write_sip( sip ); /* Supervisor Interrupt Pendingレジスタを更新する */
 
 	return;
 

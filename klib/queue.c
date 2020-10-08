@@ -91,7 +91,7 @@ queue_del(queue *head, list *node) {
  */
 list *
 queue_ref_top(queue *head) {
-	
+
 	return head->next;
 }
 
@@ -118,7 +118,7 @@ queue_get_top(queue *head) {
  */
 list *
 queue_ref_last(queue *head) {
-	
+
 	return head->prev;
 }
 
@@ -165,7 +165,7 @@ queue_reverse_rotate(queue *head){
  */
 bool
 queue_is_empty(queue *head) {
-	
+
 	return  (head->prev == (list *)head) && (head->next == (list *)head);
 }
 
@@ -173,8 +173,8 @@ queue_is_empty(queue *head) {
    キューを初期化する
     @param[in] head 操作対象キュー
  */
-void 
+void
 queue_init(queue *head) {
 
-	head->prev = head->next = (list *)head;	
+	head->prev = head->next = (list *)head;
 }

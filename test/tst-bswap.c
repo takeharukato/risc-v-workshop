@@ -63,7 +63,7 @@ bswap1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	if ( r16 == TST_BSWAP_V16_SWAP )
 		ktest_pass( sp );
 	else

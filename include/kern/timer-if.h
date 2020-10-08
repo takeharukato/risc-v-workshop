@@ -8,7 +8,7 @@
 /**********************************************************************/
 
 #if !defined(_KERN_TIMER_IF_H)
-#define  _KERN_TIMER_IF_H 
+#define  _KERN_TIMER_IF_H
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>
@@ -35,7 +35,7 @@ typedef struct _ktimespec{
    @param[in] _ctx     割込みコンテキスト
    @param[in] _private プライベート情報
  */
-typedef void (*tim_callout_type)(struct _trap_context *_ctx, void *_private);  
+typedef void (*tim_callout_type)(struct _trap_context *_ctx, void *_private);
 
 /**
    コールアウトエントリ
@@ -84,7 +84,7 @@ typedef struct _call_out_ent{
 #endif  /*  CONFIG_TIMER_INTERVAL_MS_1MS  */
 
 void tim_walltime_get(struct _ktimespec *_ktsp);
-int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private, 
+int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private,
 		    struct _call_out_ent **_entp);
 int tim_callout_cancel(struct _call_out_ent *_ent);
 

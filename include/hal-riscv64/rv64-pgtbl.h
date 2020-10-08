@@ -40,7 +40,7 @@
 #define RV64_PGTBL_SV48_INDEX_BITS       (9)  /**< Sv48のインデクスビット数(単位:ビット) */
 
 #define RV64_PGTBL_LVL_NR                (RV64_PGTBL_SV39_LVL_NR)
-#define RV64_PGTBL_INDEX_BITS            (RV64_PGTBL_SV39_INDEX_BITS) 
+#define RV64_PGTBL_INDEX_BITS            (RV64_PGTBL_SV39_INDEX_BITS)
 
 /**
    ページテーブルインデクスマスク生成マクロ
@@ -72,7 +72,7 @@
 
 /**
    ページテーブルインデクス算出マクロ
-   @param[in] _vaddr 仮想アドレス 
+   @param[in] _vaddr 仮想アドレス
    @param[in] _lvl   テーブルの段数
    @return ページテーブルインデクス
 */
@@ -91,15 +91,15 @@
  * Supervisor Address Translation and Protection (SATP) レジスタ
  */
 /** Bare アドレス変換なし */
-#define RV64_SATP_MODE_BARE_VAL            ULONGLONG_C(0)  
+#define RV64_SATP_MODE_BARE_VAL            ULONGLONG_C(0)
 /** Sv39 ページベース39ビット仮想アドレス */
-#define RV64_SATP_MODE_SV39_VAL            ULONGLONG_C(8)  
+#define RV64_SATP_MODE_SV39_VAL            ULONGLONG_C(8)
 /** Sv48 ページベース48ビット仮想アドレス */
-#define RV64_SATP_MODE_SV48_VAL            ULONGLONG_C(9)  
+#define RV64_SATP_MODE_SV48_VAL            ULONGLONG_C(9)
 /** Sv57 ページベース57ビット仮想アドレス */
-#define RV64_SATP_MODE_SV57_VAL            ULONGLONG_C(10) 
+#define RV64_SATP_MODE_SV57_VAL            ULONGLONG_C(10)
 /** Sv64 ページベース64ビット仮想アドレス */
-#define RV64_SATP_MODE_SV64_VAL            ULONGLONG_C(11) 
+#define RV64_SATP_MODE_SV64_VAL            ULONGLONG_C(11)
 
 #define RV64_SATP_MODE_SHIFT               (60) /* SATPレジスタのmode値のシフト数 */
 #define RV64_SATP_ASID_SHIFT               (44) /* SATPレジスタのasid値のシフト数 */

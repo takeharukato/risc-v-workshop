@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_BITOPS_H)
-#define  _KLIB_BITOPS_H 
+#define  _KLIB_BITOPS_H
 
 #include <klib/freestanding.h>
 #include <klib/klib-consts.h>
@@ -282,7 +282,7 @@
     __t _b[__BITMAP_ARRAY_LEN(__t, __n)]; \
 }
 
-bool __bitops_equal(void *_v1, void *_v2, size_t _v1_size, size_t _v2_size, 
+bool __bitops_equal(void *_v1, void *_v2, size_t _v1_size, size_t _v2_size,
     size_t _elm_size);
 uint64_t __bitops_ffs(void *_v, size_t _v_size, size_t _elm_size);
 uint64_t __bitops_fls(void *_v, size_t _v_size, size_t _elm_size);

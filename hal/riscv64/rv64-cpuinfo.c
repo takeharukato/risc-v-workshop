@@ -27,7 +27,7 @@ sscratch_info sscratch_tbl[KC_CPUS_NR];  /*  スーパバイザモード制御�
 */
 sscratch_info *
 rv64_current_sscratch(void){
-	
+
 	return &sscratch_tbl[hal_get_physical_cpunum()];
 }
 
@@ -36,7 +36,7 @@ rv64_current_sscratch(void){
 */
 mscratch_info *
 rv64_current_mscratch(void){
-	
+
 	return &mscratch_tbl[hal_get_physical_cpunum()];
 }
 
@@ -70,7 +70,7 @@ hal_cpuinfo_fill(cpu_info *cinf){
 	/** キャッシュラインサイズを初期化 */
 	cinf->l1_dcache_linesize = RV64_L1_DCACHE_LINESIZE;
 	/** キャッシュカラーリング数を初期化 */
-	cinf->l1_dcache_colornum = RV64_L1_DCACHE_COLOR_NUM;  
+	cinf->l1_dcache_colornum = RV64_L1_DCACHE_COLOR_NUM;
 	/** キャッシュサイズを初期化 */
 	cinf->l1_dcache_size = RV64_L1_DCACHE_SIZE;
 	/** スレッド情報を初期化 */

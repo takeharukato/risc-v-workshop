@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_VM_IF_H)
-#define  _KERN_VM_IF_H 
+#define  _KERN_VM_IF_H
 
 #define VM_PROT_ACS_SHIFT    (0)        /*< アクセス属性へのシフト値  */
 #define VM_PROT_ACS_MASK						\
@@ -94,7 +94,7 @@ int pgtbl_alloc_user_pgtbl(vm_pgtbl *_pgtp);
 void pgtbl_free_user_pgtbl(vm_pgtbl _pgt);
 void vm_copy_kmap_page(void *_dest, void *_src);
 size_t vm_strlen(vm_pgtbl _pgt, char const *_s);
-size_t vm_memmove(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src, 
+size_t vm_memmove(vm_pgtbl _dest_pgt, void *_dest, vm_pgtbl _src_pgt, void *_src,
     size_t _len);
 int vm_copy_range(vm_pgtbl _dest, vm_pgtbl _src, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);
 int vm_unmap(vm_pgtbl _pgt, vm_vaddr _vaddr, vm_flags _flags, vm_size _size);

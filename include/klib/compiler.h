@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_COMPILER_H)
-#define  _KLIB_COMPILER_H 
+#define  _KLIB_COMPILER_H
 
 #if !defined(ASM_FILE)
 

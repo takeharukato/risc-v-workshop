@@ -95,7 +95,7 @@ rv64_sbi_get_impl_version(uint32_t *majorp, uint32_t *minorp){
 
 	if ( rv.error != 0 )
 		goto error_out;
-	
+
 	/* メジャー版数取り出し  */
 	if ( majorp != NULL )
 		*majorp = (rv.value >> RV64_SBI_SPEC_VERSION_MAJOR_SHIFT) \
@@ -118,7 +118,7 @@ error_out:
 rv64_sbi_sbiret
 rv64_sbi_get_mvendorid(uint64_t *mvendoridp){
 	rv64_sbi_sbiret rv;
-	
+
 	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MVENDORID);
 	if ( ( rv.error == 0 ) && ( mvendoridp != NULL ) )  /* 状態獲得成功 */
 		*mvendoridp = rv.value;
@@ -134,7 +134,7 @@ rv64_sbi_get_mvendorid(uint64_t *mvendoridp){
 rv64_sbi_sbiret
 rv64_sbi_get_marchid(uint64_t *marchidp){
 	rv64_sbi_sbiret rv;
-	
+
 	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MARCHID);
 	if ( ( rv.error == 0 ) && ( marchidp != NULL ) )  /* 状態獲得成功 */
 		*marchidp = rv.value;
@@ -150,7 +150,7 @@ rv64_sbi_get_marchid(uint64_t *marchidp){
 rv64_sbi_sbiret
 rv64_sbi_get_mimpid(uint64_t *mimpidp){
 	rv64_sbi_sbiret rv;
-	
+
 	rv = RV64_SBICALL0(RV64_SBI_EXT_ID_BASE, RV64_SBI_BASE_GET_MIMPID);
 	if ( ( rv.error == 0 ) && ( mimpidp != NULL ) )  /* 状態獲得成功 */
 		*mimpidp = rv.value;
@@ -313,7 +313,7 @@ rv64_sbi_init(void){
 	uint64_t       implid;
 	cpu_id            cpu;
 	uint64_t        state;
-	
+
 	rv = rv64_sbi_get_spec_version(&major, &minor);
 	if ( rv.error == RV64_SBI_SUCCESS )
 		kprintf("SBI spec version: %u.%u\n", major, minor);
@@ -386,7 +386,7 @@ rv64_sbi_init(void){
 		if  ( ( rc == 0 ) && ( RV64_SBI_MAX_STATES > state ) )
 			kprintf("hart #%u state %s(%d)\n",
 			    cpu, rv64_sbi_hart_states[state], state);
-		else 
+		else
 			kprintf("hart #%u state unknown (rc=%d, state=%d).\n",
 			    cpu, rc, state);
 	}

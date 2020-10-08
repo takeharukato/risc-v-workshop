@@ -98,7 +98,7 @@ main(int argc, char *argv[]){
 		exit(1);
 	}
 
-	if ( argc > optind ) 
+	if ( argc > optind )
 		imagefile=strdup(argv[optind]);
 	else {
 
@@ -117,7 +117,7 @@ main(int argc, char *argv[]){
 	printf("size=%lld\n", (long long)imgsize);
 
 	rc = fsimg_create(imagefile, version, nr_inodes, imgsize, &handle);
-	if ( rc != 0 ) 
+	if ( rc != 0 )
 		exit(1);
 
 	return 0;

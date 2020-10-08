@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_PAGE_H)
-#define  _HAL_PAGE_H 
+#define  _HAL_PAGE_H
 
 #include <klib/misc.h>
 

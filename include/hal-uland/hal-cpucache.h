@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_CPUCACHE_H)
-#define  _HAL_CPUCACHE_H 
+#define  _HAL_CPUCACHE_H
 
 #include <klib/freestanding.h>
 

@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_KERN_TYPES_H)
-#define  _KERN_KERN_TYPES_H 
+#define  _KERN_KERN_TYPES_H
 
 #include <klib/freestanding.h>
 

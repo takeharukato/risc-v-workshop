@@ -27,7 +27,7 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 	atomic_val inc, v1, v2, res;
 	void *p1, *p2, *pr;
 	bool  rc;
-	
+
 	atomic_set(&dest, ATOMIC_VAL1);
 	inc=1;
 	kprintf("atomic add(%ld,%ld)", atomic_read(&dest), inc);
@@ -51,7 +51,7 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic_set(&dest, ATOMIC_VAL4);
 	inc=ATOMIC_VAL3;
 	kprintf("atomic or(%lx,%lx)", atomic_read(&dest), inc);
@@ -61,7 +61,7 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 	if ( ( atomic_read(&dest) == (atomic_val)( ATOMIC_VAL3 | ATOMIC_VAL4 ) ) &&
 	    ( res == (atomic_val)(ATOMIC_VAL4) ) )
 		ktest_pass( sp );
-	
+
 	atomic_set(&dest, ATOMIC_VAL5 );
 	inc=ATOMIC_VAL3;
 	kprintf("atomic xor(%lx,%lx)", atomic_read(&dest), inc);
@@ -132,7 +132,7 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic_set(&dest, ATOMIC_VAL1);
 	inc=1;
 	kprintf("atomic add_return(%ld,%ld)", atomic_read(&dest), inc);
@@ -163,12 +163,12 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 	res = atomic_and_return(&dest, inc);
 	kprintf("=%lx\n", res);
 	kprintf("now: %lx\n", atomic_read(&dest));
-	if ( ( atomic_read(&dest) == (atomic_val)(ATOMIC_VAL3 & ATOMIC_VAL3 ) ) && 
+	if ( ( atomic_read(&dest) == (atomic_val)(ATOMIC_VAL3 & ATOMIC_VAL3 ) ) &&
 	    ( atomic_read(&dest) == res ) )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	
+
 	atomic_set(&dest, ATOMIC_VAL4);
 	inc=ATOMIC_VAL3;
 	kprintf("atomic or_return(%lx,%lx)", atomic_read(&dest), inc);
@@ -177,7 +177,7 @@ atomic1(struct _ktest_stats *sp, void __unused *arg){
 	if ( ( atomic_read(&dest) == (atomic_val)(ATOMIC_VAL4 | ATOMIC_VAL3 ) ) &&
 	    ( atomic_read(&dest) == res ) )
 		ktest_pass( sp );
-	
+
 	atomic_set(&dest, ATOMIC_VAL5);
 	inc=ATOMIC_VAL3;
 	kprintf("atomic xor_return(%lx,%lx)", atomic_read(&dest), inc);

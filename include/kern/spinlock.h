@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_SPINLOCK_H)
-#define  _KERN_SPINLOCK_H 
+#define  _KERN_SPINLOCK_H
 
 #include <klib/freestanding.h>
 

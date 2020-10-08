@@ -42,7 +42,7 @@
 
 #define THR_TID_IDLE              (ULONGLONG_C(0))          /**< アイドルスレッドのスレッドID */
 #define THR_TID_REAPER            (ULONGLONG_C(2))          /**< 刈り取りスレッドのスレッドID */
-#define THR_PRIO_REAPER           (SCHED_MAX_SYS_PRIO - 1)  /**< 刈り取りスレッドの優先度 */ 
+#define THR_PRIO_REAPER           (SCHED_MAX_SYS_PRIO - 1)  /**< 刈り取りスレッドの優先度 */
 
 struct _thread_info;
 struct _proc;
@@ -149,9 +149,9 @@ typedef struct _thread_args{
 
 int thr_thread_wait(struct _thr_wait_res *_resp);
 void thr_thread_exit(exit_code _ec);
-int thr_user_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args, 
+int thr_user_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args,
     struct _proc *_p, void *_usp, thr_prio _prio, thr_flags _flags, struct _thread **_thrp);
-int thr_kernel_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args, 
+int thr_kernel_thread_create(tid _id, entry_addr _entry, struct _thread_args *_args,
     thr_prio _prio, thr_flags _flags, thread **_thrp);
 void thr_thread_switch(struct _thread *_prev, struct _thread *_next);
 bool thr_ref_dec(struct _thread *_thr);

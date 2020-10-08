@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_HAL_RV64_PREPARE_H)
-#define  _HAL_RV64_PREPARE_H 
+#define  _HAL_RV64_PREPARE_H
 
 #include <klib/freestanding.h>
 

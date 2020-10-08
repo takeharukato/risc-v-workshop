@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_PAGE_PFRAME_H)
-#define  _PAGE_PFRAME_H 
+#define  _PAGE_PFRAME_H
 
 /** ページの状態(共通部)
  */

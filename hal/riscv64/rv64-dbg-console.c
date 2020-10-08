@@ -41,7 +41,7 @@
    @param[in] private ハンドラプライベート情報
    @retval IRQ_HANDLED 割込みを処理した
  */
-static int 
+static int
 uart_irq_handler(irq_no irq, trap_context *ctx, void *private){
 	int ch;
 
@@ -68,7 +68,7 @@ void
 uart_rxintr_enable(void){
 	int rc;
 
-	rc = irq_register_handler(RV64_UART0_IRQ, IRQ_ATTR_NESTABLE|IRQ_ATTR_EDGE, 1, 
+	rc = irq_register_handler(RV64_UART0_IRQ, IRQ_ATTR_NESTABLE|IRQ_ATTR_EDGE, 1,
 	    uart_irq_handler, NULL);
 	kassert( rc == 0 );
 

@@ -39,14 +39,14 @@ int
 simplefs_read_mapped_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
     off_t position, simplefs_blkno *blkp){
 	simplefs_blkno blk;
-	
+
 	if ( position > fs_inode->i_size )
 		return -E2BIG;  /*  ファイルサイズの上限を超えている  */
 
 	/* ブロック番号を算出する */
 	blk = truncate_align(position, fs_super->s_blksiz) / fs_super->s_blksiz;
 	kassert( SIMPLEFS_IDATA_NR > blk );  /* ブロック番号の範囲を超えないこと */
-	
+
 	*blkp = blk;  /* 物理ブロック番号を返却する */
 
 	return 0;
@@ -65,17 +65,17 @@ int
 simplefs_write_mapped_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
     off_t position, simplefs_blkno new_blk){
 	simplefs_blkno blk;
-	
+
 	if ( position > fs_inode->i_size )
 		return -E2BIG;  /*  ファイルサイズの上限を超えている  */
-	
+
 	if ( new_blk != SIMPLEFS_SUPER_INVALID_BLOCK ) {
 
 		/*  ブロック番号が一致することを確認する */
 		blk = truncate_align(position, fs_super->s_blksiz) / fs_super->s_blksiz;
 		kassert( blk == new_blk );
 	}
-	
+
 	return 0;
 }
 
@@ -102,7 +102,7 @@ simplefs_unmap_block(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
 
 	if ( ( off + len ) >= fs_inode->i_size ) {
 
-		
+
 		fs_inode->i_size = off;  /* ファイルサイズを更新 */
 	}
 	return 0;
@@ -115,7 +115,7 @@ simplefs_unmap_block(simplefs_super_block *fs_super, simplefs_ino fs_vnid,
    @retval     0      正常終了
    @retval    -ENOSPC 空きブロックがない
  */
-int 
+int
 simplefs_alloc_block(simplefs_super_block *fs_super, simplefs_blkno *block_nump){
 
 	return 0;
@@ -130,7 +130,7 @@ simplefs_alloc_block(simplefs_super_block *fs_super, simplefs_blkno *block_nump)
 void
 simplefs_free_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
     simplefs_blkno block_num){
-	
+
 	simplefs_clear_block(fs_super, fs_inode, block_num,
 	    0, fs_super->s_blksiz);  /* ブロック内をクリアする */
 
@@ -166,7 +166,7 @@ simplefs_clear_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
 	if ( ( ( offset + size ) > fs_super->s_blksiz ) ||
 	    ( offset >= ( offset + size ) ) )
 		return -EINVAL;  /* offset+sizeがブロック長を超えている  */
-	
+
 	if ( block_num >= SIMPLEFS_IDATA_NR )
 		return -E2BIG;  /*  ファイルサイズの上限を超えている  */
 
@@ -230,7 +230,7 @@ simplefs_write_block(simplefs_super_block *fs_super, simplefs_inode *fs_inode,
 		return -EINVAL;  /*  offset + sizeがブロック長を超えている  */
 
 	/* ブロックに書き込む */
-	memmove(SIMPLEFS_REFER_DATA(fs_inode, block_num) + offset, buf, 
+	memmove(SIMPLEFS_REFER_DATA(fs_inode, block_num) + offset, buf,
 	    size);
 
 	return 0;

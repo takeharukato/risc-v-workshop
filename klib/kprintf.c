@@ -240,7 +240,7 @@ kvprintf(size_t len, void *buf, char const *fmt, int radix, va_list ap) {
 	for (;;) {
 		width = 0;
 		padchar = ' ';
-		
+
 		/*
 		 * 書式指定文字('%')に出会うまでバッファに文字を出力する
 		 */
@@ -285,14 +285,14 @@ kvprintf(size_t len, void *buf, char const *fmt, int radix, va_list ap) {
 				padchar = '0';
 				goto reswitch;
 			}
-		case '1': 
-		case '2': 
-		case '3': 
+		case '1':
+		case '2':
+		case '3':
 		case '4':
-		case '5': 
-		case '6': 
-		case '7': 
-		case '8': 
+		case '5':
+		case '6':
+		case '7':
+		case '8':
 		case '9':
 			for (n = 0;; ++fmt) {
 				n = n * 10 + ch - '0';
@@ -550,4 +550,3 @@ ksnprintf(char *str, size_t size, const char *fmt, ...) {
 
 	return rc;
 }
-

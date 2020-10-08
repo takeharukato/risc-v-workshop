@@ -17,7 +17,7 @@
 #include <klib/compiler.h>
 
 /** MinixV1,V2, V3スーパブロック取得時のブロックサイズ */
-#define MINIX_OLD_BLOCK_SIZE  (1024) 
+#define MINIX_OLD_BLOCK_SIZE  (1024)
 #define MINIX_V1_BLOCK_SIZE   (MINIX_OLD_BLOCK_SIZE)
 #define MINIX_V2_BLOCK_SIZE   (MINIX_OLD_BLOCK_SIZE)
 
@@ -60,14 +60,14 @@
 /** MinixV1 I-nodeでの最初の間接参照ブロックインデクス */
 #define MINIX_V1_INDIRECT_ZONE_IDX      ( MINIX_V1_NR_DZONES )
 /** MinixV1 I-nodeでの最初の2重間接参照ブロックインデクス */
-#define MINIX_V1_DBL_INDIRECT_ZONE_IDX 	( MINIX_V1_INDIRECT_ZONE_IDX + 1 ) 
+#define MINIX_V1_DBL_INDIRECT_ZONE_IDX 	( MINIX_V1_INDIRECT_ZONE_IDX + 1 )
 
 #define MINIX_V2_NR_TZONES     (10) /**< MinixV2でのゾーン配列総数        */
 #define MINIX_V2_NR_DZONES     (7)  /**< MinixV2での直接参照ブロック数    */
 #define MINIX_V2_NR_IND_ZONES  (1)  /**< MinixV2での間接参照ブロック数    */
 #define MINIX_V2_NR_DIND_ZONES (1)  /**< MinixV2での2重間接参照ブロック数 */
 /** MinixV2 I-nodeでの最初の間接参照ブロックインデクス */
-#define MINIX_V2_INDIRECT_ZONE_IDX      ( MINIX_V2_NR_DZONES)       
+#define MINIX_V2_INDIRECT_ZONE_IDX      ( MINIX_V2_NR_DZONES)
 /** MinixV2 I-nodeでの最初の2重間接参照ブロックインデクス */
 #define MINIX_V2_DBL_INDIRECT_ZONE_IDX	( MINIX_V2_INDIRECT_ZONE_IDX + 1 )
 
@@ -80,7 +80,7 @@
 /** MinixV3での2重間接参照ブロック数 */
 #define MINIX_V3_NR_DIND_ZONES (MINIX_V2_NR_DIND_ZONES)
 /** MinixV3 I-nodeでの最初の間接参照ブロックインデクス */
-#define MINIX_V3_INDIRECT_ZONE_IDX      ( MINIX_V3_NR_DZONES)       
+#define MINIX_V3_INDIRECT_ZONE_IDX      ( MINIX_V3_NR_DZONES)
 /** MinixV3 I-nodeでの最初の2重間接参照ブロックインデクス */
 #define MINIX_V3_DBL_INDIRECT_ZONE_IDX	( MINIX_V3_INDIRECT_ZONE_IDX + 1 )
 
@@ -191,7 +191,7 @@ typedef struct _minix_super_block {
 /**
    MinixV1 ディスク I-node
  */
-typedef struct _minixv1_inode {	
+typedef struct _minixv1_inode {
 	uint16_t                     i_mode;  /**< ファイル種別/保護属性        */
 	uint16_t                      i_uid;  /**< ファイル所有者のユーザID     */
 	uint32_t                     i_size;  /**< ファイルサイズ (単位:バイト) */
@@ -258,7 +258,7 @@ typedef struct _minix3_dentry {
    Minix ディスクディレクトリエントリ
  */
 typedef struct _minix_dentry{
-	union  _d_dentry{            
+	union  _d_dentry{
 		minixv1_dentry v12;  /**< MinixV1/MinixV2 dentry          */
 		minixv3_dentry  v3;  /**< MinixV3 dentry                  */
 	}d_dentry;
@@ -313,7 +313,7 @@ typedef struct _minix_dentry{
 /**
    間接参照参照ゾーン数を算出する
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_NR_IND_ZONES(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? (MINIX_V3_NR_IND_ZONES) : \
 	  ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_NR_IND_ZONES) : (MINIX_V1_NR_IND_ZONES) ) )
@@ -321,7 +321,7 @@ typedef struct _minix_dentry{
 /**
    2重間接参照参照ゾーン数を算出する
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_NR_DIND_ZONES(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? (MINIX_V3_NR_DIND_ZONES) : \
 	  ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_NR_DIND_ZONES) : (MINIX_V1_NR_DIND_ZONES) ) )
@@ -329,7 +329,7 @@ typedef struct _minix_dentry{
 /**
    ファイルシステムブロックサイズを得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_BLOCK_SIZE(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? ((_sbp)->d_super.v3.s_blocksize) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_BLOCK_SIZE) : (MINIX_V1_BLOCK_SIZE) ) )
@@ -337,7 +337,7 @@ typedef struct _minix_dentry{
 /**
    ゾーン番号のバイト長を得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_ZONE_NUM_SIZE(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_zone)) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv2_zone)) : (sizeof(minixv1_zone)) ) )
@@ -345,7 +345,7 @@ typedef struct _minix_dentry{
 /**
    ディスクI-nodeのサイズを得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_DINODE_SIZE(_sbp) \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_inode)) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv2_inode)) : (sizeof(minixv1_inode)) ) )
@@ -354,7 +354,7 @@ typedef struct _minix_dentry{
    ビットマップチャンクのサイズを得る (単位:バイト)
    @param[in] _sbp メモリ中のスーパブロック情報
    @note 使用しない
- */      
+ */
 #define MINIX_BMAPCHUNK_SIZE(_sbp)				    \
 	( MINIX_SB_IS_V3((_sbp)) ? (sizeof(minixv3_bitchunk)) :	    \
 	  ( MINIX_SB_IS_V2((_sbp)) ? (sizeof(minixv12_bitchunk)) :  \
@@ -363,21 +363,21 @@ typedef struct _minix_dentry{
 /**
    ゾーンのサイズを得る
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_ZONE_SIZE(_sbp) \
 	(MINIX_BLOCK_SIZE(_sbp) << MINIX_D_SUPER_BLOCK(_sbp, s_log_zone_size))
 
 /**
    間接参照ゾーンから参照されるゾーンの数を得る
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_INDIRECTS(_sbp)	\
 	( MINIX_ZONE_SIZE((_sbp)) / MINIX_ZONE_NUM_SIZE((_sbp)) )
 
 /**
    間接参照ゾーンの最初のインデクスを得る
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_INDIRECT_ZONE_IDX(_sbp)				      \
 	( MINIX_SB_IS_V3((_sbp)) ? (MINIX_V3_INDIRECT_ZONE_IDX) :     \
 	    ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_INDIRECT_ZONE_IDX) : \
@@ -386,12 +386,12 @@ typedef struct _minix_dentry{
 /**
    2重間接参照ゾーンの最初のインデクスを得る
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_DBL_INDIRECT_ZONE_IDX(_sbp)				      \
 	( MINIX_SB_IS_V3((_sbp)) ? (MINIX_V3_DBL_INDIRECT_ZONE_IDX) :     \
 	    ( MINIX_SB_IS_V2((_sbp)) ? (MINIX_V2_DBL_INDIRECT_ZONE_IDX) : \
 		(MINIX_V1_DBL_INDIRECT_ZONE_IDX) ) )
-	
+
 /**
    スーパブロック中の総ゾーン数を得る
    @param[in] _sbp メモリ中のスーパブロック情報
@@ -408,11 +408,11 @@ typedef struct _minix_dentry{
 #define MINIX_NO_ZONE(_sbp)				\
 	( MINIX_SB_IS_V3((_sbp) ) ? ((minixv3_zone)0) :	\
 	    ( MINIX_SB_IS_V2((_sbp)) ? ((minixv2_zone)0) : ((minixv1_zone)0) ) )
-	
+
 /**
    I-nodeテーブルブロック中に含まれるI-node情報の数を算出する
    @param[in] _sbp メモリ中のスーパブロック情報
- */      
+ */
 #define MINIX_INODES_PER_BLOCK(_sbp) \
 	( MINIX_BLOCK_SIZE((_sbp)) / MINIX_DINODE_SIZE(_sbp))
 
@@ -534,9 +534,9 @@ typedef struct _minix_dentry{
 
 int minix_read_super(dev_id _dev, struct _minix_super_block *_sbp);
 int minix_write_super(struct _minix_super_block *_sbp);
-int minix_bitmap_alloc_at(struct _minix_super_block *_sbp, int _map_type, 
+int minix_bitmap_alloc_at(struct _minix_super_block *_sbp, int _map_type,
     minix_bitmap_idx _idx);
-int minix_bitmap_alloc(struct _minix_super_block *_sbp, int _map_type, 
+int minix_bitmap_alloc(struct _minix_super_block *_sbp, int _map_type,
     minix_bitmap_idx *_idxp);
 int minix_bitmap_free(struct _minix_super_block *_sbp, int _map_type, minix_bitmap_idx _fbit);
 int minix_rw_disk_inode(struct _minix_super_block *_sbp, minix_ino _i_num, int _rw_flag,
@@ -547,20 +547,20 @@ int minix_read_mapped_block(struct _minix_super_block *_sbp, struct _minix_inode
     off_t _position, minix_zone *_zonep);
 int minix_write_mapped_block(struct _minix_super_block *_sbp, struct _minix_inode *_dip,
     off_t _position, minix_zone _new_zone);
-int minix_rw_zone(struct _minix_super_block *_sbp, minix_ino _i_num, 
-    struct _minix_inode *_dip, void *_kpage, off_t _off, ssize_t _len, int _rw_flag, 
+int minix_rw_zone(struct _minix_super_block *_sbp, minix_ino _i_num,
+    struct _minix_inode *_dip, void *_kpage, off_t _off, ssize_t _len, int _rw_flag,
     ssize_t *_rwlenp);
-int minix_unmap_zone(struct _minix_super_block *_sbp, minix_ino _i_num, 
+int minix_unmap_zone(struct _minix_super_block *_sbp, minix_ino _i_num,
     struct _minix_inode *_dip, off_t _off, ssize_t _len);
-int minix_extend_zone(struct _minix_super_block *_sbp, minix_ino _i_num, 
+int minix_extend_zone(struct _minix_super_block *_sbp, minix_ino _i_num,
 		      struct _minix_inode *_dip, ssize_t _len);
 int minix_lookup_dentry_by_name(struct _minix_super_block *_sbp, struct _minix_inode *_dirip,
     const char *_name, struct _minix_dentry *_de);
-int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum, 
+int minix_add_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum,
     struct _minix_inode *_dirip, const char *_name, minix_ino _inum);
-int minix_del_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum, 
+int minix_del_dentry(struct _minix_super_block *_sbp, minix_ino _dir_inum,
     struct _minix_inode *_dirip, const char *_name, minix_ino *_inump);
-int minix_getdents(struct _minix_super_block *_sbp, struct _minix_inode *_dirip, void *_buf, 
+int minix_getdents(struct _minix_super_block *_sbp, struct _minix_inode *_dirip, void *_buf,
     off_t _off, ssize_t _len, ssize_t *_rdlenp);
 #endif  /*  !ASM_FILE  */
 #endif  /*  FS_MINIXFS_MINIXFS_H   */

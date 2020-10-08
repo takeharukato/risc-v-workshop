@@ -19,7 +19,7 @@
 
 static ktest_stats tstat_proc=KTEST_INITIALIZER;
 
-static const char __unused *tst_args[]={"init", "arg1", NULL};  //"arg2", "arg3", 
+static const char __unused *tst_args[]={"init", "arg1", NULL};  //"arg2", "arg3",
 static const char __unused *tst_envs[]={"TERM=rv64ws", NULL};
 
 static void
@@ -43,7 +43,7 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 	memset(&thrargs, 0, sizeof(thread_args));
 
 	rc = proc_user_allocate(&p1);
-	if ( rc == 0 ) 
+	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
@@ -52,15 +52,15 @@ proc1(struct _ktest_stats *sp, void __unused *arg){
 
 #if defined(CONFIG_HAL)
 		usp = HAL_USER_END_ADDR;
-		rc = proc_argument_copy(proc_kernel_process_refer(), 
-		    p1->segments[PROC_STACK_SEG].prot, tst_args, tst_envs, p1, 
+		rc = proc_argument_copy(proc_kernel_process_refer(),
+		    p1->segments[PROC_STACK_SEG].prot, tst_args, tst_envs, p1,
 		    &usp, &argcp, &argvp, &envp);
 		if ( rc == 0 )
 			ktest_pass( sp );
 		else
 			ktest_fail( sp );
 		hal_pgtbl_activate(p1->pgt);
-		
+
 		hal_pgtbl_deactivate(p1->pgt);
 		hal_pgtbl_activate(hal_refer_kernel_pagetable());
 

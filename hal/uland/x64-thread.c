@@ -30,17 +30,17 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 	x64_thrsw_context  *thrctx;
 
 	/* 例外コンテキスト位置 */
-	trap = (trap_context *)((void *)*stkp - sizeof(trap_context)); 
+	trap = (trap_context *)((void *)*stkp - sizeof(trap_context));
 	/* スレッドコンテキスト位置 */
-	thrctx = (x64_thrsw_context *)((void *)trap - sizeof(x64_thrsw_context)); 
+	thrctx = (x64_thrsw_context *)((void *)trap - sizeof(x64_thrsw_context));
 
 	/* コンテキスト内のレジスタをゼロ初期化
 	 */
-	memset(trap, 0, sizeof(trap_context));  
+	memset(trap, 0, sizeof(trap_context));
 	memset(thrctx, 0, sizeof(x64_thrsw_context));
 
 	/* スレッドスイッチ後の復帰先アドレスに例外出口処理ルーチンを設定 */
-	thrctx->rip = (reg_type)x64_return_from_trap; 
+	thrctx->rip = (reg_type)x64_return_from_trap;
 	thrctx->rflags = X64_RFLAGS_RESVBITS;  /* 予約ビットを立てる */
 
 	trap->rip = entry; /* 例外復帰後のアドレスにスレッドのエントリアドレスを設定 */
@@ -50,7 +50,7 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 	 * 引数情報設定
 	 */
 	if ( args != NULL ) {
-		
+
 		trap->rdi = args->arg1;
 		trap->rsi = args->arg2;
 		trap->rdx = args->arg3;

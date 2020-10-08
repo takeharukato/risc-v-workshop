@@ -28,7 +28,7 @@ threada(void *arg){
 	thread      *thr;
 
 	kassert( (reg_type)arg == 1 );
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )thread_test, NULL, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )thread_test, NULL,
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
 	kassert( rc == 0 );
 
@@ -48,14 +48,14 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 	 * 引数エラーテスト
 	 */
 	/* カーネルスレッド */
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL,
 			       SCHED_MAX_PRIO - 1, THR_THRFLAGS_KERNEL, &thr);
 	if ( rc == -EINVAL )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL,
 			       SCHED_MIN_PRIO + 1, THR_THRFLAGS_KERNEL, &thr);
 	if ( rc == -EINVAL )
 		ktest_pass( sp );
@@ -63,16 +63,16 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	/* ユーザスレッド */
-	rc = thr_user_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
-	    proc_kernel_process_refer(), NULL, SCHED_MAX_USER_PRIO - 1, 
+	rc = thr_user_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL,
+	    proc_kernel_process_refer(), NULL, SCHED_MAX_USER_PRIO - 1,
 	    THR_THRFLAGS_USER, &thr);
 	if ( rc == -EINVAL )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = thr_user_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL, 
-	    proc_kernel_process_refer(), NULL, SCHED_MIN_USER_PRIO + 1, 
+	rc = thr_user_thread_create(THR_TID_AUTO, (entry_addr )threada, NULL,
+	    proc_kernel_process_refer(), NULL, SCHED_MIN_USER_PRIO + 1,
 	    THR_THRFLAGS_USER, &thr);
 	if ( rc == -EINVAL )
 		ktest_pass( sp );
@@ -88,7 +88,7 @@ thread1(struct _ktest_stats *sp, void __unused *arg){
 	args.arg4 = 4;
 	args.arg5 = 5;
 	args.arg6 = 6;
-	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, &args, 
+	rc = thr_kernel_thread_create(THR_TID_AUTO, (entry_addr )threada, &args,
 			       SCHED_MIN_USER_PRIO, THR_THRFLAGS_KERNEL, &thr);
 	if ( rc == 0 )
 		ktest_pass( sp );

@@ -30,7 +30,7 @@ strncpy(char *dest, char const *src, size_t count){
 
 		*dest = *src;
 		if ( *src == '\0' )
-			break;		
+			break;
 	}
 
 	return tmp;

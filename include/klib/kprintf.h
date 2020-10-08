@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_KPRINTF_H)
-#define  _KLIB_KPRINTF_H 
+#define  _KLIB_KPRINTF_H
 
 #include <klib/freestanding.h>
 

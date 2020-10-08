@@ -34,7 +34,7 @@ int
 hal_read_rtc(ktimespec *ktsp) {
 	uint32_t low, high1, high2;
 	uint64_t val;
-	
+
 	do{
 		high1 = *RV64_RTC_REG(RV64_RTC_TIME_HIGH_REG); /* 上位32ビットを詠み込む */
 		low = *RV64_RTC_REG(RV64_RTC_TIME_LOW_REG);    /* 下位32ビットを詠み込む */

@@ -31,13 +31,13 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 	rv64_thrsw_context *thrctx;
 
 	/* 例外コンテキスト位置 */
-	trap = (trap_context *)((void *)*stkp - sizeof(trap_context)); 
+	trap = (trap_context *)((void *)*stkp - sizeof(trap_context));
 	/* スレッドコンテキスト位置 */
-	thrctx = (rv64_thrsw_context *)((void *)trap - sizeof(rv64_thrsw_context)); 
+	thrctx = (rv64_thrsw_context *)((void *)trap - sizeof(rv64_thrsw_context));
 
 	/* コンテキスト内のレジスタをゼロ初期化
 	 */
-	memset(trap, 0, sizeof(trap_context));  
+	memset(trap, 0, sizeof(trap_context));
 	memset(thrctx, 0, sizeof(rv64_thrsw_context));
 
 	/* スレッドスイッチ後の復帰先アドレスに例外出口処理ルーチンを設定 */
@@ -53,19 +53,19 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
 
 		trap->sp = (reg_type)thr_sp;  /* スタックポインタをユーザスタックに設定 */
 		/* ユーザモードに復帰 */
-		trap->estatus |= SSTATUS_SPIE | SSTATUS_UPIE ; 
+		trap->estatus |= SSTATUS_SPIE | SSTATUS_UPIE ;
 	} else {
 
 		trap->sp = (reg_type)*stkp;  /* スタックポインタをカーネルスタックに設定 */
 		/* スーパバイザモードに復帰 */
-		trap->estatus |= SSTATUS_SUM | SSTATUS_SPP | SSTATUS_SPIE; 
+		trap->estatus |= SSTATUS_SUM | SSTATUS_SPP | SSTATUS_SPIE;
 	}
 
 	/*
 	 * 引数情報設定
 	 */
 	if ( args != NULL ) {
-		
+
 		trap->a0 = args->arg1;
 		trap->a1 = args->arg2;
 		trap->a2 = args->arg3;

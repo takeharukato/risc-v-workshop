@@ -22,10 +22,10 @@
    @retval -EBADF  正当なユーザファイルディスクリプタでない
    @retval -EIO    I/Oエラー
    @retval -ENOMEM メモリ不足
-   @retval -ENOSYS createをサポートしていない 
+   @retval -ENOSYS createをサポートしていない
    @retval -EISDIR ディレクトリを作成しようとした
  */
-int 
+int
 vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	int                rc;
 	vnode              *v;
@@ -77,7 +77,7 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	if ( v->v_mount->m_fs->c_calls->fs_create != NULL ) {
 
 		/* TODO: statにファイル生成ユーザ/グループを設定 */
-		rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super, 
+		rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super,
 		    v->v_id, v->v_fs_vnode, filename, stat, &new_vnid);
 		if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
 			rc = -EIO;  /*  エラーコードを補正  */

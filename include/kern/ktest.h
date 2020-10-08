@@ -20,7 +20,7 @@ typedef void (*tst_start_func_type)(void *_arg);  /*< テスト開始関数 */
  */
 typedef struct _ktest_def{
 	ktest_func_type  func;  /*< テスト関数  */
-	void             *arg;  /*< テスト引数  */	
+	void             *arg;  /*< テスト引数  */
 }ktest_def;
 
 /**

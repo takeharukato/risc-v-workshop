@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_ALIGN_H)
-#define  _KLIB_ALIGN_H 
+#define  _KLIB_ALIGN_H
 
 #if !defined(ASM_FILE)
 #include <klib/freestanding.h>

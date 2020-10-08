@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_CTYPE_H)
-#define  _KLIB_CTYPE_H 
+#define  _KLIB_CTYPE_H
 
 #include <klib/freestanding.h>
 

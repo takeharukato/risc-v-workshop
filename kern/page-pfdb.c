@@ -24,7 +24,7 @@ static page_frame_db g_pfdb = __PFDB_INITIALIZER(&g_pfdb);
 static int _pfdb_ent_cmp(struct _pfdb_ent *_key, struct _pfdb_ent *_ent);
 RB_GENERATE_STATIC(_pfdb_tree, _pfdb_ent, ent, _pfdb_ent_cmp);
 
-/** 
+/**
     ページフレームデータベースエントリ比較関数
     @param[in] key 比較対象領域1
     @param[in] ent RB木内の各エントリ
@@ -32,9 +32,9 @@ RB_GENERATE_STATIC(_pfdb_tree, _pfdb_ent, ent, _pfdb_ent_cmp);
     @retval 負  keyの領域全体が entより後にある
     @retval 0   keyの領域全体が entに含まれる
  */
-static int 
+static int
 _pfdb_ent_cmp(struct _pfdb_ent *key, struct _pfdb_ent *ent){
-	
+
 	if ( key->max_pfn <= ent->min_pfn )
 		return 1;
 
@@ -44,7 +44,7 @@ _pfdb_ent_cmp(struct _pfdb_ent *key, struct _pfdb_ent *ent){
 	kassert( ( ent->min_pfn <= key->min_pfn ) &&
 		 ( key->max_pfn < ent->max_pfn ) );
 
-	return 0;	
+	return 0;
 }
 
 /** ページフレーム番号からページフレーム情報を得る
@@ -58,7 +58,7 @@ pfn_to_page_frame(obj_cnt_type pfn, page_frame **pagep){
 	int           rc;
 	pfdb_ent     key;
 	pfdb_ent    *res;
-	int          idx;	
+	int          idx;
 	intrflags iflags;
 
 	/* ページフレームDBから指定されたページフレーム番号を
@@ -72,7 +72,7 @@ pfn_to_page_frame(obj_cnt_type pfn, page_frame **pagep){
 	 * ページフレーム情報を得る
 	 */
 	spinlock_lock_disable_intr(&g_pfdb.lock, &iflags);
-	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key); 
+	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key);
 	if ( res == NULL ) {  /*  対応するページフレーム情報が見つからなかった */
 
 		rc = -ESRCH;
@@ -100,14 +100,14 @@ mark_page_usage(page_frame *pf, page_usage usage){
 
 	/*  ページプールロックを獲得中に呼び出されることを確認  */
 	kassert( spinlock_locked_by_self(&pf->buddyp->lock) );
-	
+
 	pages = 1 << pf->order;  /*  獲得ページ数  */
 
 	/*
 	 * ページの利用用途を更新する
 	 */
 	switch(usage){
-		
+
 	case PAGE_USAGE_KERN:
 
 		/** その他カーネルデータページの利用ページ数を加算する
@@ -165,7 +165,7 @@ unmark_page_usage(page_frame *pf){
 
 	/*  ページプールロックを獲得中に呼び出されることを確認  */
 	kassert( spinlock_locked_by_self(&pf->buddyp->lock) );
-	
+
 	pages = 1 << pf->order;  /*  解放ページ数  */
 
 	if ( PAGE_USED_BY_KERN(pf) ) {
@@ -227,7 +227,7 @@ setup_clustered_pages(page_frame *pf) {
 
 	if ( pf->order == 0 ) {  /*  クラスタ化されていないページ  */
 
-		PAGE_UNMARK_CLUSTERED(&pf[0]);  
+		PAGE_UNMARK_CLUSTERED(&pf[0]);
 		return;
 	}
 
@@ -235,11 +235,11 @@ setup_clustered_pages(page_frame *pf) {
 	 * 各ページのページフレーム情報の状態をクラスタページに設定し,
 	 * 先頭ページを記録する
 	 */
-	for(i = 0; ( ULONG_C(1) << pf->order) > i; ++i) 
-		PAGE_MARK_CLUSTERED(&pf[i], &pf[0]);  
+	for(i = 0; ( ULONG_C(1) << pf->order) > i; ++i)
+		PAGE_MARK_CLUSTERED(&pf[i], &pf[0]);
 }
 
-/** 指定されたページフレームのページオーダを下げる (内部関数) 
+/** 指定されたページフレームのページオーダを下げる (内部関数)
     @param[in]  pf            ページフレーム情報
     @param[in]  request_order 要求ページオーダ
  */
@@ -275,7 +275,7 @@ make_page_order_down(page_frame *pf, page_order request_order){
 		kassert(pool->nr_pages > buddy_idx);
 
 		/*  バディページのページフレーム情報を取得  */
-		buddy_page = &pool->array[buddy_idx]; 
+		buddy_page = &pool->array[buddy_idx];
 		buddy_page->order = cur_order;           /*  バディページのオーダを更新     */
 		setup_clustered_pages(buddy_page);       /* ページクラスタ情報を更新する    */
 		pg_queue = &pool->page_list[cur_order];  /*  対象オーダのページキューを参照 */
@@ -286,7 +286,7 @@ make_page_order_down(page_frame *pf, page_order request_order){
 	}
 
 	if ( pf->order != request_order ) { /*  ページオーダを更新できなかった  */
-		
+
 		kprintf(KERN_PNC "adjust page order was failed:%p "
 		    "pfn:%u flags=%x order:%d reqest-order:%d"
 		    "original-order:%d\n", pf, pf->pfn,
@@ -297,7 +297,7 @@ make_page_order_down(page_frame *pf, page_order request_order){
 	return;
 }
 
-/** 
+/**
     バディプールにページを追加する(内部関数)
     @param[in] pool      追加対象のバディプール
     @param[in] req_page  追加するページのページフレーム情報
@@ -316,11 +316,11 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 
 	kassert( pool->array != NULL );
 	kassert( spinlock_locked_by_self(&pool->lock) );
-	
+
 	cur_order = order = req_page->order;  /*  ページオーダを取得  */
 	kassert( order < PAGE_POOL_MAX_ORDER);
 
-	/*  
+	/*
 	 *  バディページのページフレーム番号を取得するマスク
 	 */
 	mask =  ( ~((page_order_mask)0) ) << order;
@@ -338,16 +338,16 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 	/*  解放対象のページのキューを取得  */
 	area = &pool->page_list[cur_order];
 
-	/*  利用用途をクリアする  */	
-	unmark_page_usage(req_page);    
+	/*  利用用途をクリアする  */
+	unmark_page_usage(req_page);
 	/*  ページを開放状態に設定  */
 	PAGE_UNMARK_USED(req_page);
 
 	/*  最大オーダまでページの解放処理を繰り返す  */
 	while(cur_order < PAGE_POOL_MAX_ORDER ) {
-		
+
 		/*  ページキューが対象のバディ内になければならない  */
-		kassert( ( (uintptr_t)area ) < 
+		kassert( ( (uintptr_t)area ) <
 		    ( (uintptr_t)&pool->page_list[PAGE_POOL_MAX_ORDER] ) );
 
 		/*  ページインデクスがバディのページ数内に収まらなければならない  */
@@ -367,7 +367,7 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 		buddy_idx = cur_idx ^ ( 1 << cur_order );
 
 		/*  バディページのインデクスが配列の要素数を超える場合は接続不能  */
-		if (buddy_idx >= pool->nr_pages) 
+		if (buddy_idx >= pool->nr_pages)
 			break;
 
 		/*  バディページのページフレーム情報を取得  */
@@ -375,12 +375,12 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 
 #if  defined(ENQUEUE_PAGE_LOOP_DEBUG)
 		kprintf(KERN_DBG "enque-dbg mask 0x%lx cur_idx %u, buddy_idx %u "
-		    "cur:%p buddy:%p array%p[%d]\n", 
-		    mask, cur_idx, buddy_idx, cur_page, buddy_page, 
+		    "cur:%p buddy:%p array%p[%d]\n",
+		    mask, cur_idx, buddy_idx, cur_page, buddy_page,
 		    area, cur_order);
 #endif  /*  ENQUEUE_PAGE_LOOP_DEBUG  */
 
-		/*  
+		/*
 		 *  互いのオーダが異なる場合は接続不能
 		 */
 		if (cur_page->order != buddy_page->order)
@@ -413,17 +413,17 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
 	area = &pool->page_list[cur_page->order];
 
 #if  defined(ENQUEUE_PAGE_DEBUG)
-	kprintf(KERN_DBG "pfn %d addr:%p order=%d add into %p[%d]\n", 
-	    cur_idx, (void *)( (uintptr_t)(cur_idx << PAGE_SHIFT) ), 
+	kprintf(KERN_DBG "pfn %d addr:%p order=%d add into %p[%d]\n",
+	    cur_idx, (void *)( (uintptr_t)(cur_idx << PAGE_SHIFT) ),
 	    cur_page->order, area, (pool->free_nr[cur_page->order] + 1));
 #endif  /*  ENQUEUE_PAGE_DEBUG  */
 
-	setup_clustered_pages(cur_page);  /* ページクラスタ情報を更新する */	
+	setup_clustered_pages(cur_page);  /* ページクラスタ情報を更新する */
 
 	/*
-	 * ページをキューに追加する  
+	 * ページをキューに追加する
 	 */
-	queue_add(area, &cur_page->link);  
+	queue_add(area, &cur_page->link);
 	++pool->free_nr[cur_page->order];
 
 	return;
@@ -440,7 +440,7 @@ enqueue_page_to_buddy_pool(page_buddy *pool, page_frame *req_page) {
    @retval    -ENOMEM 空きページがない
 */
 static int
-dequeue_page_from_memory_area(pfdb_ent *ent, page_order order, 
+dequeue_page_from_memory_area(pfdb_ent *ent, page_order order,
     page_usage usage, obj_cnt_type *pfnp){
 	int               rc;
 	page_order cur_order;
@@ -448,11 +448,11 @@ dequeue_page_from_memory_area(pfdb_ent *ent, page_order order,
 	page_buddy     *pool;
 	intrflags     iflags;
 
-	if (order >= PAGE_POOL_MAX_ORDER) 
+	if (order >= PAGE_POOL_MAX_ORDER)
 		return -EINVAL;  /* 要求したページオーダが不正 */
 
 	/*  ページフレームDBロック獲得済みであることを確認  */
-	kassert( spinlock_locked_by_self(&g_pfdb.lock) );  
+	kassert( spinlock_locked_by_self(&g_pfdb.lock) );
 
 	pool = &ent->page_pool;  /*  ページフレームDBエントリのページプール情報を参照  */
 
@@ -463,12 +463,12 @@ dequeue_page_from_memory_area(pfdb_ent *ent, page_order order,
 	while (cur_order < PAGE_POOL_MAX_ORDER) { /* 空きページがあるキューを順番に調べる */
 
 		if ( !queue_is_empty(&pool->page_list[cur_order]) ) {
-			
+
 			cur_page = container_of(
 				queue_get_top(&pool->page_list[cur_order]),
 				page_frame, link); /* 空きページを取り出す */
 			--pool->free_nr[cur_order];
-			
+
 			/* 要求オーダまでページオーダを落とす */
 			make_page_order_down(cur_page, order);
 
@@ -481,7 +481,7 @@ dequeue_page_from_memory_area(pfdb_ent *ent, page_order order,
 
 			*pfnp = cur_page->pfn;  /* ページフレーム番号を返却する */
 			refcnt_set(&cur_page->usecnt, REFCNT_INITIAL_VAL);  /* 参照を上げる */
-			
+
 			rc = 0;
 			goto unlock_out;
 		}
@@ -551,7 +551,7 @@ dequeue_specified_page(page_frame *deq){
 
 		if ( buddy_idx > deq_idx ) {
 
-			/* deqのページ番号よりバディのページ番号が大きい場合, つまり, 
+			/* deqのページ番号よりバディのページ番号が大きい場合, つまり,
 			 * ヘッドページ側のページ群に対象のページが含まれる場合は,
 			 * バディページをプールに格納する
 			 */
@@ -563,7 +563,7 @@ dequeue_specified_page(page_frame *deq){
 
 			/* deqのページ番号よりバディのページ番号が小さい場合, つまり,
 			 * バディページ側のページ群に対象のページが含まれる場合は,
-			 * ヘッドページをプールに格納した後で, 
+			 * ヘッドページをプールに格納した後で,
 			 * ヘッドページへのポインタをバディのページに更新する
 			*/
 			kassert(list_not_linked(&head->link)); /* キューにつながっていない */
@@ -577,12 +577,12 @@ dequeue_specified_page(page_frame *deq){
 
 	return ;
 }
-/** 指定されたページフレーム番号のページを予約する (内部関数) 
+/** 指定されたページフレーム番号のページを予約する (内部関数)
     @param[in]  pfn   ページフレーム番号
     @retval  0     正常終了
     @retval -ESRCH 指定されたページフレーム番号に対応するページがなかった
  */
-static int 
+static int
 mark_page_frame_reserved(obj_cnt_type pfn){
 	int                  rc;
 	pfdb_ent            key;
@@ -603,7 +603,7 @@ mark_page_frame_reserved(obj_cnt_type pfn){
 	 * ページフレーム情報を得る
 	 */
 	spinlock_lock_disable_intr(&g_pfdb.lock, &iflags);
-	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key); 
+	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key);
 	if ( res == NULL ) {  /*  対応するページフレーム情報が見つからなかった */
 
 		rc = -ESRCH;
@@ -626,7 +626,7 @@ mark_page_frame_reserved(obj_cnt_type pfn){
 
 	/* ページが使用されていないことを確認
 	 */
-	kassert( pfdb_ref_page_use_count(pf) == 0 ); 
+	kassert( pfdb_ref_page_use_count(pf) == 0 );
 	kassert( ( pf->state & PAGE_STATE_UCASE_MASK ) == 0 );
 	kassert( !PAGE_IS_USED(pf) );
 
@@ -636,7 +636,7 @@ mark_page_frame_reserved(obj_cnt_type pfn){
 	spinlock_unlock_restore_intr(&pool->lock, &iflags);
 
 	PAGE_MARK_RESERVED(pf);     /* ページを予約中にする         */
-	
+
 	rc = 0;
 
 unlock_out:
@@ -671,7 +671,7 @@ unmark_page_frame_reserved(obj_cnt_type pfn){
 	 * ページフレーム情報を得る
 	 */
 	spinlock_lock_disable_intr(&g_pfdb.lock, &iflags);
-	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key); 
+	res = RB_FIND(_pfdb_tree, &g_pfdb.dbroot, &key);
 	if ( res == NULL ) {  /*  対応するページフレーム情報が見つからなかった */
 
 		rc = -ESRCH;
@@ -693,8 +693,8 @@ unmark_page_frame_reserved(obj_cnt_type pfn){
 
 	/* ページが使用されていないことを確認
 	 */
-	kassert( pfdb_ref_page_use_count(pf) == 0 );  
-	kassert( ( pf->state & PAGE_STATE_UCASE_MASK ) == 0 ); 
+	kassert( pfdb_ref_page_use_count(pf) == 0 );
+	kassert( ( pf->state & PAGE_STATE_UCASE_MASK ) == 0 );
 	kassert( !PAGE_IS_USED(pf) );
 
 	PAGE_UNMARK_RESERVED(pf);   /* ページ予約をクリアする     */
@@ -752,7 +752,7 @@ remove_pfdb_ent_common(pfdb_ent *ent){
 	}
 
 	if ( pool->available_pages != free_nr ) {
-		
+
 		rc = -EBUSY;  /*  使用中ページがある  */
 		goto unlock_out;
 	}
@@ -765,7 +765,7 @@ remove_pfdb_ent_common(pfdb_ent *ent){
 	spinlock_unlock_restore_intr(&pool->lock, &iflags); /*  ページプールロックを解放 */
 
 	if ( res == NULL ) {
-		
+
 		rc = -ENOENT;  /*  すでに登録抹消済み  */
 		goto error_out;
 	}
@@ -794,9 +794,9 @@ error_out:
    @retval    -EINTR  イベントを受信した
 */
 int
-pfdb_buddy_dequeue(page_order order, page_usage usage, pgalloc_flags alloc_flags, 
+pfdb_buddy_dequeue(page_order order, page_usage usage, pgalloc_flags alloc_flags,
     obj_cnt_type *pfnp){
-	int              rc;   
+	int              rc;
 	pfdb_ent       *ent;
 	obj_cnt_type    pfn;
 	intrflags    iflags;
@@ -816,17 +816,17 @@ pfdb_buddy_dequeue(page_order order, page_usage usage, pgalloc_flags alloc_flags
 
 			/* ページが獲得できたらページフレーム番号を返却
 			 */
-			if ( rc == 0 ) 
-				*pfnp = pfn; 
+			if ( rc == 0 )
+				*pfnp = pfn;
 
 			/*  エントリ内にメモリがない場合は, 次のエントリから獲得を試み,
 			 *  メモリ不足以外のエラーがあった場合は, 即時に復帰する
 			 */
 			if ( rc != -ENOMEM )
-				goto unlock_out;  
+				goto unlock_out;
 		}
 
-		if ( ( rc != 0 ) && ( alloc_flags & KMALLOC_ATOMIC ) ) { 
+		if ( ( rc != 0 ) && ( alloc_flags & KMALLOC_ATOMIC ) ) {
 
 			rc = -ENOMEM;  /*  メモリ不足によるメモリ獲得失敗  */
 			break;
@@ -958,7 +958,7 @@ pfdb_add(uintptr_t phys_start, size_t length, pfdb_ent **pfdbp){
 		 *  予約を解除しない
 		 */
 		if ( ( (void *)PAGE_TRUNCATE(&pool->array[0]) <= kaddr ) &&
-		    ( kaddr <  (void *)PAGE_ROUNDUP(pfdb->kvaddr + pfdb->length - 1) ) ) 
+		    ( kaddr <  (void *)PAGE_ROUNDUP(pfdb->kvaddr + pfdb->length - 1) ) )
 			continue;
 
 		/*
@@ -1028,7 +1028,7 @@ pfdb_free(void){
 
 	/*  ループ内で削除処理を行うのでRB_FOREACH_SAFEを使用  */
 	RB_FOREACH_SAFE(ent, _pfdb_tree, &g_pfdb.dbroot, nxt) { /*  登録済み領域を探査 */
-		
+
 		remove_pfdb_ent_common(ent);  /*  指定されたエントリを解放する  */
 	}
 
@@ -1112,7 +1112,7 @@ pfdb_kvaddr_to_paddr(void *kvaddr, void **paddrp){
 		goto error_out;
 	}
 
-	rc = hal_pfn_to_paddr(pfn, &paddr);  
+	rc = hal_pfn_to_paddr(pfn, &paddr);
 	if ( rc != 0 ) {
 
 		rc = -ESRCH;  /*  ページフレーム番号に対応する物理ページがない  */
@@ -1146,7 +1146,7 @@ pfdb_paddr_to_kvaddr(void *paddr, void **kvaddrp){
 		goto error_out;
 	}
 
-	rc = hal_pfn_to_kvaddr(pfn, &kvaddr);  
+	rc = hal_pfn_to_kvaddr(pfn, &kvaddr);
 	if ( rc != 0 ) {
 
 		rc = -ESRCH;  /*  指定されたページフレーム番号に対応するページがない  */
@@ -1168,13 +1168,13 @@ error_out:
    @retval  0     正常終了
    @retval -ESRCH 変換に失敗した
  */
-int 
+int
 pfdb_pfn_to_kvaddr(obj_cnt_type pfn, void **kvaddrp){
 	int rc;
 	void *kvaddr;
 
 	/*  ページフレーム番号からカーネルストレートマップ領域のアドレスを算出する  */
-	rc = hal_pfn_to_kvaddr(pfn, &kvaddr);  
+	rc = hal_pfn_to_kvaddr(pfn, &kvaddr);
 	if ( rc == 0 )
 		*kvaddrp = kvaddr;  /*  カーネルストレートマップ領域のアドレスを返却する  */
 	else
@@ -1227,7 +1227,7 @@ pfdb_kvaddr_to_page_frame(void *kvaddr, page_frame **pp){
 	}
 
 	/*  ページフレーム番号を元にページフレーム情報を取得  */
-	rc = pfn_to_page_frame(pfn, &pf);	
+	rc = pfn_to_page_frame(pfn, &pf);
 	kassert( rc == 0 );  /* 上記でページが登録済みであることを確認済みなので成功する  */
 
 	*pp = pf;  /*  ページフレーム情報を返却  */
@@ -1269,11 +1269,11 @@ pfdb_page_map_count_init(page_frame *pf, refcounter_val val){
 }
 
 /**
-   ページフレームのマップカウントを返す 
+   ページフレームのマップカウントを返す
    @param[in] pf ページフレーム
    @return マップカウント
  */
-refcounter_val 
+refcounter_val
 pfdb_ref_page_map_count(page_frame *pf){
 
 	return refcnt_read(&pf->mapcnt);  /*  利用カウントを返す  */
@@ -1288,7 +1288,7 @@ pfdb_ref_page_map_count(page_frame *pf){
 bool
 pfdb_inc_page_map_count(page_frame *pf){
 
-	/*  マップ解放中でなければ, 利用カウンタを加算し, 加算前の値を返す  
+	/*  マップ解放中でなければ, 利用カウンタを加算し, 加算前の値を返す
 	 */
 	return ( refcnt_inc_if_valid(&pf->mapcnt) != 0 );  /* 以前の値が0の場合加算できない */
 }
@@ -1306,11 +1306,11 @@ pfdb_dec_page_map_count(page_frame *pf){
 }
 
 /**
-   ページフレームの利用カウントを返す 
+   ページフレームの利用カウントを返す
    @param[in] pf ページフレーム
    @return 利用カウント
  */
-refcounter_val 
+refcounter_val
 pfdb_ref_page_use_count(page_frame *pf){
 
 	return refcnt_read(&pf->usecnt);  /*  利用カウントを返す  */
@@ -1325,7 +1325,7 @@ pfdb_ref_page_use_count(page_frame *pf){
 bool
 pfdb_inc_page_use_count(page_frame *pf){
 
-	/*  解放中でない場合のみ, 利用カウンタを加算し, 加算前の値を返す  
+	/*  解放中でない場合のみ, 利用カウンタを加算し, 加算前の値を返す
 	 */
 	return ( refcnt_inc_if_valid(&pf->usecnt) != 0 ); /* 以前の値が0の場合加算できない */
 }
@@ -1345,11 +1345,11 @@ pfdb_dec_page_use_count(page_frame *pf){
 
 	rc = refcnt_dec_and_test(&pf->usecnt); /* 最終参照者であることを確認 */
 	if ( rc ) { /*  利用カウントが0になったら解放する  */
-		
+
 		kassert( PAGE_IS_USED(pf) );  /*  多重開放でないことを確認  */
 
 		/* マップされていないことを確認 */
-		kassert( pfdb_ref_page_map_count(pf) == 0 ); 
+		kassert( pfdb_ref_page_map_count(pf) == 0 );
 
 		/* LRUにつながっていないことを確認 */
 		list_not_linked(&pf->lru_ent);
@@ -1378,7 +1378,7 @@ kcom_is_pfn_valid (obj_cnt_type pfn){
 
 	/*  ページフレーム番号に対応したページフレーム情報の取得を試みる
 	 */
-	rc = pfn_to_page_frame(pfn, &pf);  
+	rc = pfn_to_page_frame(pfn, &pf);
 
 	return (rc == 0);  /*  正常終了することを確認し, その結果を返却する  */
 }
@@ -1405,7 +1405,7 @@ kcom_obtain_pfdb_stat(pfdb_stat *statp){
 		statp->nr_pages += pool->nr_pages;  /*  総ページ数に反映  */
 		statp->available_pages += pool->available_pages;  /* 利用可能ページ数に反映 */
 		 /* 予約ページ数算出  */
-		statp->reserved_pages += pool->nr_pages - pool->available_pages; 
+		statp->reserved_pages += pool->nr_pages - pool->available_pages;
 		/*
 		 * ページ利用用途数を取得
 		 */
@@ -1424,7 +1424,7 @@ kcom_obtain_pfdb_stat(pfdb_stat *statp){
 			/*  ノーマルページ単位での総空きページ数を加算  */
 			statp->nr_free_pages += pool->free_nr[order] << order;
 			/*  オーダ単位での空きページ数を加算  */
-			statp->free_nr[order] += pool->free_nr[order];	
+			statp->free_nr[order] += pool->free_nr[order];
 		}
 	}
 

@@ -64,7 +64,7 @@ static slab_prealloc_cache_info prealloc_caches_info[]={
    @param[in] coloring_area キャッシュカラーリング用の領域長 (単位:バイト)
    @param[out] orderp  ページーオーダ返却領域
    @retval  0      正常終了
-   @retval -ESRCH  格納可能なページオーダを越えている   
+   @retval -ESRCH  格納可能なページオーダを越えている
  */
 static int
 cacl_off_slab_size(size_t obj_size, size_t coloring_area, page_order *orderp) {
@@ -76,27 +76,27 @@ cacl_off_slab_size(size_t obj_size, size_t coloring_area, page_order *orderp) {
 	size_t         remain_size;
 
 	/* オブジェクトページサイズを算出する。
-	 * 未使用領域が(領域長/KM_SLAB_TYPE_DIVISOR)未満になるか, 
+	 * 未使用領域が(領域長/KM_SLAB_TYPE_DIVISOR)未満になるか,
 	 * またはより大きな領域を確保していく中で最も未使用領域が
 	 * 小さくなるサイズをオブジェクトページサイズとする。
 	 */
-	
+
 	/*  最大バディページサイズを超えるサイズを番兵として設定  */
-	candidate_remains = PAGE_SIZE << PAGE_POOL_MAX_ORDER;  
+	candidate_remains = PAGE_SIZE << PAGE_POOL_MAX_ORDER;
 
 	/*  小さいサイズから順に試していき最適なオブジェクトページサイズを算出する */
 	for(order = 0, candidate = 0;
 	    (page_order)PAGE_POOL_MAX_ORDER > order; ++order) {
-		
+
 		slab_size = PAGE_SIZE << order;
 		if ( slab_size < ( obj_size + coloring_area ) )
 			continue;  /* オブジェクトを格納不可能なサイズ  */
 
 		 /*  オブジェクトを配置可能な領域の長さを求める */
-		data_area_size = slab_size - coloring_area; 
+		data_area_size = slab_size - coloring_area;
 
 		/* 余りサイズが閾値を下回ったら検索を終了 */
-		remain_size = data_area_size 
+		remain_size = data_area_size
 			- ( ( data_area_size / obj_size ) * obj_size );
 		if ( ( slab_size / KM_SLAB_TYPE_DIVISOR ) >= remain_size ) {
 
@@ -107,7 +107,7 @@ cacl_off_slab_size(size_t obj_size, size_t coloring_area, page_order *orderp) {
 
 		/* 以前より余り領域が小さい場合は, サイズの候補を更新する  */
 		if ( candidate_remains > remain_size ) {
-		
+
 			candidate = order;
 			candidate_remains = remain_size;
 		}
@@ -124,15 +124,15 @@ success_out:
 /**
     スラブ長を算出する (内部関数)
     @param[in] cache        カーネルメモリキャッシュ
-    @param[in] payload_size メモリオブジェクト 
+    @param[in] payload_size メモリオブジェクト
     @param[in] align        アラインメント(単位:バイト)
     @param[in] cache_flags  キャッシュ割り当てフラグ
     @retval  0 正常終了
     @retval -EINVAL 奇数アラインメントを指定した
     @retval -ESRCH  格納可能なページオーダを越えている
  */
-static int 
-calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align, 
+static int
+calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
     slab_flags cache_flags){
 	int                      rc;
 	page_order            order;
@@ -143,11 +143,11 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 	slab_flags           sflags;
 	size_t        coloring_area;
 
-	if ( align & 0x1 ) 
+	if ( align & 0x1 )
 		return -EINVAL;  /*  奇数アラインメントを指定した  */
-	
+
 	/*  引数で指定されたメモリ獲得条件を記憶する  */
-	sflags = cache_flags & KM_SFLAGS_ARGS; 
+	sflags = cache_flags & KM_SFLAGS_ARGS;
 
 	/*
 	 * オブジェクトサイズとアライメントサイズを初期化する
@@ -158,28 +158,28 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 	/*
 	 * キャッシュアラインメント調整用領域を追加する
 	 */
-	if ( align > 0 )   
+	if ( align > 0 )
 		obj_align = align;  /*  アラインメント指定を記憶する  */
 
 	if ( cache_flags & KM_SFLAGS_ALIGN_HW )
 		obj_align = HAL_CPUCACHE_HW_ALIGN;  /* ハードウエアアラインメント */
-	
+
 	/* 管理領域へのポインタ(ポインタサイズ分アライン可能なサイズを確保)と
 	 * アラインメントオフセットを含めて領域を確保する
 	 */
 	if ( obj_align > 0 ) {
-	
+
 		/*  格納するデータ(payload)の直前にポインタ境界にポインタを配置する.
 		 *  格納するデータ(payload)のサイズとポインタ長を足して, 次のポインタ境界
 		 *  からオブジェクトを配置するようにサイズを補正することで領域を確保する。
 		 */
-		obj_size = roundup_align(payload_size + 
+		obj_size = roundup_align(payload_size +
 		    SLAB_BUFCTL_POINTER_SIZE + 1,
 		    sizeof(void *));
 		obj_size = roundup_align(obj_size, obj_align);
-	} 
-	
-	/* 
+	}
+
+	/*
 	 * SLABの種類, オブジェクト配置先ページのサイズと配置可能オブジェクト数を決定する
 	 */
 	if ( ( !( sflags & KM_SFLAGS_COLORING ) ) &&
@@ -189,7 +189,7 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 		 * (KM_SLAB_TYPE_DIVISOR)収まるならON SLABでキャッシュを構成する。
 		 * ON SLABの場合バッファ管理情報を含めてオブジェクト長を設定する。
 		 */
-		obj_size = roundup_align(obj_size + sizeof(kmem_s_bufctl), 
+		obj_size = roundup_align(obj_size + sizeof(kmem_s_bufctl),
 		    sizeof(void *));
 		KMEM_CACHE_SFLAGS_MARK_ON_SLAB(sflags);  /* ON SLABに設定する  */
 		order = 0;              /*  ページオーダ0(=1ページ)  */
@@ -199,16 +199,16 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 		 *  ページサイズからSLAB情報サイズを減らして割り当てオブジェクト数を
 		 *  算出する
 		 */
-		objs_per_slab = ( slab_size - sizeof(slab) ) / obj_size; 
+		objs_per_slab = ( slab_size - sizeof(slab) ) / obj_size;
 	} else {
 
-		/* 
+		/*
 		 * OFF SLABの場合
 		 */
 
 		/*
 		 * キャッシュカラーリング用にキャッシュサイズ分の領域を獲得する
-		 * ラストレベルキャッシュサイズ分の領域を用意する 
+		 * ラストレベルキャッシュサイズ分の領域を用意する
 		 */
 		coloring_area = 0;
 		if ( sflags & KM_SFLAGS_COLORING ) {
@@ -216,28 +216,28 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 			/* キャッシュラインサイズ単位で, オブジェクト開始アドレスを
 			 * ずらす。
 			 */
-			cache->color_offset = krn_get_cpu_l1_dcache_linesize(); 
+			cache->color_offset = krn_get_cpu_l1_dcache_linesize();
 
 			/*  同時にキャッシュに存在しうるキャッシュライン数(セット数)
 			 *  周期でオフセットをラウンドする
 			 */
 			cache->color_num = krn_get_cpu_l1_dcache_color_num();
-			
+
 			/*  カラーリング用領域を確保  */
 			coloring_area = cache->color_offset * cache->color_num;
 
 			cache->color_index = 0;  /*  最初のオフセット  */
 		}
-		
-		/* アラインメントがついていない場合は, 
+
+		/* アラインメントがついていない場合は,
 		 * オブジェクトの直前にバッファ管理情報へのポインタを配置する
 		 * 領域を割り当てる。
 		 * アライメント補正がある場合はすでに領域を割り当てているので割り当て不要。
 		 */
-		if ( obj_align == 0 )  
-			obj_size = roundup_align(obj_size + SLAB_BUFCTL_POINTER_SIZE, 
+		if ( obj_align == 0 )
+			obj_size = roundup_align(obj_size + SLAB_BUFCTL_POINTER_SIZE,
 			    sizeof(void *));
-		rc = cacl_off_slab_size(obj_size, coloring_area, 
+		rc = cacl_off_slab_size(obj_size, coloring_area,
 		    &order);  /* オブジェクトページサイズ算出 */
 		if ( rc != 0 )
 			goto error_out;
@@ -245,9 +245,9 @@ calc_slab_size(kmem_cache *cache, size_t payload_size, uintptr_t align,
 		KMEM_CACHE_SFLAGS_MARK_OFF_SLAB(sflags);  /* OFF SLABフラグに設定する  */
 		slab_size = PAGE_SIZE << order;  /*  SLABサイズを算出  */
 		/*  SLAB内のオブジェクト数を算出  */
-		objs_per_slab = (slab_size - coloring_area) / obj_size;  
+		objs_per_slab = (slab_size - coloring_area) / obj_size;
 	}
-	
+
 	/* オブジェクトの格納方式（ONスラブ/OFFスラブ), アラインメント
 	 * オブジェクトサイズ, スラブサイズ, スラブ当たりの格納オブジェクト数
 	 * を設定する
@@ -300,7 +300,7 @@ alloc_slab_obj(kmem_cache *cache, slab *sinfo, void **objp){
 	 */
 
 	/*  空きオブジェクトリストのロックを獲得  */
-	spinlock_lock_disable_intr(&sinfo->lock, &iflags);  
+	spinlock_lock_disable_intr(&sinfo->lock, &iflags);
 
 	/* ON SLABの場合は, kmem_s_bufctl分後の領域から
 	 * オブジェクトが配置されている
@@ -309,8 +309,8 @@ alloc_slab_obj(kmem_cache *cache, slab *sinfo, void **objp){
 
 	/* OFF SLABの場合は, kmem_bufctlからオブジェクトのアドレスを求める
 	 */
-	bctl = container_of(slist_ref_top(&sinfo->objects), kmem_bufctl, link);	
-	if ( KMEM_CACHE_IS_ON_SLAB(cache) ) {  
+	bctl = container_of(slist_ref_top(&sinfo->objects), kmem_bufctl, link);
+	if ( KMEM_CACHE_IS_ON_SLAB(cache) ) {
 
 		/* ON SLABの場合
 		 */
@@ -340,16 +340,16 @@ alloc_slab_obj(kmem_cache *cache, slab *sinfo, void **objp){
 		 */
 		ptr = (void *)roundup_align(ptr + sizeof(void *),
 		    cache->align);  /*  返却するポインタをアライメントに合わせて補正  */
-		
+
 		/*  オブジェクト位置からポインタサイズ分減算し, そのアドレスを
 		 *  ポインタサイズで切り詰めた領域に管理情報へのポインタを配置する
 		 */
 		mctl_ptr = (void *)truncate_align(ptr - sizeof(void *),
-		    sizeof(void *)); 
+		    sizeof(void *));
 
 		/* バッファ制御情報のアドレスを格納する  */
 		if ( KMEM_CACHE_IS_ON_SLAB(cache) )
-			*((void **)mctl_ptr) = (void *)&s_bctl[0]; 
+			*((void **)mctl_ptr) = (void *)&s_bctl[0];
 		else
 			*((void **)mctl_ptr) = (void *)bctl;
 	}
@@ -357,11 +357,11 @@ alloc_slab_obj(kmem_cache *cache, slab *sinfo, void **objp){
 	if ( cache->constructor != NULL ) /*  コンストラクタ呼び出し  */
 		cache->constructor(ptr, cache->payload_size);
 
-	*objp = ptr;  /*  オブジェクトのアドレスを返却  */	
+	*objp = ptr;  /*  オブジェクトのアドレスを返却  */
 
 	/* ON SLABの場合のオブジェクトサイズを確認  */
 	kassert( ( !KMEM_CACHE_IS_ON_SLAB(cache) ) ||
-	    ( cache->obj_size >= 
+	    ( cache->obj_size >=
 		( (size_t)
 		    ( ( (void *)ptr + cache->payload_size ) - (void *)&s_bctl[0] ) ) ) );
 
@@ -427,17 +427,17 @@ free_slab_info(kmem_cache *cache, slab *sinfo) {
 	 * バッファ管理情報は各オブジェクトの直前にあるのでオブジェクトページを
 	 * 解放するだけでよい
 	 */
-	if ( !KMEM_CACHE_IS_ON_SLAB(cache) ) {  
+	if ( !KMEM_CACHE_IS_ON_SLAB(cache) ) {
 
 		/* OFF SLABの場合は, バッファ制御情報と
 		 * SLAB管理情報とを解放する
 		 */
-		while( !slist_is_empty(&sinfo->objects) ) { 
-			
+		while( !slist_is_empty(&sinfo->objects) ) {
+
 			/* 空きオブジェクトリストが空でなければ,
 			 * バッファ制御情報を取り出し, 解放する
 			 */
-			bctl = container_of(slist_get_top(&sinfo->objects), 
+			bctl = container_of(slist_get_top(&sinfo->objects),
 			    kmem_bufctl, link);  /*  バッファ制御情報を取り出し  */
 			kassert(bctl->link.next == NULL); /* 空きオブジェクトリスト中にない */
 			kfree( bctl ); /*  バッファ制御情報を解放  */
@@ -493,18 +493,18 @@ slab_kmem_cache_grow(kmem_cache *cache, pgalloc_flags mflags, slab **sinfop) {
 		/*
 		 *  SLABに空きオブジェクトを追加
 		 */
-		for( i = 0; cache->objs_per_slab > i; ++i) {  
+		for( i = 0; cache->objs_per_slab > i; ++i) {
 
-			/* オブジェクトの直前にリスト構造を配置し, 
+			/* オブジェクトの直前にリスト構造を配置し,
 			 * 空きオブジェクトをリストの先頭に追加
 			 */
 			sbfctl = (kmem_s_bufctl *)
 				((void *)kaddr +
 				    cache->obj_size * i );
-			slist_add(&sinfo->objects, &sbfctl->link); 
+			slist_add(&sinfo->objects, &sbfctl->link);
 		}
 	} else {  /*  OFF SLABの場合  */
-		
+
 		/* SLAB情報を事前割当て済みカーネルキャッシュから割り当てる  */
 		sinfo = kmalloc(sizeof(slab), mflags);
 		if ( sinfo == NULL ) {
@@ -521,13 +521,13 @@ slab_kmem_cache_grow(kmem_cache *cache, pgalloc_flags mflags, slab **sinfop) {
 		 */
 		this_coloff = 0;
 		if ( cache->sflags & KM_SFLAGS_COLORING ) {
-			
+
 			/* カラーリングオフセット分ずらして
 			 * オブジェクトを配置する
 			 */
 			this_coloff = cache->color_offset * cache->color_index;
 			/*  カラーリングオフセットのインデクスを更新する  */
-			cache->color_index = 
+			cache->color_index =
 				( cache->color_index + 1 ) % cache->color_num;
 			kassert( krn_get_cpu_dcache_size() > this_coloff );
 		}
@@ -535,12 +535,12 @@ slab_kmem_cache_grow(kmem_cache *cache, pgalloc_flags mflags, slab **sinfop) {
 		/*
 		 *  SLABに空きオブジェクトを追加
 		 */
-		for( i = 0; cache->objs_per_slab > i; ++i) {  
+		for( i = 0; cache->objs_per_slab > i; ++i) {
 
-			/* オブジェクトの直前にリスト構造を配置し, 
+			/* オブジェクトの直前にリスト構造を配置し,
 			 * 空きオブジェクトをリストの先頭に追加
 			 */
-			
+
 			/*  バッファ制御情報を事前割当て済みカーネルキャッシュから獲得  */
 			bctl = (kmem_bufctl *)kmalloc(sizeof(kmem_bufctl), mflags);
 			if ( bctl == NULL ) {
@@ -564,11 +564,11 @@ slab_kmem_cache_grow(kmem_cache *cache, pgalloc_flags mflags, slab **sinfop) {
 			bctl->obj = off_slab_objp + sizeof(kmem_bufctl *);
 
 			/* 空きオブジェクトリストエントリを初期化  */
-			slist_init_node(&bctl->link);  
+			slist_init_node(&bctl->link);
 			bctl->backlink = sinfo;  /* SLAB情報へのバックリンクを設定 */
 
 			/*  空きオブジェクトリストに追加  */
-			slist_add(&sinfo->objects, &bctl->link); 
+			slist_add(&sinfo->objects, &bctl->link);
 		}
 	}
 
@@ -603,12 +603,12 @@ slab_kmem_cache_reap(kmem_cache *cache, int reap_flags){
 		if ( ( !( reap_flags & SLAB_REAP_FORCE ) ) &&
 		    ( cache->slab_count <= cache->limits ) )
 			break;  /*  最低保持数以下になったので解放を中止  */
-			
+
 		/*
 		 * SLAB管理情報をキューから外して解放する
 		 */
 
-		/* フリーキューの先頭のSLAB管理情報を取り出し, 
+		/* フリーキューの先頭のSLAB管理情報を取り出し,
 		 * メモリ獲得処理と衝突しないようにする
 		 */
 		sinfo = container_of(queue_get_top(&cache->free), slab, link);
@@ -659,21 +659,21 @@ slab_kmem_cache_alloc(kmem_cache *cache, pgalloc_flags mflags, void **objp){
 	} else {  /* 使用中のSLABがなければ  */
 
 		if ( !queue_is_empty(&cache->free) ) { /*  割り当て済み空きSLABがある場合 */
-			
+
 			/*
 			 * フリーキューから空きSLABを取り出す
 			 */
 			sinfo = container_of(queue_get_top(&cache->free), slab, link);
 		} else {  /*  SLABを新たに割り当てる場合   */
-			
+
 			/* SLABを割り当てによる休眠を考慮し, キャッシュロックを解放 */
-			spinlock_unlock_restore_intr(&cache->lock, &iflags); 
-			
+			spinlock_unlock_restore_intr(&cache->lock, &iflags);
+
 			/*  新規にSLABを割り当て  */
 			rc = slab_kmem_cache_grow(cache, mflags, &sinfo);
 			if ( rc != 0 )
 				goto error_out;
-			
+
 			/* キャッシュロックを獲得 */
 			spinlock_lock_disable_intr(&cache->lock, &iflags);
 			++cache->slab_count;  /*  確保済みSLAB数をインクリメントする  */
@@ -703,7 +703,7 @@ slab_kmem_cache_alloc(kmem_cache *cache, pgalloc_flags mflags, void **objp){
 	}
 
 	/* キャッシュロック解放 */
-	spinlock_unlock_restore_intr(&cache->lock, &iflags); 
+	spinlock_unlock_restore_intr(&cache->lock, &iflags);
 
 	/*
 	 * SLABからメモリオブジェクトを獲得
@@ -758,14 +758,14 @@ slab_kmem_cache_free(void *obj){
 	--sinfo->count;  /*  割り当て済みオブジェクト数を減算  */
 
 	/*  割り当て済みオブジェクト数が0でなければパーシャルキューにつなぎ替える
-	 *  割り当て済みオブジェクト数が0ならリンクから外したままにし, 
+	 *  割り当て済みオブジェクト数が0ならリンクから外したままにし,
 	 *  獲得と衝突しないようにする
 	 *  フリーキューに接続しないことで, カウンタ更新後の空きオブジェクトリスト操作中に
 	 *  SLAB管理情報が解放されないようにしている
 	 */
 	if ( sinfo->count > 0 ) {  /* SLAB中に割り当て済みオブジェクトが存在する  */
 
-		/* パーシャルキューに接続 
+		/* パーシャルキューに接続
 		 */
 		kassert( list_not_linked(&sinfo->link) ); /* 他のキューに接続されていない */
 		queue_add(&cache->partial, &sinfo->link); /* パーシャルキューに接続 */
@@ -777,13 +777,13 @@ slab_kmem_cache_free(void *obj){
 	/*
 	 * バッファ制御情報を取得
 	 */
-	if ( ( cache->align == 0 ) && ( KMEM_CACHE_IS_ON_SLAB(cache) ) ) { 		
+	if ( ( cache->align == 0 ) && ( KMEM_CACHE_IS_ON_SLAB(cache) ) ) {
 
 		/* アライメントなしで, ON SLABの場合は, バッファ制御情報の直後に
 		 * オブジェクトが配置されている
 		 */
 		bufctl = (void *)obj - sizeof(kmem_s_bufctl);
-	} else {  
+	} else {
 
 		/* OFF SLABやアライメント付き割り当ての場合は, バッファ制御情報へのポインタが
 		 * オブジェクトの直前に配置されている
@@ -797,10 +797,10 @@ slab_kmem_cache_free(void *obj){
 	free_slab_obj(cache, sinfo, bufctl);  /*  オブジェクトを返却する  */
 
 	/* SLAB管理情報のキューを操作するためにキャッシュロックを獲得 */
-	spinlock_lock_disable_intr(&cache->lock, &iflags); 
+	spinlock_lock_disable_intr(&cache->lock, &iflags);
 
 	/* 割り当て済みオブジェクトがなければ,  フリーキューをつなぎ替える  */
-	if ( sinfo->count == 0 ) { 
+	if ( sinfo->count == 0 ) {
 
 		kassert( list_not_linked(&sinfo->link) );  /*  他のキューにつながっていない */
 		queue_add(&cache->free, &sinfo->link); /* フリーキューに接続する  */
@@ -824,9 +824,9 @@ slab_kmem_cache_free(void *obj){
    @retval -ENOMEM メモリ不足
    @retval -ESRCH  格納可能なページオーダを越えている
  */
-int 
+int
 slab_kmem_cache_create(kmem_cache *cache, const char *name, size_t size,
-		uintptr_t align, obj_cnt_type limits, slab_flags sflags, 
+		uintptr_t align, obj_cnt_type limits, slab_flags sflags,
 		void (*constructor)(void *_obj, size_t _siz),
 		void (*destructor)(void *_obj, size_t _siz)){
 	int rc;
@@ -880,8 +880,8 @@ slab_kmem_cache_destroy(kmem_cache *cache) {
 	 */
 	spinlock_lock_disable_intr(&cache->lock, &iflags); /* キャッシュロックを獲得 */
 	while( !queue_is_empty(&cache->free) ) {
-		
-		if ( KMEM_CACHE_IS_BUSY(cache) ) 
+
+		if ( KMEM_CACHE_IS_BUSY(cache) )
 			goto unlock_out;  /* 使用中のSLABがあるため解放を取りやめ  */
 
 		/* 空きスラブ解放前にキャッシュロックを解放 */
@@ -890,12 +890,12 @@ slab_kmem_cache_destroy(kmem_cache *cache) {
 		slab_kmem_cache_reap(cache, SLAB_REAP_FORCE);  /*  空きスラブを解放  */
 
 		/* SLAB管理情報キューを操作するためにキャッシュロックを獲得 */
-		spinlock_lock_disable_intr(&cache->lock, &iflags); 
+		spinlock_lock_disable_intr(&cache->lock, &iflags);
 	}
 
 unlock_out:
 	/* キャッシュロックを解放 */
-	spinlock_unlock_restore_intr(&cache->lock, &iflags);  
+	spinlock_unlock_restore_intr(&cache->lock, &iflags);
 
 	return ;
 }
@@ -913,7 +913,7 @@ kmalloc(size_t size, pgalloc_flags mflags){
 	void          *m;
 
 	for(i = 0; SLAB_PREALLOC_CACHE_NR > i; ++i) {
-		
+
 		/* 事前割当て済みカーネルキャッシュ中から指定されたサイズの
 		 * メモリを格納可能なキャッシュを検索
 		 */
@@ -950,7 +950,7 @@ kfree(void *m){
 
 	if ( PAGE_IS_CLUSTERED(pf) )
 		pf = pf->headp;  /*  クラスタページの場合先頭ページを参照する  */
-	
+
 	/*
 	 * SLABページの場合, メモリオブジェクトをSLABに返却する
 	 */
@@ -969,9 +969,9 @@ slab_prepare_preallocate_cahches(void){
 	for(i = 0; SLAB_PREALLOC_CACHE_NR > i; ++i) {
 
 		/*  事前割当て済みキャッシュを初期化する  */
-		rc = slab_kmem_cache_create(&prealloc_caches[i], 
+		rc = slab_kmem_cache_create(&prealloc_caches[i],
 		    prealloc_caches_info[i].name, prealloc_caches_info[i].size,
-		    SLAB_PREALLOC_ALIGN,  SLAB_PREALLOC_LIMIT, KMALLOC_NORMAL, 
+		    SLAB_PREALLOC_ALIGN,  SLAB_PREALLOC_LIMIT, KMALLOC_NORMAL,
 		    NULL, NULL);
 		kassert( rc == 0 );
 	}
@@ -993,6 +993,3 @@ slab_finalize_preallocate_cahches(void){
 		slab_kmem_cache_destroy(&prealloc_caches[i - 1]);
 	}
 }
-
-
-

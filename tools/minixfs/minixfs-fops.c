@@ -62,12 +62,12 @@ create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino
 	if ( rc != 0 )
 		goto free_inum_out;  /*  ディレクトリエントリ作成失敗  */
 
-	fill_minix_inode(handle, &new_inode, 
+	fill_minix_inode(handle, &new_inode,
 			 (mode & ~MINIX_TOOLS_IFMT_MODE)|MINIX_TOOLS_REG_MODE);
 	/*
 	 * I-node情報を書き出す
 	 */
-	rc = minix_rw_disk_inode(&handle->msb, inum, MINIX_RW_WRITING, 
+	rc = minix_rw_disk_inode(&handle->msb, inum, MINIX_RW_WRITING,
 	    &new_inode);
 	if ( rc != 0 )
 		goto free_inum_out;  /*  I-node更新失敗  */
@@ -77,7 +77,7 @@ create_regular_file(fs_image *handle, const char *name, uint32_t mode, minix_ino
 	MINIX_D_INODE_SET(&handle->msb, &handle->cwd, i_mtime,
 	    (uint32_t)((uint64_t)tim_get_fs_time() & 0xffffffff));
 
-	rc = minix_rw_disk_inode(&handle->msb, handle->cwd_inum, MINIX_RW_WRITING, 
+	rc = minix_rw_disk_inode(&handle->msb, handle->cwd_inum, MINIX_RW_WRITING,
 	    &handle->cwd); /* ディレクトリの更新時刻を更新する */
 	if ( rc != 0 )
 		goto free_inum_out;  /* ディレクトリの更新失敗 */

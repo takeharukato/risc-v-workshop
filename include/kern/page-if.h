@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_PAGE_IF_H)
-#define  _KERN_PAGE_IF_H 
+#define  _KERN_PAGE_IF_H
 
 #include <kern/kern-types.h>
 #include <kern/page-macros.h>
@@ -41,7 +41,7 @@
 
 int pgif_calc_page_order(size_t _size, page_order *_res);
 
-int pgif_get_free_page_cluster(void **_addrp, page_order _order, 
+int pgif_get_free_page_cluster(void **_addrp, page_order _order,
     pgalloc_flags _pgflags, page_usage _usage);
 int pgif_get_free_page(void **_addrp, pgalloc_flags _pgflags, page_usage _usage);
 void pgif_free_page(void *_addr);

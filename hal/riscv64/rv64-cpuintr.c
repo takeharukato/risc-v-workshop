@@ -40,7 +40,7 @@ rv64_cpu_enable_interrupt(void){
 static void
 rv64_cpu_restore_flags(intrflags *iflags){
 	uint64_t cur;
-	
+
 	cur = rv64_read_sstatus(); /* 現在のSupervisor statusを取得する */
 	cur &= ~SSTATUS_SIE;       /* SIEビットをクリアする */
 	/* 保存されたSupervisor statusのSIEビットを設定する */
@@ -53,13 +53,13 @@ rv64_cpu_restore_flags(intrflags *iflags){
  */
 static void
 rv64_cpu_save_flags(intrflags *iflags){
-	
+
 	*iflags = rv64_read_sstatus(); /* 現在のSupervisor statusを格納する */
 }
 
 /**
     Supervisor statusを検査しCPUレベルで割込みが禁止されていることを確認する
-    @param[in] iflags CPUレベルの割込み禁止状態保存領域のアドレス 
+    @param[in] iflags CPUレベルの割込み禁止状態保存領域のアドレス
     @retval 真     CPUレベルで割込みが禁止されている
     @retval 偽     CPUレベルで割込みが禁止されていない
  */
@@ -89,7 +89,7 @@ void
 hal_cpu_restore_interrupt(intrflags *iflags){
 
 
-	rv64_cpu_restore_flags(iflags);	
+	rv64_cpu_restore_flags(iflags);
 }
 
 /**

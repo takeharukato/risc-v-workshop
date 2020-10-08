@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_CPUINTR_H)
-#define  _KERN_CPUINTR_H 
+#define  _KERN_CPUINTR_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>

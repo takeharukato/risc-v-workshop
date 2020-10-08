@@ -23,7 +23,7 @@
    @note   物理アドレスやページフレーム番号が搭載物理メモリの
            範囲内にあることを保証しないことに留意すること
  */
-int 
+int
 hal_paddr_to_pfn(void *paddr, obj_cnt_type *pfnp){
 
 	*pfnp = (obj_cnt_type)( ( (uintptr_t)paddr ) >> PAGE_SHIFT );
@@ -57,7 +57,7 @@ hal_pfn_to_paddr(obj_cnt_type pfn, void **paddrp){
    @note   カーネル仮想アドレスやページフレーム番号が搭載物理メモリの
            範囲内にあることを保証しないことに留意すること
  */
-int 
+int
 hal_kvaddr_to_pfn(void *kvaddr, obj_cnt_type *pfnp){
 	void *phys_addr;
 
@@ -122,7 +122,7 @@ hal_phys_to_kvaddr(void *phys_addr, void **kvaddrp){
 	hal_pfn_to_kvaddr(pfn, &kvaddr);
 
 	*kvaddrp = kvaddr;
-	
+
 	return 0;
 }
 
@@ -132,7 +132,7 @@ hal_phys_to_kvaddr(void *phys_addr, void **kvaddrp){
  */
 int
 hal_kernlayout_init(void){
-	
+
 #if !defined(CONFIG_HAL)
 	tflib_kernlayout_init();
 #endif  /*  !CONFIG_HAL  */

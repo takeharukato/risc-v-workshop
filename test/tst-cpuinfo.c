@@ -20,7 +20,7 @@ cpuinfo1(struct _ktest_stats *sp, void __unused *arg){
 	bool       res;
 	cpu_id cpu_num;
 	cpu_id phys_id;
-	
+
 	phys_id = hal_get_physical_cpunum();
 	cpu_num = krn_current_cpu_get();
 	kprintf("current cpuid(phys, log)=(%lu, %lu)\n",
@@ -32,7 +32,7 @@ cpuinfo1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 	kprintf("dcache-linesize: %x dcache-size: %lu color: %lu\n",
-	    krn_get_cpu_l1_dcache_linesize(), 
+	    krn_get_cpu_l1_dcache_linesize(),
 	    krn_get_cpu_dcache_size(),
 	    krn_get_cpu_l1_dcache_color_num());
 }

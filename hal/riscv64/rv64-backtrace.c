@@ -44,8 +44,8 @@
   $sp --> | local variables |
           +-----------------+
  */
-void 
-hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, void *_next_bp, 
+void
+hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, void *_next_bp,
 					   void *_argp), void *basep, void *argp) {
 	void *bp = basep;
 	uintptr_t *bpref;
@@ -62,7 +62,7 @@ hal_backtrace(int (*_trace_out)(int _depth, uintptr_t *_bpref, void *_caller, vo
 
 	hal_get_stack_pointer(&cur_sp);  /* スタックポインタを取得 */
 
-	for(depth = 0, bpref = (uintptr_t *)bp - 2; 
+	for(depth = 0, bpref = (uintptr_t *)bp - 2;
 	    ( bpref != NULL ) && ( depth < BACKTRACE_MAX_DEPTH );
 	    ++depth) {
 

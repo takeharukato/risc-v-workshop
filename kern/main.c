@@ -27,7 +27,7 @@
 #if !defined(CONFIG_HAL)
 #include <stdlib.h>
 #endif  /*  !CONFIG_HAL  */
-/** 
+/**
     カーネルのアーキ共通テスト
  */
 void
@@ -51,7 +51,7 @@ kern_common_tests(void){
 #if !defined(CONFIG_HAL)
 	tst_rv64pgtbl();
 	tst_irqctrlr();
-#endif  /*  CONFIG_HAL  */ 
+#endif  /*  CONFIG_HAL  */
 	tst_thread();
 	tst_mutex();
 	tst_minixfs();
@@ -87,8 +87,8 @@ kern_init(void) {
 
 	kassert( ti_dispatch_disabled() ); /* ディスパッチ禁止であることを確認 */
 
-	kprintf("fsimage: [%p, %p) len:%u\n", 
-		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end, 
+	kprintf("fsimage: [%p, %p) len:%u\n",
+		(uintptr_t)&_fsimg_start, (uintptr_t)&_fsimg_end,
 		(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start);
 	/*
 	 * カーネルデータ構造の初期化
@@ -112,7 +112,7 @@ kern_init(void) {
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 
 	simplefs_init();  /* 単純なファイルシステムを初期化する  */
-	
+
 	/**
 	   テスト処理用スレッドを起動する
 	 */
@@ -148,7 +148,7 @@ uland_test_init(void){
 
 	tflib_kernlayout_finalize();
 }
-int 
+int
 main(int argc, char *argv[]) {
 	void *new_sp;
 	thread_info *ti;
@@ -156,7 +156,7 @@ main(int argc, char *argv[]) {
 	kprintf("Kernel\n");
 	ti = calc_thread_info_from_kstack_top( (void *)&_tflib_bsp_stack );
 	ti->kstack = (void *)&_tflib_bsp_stack;
-	new_sp = (void *)ti 
+	new_sp = (void *)ti
 		- (TI_THREAD_INFO_SIZE + X64_TRAP_CONTEXT_SIZE + X64_THRSW_CONTEXT_SIZE);
 	ti->preempt = 1; /* プリエンプション禁止 */
 	hal_call_with_newstack(uland_test_init, NULL, new_sp);

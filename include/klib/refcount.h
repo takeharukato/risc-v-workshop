@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KERN_REFCOUNT_H)
-#define  _KERN_REFCOUNT_H 
+#define  _KERN_REFCOUNT_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -50,7 +50,7 @@ refcounter_val refcnt_dec(struct _refcounter *_counterp);
 
 bool refcnt_dec_and_mutex_lock(struct _refcounter *_counterp, struct _mutex *_mtx);
 bool refcnt_dec_and_lock(struct _refcounter *_counterp, struct _spinlock *_lock);
-bool refcnt_dec_and_lock_disable_intr(struct _refcounter *_counterp, 
+bool refcnt_dec_and_lock_disable_intr(struct _refcounter *_counterp,
     struct _spinlock *_lock, intrflags *_iflags);
 
 int  refcnt_get(struct _refcounter *counterp, refcounter_val *valp);

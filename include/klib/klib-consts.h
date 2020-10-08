@@ -16,5 +16,5 @@
 #define TIMER_US_PER_MS   (ULONGLONG_C(1000))  /*<  1ミリ秒あたりのマイクロ秒数 */
 #define TIMER_MS_PER_SEC  (ULONGLONG_C(1000))  /*<  1秒あたりのミリ秒数         */
 /** 1秒あたりのナノ秒数  */
-#define TIMER_NS_PER_SEC  ( TIMER_NS_PER_US * TIMER_US_PER_MS * TIMER_MS_PER_SEC ) 
+#define TIMER_NS_PER_SEC  ( TIMER_NS_PER_US * TIMER_US_PER_MS * TIMER_MS_PER_SEC )
 #endif  /* KLIB_KLIB_CONSTS_H */
