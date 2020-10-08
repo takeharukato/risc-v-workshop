@@ -106,10 +106,10 @@ simplefs_sync(vfs_fs_super fs_super){
 /**
    単純なファイルシステムのディレクトリエントリを検索し,
    指定された名前に対応するI-node番号を返却する
-   @param[in] fs_super    単純なファイルシステムのスーパブロック情報
-   @param[in]  fs_dir_inode 単純なファイルシステムのディレクトリを指すI-node
+   @param[in]  fs_super     単純なファイルシステムのスーパブロック情報
+   @param[in]  fs_dir_vnode 単純なファイルシステムのディレクトリを指すI-node
    @param[in]  name         作成するエントリの名前
-   @param[out] fs_vnidp     単純なファイルシステムのI-node番号返却領域
+   @param[out] vnidp        I-node番号返却領域
    @retval     0  正常終了
    @retval -ENOTDIR ディレクトリではないI-nodeを指定した
    @retval -ENOENT  指定された名前のエントリが存在しない

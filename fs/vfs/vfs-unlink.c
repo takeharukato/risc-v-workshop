@@ -17,7 +17,6 @@
    ファイルを削除する (ファイルのリンク数を減算する)
    @param[in] ioctx I/Oコンテキスト
    @param[in] path  ファイルパス
-   @param[in] stat  ファイル作成時の属性情報 (ファイル種別/デバイス番号など)
    @retval  0      正常終了
    @retval -EBADF  正当なユーザファイルディスクリプタでない
    @retval -EIO    I/Oエラー
