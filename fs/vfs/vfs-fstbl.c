@@ -11,8 +11,10 @@
 #include <kern/kern-common.h>
 
 #include <kern/mutex.h>
-#include <kern/vfs-if.h>
 #include <kern/page-if.h>
+#include <kern/vfs-if.h>
+
+#include <fs/vfs/vfs-internal.h>
 
 /** グローバルファイルシステムテーブル */
 static fs_table   g_fstbl = __FSTBL_INITIALIZER(&g_fstbl);
@@ -32,9 +34,9 @@ RB_GENERATE_STATIC(_fstbl_tree, _fs_container, c_ent, _fs_container_cmp);
     @retval 負  keyのnameが entのnameより後にある
     @retval 0   keyのnameが entのnameに等しい
  */
-static int 
+static int
 _fs_container_cmp(struct _fs_container *key, struct _fs_container *ent){
-	
+
 	return strcmp(key->c_name, ent->c_name);
 }
 
@@ -86,7 +88,7 @@ error_out:
    @retval  0      正常終了
    @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
  */
-static int 
+static int
 vfs_fs_get_nolock(const char *fs_name, fs_container **containerp){
 	int           rc;
 	fs_container *fs;
@@ -127,7 +129,7 @@ vfs_fs_ref_inc(fs_container *container){
 	/* ファイルシステム終了中(プロセス管理ツリーから外れているスレッドの最終参照解放中)
 	 * でなければ, 利用カウンタを加算
 	 */
-	return ( refcnt_inc_if_valid(&container->c_refs) != 0 ); 
+	return ( refcnt_inc_if_valid(&container->c_refs) != 0 );
 }
 
 /**
@@ -166,7 +168,7 @@ error_out:
    @retval  0      正常終了
    @retval -ENOENT  指定されたキーのファイルシステムが見つからなかった
  */
-int 
+int
 vfs_fs_get(const char *fs_name, fs_container **containerp){
 	int           rc;
 
@@ -203,7 +205,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, void *args){
 	int                  rc;
 	fs_container       *ent;
 	fs_container *container;
-	
+
 	/*
 	 * ファイルシステムテーブルを辿ってファイルシステムをマウントする
 	 */
@@ -237,7 +239,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, void *args){
 		 */
 		if ( ( rc == 0 ) || ( rc == -ENOENT ) ||
 		    ( rc == -EBUSY ) || ( rc == -ENOTDIR ) )
-			goto error_out;  
+			goto error_out;
 	}
 
 	rc = -ENOENT; /* マウント可能なファイルシステムが存在しない */
@@ -252,7 +254,7 @@ error_out:
    @param[in] calls ファイルシステム固有のファイルシステムコールハンドラ
    @retval  0        正常終了
    @retval -EINVAL   システムコールハンドラが不正
-   @retval -ENOMEM   メモリ不足    
+   @retval -ENOMEM   メモリ不足
  */
 int
 vfs_register_filesystem(const char *name, vfs_fstype_flags fstype, fs_calls *calls){
@@ -262,12 +264,12 @@ vfs_register_filesystem(const char *name, vfs_fstype_flags fstype, fs_calls *cal
 
 	kassert( ( name != NULL ) && ( calls != NULL ) );
 
-	if ( !is_valid_fs_calls(calls) ) 
+	if ( !is_valid_fs_calls(calls) )
 		return -EINVAL;  /* VFSオペレーションが不正 */
 	/*
 	 * ファイルシステムコンテナを割当て
 	 */
-	rc = slab_kmem_cache_alloc(&fstbl_container_cache, KMALLOC_NORMAL, 
+	rc = slab_kmem_cache_alloc(&fstbl_container_cache, KMALLOC_NORMAL,
 				   (void **)&container);
 	if ( rc != 0 )
 		goto error_out;
@@ -341,7 +343,7 @@ void
 vfs_init_filesystem_table(void){
 	int rc;
 
-	rc = slab_kmem_cache_create(&fstbl_container_cache, "vfs fs container", 
+	rc = slab_kmem_cache_create(&fstbl_container_cache, "vfs fs container",
 	    sizeof(fs_container), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
 }

@@ -11,8 +11,10 @@
 #include <kern/kern-common.h>
 
 #include <kern/mutex.h>
-#include <kern/vfs-if.h>
 #include <kern/page-if.h>
+#include <kern/vfs-if.h>
+
+#include <fs/vfs/vfs-internal.h>
 
 /** グローバルマウントテーブル */
 static mount_table   g_mnttbl = __MNTTBL_INITIALIZER(&g_mnttbl);
@@ -477,6 +479,8 @@ get_fs_mount_nolock(vfs_mnt_id mntid, fs_mount **mountp) {
 /**
    v-nodeの初期化
    @param[in] v 初期化対象のv-node
+   @note alloc_new_vnode内部のv-node初期化処理部分をメンテナンスの観点から分離した関数.
+   マウントポイント情報の設定を行う必要があるので, alloc_new_vnodeのみから使用する.
  */
 static void
 init_vnode(vnode *v){
@@ -485,6 +489,7 @@ init_vnode(vnode *v){
 	 * メンバを初期化
 	 */
 	mutex_init(&v->v_mtx);               /*  状態更新用mutexの初期化                    */
+	/* マウント情報からの参照分を設定して初期化する */
 	refcnt_init(&v->v_refs);             /*  参照カウンタの初期化                       */
 	v->v_fs_vnode = NULL;                /*  ファイルシステム固有v-nodeの初期化         */
 	wque_init_wait_queue(&v->v_waiters); /*  v-nodeウエイトキューの初期化               */
@@ -504,6 +509,9 @@ init_vnode(vnode *v){
    @param[in] mnt マウントポイント情報
    @return 新設したv-node
    @return NULL メモリ不足
+   @note  マウント情報からの参照を付与したv-nodeを生成する
+   生成したv-nodeをマウント情報へ登録する必要があるので, find_vnodeのみで使用する
+   find_vnode内部の処理をメンテナンスの観点から分離した関数.
  */
 static vnode *
 alloc_new_vnode(fs_mount *mnt){
@@ -596,6 +604,8 @@ trylock_vnode(vnode *v) {
    @retval -EINTR    v-node待ち合わせ中にイベントを受信した
    @retval -EBUSY    アンマウント中のボリュームだった
    @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
+   @note 本関数で確保したv-nodeはマウント情報からの参照(参照カウント1)がついた状態で
+   初期化されるので, 呼び出し元でマウント情報に登録すること
  */
 static int
 find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
@@ -863,6 +873,7 @@ free_vnodes_in_fs_mount(fs_mount *mount){
    @retval -EINTR   v-node待ち合わせ中にイベントを受信した
    @retval -EBUSY   アンマウント中のボリュームだった
    @note   vfs_mountからマウントテーブルのロックを獲得した状態で呼び出すget_vnode関数
+   @note   本関数は, vnodeを操作するスレッドからの参照を付与してv-nodeを返却する
  */
 static int
 get_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
@@ -881,7 +892,8 @@ get_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 		 */
 		if ( outv != NULL ) {
 
-			res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
+			/* vnodeを操作するスレッドからの参照を付与する */
+			res = vfs_vnode_ref_inc(v);
 			if ( !res )
 				continue;  /* v-node破棄に伴い, v-nodeを再検索する */
 			*outv = v;   /* v-nodeを返却 */
@@ -1101,7 +1113,10 @@ vfs_vnode_put(vfs_mnt_id mntid, vfs_vnode_id vnid){
 		goto put_mount_out;
 	}
 
-	res = vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	/* マウント情報からの参照を解放してv-nodeを参照するスレッドがいなくなった時点で
+	 * マウント情報内のv-nodeキャッシュから外せるようにする
+	 */
+	res = vfs_vnode_ref_dec(v);
 	kassert( !res );      /* 最終参照ではないはず  */
 
 	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
@@ -1121,7 +1136,7 @@ error_out:
 }
 
 /**
-   v-nodeの参照を解放する
+   v-nodeキャッシュからv-nodeを除去する
    @param[in] v     操作対象のv-node
    @retval  0       正常終了
    @retval -EBUSY   アンマウント中のボリュームだった
@@ -1146,7 +1161,10 @@ vfs_vnode_ptr_put(vnode *v){
 		goto put_mount_out;
 	}
 
-	res = vfs_vnode_ref_dec(v);  /* 参照を解放する */
+	/* マウント情報からの参照を解放してv-nodeを参照するスレッドがいなくなった時点で
+	 * マウント情報内のv-nodeキャッシュから外せるようにする
+	 */
+	res = vfs_vnode_ref_dec(v);
 	kassert( !res );      /* 最終参照ではないはず  */
 
 	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */

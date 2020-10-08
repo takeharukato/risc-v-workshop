@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_FS_VFS_VFS_MOUNT_H)
-#define  _FS_VFS_VFS_MOUNT_H 
+#define  _FS_VFS_VFS_MOUNT_H
 
 #if !defined(ASM_FILE)
 
@@ -33,10 +33,10 @@ typedef struct _fs_mount {
 	dev_id                        m_dev;  /**< マウントデバイスのデバイスID             */
 	struct _fs_container          *m_fs;  /**< ファイルシステム                         */
 	struct _mount_table       *m_mnttbl;  /**< 登録先マウントテーブル                   */
-	RB_HEAD(_vnode_tree, _vnode) m_head;  /**< vnodeテーブル                            */
+	RB_HEAD(_vnode_tree, _vnode) m_head;  /**< v-nodeテーブル                           */
 	vfs_fs_super             m_fs_super;  /**< ファイルシステム固有のスーパブロック情報 */
-	struct _vnode               *m_root;  /**< ルートディレクトリのvnode                */
-	struct _vnode        *m_mount_point;  /**< マウントポイントのvnode                  */
+	struct _vnode               *m_root;  /**< ルートディレクトリのv-node               */
+	struct _vnode        *m_mount_point;  /**< マウントポイントのv-node                 */
 	char                  *m_mount_path;  /**< マウントパス文字列                       */
 	vfs_mnt_flags         m_mount_flags;  /**< マウントフラグ                           */
 }fs_mount;
@@ -52,7 +52,7 @@ typedef struct _mount_table{
 	vfs_mnt_id                       mt_last_id;  /**< 最後に割り当てたマウントID    */
 }mount_table;
 
-/** 
+/**
     マウントテーブル初期化子
     @param[in] _mnttbl マウントテーブルへのポインタ
  */
@@ -63,8 +63,6 @@ typedef struct _mount_table{
 	.mt_head  = RB_INITIALIZER(&((_mnttbl)->mt_head)),	\
 	.mt_last_id = VFS_INVALID_MNTID,	                \
 }
-bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
-bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
 int vfs_fs_mount_get(vfs_mnt_id _mntid, fs_mount **_mountp);
 void vfs_fs_mount_put(fs_mount *_mount);
 int vfs_fs_mount_system_root_vnode_get(struct _vnode **_rootp);
@@ -73,6 +71,5 @@ int vfs_mount_with_fsname(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev,
 int vfs_unmount(struct _vfs_ioctx *_ioctxp, char *_path);
 int vfs_unmount_rootfs(void);
 
-void vfs_init_mount_table(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_MOUNT_H   */

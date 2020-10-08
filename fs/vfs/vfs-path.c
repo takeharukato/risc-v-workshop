@@ -12,6 +12,8 @@
 
 #include <kern/vfs-if.h>
 
+#include <fs/vfs/vfs-internal.h>
+
 /**
    指定されたパスのvnodeの参照を獲得する(実処理関数)
    @param[in] ioctx  パス検索に使用するI/Oコンテキスト
@@ -310,6 +312,7 @@ vfs_new_path(const char *path, char *conv){
 
 	return 0;
 }
+
 /**
    パスを結合する
    @param[in]  path1 入力パス1

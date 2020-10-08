@@ -12,6 +12,8 @@
 
 #include <kern/vfs-if.h>
 
+#include <fs/vfs/vfs-internal.h>
+
 /**
    ファイルシステムの初期化
  */

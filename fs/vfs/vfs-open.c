@@ -63,12 +63,12 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 
 	*fdp = fd;  /* ユーザファイルディスクリプタを返却 */
 
-	vfs_vnode_ref_dec(v);  /* パス検索時に獲得したv-nodeの参照を解放  */
+	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したv-nodeの参照を解放  */
 
 	return 0;
 
 unref_vnode_out:
-	vfs_vnode_ref_dec(v);  /* パス検索時に獲得したv-nodeの参照を解放  */
+	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したv-nodeの参照を解放  */
 
 out:
 	return rc;
@@ -155,12 +155,12 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 	*fdp = fd;  /* ユーザファイルディスクリプタを返却 */
 
-	vfs_vnode_ref_dec(v);  /* パス検索時に獲得したvnodeの参照を解放  */
+	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したvnodeの参照を解放  */
 
 	return 0;
 
 unref_vnode_out:
-	vfs_vnode_ref_dec(v);  /* パス検索時に獲得したvnodeの参照を解放  */
+	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したvnodeの参照を解放  */
 
 out:
 	return rc;

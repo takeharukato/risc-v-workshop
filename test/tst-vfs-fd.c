@@ -35,7 +35,7 @@ open_fd(vfs_ioctx *cur_ioctx, const char *path, vfs_open_flags omode, file_descr
 		return -EINVAL;
 
 	len = strlen(path);
-	
+
 	rc = vfs_path_to_dir_vnode(cur_ioctx, (char *)path, len, &v,
 	    fname, TST_VFS_FD_FNAMELEN);
 	if ( rc != 0 )
@@ -45,12 +45,12 @@ open_fd(vfs_ioctx *cur_ioctx, const char *path, vfs_open_flags omode, file_descr
 	if ( rc != 0 )
 		goto unref_out;
 
-	vfs_vnode_ref_dec(v);
+	vfs_vnode_ptr_put(v);
 
 	return fd;
 
 unref_out:
-	vfs_vnode_ref_dec(v);
+	vfs_vnode_ptr_put(v);
 
 error_out:
 	return rc;
@@ -98,7 +98,7 @@ vfs_fd1(struct _ktest_stats *sp, void __unused *arg){
 
 	minor = 0;
 	dev = (dev_id)TST_VFS_TSTFS_DEV_MAJOR << 32|minor;
-	
+
 	rc = vfs_mount_with_fsname(NULL, "/", dev, TST_VFS_TSTFS_NAME, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -234,4 +234,3 @@ tst_vfs_fd(void){
 	ktest_def_test(&tstat_vfs_fd, "vfs_fd", vfs_fd1, NULL);
 	ktest_run(&tstat_vfs_fd);
 }
-

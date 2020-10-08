@@ -38,8 +38,7 @@ typedef struct _vnode{
 	vfs_fs_mode               v_mode;  /**< ファイル種別/アクセス フラグ      */
 	vfs_vnode_flags          v_flags;  /**< v-nodeのステータスフラグ          */
 }vnode;
-bool vfs_vnode_ref_inc(struct _vnode *_v);
-bool vfs_vnode_ref_dec(struct _vnode *_v);
+
 int vfs_vnode_get(vfs_mnt_id _mntid, vfs_vnode_id _vnid, struct _vnode **_outv);
 int vfs_vnode_put(vfs_mnt_id _mntid, vfs_vnode_id _vnid);
 int vfs_vnode_ptr_put(struct _vnode *_v);

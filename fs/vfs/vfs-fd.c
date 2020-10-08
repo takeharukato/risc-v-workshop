@@ -11,8 +11,10 @@
 #include <kern/kern-common.h>
 
 #include <kern/mutex.h>
-#include <kern/vfs-if.h>
 #include <kern/page-if.h>
+#include <kern/vfs-if.h>
+
+#include <fs/vfs/vfs-internal.h>
 
 static kmem_cache   ioctx_cache; /**< I/OコンテキストのSLABキャッシュ */
 static kmem_cache file_descriptor_cache; /**< ファイルディスクリプタ情報のSLABキャッシュ */
@@ -253,18 +255,14 @@ free_ioctx(vfs_ioctx *ioctx) {
 	return ;
 }
 
-/*
- * ファイルディスクリプタ操作 IF
- */
-
 /**
-   ファイルディスクリプタの参照カウンタを加算する
+   ファイルディスクリプタの参照カウンタを加算する (内部関数)
    @param[in] f 操作対象のファイルディスクリプタ
    @retval    真 ファイルディスクリプタの参照を獲得できた
    @retval    偽 ファイルディスクリプタの参照を獲得できなかった
  */
-bool
-vfs_fd_ref_inc(file_descriptor *f){
+static bool
+inc_fd_ref(file_descriptor *f){
 
 	/* ファイルディスクリプタ解放中でなければ利用カウンタを加算
 	 */
@@ -272,13 +270,13 @@ vfs_fd_ref_inc(file_descriptor *f){
 }
 
 /**
-   ファイルディスクリプタの参照カウンタを減算する
+   ファイルディスクリプタの参照カウンタを減算する (内部関数)
    @param[in] f 操作対象のファイルディスクリプタ
    @retval    真 ファイルディスクリプタの最終参照者だった
    @retval    偽 ファイルディスクリプタの最終参照者でない
  */
-bool
-vfs_fd_ref_dec(file_descriptor *f){
+static bool
+dec_fd_ref(file_descriptor *f){
 	bool     res;
 
 	res = refcnt_dec_and_test(&f->f_refs);  /* 参照を減算 */
@@ -289,7 +287,7 @@ vfs_fd_ref_dec(file_descriptor *f){
 }
 
 /*
- * I/Oコンテキスト操作IF
+ * ファイルディスクリプタ操作 IF
  */
 
 /**
@@ -447,7 +445,7 @@ vfs_fd_get(vfs_ioctx *ioctx, int fd, file_descriptor **fpp){
 	 *  リフェレンスカウンタを加算して返却
 	 */
 	f = ioctx->ioc_fds[fd];
-	res = vfs_fd_ref_inc(f);
+	res = inc_fd_ref(f);
 	kassert( res );
 
 	mutex_unlock(&ioctx->ioc_mtx);  /* I/Oコンテキストをアンロック  */
@@ -468,12 +466,17 @@ int
 vfs_fd_put(file_descriptor *f){
 	bool res;
 
-	res = vfs_fd_ref_dec(f);
+	res = dec_fd_ref(f);
 	if ( !res )
 		return -EBUSY;
 
 	return 0;
 }
+
+/*
+ * I/Oコンテキスト操作IF
+ */
+
 /**
    ファイルディスクリプタテーブルサイズを更新する
    @param[in] ioctx   I/Oコンテキスト
@@ -623,7 +626,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxp){
 				/*
 				 * ファイルディスクリプタの参照カウンタを上げる
 				 */
-				vfs_fd_ref_inc(ioctx->ioc_fds[i]);
+				inc_fd_ref(ioctx->ioc_fds[i]);
 			}
 		}
 
