@@ -727,6 +727,36 @@ dec_vnode_ref_nolock(vnode *v){
 }
 
 /**
+   v-nodeに関連付けられたデータを書き戻す (内部関数)
+   @param[in] v  v-node情報
+   @retval    0      正常終了
+ */
+static int
+fsync_vnode_common(vnode *v){
+	int        rc;
+
+	kassert( v->v_mount != NULL);
+	kassert( v->v_mount->m_fs != NULL);
+	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+	/* ファイルシステム固有のv-node書き戻し処理がない場合は
+	 * 正常終了で抜ける
+	 */
+	if ( v->v_mount->m_fs->c_calls->fs_fsync == NULL ) {
+
+		rc = 0;  /*  正常終了 */
+		goto success;
+	}
+
+	/* v-nodeを書き戻す
+	 */
+	rc = v->v_mount->m_fs->c_calls->fs_fsync(v->v_mount->m_fs_super, v);
+
+success:
+	return rc;
+}
+
+/**
    マウントポイント中のv-nodeを書き出してロックする (内部関数)
    @param[in] mount マウント情報
    @retval  0     正常終了
@@ -748,19 +778,8 @@ sync_and_lock_vnodes(fs_mount *mount){
 	 */
 	RB_FOREACH(v, _vnode_tree, &mount->m_head){
 
-		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
-
-		kassert( v->v_mount != NULL);
-		kassert( v->v_mount->m_fs != NULL);
-		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
-
-		/*
-		 * v-nodeを書き戻す
-		 */
-		if ( ( v->v_mount->m_fs->c_calls->fs_fsync != NULL ) &&
-		    ( !check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) ) )
-			v->v_mount->m_fs->c_calls->fs_fsync(
-				v->v_mount->m_fs_super, v);
+		mutex_lock(&v->v_mtx);    /* v-nodeのロックを獲得 */
+		fsync_vnode_common(v);    /* データブロックを書き戻す */
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 
@@ -866,6 +885,7 @@ free_vnodes_in_fs_mount(fs_mount *mount){
 
 	return ;
 }
+
 /**
    mntid, vnidをキーとしてv-nodeを検索し, 参照を得る(内部関数)
    @param[in]  mnt  マウントポイント情報
@@ -1400,6 +1420,46 @@ vfs_vnode_unlock(vnode *v) {
 	vfs_vnode_ref_dec(v);  /* 参照を解放する */
 
 	return ;
+}
+
+/**
+   v-nodeに関連付けられたデータを書き戻す
+   @param[in] v  v-node情報
+   @retval    0      正常終了
+   @retval   -ENOENT 解放中のv-nodeを指定した
+   @retval   -EINTR  v-node待ち合わせ中にイベントを受信した
+   @retval   -ENOMEM メモリ不足
+ */
+int
+vfs_vnode_fsync(vnode *v){
+	int        rc;
+	int   sync_rc;
+	bool      res;
+
+	res = vfs_vnode_ref_inc(v); /* v-nodeへの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT; /* すでに解放中のv-nodeだった */
+		goto error_out;
+	}
+
+	rc = vfs_vnode_lock(v);  /* v-nodeの更新処理ロックを獲得 */
+	if ( rc != 0 )
+		goto vnode_dec_out;
+
+	sync_rc = fsync_vnode_common(v);  /* データブロックを書き戻す */
+
+	vfs_vnode_unlock(v);  /* v-nodeの更新処理ロックを解放 */
+
+	vfs_vnode_ref_dec(v);	 /* v-nodeへの参照を解放 */
+
+	return sync_rc;
+
+vnode_dec_out:
+	vfs_vnode_ref_dec(v);	 /* v-nodeへの参照を解放 */
+
+error_out:
+	return rc;
 }
 
 /**

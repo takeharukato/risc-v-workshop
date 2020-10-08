@@ -49,6 +49,6 @@ void vfs_unmark_dirty_vnode(struct _vnode *v);
 bool vfs_is_dirty_vnode(struct _vnode *_v);
 int vfs_vnode_lock(struct _vnode *_v);
 void vfs_vnode_unlock(struct _vnode *_v);
-
+int vfs_vnode_fsync(struct _vnode *_v);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_VNODE_H   */
