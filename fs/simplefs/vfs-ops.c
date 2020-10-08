@@ -226,6 +226,8 @@ simplefs_removevnode(vfs_fs_super fs_super, vfs_vnode_id vnid,
 	if ( rc != 0 )
 		goto unlock_out;
 
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+
 	return 0;
 
 unlock_out:
