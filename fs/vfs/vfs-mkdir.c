@@ -64,20 +64,25 @@ vfs_mkdir(vfs_ioctx *ioctx, char *path){
 	kassert(v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
-	rc = -ENOSYS;
+	if ( v->v_mount->m_fs->c_calls->fs_mkdir == NULL ) {
+
+		/* ファイルシステム固有なディレクトリ作成処理がなければ,
+		 * -ENOSYSを返却して復帰
+		 */
+		rc = -ENOSYS;
+		goto put_vnode_out;
+	}
 
 	/*
 	 * ファイルシステム固有なディレクトリ作成処理を実施
 	 */
-	if ( v->v_mount->m_fs->c_calls->fs_mkdir != NULL ) {
+	/* TODO: ディレクトリ生成ユーザ/グループを設定 */
+	rc = v->v_mount->m_fs->c_calls->fs_mkdir(v->v_mount->m_fs_super,
+	    v->v_id, v->v_fs_vnode, filename, &new_vnid);
+	if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
+		rc = -EIO;  /*  エラーコードを補正  */
 
-		/* TODO: ディレクトリ生成ユーザ/グループを設定 */
-		rc = v->v_mount->m_fs->c_calls->fs_mkdir(v->v_mount->m_fs_super,
-		    v->v_id, v->v_fs_vnode, filename, &new_vnid);
-		if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
-			rc = -EIO;  /*  エラーコードを補正  */
-	}
-
+put_vnode_out:
 	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
 free_pathname_out:

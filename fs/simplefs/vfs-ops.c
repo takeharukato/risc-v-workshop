@@ -697,7 +697,8 @@ simplefs_mkdir(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs_
 	if ( rc != 0 )
 		goto free_inode_out;  /* 作成したI-nodeを解放・削除する */
 
-	/* ディレクトリの".", ".."エントリを作成する */
+	/* ディレクトリの".", ".."エントリを作成する
+	 */
 	rc = simplefs_dirent_add(fs_super, inum, inode, inum, ".");
 	if ( rc != 0 )
 		goto free_inode_out;   /* 作成したI-nodeを解放する */
