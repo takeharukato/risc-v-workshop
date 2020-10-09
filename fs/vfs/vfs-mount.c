@@ -167,7 +167,6 @@ check_vnode_flags_nolock(vnode *v, vfs_vnode_flags flags) {
 static bool
 mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
 	bool          res;
-	bool flag_changed;
 
 	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
 	if ( !res )
@@ -175,14 +174,10 @@ mark_vnode_flag(vnode *v, vfs_vnode_flags flags){
 
 	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
 
-	flag_changed = false;  /* フラグ変更未 */
-
 	if ( check_vnode_flags_nolock(v, flags) )
 		goto unlock_out;  /* フラグ設定済み */
 
 	mark_vnode_flag_nolock(v, flags);  /* フラグを設定 */
-	flag_changed = true;  /* フラグ変更 */
-
 	if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
 		wque_wakeup(&v->v_waiters, WQUE_RELEASED);
 
@@ -191,10 +186,7 @@ unlock_out:
 
 	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
 
-	if ( flag_changed )
-		return !res;      /* 最終参照でなければフラグをセットできている  */
-
-	return false;  /* フラグが変更されていない */
+	return !res;      /* 最終参照でなければフラグをセットできている  */
 }
 
 /**
@@ -809,20 +801,15 @@ fsync_vnode_common(vnode *v){
 	kassert( v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
+	rc = 0;  /*  正常終了 */
+
 	/* ファイルシステム固有のv-node書き戻し処理がない場合は
-	 * 正常終了で抜ける
+	 * v-nodeのみ書き戻す
 	 */
-	if ( v->v_mount->m_fs->c_calls->fs_fsync == NULL ) {
+	if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
+		rc = v->v_mount->m_fs->c_calls->fs_fsync(v->v_mount->m_fs_super,
+		    v->v_fs_vnode);
 
-		rc = 0;  /*  正常終了 */
-		goto success;
-	}
-
-	/* v-nodeを書き戻す
-	 */
-	rc = v->v_mount->m_fs->c_calls->fs_fsync(v->v_mount->m_fs_super, v);
-
-success:
 	return rc;
 }
 
@@ -850,6 +837,16 @@ sync_and_lock_vnodes(fs_mount *mount){
 
 		mutex_lock(&v->v_mtx);    /* v-nodeのロックを獲得 */
 		fsync_vnode_common(v);    /* データブロックを書き戻す */
+
+		/* 未書き出しのv-nodeを書き戻す
+		 */
+		if ( check_vnode_flags_nolock(v, VFS_VFLAGS_DIRTY) ) {
+
+			rc = v->v_mount->m_fs->c_calls->fs_putvnode(v->v_mount->m_fs_super,
+			    v->v_id, v->v_fs_vnode);
+			if ( rc == 0 )
+				unmark_vnode_flag_nolock(v, VFS_VFLAGS_DIRTY);
+		}
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
 
@@ -1529,7 +1526,13 @@ vfs_vnode_fsync(vnode *v){
 		goto vnode_dec_out;
 
 	sync_rc = fsync_vnode_common(v);  /* データブロックを書き戻す */
+	if ( ( sync_rc == 0 ) && vfs_is_dirty_vnode(v) ) {
 
+		sync_rc = v->v_mount->m_fs->c_calls->fs_putvnode(v->v_mount->m_fs_super,
+		    v->v_id, v->v_fs_vnode);  /* v-nodeを書き戻す */
+		if ( sync_rc == 0 )
+			vfs_unmark_dirty_vnode(v);  /* v-node書き出し済み */
+	}
 	vfs_vnode_unlock(v);  /* v-nodeの更新処理ロックを解放 */
 
 	vfs_vnode_ref_dec(v);	 /* v-nodeへの参照を解放 */
