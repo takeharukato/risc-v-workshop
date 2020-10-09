@@ -55,10 +55,10 @@ ksbi_send_ipi(const cpu_bitmap *hart_mask){
    @param[in] arg2 SBI callの第3引数
    @param[in] arg3 SBI callの第4引数
  */
-void
+__section(".boot.text") void
 ksbi_handle_sbicall(reg_type __unused func, reg_type __unused ext,
     reg_type __unused arg0, reg_type __unused arg1,
-    reg_type __unused arg2, reg_type __unused arg3)  __section(".boot.text"){
+    reg_type __unused arg2, reg_type __unused arg3){
 
 	return;
 }
@@ -66,8 +66,8 @@ ksbi_handle_sbicall(reg_type __unused func, reg_type __unused ext,
 /**
    IPI割り込みを処理する
  */
-void
-ksbi_handle_ipi(void)  __section(".boot.text"){
+__section(".boot.text") void
+ksbi_handle_ipi(void){
 
 	return;
 }
