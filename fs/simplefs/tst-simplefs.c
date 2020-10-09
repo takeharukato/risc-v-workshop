@@ -28,11 +28,57 @@ static struct _simplefs_vfs_ioctx{
 	vfs_ioctx          *cur;
 }tst_ioctx;
 
+/**
+   ディレクトリエントリの表示
+   @param[in] cur I/Oコンテキスト
+   @param[in] 表示対象ディレクトリ
+ */
+static void
+show_ls(vfs_ioctx *cur, char *dir){
+	int             rc;
+	int          dirfd;
+	ssize_t      nread;
+	char buf[BUF_SIZE];
+	int           bpos;
+	char        d_type;
+	vfs_dirent      *d;
 
+	rc = vfs_opendir(cur, dir, VFS_O_RDONLY, &dirfd);
+	kassert( rc == 0 );
+
+	rc = vfs_getdents(tst_ioctx.cur, dirfd, &buf[0], 0, BUF_SIZE, &nread);
+	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
+
+	for (bpos = 0, d = (vfs_dirent *) (buf + bpos);
+	     nread > bpos; bpos += d->d_reclen) {
+
+		d = (vfs_dirent *) (buf + bpos);
+		kprintf("%8ld  ", d->d_ino);
+		d_type = *(buf + bpos + d->d_reclen - 1);
+		kprintf("%-10s ", (d_type == DT_REG) ?  "regular" :
+		    (d_type == DT_DIR) ?  "directory" :
+		    (d_type == DT_FIFO) ? "FIFO" :
+		    (d_type == DT_SOCK) ? "socket" :
+		    (d_type == DT_LNK) ?  "symlink" :
+		    (d_type == DT_BLK) ?  "block dev" :
+		    (d_type == DT_CHR) ?  "char dev" : "???");
+		kprintf("%4d %10lld  %s\n", d->d_reclen,
+		    (long long) d->d_off, d->d_name);
+	}
+
+	rc = vfs_closedir(tst_ioctx.cur, dirfd);
+	kassert( rc == 0 );
+}
+/**
+   正常系テスト
+   @param[in] sp  テスト統計情報
+   @param[in] arg 引数
+ */
 static void __unused
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	int             rc;
 	int             fd;
+	int          dirfd;
 	ssize_t      nread;
 	vfs_file_stat   st;
 	char buf[BUF_SIZE];
@@ -42,17 +88,48 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	ssize_t   rw_bytes;
 	size_t         len;
 
-	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
+	/* ディレクトリオープン
+	 */
+	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &dirfd);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
-	rc = vfs_closedir(tst_ioctx.cur, fd);
+	/* ディレクトリエントリ取得
+	 */
+	rc = vfs_getdents(tst_ioctx.cur, dirfd, &buf[0], 0, BUF_SIZE, &nread);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
+	for (bpos = 0, d = (vfs_dirent *) (buf + bpos);
+	     nread > bpos; bpos += d->d_reclen) {
+
+		d = (vfs_dirent *) (buf + bpos);
+		kprintf("%8ld  ", d->d_ino);
+		d_type = *(buf + bpos + d->d_reclen - 1);
+		kprintf("%-10s ", (d_type == DT_REG) ?  "regular" :
+		    (d_type == DT_DIR) ?  "directory" :
+		    (d_type == DT_FIFO) ? "FIFO" :
+		    (d_type == DT_SOCK) ? "socket" :
+		    (d_type == DT_LNK) ?  "symlink" :
+		    (d_type == DT_BLK) ?  "block dev" :
+		    (d_type == DT_CHR) ?  "char dev" : "???");
+		kprintf("%4d %10lld  %s\n", d->d_reclen,
+		    (long long) d->d_off, d->d_name);
+	}
+
+	/* ディレクトリクローズ
+	 */
+	rc = vfs_closedir(tst_ioctx.cur, dirfd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	/* 通常ファイル作成
 	 */
 	memset(&st, 0, sizeof(vfs_file_stat));
@@ -62,6 +139,11 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After create\n");
+	show_ls(tst_ioctx.cur, "/");
 
 	/* 生成したファイルのオープン
 	 */
@@ -116,6 +198,19 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	} else
 		ktest_fail( sp );
 
+	/* ファイルのアンリンク
+	 */
+	rc = vfs_unlink(tst_ioctx.cur, "/file1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After unlink\n");
+	show_ls(tst_ioctx.cur, "/");
+
 	/* 生成したファイルのクローズ
 	 */
 	rc = vfs_close(tst_ioctx.cur, fd);
@@ -126,34 +221,8 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 
 	/* ディレクトリエントリ情報取得
 	 */
-	rc = vfs_opendir(tst_ioctx.cur, "/", VFS_O_RDONLY, &fd);
-	kassert( rc == 0 );
-	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, BUF_SIZE, &nread);
-	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
-	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
-
-		d = (vfs_dirent *) (buf + bpos);
-		kprintf("%8ld  ", d->d_ino);
-		d_type = *(buf + bpos + d->d_reclen - 1);
-		kprintf("%-10s ", (d_type == DT_REG) ?  "regular" :
-		    (d_type == DT_DIR) ?  "directory" :
-		    (d_type == DT_FIFO) ? "FIFO" :
-		    (d_type == DT_SOCK) ? "socket" :
-		    (d_type == DT_LNK) ?  "symlink" :
-		    (d_type == DT_BLK) ?  "block dev" :
-		    (d_type == DT_CHR) ?  "char dev" : "???");
-		kprintf("%4d %10lld  %s\n", d->d_reclen,
-		    (long long) d->d_off, d->d_name);
-	}
-
-	/* ファイルのアンリンク
-	 */
-	rc = vfs_unlink(tst_ioctx.cur, "/file1");
-	if ( rc == 0 )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-
+	kprintf("After close\n");
+	show_ls(tst_ioctx.cur, "/");
 
 	/* ディレクトリ作成
 	 */
@@ -163,6 +232,16 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After mkdir ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	/* 作成したディレクトリ内のディレクトリエントリ情報取得
+	 */
+	kprintf("After mkdir ls /dev\n");
+	show_ls(tst_ioctx.cur, "/dev");
+
 	/* 単純なファイルシステムをマウントする */
 	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/dev", VFS_VSTAT_INVALID_DEVID,
 	    SIMPLEFS_FSNAME, NULL);
@@ -170,23 +249,12 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
-	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
-	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
 
-		d = (vfs_dirent *) (buf + bpos);
-		kprintf("%8ld  ", d->d_ino);
-		d_type = *(buf + bpos + d->d_reclen - 1);
-		kprintf("%-10s ", (d_type == DT_REG) ?  "regular" :
-		    (d_type == DT_DIR) ?  "directory" :
-		    (d_type == DT_FIFO) ? "FIFO" :
-		    (d_type == DT_SOCK) ? "socket" :
-		    (d_type == DT_LNK) ?  "symlink" :
-		    (d_type == DT_BLK) ?  "block dev" :
-		    (d_type == DT_CHR) ?  "char dev" : "???");
-		kprintf("%4d %10lld  %s\n", d->d_reclen,
-		    (long long) d->d_off, d->d_name);
-	}
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After mount\n");
+	show_ls(tst_ioctx.cur, "/");
+
 	/* 単純なファイルシステムをアンマウントする */
 	rc = vfs_unmount(tst_ioctx.cur, "/dev");
 	if ( rc == 0 )
@@ -194,23 +262,10 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	rc = vfs_getdents(tst_ioctx.cur, fd, &buf[0], 0, 1024, &nread);
-	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
-	for (bpos = 0;  nread > bpos; bpos += d->d_reclen) {
-
-		d = (vfs_dirent *) (buf + bpos);
-		kprintf("%8ld  ", d->d_ino);
-		d_type = *(buf + bpos + d->d_reclen - 1);
-		kprintf("%-10s ", (d_type == DT_REG) ?  "regular" :
-		    (d_type == DT_DIR) ?  "directory" :
-		    (d_type == DT_FIFO) ? "FIFO" :
-		    (d_type == DT_SOCK) ? "socket" :
-		    (d_type == DT_LNK) ?  "symlink" :
-		    (d_type == DT_BLK) ?  "block dev" :
-		    (d_type == DT_CHR) ?  "char dev" : "???");
-		kprintf("%4d %10lld  %s\n", d->d_reclen,
-		    (long long) d->d_off, d->d_name);
-	}
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After unmount\n");
+	show_ls(tst_ioctx.cur, "/");
 
 	/* ディレクトリ削除
 	 */
@@ -220,6 +275,10 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rmdir\n");
+	show_ls(tst_ioctx.cur, "/");
 }
 
 /**
