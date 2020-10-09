@@ -30,16 +30,23 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	vnode            *file_v;
 	vfs_file_stat         st;
 	vnode             *dir_v;
+	char           *filepath;
 	char           *pathname;
 	char           *filename;
 	size_t          name_len;
 	size_t          path_len;
 
+	filepath = kstrdup(path);
+	if ( filepath == NULL ) {
+
+		rc = -ENOMEM;    /* メモリ不足 */
+		goto error_out;
+	}
 	/* 操作対象ファイルのv-nodeを得る
 	 */
-	rc = vfs_path_to_vnode(ioctx, path, &file_v);
+	rc = vfs_path_to_vnode(ioctx, filepath, &file_v);
 	if ( rc != 0 )
-		goto error_out;
+		goto free_filepath_out;
 
 	/*  操作対象ファイルの属性情報を得る
 	 */
@@ -136,6 +143,8 @@ free_filename_out:
 filev_put_out:
 	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
 
+free_filepath_out:
+	kfree(filepath);  /*  ファイルパス検索時に使用した一時領域を解放  */
 error_out:
 	return rc;
 }
