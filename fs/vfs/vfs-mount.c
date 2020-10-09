@@ -1499,6 +1499,90 @@ error_out:
 }
 
 /**
+   v-nodeのマウントIDを比較する
+   @param[in] v1  v-node情報1
+   @param[in] v2  v-node情報2
+   @retval   -1   v1のマウントIDがv2のマウント IDより小さい
+   @retval    1   v1のマウントIDがv2のマウント IDより大きい
+   @retval    0   v1のマウントIDとv2のマウントIDが等しい
+*/
+int
+vfs_vnode_mnt_cmp(vnode *v1, vnode *v2){
+	int   rc;
+	bool res;
+
+	res = vfs_vnode_ref_inc(v1); /* v-node v1への参照を獲得 */
+	kassert( res );
+
+	res = vfs_vnode_ref_inc(v2); /* v-node v2への参照を獲得 */
+	kassert( res );
+
+	if ( v1->v_mount->m_id < v2->v_mount->m_id ) {
+
+		rc = -1;  /* v1のマウントIDの方がv2のマウントIDより小さい */
+		goto cmp_out;
+	}
+
+	if ( v1->v_mount->m_id > v2->v_mount->m_id ) {
+
+		rc = 1;  /* v1のマウントIDの方がv2のマウントIDより大きい */
+		goto cmp_out;
+	}
+		rc = 0;
+cmp_out:
+	vfs_vnode_ref_dec(v2);  /* v-node v2への参照を解放 */
+	vfs_vnode_ref_dec(v1);  /* v-node v1への参照を解放 */
+	return rc;
+}
+
+/**
+   v-nodeを比較する
+
+   @param[in] v1  v-node情報1
+   @param[in] v2  v-node情報2
+   @retval   -1   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより小さい
+   @retval    1   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより大きい
+   @retval    0   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDと等しい
+*/
+int
+vfs_vnode_cmp(vnode *v1, vnode *v2){
+	int   rc;
+	bool res;
+
+	res = vfs_vnode_ref_inc(v1); /* v-node v1への参照を獲得 */
+	kassert( res );
+
+	res = vfs_vnode_ref_inc(v2); /* v-node v2への参照を獲得 */
+	kassert( res );
+
+	rc = vfs_vnode_mnt_cmp(v1, v2);  /* マウント IDを比較する */
+	if ( rc != 0 )
+		goto cmp_out;
+
+	 /* マウントIDが同じ, v1のv-node IDの方がv2のv-node IDより小さい */
+	if ( v1->v_id < v2->v_id ) {
+
+		rc = -1;
+		goto cmp_out;
+	}
+
+	/* マウントIDが同じ, v1のv-node IDの方がv2のv-node IDより大きい */
+	if ( v1->v_id > v2->v_id ) {
+
+		rc = 1;
+		goto cmp_out;
+	}
+
+	rc = 0;  /* v1, v2のv-nodeが等しい */
+
+cmp_out:
+	vfs_vnode_ref_dec(v2);  /* v-node v2への参照を解放 */
+	vfs_vnode_ref_dec(v1);  /* v-node v1への参照を解放 */
+
+	return rc;
+}
+
+/**
    マウントポイントの参照カウンタをインクリメントする
    @param[in] mount  マウント情報
    @retval    真 マウントポイントの参照を獲得できた

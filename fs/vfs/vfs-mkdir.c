@@ -22,6 +22,7 @@
    @retval -EIO    I/Oエラー
    @retval -ENOMEM メモリ不足
    @retval -ENOSYS mkdirをサポートしていない
+   @retval -EROFS  読み取り専用でマウントされている
  */
 int
 vfs_mkdir(vfs_ioctx *ioctx, char *path){
@@ -63,6 +64,12 @@ vfs_mkdir(vfs_ioctx *ioctx, char *path){
 	kassert(v->v_mount != NULL);
 	kassert(v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+	if ( v->v_mount->m_mount_flags & VFS_MNT_RDONLY ) {
+
+		rc = -EROFS;  /* 読み取り専用でマウントされている */
+		goto put_vnode_out;
+	}
 
 	if ( v->v_mount->m_fs->c_calls->fs_mkdir == NULL ) {
 

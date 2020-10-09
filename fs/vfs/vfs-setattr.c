@@ -39,6 +39,8 @@ vfs_setattr(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	kassert(v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
+
+
 	if ( v->v_mount->m_fs->c_calls->fs_setattr == NULL ) {
 
 		rc = -ENOSYS;  /*  ハンドラが定義されていない場合は, -ENOSYSを返却して復帰  */

@@ -24,6 +24,7 @@
    @retval -ENOMEM メモリ不足
    @retval -ENOSYS createをサポートしていない
    @retval -EISDIR ディレクトリを作成しようとした
+   @retval -EROFS  読み取り専用でマウントされている
  */
 int
 vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
@@ -69,20 +70,28 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	kassert(v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
-	rc = -ENOSYS;
+	if ( v->v_mount->m_mount_flags & VFS_MNT_RDONLY ) {
+
+		rc = -EROFS;  /* 読み取り専用でマウントされている */
+		goto vnode_put_out;
+	}
+
+	if ( v->v_mount->m_fs->c_calls->fs_create == NULL ) {
+
+		rc = -ENOSYS;  /* ファイルシステムがcreateをサポートしていない */
+		goto vnode_put_out;
+	}
 
 	/*
 	 * ファイルシステム固有なファイル作成処理を実施
 	 */
-	if ( v->v_mount->m_fs->c_calls->fs_create != NULL ) {
+	/* TODO: statにファイル生成ユーザ/グループを設定 */
+	rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super,
+	    v->v_id, v->v_fs_vnode, filename, stat, &new_vnid);
+	if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
+		rc = -EIO;  /*  エラーコードを補正  */
 
-		/* TODO: statにファイル生成ユーザ/グループを設定 */
-		rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super,
-		    v->v_id, v->v_fs_vnode, filename, stat, &new_vnid);
-		if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
-			rc = -EIO;  /*  エラーコードを補正  */
-	}
-
+vnode_put_out:
 	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
 free_pathname_out:

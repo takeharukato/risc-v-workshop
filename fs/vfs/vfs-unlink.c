@@ -23,6 +23,7 @@
    @retval -ENOMEM メモリ不足
    @retval -ENOSYS unlinkをサポートしていない
    @retval -EISDIR ディレクトリを削除しようとした
+   @retval -EROFS  読み取り専用でマウントされている
  */
 int
 vfs_unlink(vfs_ioctx *ioctx, char *path){
@@ -95,13 +96,19 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	kassert(dir_v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( dir_v->v_mount->m_fs->c_calls ) );
 
+	if ( dir_v->v_mount->m_mount_flags & VFS_MNT_RDONLY ) {
+
+		rc = -EROFS;  /* 読み取り専用でマウントされている */
+		goto dir_v_put_out;
+	}
+
 	if ( dir_v->v_mount->m_fs->c_calls->fs_unlink == NULL ) {
 
 		/* ファイルシステム固有なアンリンク処理がない場合は,
 		 * -ENOSYSを返却して復帰する
 		 */
 		rc = -ENOSYS;
-		goto dirv_put_out;
+		goto dir_v_put_out;
 	}
 
 	/*
@@ -118,7 +125,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	else if ( ( rc != -EIO ) && ( rc != -ENOSYS ) && ( rc != -EISDIR ) ) {
 
 		rc = -EIO;  /*  エラーコードを補正  */
-		goto dirv_put_out;
+		goto dir_v_put_out;
 	}
 
 	/*
@@ -133,7 +140,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 
 	return 0;
 
-dirv_put_out:
+dir_v_put_out:
 	vfs_vnode_ptr_put(dir_v);  /* パス検索時に取得したディレクトリv-nodeの参照を解放 */
 
 free_pathname_out:

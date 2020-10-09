@@ -198,9 +198,22 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	} else
 		ktest_fail( sp );
 
+	/* 名前の変更
+	 */
+	rc = vfs_rename(tst_ioctx.cur, "/file1", "/file2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	 else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rename\n");
+	show_ls(tst_ioctx.cur, "/");
+
 	/* ファイルのアンリンク
 	 */
-	rc = vfs_unlink(tst_ioctx.cur, "/file1");
+	rc = vfs_unlink(tst_ioctx.cur, "/file2");
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else

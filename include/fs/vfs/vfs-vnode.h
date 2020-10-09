@@ -50,5 +50,7 @@ bool vfs_is_dirty_vnode(struct _vnode *_v);
 int vfs_vnode_lock(struct _vnode *_v);
 void vfs_vnode_unlock(struct _vnode *_v);
 int vfs_vnode_fsync(struct _vnode *_v);
+int vfs_vnode_mnt_cmp(struct _vnode *_v1, struct _vnode *_v2);
+int vfs_vnode_cmp(struct _vnode *_v1, struct _vnode *_v2);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_VNODE_H   */
