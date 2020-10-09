@@ -24,17 +24,17 @@ RB_GENERATE_STATIC(_cpu_map_tree, _cpu_info, ent, _cpu_info_cmp);
     CPU情報エントリ比較関数
     @param[in] key 比較対象エントリ
     @param[in] ent CPU情報の各エントリ
-    @retval 正  keyが物理CPUIDがentより小さい
-    @retval 負  keyが物理CPUIDがentより大きい
+    @retval 正  keyの物理CPUIDがentの物理CPUIDより大きい
+    @retval 負  keyの物理CPUIDがentの物理CPUIDより小さい
     @retval 0   keyとentの物理CPUIDが等しい
  */
 static int
 _cpu_info_cmp(struct _cpu_info *key, struct _cpu_info *ent){
 
-	if ( key->phys_id < ent->phys_id )
+	if ( key->phys_id > ent->phys_id )
 		return 1;
 
-	if ( key->phys_id > ent->phys_id )
+	if ( key->phys_id < ent->phys_id )
 		return -1;
 
 	return 0;

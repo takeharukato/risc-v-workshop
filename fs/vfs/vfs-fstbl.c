@@ -30,9 +30,9 @@ RB_GENERATE_STATIC(_fstbl_tree, _fs_container, c_ent, _fs_container_cmp);
     ファイルシステムコンテナ比較関数
     @param[in] key 比較対象コンテナ
     @param[in] ent ファイルシステムテーブル内の各エントリ
-    @retval 正  keyのnameが entのnameより前にある
-    @retval 負  keyのnameが entのnameより後にある
-    @retval 0   keyのnameが entのnameに等しい
+    @retval 正  keyのnameが entのnameより後にある (key->c_name > ent->c_name)
+    @retval 負  keyのnameが entのnameより前にある (key->c_name < ent->c_name)
+    @retval 0   keyのnameが entのnameに等しい     (key->c_name == ent->c_name)
  */
 static int
 _fs_container_cmp(struct _fs_container *key, struct _fs_container *ent){

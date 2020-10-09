@@ -57,18 +57,18 @@ RB_GENERATE_STATIC(_tst_vfs_tstfs_dpage_tree, _tst_vfs_tstfs_dpage, ent,
    スーパブロック比較関数
    @param[in] key 比較対象1
    @param[in] ent RB木内の各エントリ
-   @retval 正  keyが entより前にある
-   @retval 負  keyが entより後にある
+   @retval 正  keyが entより大きい
+   @retval 負  keyが entより小さい
    @retval 0   keyが entに等しい
  */
 static int
 _tst_vfs_tstfs_super_cmp(struct _tst_vfs_tstfs_super *key,
 				    struct _tst_vfs_tstfs_super *ent){
 
-	if ( key->s_devid < ent->s_devid )
+	if ( key->s_devid > ent->s_devid )
 		return 1;
 
-	if ( ent->s_devid < key->s_devid )
+	if ( key->s_devid < ent->s_devid )
 		return -1;
 
 	return 0;
@@ -86,10 +86,10 @@ static int
 _tst_vfs_tstfs_inode_cmp(struct _tst_vfs_tstfs_inode *key,
 			 struct _tst_vfs_tstfs_inode *ent){
 
-	if ( key->i_ino < ent->i_ino )
+	if ( key->i_ino > ent->i_ino )
 		return 1;
 
-	if ( ent->i_ino < key->i_ino )
+	if ( key->i_ino < ent->i_ino )
 		return -1;
 
 	return 0;
@@ -107,31 +107,25 @@ static int
 _tst_vfs_tstfs_dent_cmp(struct _tst_vfs_tstfs_dent *key,
 			struct _tst_vfs_tstfs_dent *ent){
 
-	if ( strncmp(key->name, ent->name, TST_VFS_TSTFS_FNAME_LEN) > 0 )
-		return 1;
-
-	if ( strncmp(key->name, ent->name, TST_VFS_TSTFS_FNAME_LEN) < 0 )
-		return -1;
-
-	return 0;
+	return strncmp(key->name, ent->name, TST_VFS_TSTFS_FNAME_LEN);
 }
 
 /**
    データページ比較関数
    @param[in] key 比較対象1
    @param[in] ent RB木内の各エントリ
-   @retval 正  keyが entより前にある
-   @retval 負  keyが entより後にある
+   @retval 正  keyが entより大きい
+   @retval 負  keyが entより小さい
    @retval 0   keyが entに等しい
  */
 static int
 _tst_vfs_tstfs_dpage_cmp(struct _tst_vfs_tstfs_dpage *key,
 			struct _tst_vfs_tstfs_dpage *ent){
 
-	if ( key->index < ent->index )
+	if ( key->index > ent->index )
 		return 1;
 
-	if ( ent->index < key->index )
+	if ( key->index < ent->index )
 		return -1;
 
 	return 0;

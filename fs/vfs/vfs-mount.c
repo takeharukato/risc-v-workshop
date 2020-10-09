@@ -34,46 +34,84 @@ static int _vnode_cmp(struct _vnode *_key, struct _vnode *_ent);
 RB_GENERATE_STATIC(_vnode_tree, _vnode, v_vntbl_ent, _vnode_cmp);
 
 /**
-    マウントポイント比較関数
-    @param[in] key 比較対象マウントポイント
-    @param[in] ent マウントポイントテーブル内の各エントリ
-    @retval 正  keyのm_idが entのm_idより前にある
-    @retval 負  keyのm_idが entのm_idより後にある
-    @retval 0   keyのm_idが entのm_idに等しい
+   マウントID比較関数 (内部関数)
+   @param[in] m1 マウント情報
+   @param[in] m2 マウント情報
+   @retval 正  m1のm_idが entのm_idより後にある (m1->m_id > m2->m_id )
+   @retval 負  m1のm_idが entのm_idより前にある (m1->m_id < m2->m_id )
+   @retval 0   m1のm_idが entのm_idに等しい     (m1->m_id == m2->m_id )
  */
 static int
-_fs_mount_cmp(struct _fs_mount *key, struct _fs_mount *ent){
+compare_mount_id_common(struct _fs_mount *m1, struct _fs_mount *m2){
 
-	if ( key->m_id < ent->m_id )
+	if ( m1->m_id > m2->m_id )
 		return 1;
 
-	if ( key->m_id > ent->m_id )
+	if ( m1->m_id < m2->m_id )
 		return -1;
 
 	return 0;
 }
 
 /**
+   vnode ID比較関数 (内部関数)
+   @param[in] v1 v-node
+   @param[in] v2 v-node
+   @retval 正  v1のv_idが entのv_idより後にある (v1->v_id > v2->v_id )
+   @retval 負  v1のv_idが entのv_idより前にある (v1->v_id < v2->v_id )
+   @retval 0   v1のv_idが entのv_idに等しい     (v1->v_id == v2->v_id )
+ */
+static int
+compare_vnode_id_common(struct _vnode *v1, struct _vnode *v2){
+
+	if ( v1->v_id > v2->v_id )
+		return 1;
+
+	if ( v1->v_id < v2->v_id )
+		return -1;
+
+	return 0;
+}
+/**
+    マウントポイント比較関数
+    @param[in] key 比較対象マウントポイント
+    @param[in] ent マウントポイントテーブル内の各エントリ
+    @retval 正  keyのm_idが entのm_idより後にある (key->m_id > ent->m_id )
+    @retval 負  keyのm_idが entのm_idより前にある (key->m_id < ent->m_id )
+    @retval 0   keyのm_idが entのm_idに等しい     (key->m_id == ent->m_id )
+ */
+static int
+_fs_mount_cmp(struct _fs_mount *key, struct _fs_mount *ent){
+
+	return compare_mount_id_common(key, ent);
+}
+
+/**
     v-node比較関数
     @param[in] key 比較対象v-node
     @param[in] ent マウントポイント内の各v-nodeエントリ
-    @retval 正  keyのm_id, v_idが entのm_id, v_idより前にある
-    @retval 負  keyのm_id, v_idが entのm_id, v_idより後にある
+    @retval 正  keyのm_id, v_idが entのm_id, v_idより後にある
+                (key->v_mount->m_id > ent->v_mount->m_id
+		または, key->v_mount->m_id == ent->v_mount->m_id, key->v_id > ent->v_id)
+    @retval 負  keyのm_id, v_idが entのm_id, v_idより前にある
+                (key->v_mount->m_id < ent->v_mount->m_id
+		または, key->v_mount->m_id == ent->v_mount->m_id, key->v_id < ent->v_id)
     @retval 0   keyのm_id, v_idが entのm_id, v_idに等しい
+                (key->v_mount->m_id == ent->v_mount->m_id, かつ, key->v_id == ent->v_id )
  */
 static int
 _vnode_cmp(struct _vnode *key, struct _vnode *ent){
 
-	if ( key->v_mount->m_id < ent->v_mount->m_id )
+	if ( key->v_mount->m_id > ent->v_mount->m_id )
 		return 1;
 
-	if ( key->v_mount->m_id > ent->v_mount->m_id )
+	if ( key->v_mount->m_id < ent->v_mount->m_id )
 		return -1;
 
-	if ( key->v_id < ent->v_id )
+	if ( key->v_id > ent->v_id )
 		return 1;
 
-	if ( key->v_id > ent->v_id )
+	if ( key->v_id < ent->v_id )
 		return -1;
 
 	return 0;
@@ -1524,19 +1562,9 @@ vfs_vnode_mnt_cmp(vnode *v1, vnode *v2){
 	res = vfs_vnode_ref_inc(v2); /* v-node v2への参照を獲得 */
 	kassert( res );
 
-	if ( v1->v_mount->m_id < v2->v_mount->m_id ) {
+	/* マウントIDを比較する */
+	rc = compare_mount_id_common(v1->v_mount, v2->v_mount);
 
-		rc = -1;  /* v1のマウントIDの方がv2のマウントIDより小さい */
-		goto cmp_out;
-	}
-
-	if ( v1->v_mount->m_id > v2->v_mount->m_id ) {
-
-		rc = 1;  /* v1のマウントIDの方がv2のマウントIDより大きい */
-		goto cmp_out;
-	}
-		rc = 0;
-cmp_out:
 	vfs_vnode_ref_dec(v2);  /* v-node v2への参照を解放 */
 	vfs_vnode_ref_dec(v1);  /* v-node v1への参照を解放 */
 	return rc;
@@ -1544,11 +1572,10 @@ cmp_out:
 
 /**
    v-nodeを比較する
-
    @param[in] v1  v-node情報1
    @param[in] v2  v-node情報2
-   @retval   -1   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより小さい
-   @retval    1   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより大きい
+   @retval   正   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより大きい
+   @retval   負   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDより小さい
    @retval    0   vnode v1のマウントID, v-node IDがv2のマウントID, v-node IDと等しい
 */
 int
@@ -1562,25 +1589,15 @@ vfs_vnode_cmp(vnode *v1, vnode *v2){
 	res = vfs_vnode_ref_inc(v2); /* v-node v2への参照を獲得 */
 	kassert( res );
 
+	kassert(v1->v_mount != NULL);  /* 登録済みv-nodeであることを確認 */
+	kassert(v2->v_mount != NULL);  /* 登録済みv-nodeであることを確認 */
+
 	rc = vfs_vnode_mnt_cmp(v1, v2);  /* マウント IDを比較する */
 	if ( rc != 0 )
-		goto cmp_out;
+		goto cmp_out;  /* マウントIDの大小を返却 */
 
-	 /* マウントIDが同じ, v1のv-node IDの方がv2のv-node IDより小さい */
-	if ( v1->v_id < v2->v_id ) {
-
-		rc = -1;
-		goto cmp_out;
-	}
-
-	/* マウントIDが同じ, v1のv-node IDの方がv2のv-node IDより大きい */
-	if ( v1->v_id > v2->v_id ) {
-
-		rc = 1;
-		goto cmp_out;
-	}
-
-	rc = 0;  /* v1, v2のv-nodeが等しい */
+	/* v-node IDを比較する */
+	rc = compare_vnode_id_common(v1, v2);
 
 cmp_out:
 	vfs_vnode_ref_dec(v2);  /* v-node v2への参照を解放 */

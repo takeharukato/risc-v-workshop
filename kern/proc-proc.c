@@ -29,17 +29,17 @@ RB_GENERATE_STATIC(_procdb_tree, _proc, ent, _procdb_cmp);
     プロセス管理データベースエントリ比較関数
     @param[in] key 比較対象領域1
     @param[in] ent データベース内の各エントリ
-    @retval 正  keyのpidが entのpidより前にある
-    @retval 負  keyのpidが entのpidより後にある
+    @retval 正  keyのpidが entのpidより大きい
+    @retval 負  keyのpidが entのpidより小さい
     @retval 0   keyのpidが entのpidに等しい
  */
 static int
 _procdb_cmp(struct _proc *key, struct _proc *ent){
 
-	if ( key->id < ent->id )
+	if ( key->id > ent->id )
 		return 1;
 
-	if ( key->id > ent->id )
+	if ( key->id < ent->id )
 		return -1;
 
 	return 0;

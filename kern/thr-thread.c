@@ -26,17 +26,17 @@ RB_GENERATE_STATIC(_thrdb_tree, _thread, ent, _thread_cmp);
     スレッド管理情報比較関数
     @param[in] key 比較対象1
     @param[in] ent RB木内の各エントリ
-    @retval 正  keyのスレッドIDがentより前にある
-    @retval 負  keyのスレッドIDがentより後にある
+    @retval 正  keyのスレッドIDがentより大きい
+    @retval 負  keyのスレッドIDがentより小さい
     @retval 0   keyのスレッドIDがentに等しい
  */
 static int
 _thread_cmp(struct _thread *key, struct _thread *ent){
 
-	if ( key->id < ent->id )
+	if ( key->id > ent->id )
 		return 1;
 
-	if ( key->id > ent->id  )
+	if ( key->id < ent->id  )
 		return -1;
 
 	return 0;

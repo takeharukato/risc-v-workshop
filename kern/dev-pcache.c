@@ -31,23 +31,23 @@ SPLAY_GENERATE_STATIC(_pcache_tree, _page_cache, ent, _page_cache_ent_cmp);
     ページキャッシュプールエントリ比較関数 (内部関数)
     @param[in] key 比較対象領域1
     @param[in] ent SPLAY木内の各エントリ
-    @retval 正  keyが entより前にある
-    @retval 負  keyが entより後にある
+    @retval 正  keyが entより大きい
+    @retval 負  keyが entより小さい
     @retval 0   keyが entに等しい
  */
 static int
 _page_cache_ent_cmp(struct _page_cache *key, struct _page_cache *ent){
 
-	if ( key->bdevid < ent->bdevid )
+	if ( key->bdevid > ent->bdevid )
 		return 1;
 
-	if ( key->bdevid > ent->bdevid )
+	if ( key->bdevid < ent->bdevid )
 		return -1;
 
-	if ( key->offset < ent->offset )
+	if ( key->offset > ent->offset )
 		return 1;
 
-	if ( key->offset > ent->offset )
+	if ( key->offset < ent->offset )
 		return -1;
 
 	return 0;

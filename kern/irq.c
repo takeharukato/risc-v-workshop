@@ -25,18 +25,18 @@ RB_GENERATE_STATIC(_irq_line_tree, _irq_line, ent, irq_line_cmp);
     割込み線情報比較関数
     @param[in] key 比較対象割込み線情報
     @param[in] ent RB木内の各エントリ
-    @retval 正  割込み線情報の優先度がentの優先度より前にある
-    @retval 負  割込み線情報の優先度がentの優先度より後にある
+    @retval 正  割込み線情報の優先度がentの優先度より大きい
+    @retval 負  割込み線情報の優先度がentの優先度より小さい
     @retval 0   割込み線情報の優先度とentの優先度が等しい
  */
 static int
 irq_line_cmp(struct _irq_line *key, struct _irq_line *ent){
 
 	if ( key->prio > ent->prio )
-		return -1;
+		return 1;
 
 	if ( key->prio < ent->prio )
-		return 1;
+		return -1;
 
 	return 0;
 }
