@@ -167,6 +167,14 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* バッファ書き戻し
+	 */
+	rc = vfs_fsync(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	/* EOFリード
 	 */
 	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
