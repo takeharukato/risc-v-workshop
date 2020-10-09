@@ -27,36 +27,43 @@
 int
 vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	int                rc;
-	int       getattr_res;
-	vnode              *v;
+	vnode         *file_v;
 	vnode          *dir_v;
+	char       *rmdirpath;
 	char        *pathname;
 	char        *filename;
 	size_t       name_len;
 	size_t       path_len;
 	vfs_file_stat      st;
 
-	rc = vfs_path_to_vnode(ioctx, path, &v);  /* 削除対象ディレクトリのv-nodeを取得 */
+	rmdirpath = kstrdup(path);  /* 削除対象ディレクトリのパス文字列を複製する */
+	if ( rmdirpath == NULL ) {
+
+		rc = -ENOMEM;    /* メモリ不足 */
+		goto error_out;
+	}
+
+	/* 削除対象ディレクトリのv-nodeを取得 */
+	rc = vfs_path_to_vnode(ioctx, path, &file_v);
 	if ( rc != 0 )
-		goto error_out;  /* ディレクトリが見つからなかった */
+		goto free_rmdirpath_out;  /* ディレクトリが見つからなかった */
 
 	/* ファイル種別を確認
 	 */
-	getattr_res = vfs_getattr(v, VFS_VSTAT_MASK_MODE_FMT, &st);
-	if ( getattr_res != 0 ) {
+	rc = vfs_getattr(file_v, VFS_VSTAT_MASK_MODE_FMT, &st);
+	if ( rc != 0 ) {
 
-		rc = -ENOENT;    /* 対象ディレクトリの属性情報が獲得できなかった */
+		rc = -ENOENT;   /* 対象ディレクトリの属性情報が獲得できなかった */
 		goto put_target_dir_vnode;
 	}
 
 	if ( !S_ISDIR(st.st_mode) ) {
 
-		rc = -ENOTDIR;         /*  ディレクトリ以外を削除しようとした */
+		rc = -ENOTDIR;  /*  ディレクトリ以外を削除しようとした */
 		goto put_target_dir_vnode;
 	}
 
-	/*
-	 * パス(ディレクトリ)検索時に使用する一時領域を確保
+	/* パス(削除対象ディレクトリ名)検索時に使用する一時領域を確保
 	 */
 	name_len = strlen(path);
 	filename = kmalloc(name_len + 1, KMALLOC_NORMAL);
@@ -66,6 +73,8 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 		goto put_target_dir_vnode;
 	}
 
+	/* パス(親ディレクトリ)検索時に使用する一時領域を確保
+	 */
 	path_len = strlen(path);
 	pathname = kstrdup(path);
 	if ( pathname == NULL ) {
@@ -74,10 +83,10 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 		goto free_filename_out;
 	}
 
-	/*
-	 * パス(ディレクトリ)検索
+	/* パス(親ディレクトリ)検索
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, pathname, path_len + 1, &dir_v, filename, name_len + 1);
+	rc = vfs_path_to_dir_vnode(ioctx, pathname, path_len + 1, &dir_v, filename,
+	    name_len + 1);
 	if (rc != 0)
 		goto free_pathname_out;
 
@@ -86,25 +95,31 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	kassert(dir_v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( dir_v->v_mount->m_fs->c_calls ) );
 
-	rc = -ENOSYS;
+	if ( dir_v->v_mount->m_fs->c_calls->fs_rmdir == NULL ) {
+
+		/* ファイルシステム固有なディレクトリ削除処理がない場合は,
+		 * -ENOSYSを返却して復帰する
+		 */
+		rc = -ENOSYS;
+		goto put_dir_vnode;
+	}
 
 	/*
 	 * ファイルシステム固有なディレクトリ削除処理を実施
 	 */
-	if ( dir_v->v_mount->m_fs->c_calls->fs_rmdir == NULL )
-		goto put_dir_vnode;
-
 	rc = dir_v->v_mount->m_fs->c_calls->fs_rmdir(dir_v->v_mount->m_fs_super,
-						     dir_v->v_id, dir_v->v_fs_vnode, filename);
+	    dir_v->v_id, dir_v->v_fs_vnode, filename);
 	if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) ) {
 
 		rc = -EIO;  /*  エラーコードを補正  */
 		goto put_dir_vnode;
 	}
 
-	vfs_vnode_ptr_put(dir_v);  /*  パス検索時に取得したvnodeへの参照を解放  */
-
-	vfs_vnode_ptr_put(v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
+	vfs_vnode_ptr_put(dir_v);      /*  パス検索時に取得したvnodeへの参照を解放  */
+	kfree(pathname);      /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	kfree(filename);      /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	vfs_vnode_ptr_put(file_v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
+	kfree(rmdirpath);           /* 削除対象ディレクトリのパス文字列の複製を解放 */
 
 	return 0;
 
@@ -112,13 +127,16 @@ put_dir_vnode:
 	vfs_vnode_ptr_put(dir_v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
 free_pathname_out:
-	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	kfree(pathname);  /*  パス(親ディレクトリ)検索時に使用した一時領域を解放  */
 
 free_filename_out:
-	kfree(filename);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
+	kfree(filename);  /*  パス(削除対象ディレクトリ)検索時に使用した一時領域を解放  */
 
 put_target_dir_vnode:
-	vfs_vnode_ptr_put(v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
+	vfs_vnode_ptr_put(file_v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
+
+free_rmdirpath_out:
+	kfree(rmdirpath);  /* 削除対象ディレクトリのパス文字列の複製を解放 */
 
 error_out:
 	return rc;

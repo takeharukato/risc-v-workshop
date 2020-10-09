@@ -36,12 +36,13 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	size_t          name_len;
 	size_t          path_len;
 
-	filepath = kstrdup(path);
+	filepath = kstrdup(path);  /* 削除対象ファイルパス文字列の複製を得る */
 	if ( filepath == NULL ) {
 
 		rc = -ENOMEM;    /* メモリ不足 */
 		goto error_out;
 	}
+
 	/* 操作対象ファイルのv-nodeを得る
 	 */
 	rc = vfs_path_to_vnode(ioctx, filepath, &file_v);
@@ -50,8 +51,8 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 
 	/*  操作対象ファイルの属性情報を得る
 	 */
-	vfs_init_attr_helper(&st);
-	rc = vfs_getattr(file_v, VFS_VSTAT_MASK_MODE_FMT, &st);
+	vfs_init_attr_helper(&st);  /* 属性情報初期化 */
+	rc = vfs_getattr(file_v, VFS_VSTAT_MASK_MODE_FMT, &st);  /* ファイル属性取得 */
 	if ( rc != 0 )
 		goto filev_put_out;
 
@@ -128,6 +129,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 	kfree(filename);  /*  パス(ファイル名)検索時に使用した一時領域を解放  */
 	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
+	kfree(filepath);  /*  削除対象ファイルパス文字列の複製を解放  */
 
 	return 0;
 
@@ -144,7 +146,8 @@ filev_put_out:
 	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
 
 free_filepath_out:
-	kfree(filepath);  /*  ファイルパス検索時に使用した一時領域を解放  */
+	kfree(filepath);  /*  削除対象ファイルパス文字列の複製を解放  */
+
 error_out:
 	return rc;
 }
