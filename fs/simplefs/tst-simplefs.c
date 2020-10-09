@@ -132,7 +132,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 
 	/* 通常ファイル作成
 	 */
-	memset(&st, 0, sizeof(vfs_file_stat));
+	vfs_init_attr_helper(&st);
 	st.st_mode = S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO;
 	rc = vfs_create(tst_ioctx.cur, "/file1", &st);
 	if ( rc == 0 )
@@ -242,6 +242,22 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("After mkdir ls /dev\n");
 	show_ls(tst_ioctx.cur, "/dev");
 
+	/* キャラクタデバイスファイル作成
+	 */
+	vfs_init_attr_helper(&st);
+	st.st_rdev = VFS_VSTAT_MAKEDEV(5,0);
+	st.st_mode = S_IFCHR|S_IRWXU|S_IRWXG|S_IRWXO;
+	rc = vfs_create(tst_ioctx.cur, "/dev/console", &st);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* デバイス作成したディレクトリ内のディレクトリエントリ情報取得
+	 */
+	kprintf("After mknod chardev ls /dev\n");
+	show_ls(tst_ioctx.cur, "/dev");
+
 	/* 単純なファイルシステムをマウントする */
 	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/dev", VFS_VSTAT_INVALID_DEVID,
 	    SIMPLEFS_FSNAME, NULL);
@@ -255,6 +271,22 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("After mount\n");
 	show_ls(tst_ioctx.cur, "/");
 
+	/* キャラクタデバイスファイル作成
+	 */
+	vfs_init_attr_helper(&st);
+	st.st_rdev = VFS_VSTAT_MAKEDEV(259,0);
+	st.st_mode = S_IFBLK|S_IRWXU|S_IRWXG|S_IRWXO;
+	rc = vfs_create(tst_ioctx.cur, "/dev/vitioblk0", &st);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* デバイス作成したディレクトリ内のディレクトリエントリ情報取得
+	 */
+	kprintf("After mount mknod blkdev ls /dev\n");
+	show_ls(tst_ioctx.cur, "/dev");
+
 	/* 単純なファイルシステムをアンマウントする */
 	rc = vfs_unmount(tst_ioctx.cur, "/dev");
 	if ( rc == 0 )
@@ -266,6 +298,24 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	kprintf("After unmount\n");
 	show_ls(tst_ioctx.cur, "/");
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("Before unlink console ls /dev\n");
+	show_ls(tst_ioctx.cur, "/dev");
+
+	/* デバイスファイルのアンリンク
+	 */
+	rc = vfs_unlink(tst_ioctx.cur, "/dev/console");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("Before rmdir ls /dev\n");
+	show_ls(tst_ioctx.cur, "/dev");
 
 	/* ディレクトリ削除
 	 */
