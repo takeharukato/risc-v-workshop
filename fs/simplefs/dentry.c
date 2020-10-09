@@ -235,6 +235,12 @@ simplefs_dirent_del(simplefs_super_block *fs_super, simplefs_ino fs_dir_vnid,
 		goto error_out;
 	}
 
+	/* ファイルの末尾を削除した場合は,
+	 * ディレクトリエントリファイルのサイズを縮小・更新する
+	 */
+	if ( ( ent_pos + sizeof(simplefs_dent) ) >= fs_dir_inode->i_size )
+		fs_dir_inode->i_size = ent_pos; /* ファイルサイズを更新 */
+
 	return 0;
 
 error_out:
