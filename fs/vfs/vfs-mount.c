@@ -1479,6 +1479,13 @@ vfs_vnode_fsync(vnode *v){
 		goto error_out;
 	}
 
+	if ( ( v->v_mount != NULL )
+	    && ( v->v_mount->m_mount_flags & VFS_MNT_RDONLY ) ) {
+
+		rc = -EROFS;  /* 読み取り専用でマウントされている */
+		goto vnode_dec_out;
+	}
+
 	rc = vfs_vnode_lock(v);  /* v-nodeの更新処理ロックを獲得 */
 	if ( rc != 0 )
 		goto vnode_dec_out;

@@ -9,7 +9,7 @@ subdirs=
 objects=vfs-init.o vfs-path.o vfs-fstbl.o vfs-mount.o vfs-fd.o vfs-open.o vfs-close.o \
 	vfs-read.o vfs-write.o vfs-create.o vfs-unlink.o vfs-getdents.o \
 	vfs-attrhelper.o vfs-setattr.o vfs-getattr.o vfs-lseek.o vfs-mkdir.o \
-	vfs-rmdir.o vfs-rename.o
+	vfs-rmdir.o vfs-rename.o vfs-ioctl.o vfs-fsync.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
