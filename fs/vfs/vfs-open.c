@@ -10,6 +10,8 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
+#include <kern/page-if.h>
+
 #include <kern/vfs-if.h>
 
 /*
@@ -47,13 +49,8 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 		goto out;
 	}
 
-	if ( !( v->v_mode & VFS_VNODE_MODE_DIR ) ) {
-
-		rc = -ENOTDIR; /* ディレクトリ以外のファイルを開こうとした */
-		goto unref_vnode_out;
-	}
-
-	dir_oflags = oflags & VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
+	/*  TODO: ディレクトリであることを確認 */
+	dir_oflags = oflags|VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
 
 	/* vnodeに対するファイルディスクリプタを取得
 	 */
@@ -93,24 +90,32 @@ int
 vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode, int *fdp) {
 	int             rc;
 	int             fd;
+	char     *filepath;
 	vnode           *v;
 	vfs_file_stat   st;
 
 	if ( oflags & VFS_O_DIRECTORY )
 		return vfs_opendir(ioctx, path, oflags, fdp);  /* ディレクトリを開く */
 
+	filepath = strdup(path);
+	if ( filepath == NULL ) {
+
+		rc = -ENOMEM;
+		goto error_out;
+	}
+
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
-	rc = vfs_path_to_vnode(ioctx, path, &v);
-
+	rc = vfs_path_to_vnode(ioctx, filepath, &v);
 	if ( ( rc != 0 ) && ( ( rc != -ENOENT ) || ( ( oflags & VFS_O_CREAT ) != 0 ) ) ) {
 
 		/* ファイルが存在しない */
 		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
-		goto out;
+		goto free_filepath_out;
 	}
 
+	/*  TODO: ディレクトリでないことを確認 */
 	if ( ( oflags & VFS_O_CREAT ) != 0 ) {  /* ファイル生成処理 */
 
 		if ( ( rc == 0 ) && ( ( oflags & VFS_O_EXCL ) != 0 ) ) {
@@ -140,12 +145,6 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 	//if ( oflags & VFS_O_APPEND ) /* ファイルポジションを末尾に設定する */
 
-	if ( v->v_mode & VFS_VNODE_MODE_DIR ) {
-
-		rc = -EISDIR; /* ディレクトリを開こうとした */
-		goto unref_vnode_out;
-	}
-
 	/*
 	 * vnodeに対するファイルディスクリプタを取得
 	 */
@@ -162,6 +161,9 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 unref_vnode_out:
 	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したvnodeの参照を解放  */
 
-out:
+free_filepath_out:
+	kfree(filepath);
+
+error_out:
 	return rc;
 }

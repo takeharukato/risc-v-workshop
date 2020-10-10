@@ -386,7 +386,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	kprintf("After mount\n");
 	show_ls(tst_ioctx.cur, "/");
 
-	/* キャラクタデバイスファイル作成
+	/* ブロックデバイスファイル作成
 	 */
 	vfs_init_attr_helper(&st);
 	st.st_rdev = VFS_VSTAT_MAKEDEV(259,0);
@@ -396,6 +396,46 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* ブロックデバイスファイル情報取得
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/dev/vitioblk0", VFS_O_RDWR, 0, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rc == 0 ) {
+
+		/* カーネルファイルディスクリプタ獲得
+		 */
+		rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		vfs_init_attr_helper(&st);
+		rc = vfs_getattr(f->f_vn, VFS_VSTAT_MASK_GETATTR, &st);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+		rc = vfs_close(tst_ioctx.cur, fd);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		/* ブロックデバイスであることを確認
+		 */
+		if ( S_ISBLK(st.st_mode) )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+	}
 
 	/* デバイス作成したディレクトリ内のディレクトリエントリ情報取得
 	 */
