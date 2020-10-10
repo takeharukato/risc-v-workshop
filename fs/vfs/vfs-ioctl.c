@@ -17,6 +17,7 @@
    ファイルに対する制御操作を行う
    @param[in] ioctx I/Oコンテキスト
    @param[in] fp    カーネルファイルディスクリプタ
+   @param[in] op    制御コマンド番号
    @param[in] buf   データ読み込み先カーネル内アドレス
    @param[in] len   バッファサイズ(単位:バイト)
    @retval  0      正常終了

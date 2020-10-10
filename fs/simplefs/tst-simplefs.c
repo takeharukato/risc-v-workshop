@@ -31,7 +31,7 @@ static struct _simplefs_vfs_ioctx{
 /**
    ディレクトリエントリの表示
    @param[in] cur I/Oコンテキスト
-   @param[in] 表示対象ディレクトリ
+   @param[in] dir 表示対象ディレクトリ
  */
 static void
 show_ls(vfs_ioctx *cur, char *dir){
