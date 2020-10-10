@@ -18,6 +18,8 @@
 #include <hal/hal-traps.h>
 
 /* システム時刻 */
+static system_timer g_systime = __SYSTEM_TIMER_INITIALIZER(&g_systime);
+/* 現在時刻 (Time of Day) */
 static system_timer g_walltime = __SYSTEM_TIMER_INITIALIZER(&g_walltime);
 static kmem_cache callout_ent_cache;  /* コールアウトエントリのキャッシュ */
 
@@ -46,7 +48,38 @@ calloutent_cmp(call_out_ent *key, call_out_ent *ent) {
 
 	return 0;
 }
+/**
+   コールアウトの先頭要素の内容を取得する
+   @param[out] ts     先頭コールアウトエントリの内容をコピーする先
+   @retval     0      正常終了
+   @retval    -ENOENT コールアウトが空
+ */
+int
+tim_callout_ref(ktimespec *ts){
+	int              rc;
+	call_out_ent   *ent;
+	intrflags    iflags;
 
+	/*  時刻情報のロックを獲得  */
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
+
+	if ( queue_is_empty(&g_systime.head) ) {
+
+		rc = -ENOENT;  /* コールアウトキューが空 */
+		goto unlock_out;
+	}
+
+	/* キューの先頭を参照する */
+	ent = (call_out_ent *)queue_ref_top(&g_systime.head);
+
+	memmove(ts, &ent->expire, sizeof(ktimespec));  /* 先頭要素の内容をコピーする */
+
+unlock_out:
+	/*  時刻情報のロックを解放  */
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
+
+	return rc;
+}
 /**
    コールアウトを追加する
    @param[in]  rel_expire_ms タイマの相対起動時刻(単位: ms)
@@ -70,7 +103,7 @@ tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private
 		goto error_out;  /* コールアウトエントリ獲得失敗 */
 
 	/*  時刻情報のロックを獲得  */
-	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
 
 	/* コールアウトエントリを設定
 	 */
@@ -82,23 +115,23 @@ tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private
 	sec = rel_expire_ms / TIMER_MS_PER_SEC;
 	nsec = (rel_expire_ms % TIMER_MS_PER_SEC) * TIMER_US_PER_MS * TIMER_NS_PER_US;
 
-	cur->expire.tv_sec = g_walltime.curtime.tv_sec + sec;
-	if ( g_walltime.curtime.tv_nsec + nsec >= TIMER_NS_PER_SEC ) {
+	cur->expire.tv_sec = g_systime.curtime.tv_sec + sec;
+	if ( g_systime.curtime.tv_nsec + nsec >= TIMER_NS_PER_SEC ) {
 
 		++cur->expire.tv_sec;
 		nsec %= TIMER_NS_PER_SEC;
 	}
-	cur->expire.tv_nsec = g_walltime.curtime.tv_nsec + nsec;
+	cur->expire.tv_nsec = g_systime.curtime.tv_nsec + nsec;
 
 	/* タイマ起動時刻をキーに昇順でキューに接続
 	 */
-	queue_add_sort(&g_walltime.head, call_out_ent, link, &cur->link,
+	queue_add_sort(&g_systime.head, call_out_ent, link, &cur->link,
 	    calloutent_cmp, QUEUE_ADD_ASCENDING);
 
 	*entp = cur;  /* コールアウトエントリを返却 */
 
 	/* 時刻情報のロックを解放 */
-	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 
 	return 0;
 
@@ -119,22 +152,22 @@ tim_callout_cancel(call_out_ent *ent){
 	intrflags           iflags;
 
 	/*  時刻情報のロックを獲得  */
-	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
 
 	/* コールアウトエントリを検索
 	 */
-	queue_for_each_safe(lp, &g_walltime.head, next)	{
+	queue_for_each_safe(lp, &g_systime.head, next)	{
 
 		cur = container_of(lp, call_out_ent, link);
 		if ( cur == ent ) { /* 見つかったエントリを外す */
 
-			queue_del(&g_walltime.head, &cur->link);
+			queue_del(&g_systime.head, &cur->link);
 			goto free_ent_out;  /* エントリの解放へ */
 		}
 	}
 
 	/* 時刻情報のロックを解放 */
-	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 
 	return -ENOENT;  /* 指定されたエントリが見つからなかった */
 
@@ -143,7 +176,7 @@ free_ent_out:
 	slab_kmem_cache_free((void *)cur);  /* コールアウトエントリを解放  */
 
 	/* 時刻情報のロックを解放 */
-	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 
 	return 0;
 }
@@ -158,37 +191,37 @@ invoke_callout(trap_context *ctx){
 	intrflags           iflags;
 
 	/*  時刻情報のロックを獲得  */
-	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
 
 	/* コールアウトキューが空でなければ先頭の要素の起動時刻と現在時刻を比較し,
 	 * 現在時刻がコールアウト起動時刻以降の時刻の場合はコールアウトを呼び出す
 	 */
-	while( !queue_is_empty(&g_walltime.head) ) {
+	while( !queue_is_empty(&g_systime.head) ) {
 
 		/* コールアウトキューの先頭を参照 */
-		cur = container_of(queue_ref_top(&g_walltime.head), call_out_ent, link);
+		cur = container_of(queue_ref_top(&g_systime.head), call_out_ent, link);
 
 		/* 現在時刻を比較 */
-		if ( cur->expire.tv_sec > g_walltime.curtime.tv_sec )
+		if ( cur->expire.tv_sec > g_systime.curtime.tv_sec )
 			break;  /* 呼び出し対象のコールアウトがない */
-		if ( ( cur->expire.tv_sec == g_walltime.curtime.tv_sec )
-		    && ( cur->expire.tv_nsec > g_walltime.curtime.tv_nsec ) )
+		if ( ( cur->expire.tv_sec == g_systime.curtime.tv_sec )
+		    && ( cur->expire.tv_nsec > g_systime.curtime.tv_nsec ) )
 			break;  /* 呼び出し対象のコールアウトがない */
 
 		/* コールアウトを取りだし */
-		cur = container_of(queue_get_top(&g_walltime.head), call_out_ent, link);
+		cur = container_of(queue_get_top(&g_systime.head), call_out_ent, link);
 
 		/*  時刻情報のロックを解放  */
-		spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+		spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 
 		cur->callout(ctx, cur->private);  /* コールアウト呼び出し */
 
 		/*  時刻情報のロックを獲得  */
-		spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+		spinlock_lock_disable_intr(&g_systime.lock, &iflags);
 	}
 
 	/*  時刻情報のロックを解放  */
-	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 }
 
 /**
@@ -206,7 +239,6 @@ init_callout(void) {
 
 	return;
 }
-
 /**
    システム時刻を更新する
    @param[in] ctx       割込みコンテキスト
@@ -224,6 +256,24 @@ tim_update_walltime(trap_context *ctx, ktimespec *diff){
 	ld.tv_sec  = diff->tv_sec;
 
 	/*  時刻情報のロックを獲得  */
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
+
+	g_systime.curtime.tv_nsec += ld.tv_nsec;
+	if ( ( g_systime.curtime.tv_nsec / TIMER_NS_PER_SEC ) > 0 ) {
+
+		g_systime.curtime.tv_sec  += g_systime.curtime.tv_nsec / TIMER_NS_PER_SEC;
+		g_systime.curtime.tv_nsec %= TIMER_NS_PER_SEC;
+	}
+	g_systime.curtime.tv_sec += ld.tv_sec;
+
+	/*  時刻情報のロックを解放  */
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
+
+	invoke_callout(ctx);  /* コールアウト呼び出し */
+
+	/* Time of Dayの更新
+	 */
+	/*  時刻情報のロックを獲得  */
 	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
 
 	g_walltime.curtime.tv_nsec += ld.tv_nsec;
@@ -237,12 +287,21 @@ tim_update_walltime(trap_context *ctx, ktimespec *diff){
 	/*  時刻情報のロックを解放  */
 	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
 
-	invoke_callout(ctx);  /* コールアウト呼び出し */
-
 #if defined(SHOW_WALLTIME)
-	if ( ( g_walltime.curtime.tv_sec % 5 ) == 0 )
-		kprintf("sec: %qu nsec: %qu\n",
-			g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
+	do{
+		if ( g_walltime.curtime.tv_sec % 5 ) == 0 {
+			kernel_tm     tm;
+
+			/* エポック時刻をtm構造体に変換する */
+			clock_epoch_time_to_tm(g_walltime.curtime.tv_sec, &tm);
+
+			kprintf("sec: %qu nsec: %qu\n",
+			    g_walltime.curtime.tv_sec, g_walltime.curtime.tv_nsec);
+			kprintf("Current wall time: %04d/%02d/%02d %02d:%02d:%02d\n",
+			    1900 + tm.tm_year, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+			    tm.tm_min, tm.tm_sec);
+		}
+	}while(0);
 #endif  /*  SHOW_WALLTIME  */
 }
 
@@ -261,13 +320,13 @@ tim_walltime_get(ktimespec *ktsp){
 	 * システム時刻を取得する
 	 */
 	/*  時刻情報のロックを獲得  */
-	spinlock_lock_disable_intr(&g_walltime.lock, &iflags);
+	spinlock_lock_disable_intr(&g_systime.lock, &iflags);
 
-	ktsp->tv_sec = g_walltime.curtime.tv_sec;    /* 秒を取得する     */
-	ktsp->tv_nsec = g_walltime.curtime.tv_nsec;  /* ナノ秒を取得する */
+	ktsp->tv_sec = g_systime.curtime.tv_sec;    /* 秒を取得する     */
+	ktsp->tv_nsec = g_systime.curtime.tv_nsec;  /* ナノ秒を取得する */
 
 	/*  時刻情報のロックを解放  */
-	spinlock_unlock_restore_intr(&g_walltime.lock, &iflags);
+	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 }
 
 /**
@@ -287,7 +346,7 @@ tim_timer_init(void){
 		clock_epoch_time_to_tm(ld.tv_sec, &tm);
 
 		/*
-		 * システム時刻を更新する
+		 * Time of Day時刻を更新する
 		 */
 		/*  時刻情報のロックを獲得  */
 		spinlock_lock_disable_intr(&g_walltime.lock, &iflags);

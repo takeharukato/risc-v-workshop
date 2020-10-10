@@ -83,6 +83,7 @@ typedef struct _call_out_ent{
 #error "Invalid timer interval"
 #endif  /*  CONFIG_TIMER_INTERVAL_MS_1MS  */
 
+int tim_callout_ref(struct _ktimespec *_ts);
 void tim_walltime_get(struct _ktimespec *_ktsp);
 int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private,
 		    struct _call_out_ent **_entp);
