@@ -32,7 +32,7 @@ int vfs_open(struct _vfs_ioctx *_ioctx, char *_path, vfs_open_flags _oflags,
     vfs_fs_mode _omode, int *_fdp);
 int vfs_closedir(struct _vfs_ioctx *_ioctx, int _fd);
 int vfs_close(struct _vfs_ioctx *_ioctx, int _fd);
-int vfs_fsync(struct _vfs_ioctx *ioctx, int _fd);
+int vfs_fsync(struct _vfs_ioctx *ioctx, struct _file_descriptor *_fp);
 int vfs_read(struct _vfs_ioctx *_ioctx, struct _file_descriptor *_fp, void *_buf,
     ssize_t _len, ssize_t *_rdlenp);
 int vfs_write(struct _vfs_ioctx *_ioctx, struct _file_descriptor *_fp, const void *_buf,

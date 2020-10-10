@@ -14,40 +14,26 @@
 #include <kern/vfs-if.h>
 
 /**
-   ファイルのデータブロックを書き戻す
+   ファイルのデータブロック/管理情報を書き戻す
    @param[in] ioctx I/Oコンテキスト
-   @param[in] fd    ユーザファイルディスクリプタ
+   @param[in] fp    カーネルファイルディスクリプタ
    @retval  0      正常終了
    @retval -EBADF  正当なユーザファイルディスクリプタでない
    @retval -ENOSYS fsyncをサポートしていない
  */
 int
-vfs_fsync(vfs_ioctx *ioctx, int fd){
+vfs_fsync(vfs_ioctx *ioctx, file_descriptor *fp){
 	int             rc;
-	file_descriptor *f;
 
-	/*
-	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
+	kassert(fp->f_vn != NULL);
+	kassert(fp->f_vn->v_mount != NULL);
+	kassert(fp->f_vn->v_mount->m_fs != NULL);
+	kassert( is_valid_fs_calls( fp->f_vn->v_mount->m_fs->c_calls ) );
+
+	/* ファイルシステム固有のファイル書き戻し処理を実施
+	 * ファイルシステム固有のファイル書き戻し処理がない場合は正常終了する
 	 */
-	rc = vfs_fd_get(ioctx, fd, &f); /* ファイルディスクリプタへの参照を得る */
-	if ( rc != 0 ) {
+	rc = vfs_vnode_fsync(fp->f_vn);
 
-		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
-		goto error_out;
-	}
-
-	kassert(f->f_vn != NULL);
-	kassert(f->f_vn->v_mount != NULL);
-	kassert(f->f_vn->v_mount->m_fs != NULL);
-	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
-
-	/* ファイルシステム固有のデータブロック書き戻し処理を実施
-	 * ファイルシステム固有のデータブロック書き戻し処理がない場合は正常終了する
-	 */
-	rc = vfs_vnode_fsync(f->f_vn);
-
-	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
-
-error_out:
 	return rc;
 }

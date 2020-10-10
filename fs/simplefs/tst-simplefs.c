@@ -175,6 +175,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+
 	/* カーネルファイルディスクリプタ獲得
 	 */
 	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
@@ -199,13 +200,23 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
-	/* バッファ書き戻し
+
+	/* カーネルファイルディスクリプタ獲得
 	 */
-	rc = vfs_fsync(tst_ioctx.cur, fd);
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	/* バッファ書き戻し
+	 */
+	rc = vfs_fsync(tst_ioctx.cur, f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
 
 	/* カーネルファイルディスクリプタ獲得
 	 */
@@ -237,6 +248,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+
 	/* カーネルファイルディスクリプタ獲得
 	 */
 	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
@@ -254,6 +266,7 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	} else
 		ktest_fail( sp );
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
 
 	/* 名前の変更
 	 */
