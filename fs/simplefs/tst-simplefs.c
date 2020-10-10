@@ -82,6 +82,9 @@ show_ls(vfs_ioctx *cur, char *dir){
 	rc = vfs_closedir(tst_ioctx.cur, dirfd);
 	kassert( rc == 0 );
 }
+
+static simplefs_ioctl_arg ioctl_arg;
+
 /**
    正常系テスト
    @param[in] sp  テスト統計情報
@@ -89,18 +92,18 @@ show_ls(vfs_ioctx *cur, char *dir){
  */
 static void __unused
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
-	int             rc;
-	int             fd;
-	file_descriptor *f;
-	int          dirfd;
-	ssize_t      nread;
-	vfs_file_stat   st;
-	char buf[BUF_SIZE];
-	vfs_dirent      *d;
-	int           bpos;
-	char        d_type;
-	ssize_t   rw_bytes;
-	size_t         len;
+	int               rc;
+	int               fd;
+	file_descriptor   *f;
+	int            dirfd;
+	ssize_t        nread;
+	vfs_file_stat     st;
+	char   buf[BUF_SIZE];
+	vfs_dirent        *d;
+	int             bpos;
+	char          d_type;
+	ssize_t     rw_bytes;
+	size_t           len;
 
 	/* ディレクトリオープン
 	 */
@@ -274,6 +277,25 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 		kprintf("Read: %s", buf);
 	} else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* ファイルI-node獲得
+	 */
+	ioctl_arg.inum = SIMPLEFS_INODE_ROOT_INO;
+	rc = vfs_ioctl(tst_ioctx.cur, f, SIMPLEFS_IOCTL_CMD_GETINODE, &ioctl_arg,
+	    sizeof(simplefs_ioctl_arg));
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
 		ktest_fail( sp );
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 

@@ -20,7 +20,7 @@
    @param[in] len     書き込むサイズ(単位:バイト)
    @param[out] wrlenp 書き込んだサイズ(単位:バイト)を返却するアドレス
    @retval  0      正常終了
-   @retval -EBADF  正当なユーザファイルディスクリプタでない
+   @retval -EBADF  書き込み用にオープンしていない
    @retval -EIO    I/Oエラー
    @retval -ENOSYS writeをサポートしていない
    @retval -EINVAL lenが負

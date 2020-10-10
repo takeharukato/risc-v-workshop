@@ -20,7 +20,6 @@
    @param[in] len     読み込むサイズ(単位:バイト)
    @param[out] rdlenp 読み込んだサイズ(単位:バイト)を返却するアドレス
    @retval  0      正常終了
-   @retval -EBADF  正当なユーザファイルディスクリプタでない
    @retval -EIO    I/Oエラー
    @retval -ENOSYS readをサポートしていない
    @retval -EINVAL lenが負

@@ -419,10 +419,27 @@ simplefs_seek(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode,
 int
 simplefs_ioctl(vfs_fs_super fs_super,  vfs_vnode_id vnid, vfs_fs_vnode fs_vnode,
     int op, void *buf, size_t len, vfs_file_private file_priv){
+	int                      rc;
+	simplefs_super_block *super;
+	simplefs_ioctl_arg    *argp;
+	simplefs_inode      *inodep;
 
-	/* 通常ファイルに対するioctlコマンドはない
-	 */
+	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
+	argp = (simplefs_ioctl_arg *)buf;          /* 引数情報を参照 */
+
+	if ( op == SIMPLEFS_IOCTL_CMD_GETINODE ) {
+
+		/* I-node情報を参照 */
+		rc = simplefs_refer_inode(super, argp->inum, &inodep);
+		if ( rc != 0 )
+			goto error_out;
+		memmove(&argp->inode, inodep, sizeof(simplefs_inode));
+	}
+
 	return 0;
+
+error_out:
+	return rc;
 }
 
 /**

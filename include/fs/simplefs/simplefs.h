@@ -44,6 +44,8 @@
 /** ファイルモードを抽出マスク */
 #define SIMPLEFS_INODE_MODE_MASK     ((UINT32_C(1) << 16) - 1)
 
+#define SIMPLEFS_IOCTL_CMD_GETINODE  (0x1)    /**< i-node取得 */
+
 typedef uint32_t          simplefs_ino;   /**< I-node番号    */
 typedef uint32_t        simplefs_blkno;   /**< ブロック番号  */
 typedef void *   simplefs_file_private;   /**< プライベート情報  */
@@ -101,7 +103,15 @@ typedef struct _simplefs_super_block{
 }simplefs_super_block;
 
 /**
-   単純ファイルシステム管理用大域データ
+   単純なファイルシステムのioctl引数
+ */
+typedef struct _simplefs_ioctl_arg{
+	simplefs_ino             inum;  /**< I-node番号 */
+	struct _simplefs_inode  inode;  /**< I-node情報 */
+}simplefs_ioctl_arg;
+
+/**
+   単純なファイルシステム管理用大域データ
  */
 typedef struct _simplefs_table{
 	struct _mutex                                            mtx;  /**< 排他用mutex    */

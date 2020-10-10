@@ -22,13 +22,12 @@
    - VFS_SEEK_WHENCE_CUR オフセットは現在位置に pos バイトを足した位置になる。
    - VFS_SEEK_WHENCE_END オフセットはファイルのサイズに pos バイトを足した位置になる。
    @retval  0      正常終了
-   @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -EINVAL whenceが不正
 */
 int
 vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence whence){
 	int              rc;
-	int     getattr_res;
+	int             res;
 	off_t       new_pos;
 	off_t       arg_pos;
 	vfs_file_stat    st;
@@ -53,12 +52,12 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 
 		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 		/* ファイルサイズを取得する */
-		getattr_res = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
+		res = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
 
 		/* ファイルサイズが取れない場合は,
 		 * 現在のポジションを仮に設定する
 		 */
-		if ( getattr_res != 0 )
+		if ( res != 0 )
 			new_pos = fp->f_pos;
 	}
 
@@ -94,7 +93,7 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 
 	case VFS_SEEK_WHENCE_END:
 
-		if ( getattr_res == 0 ) {
+		if ( res == 0 ) {
 
 			/* ファイルサイズ情報を獲得できた場合は,
 			 * VFS層でファイルポジションを算出
@@ -127,7 +126,7 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 		/*  指定位置以降の次にホールがある位置をシークする(GNU 拡張)
 		 *  ファイルサイズ情報を獲得できた場合は,VFS層でファイルの末尾を返す。
 		 */
-		if ( getattr_res == 0 )
+		if ( res == 0 )
 			new_pos = st.st_size;
 		break;
 	default:
