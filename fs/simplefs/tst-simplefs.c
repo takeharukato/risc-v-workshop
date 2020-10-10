@@ -37,16 +37,25 @@ static void
 show_ls(vfs_ioctx *cur, char *dir){
 	int             rc;
 	int          dirfd;
+	file_descriptor *f;
 	ssize_t      nread;
 	char buf[BUF_SIZE];
 	int           bpos;
 	char        d_type;
 	vfs_dirent      *d;
 
+	/* ディレクトリを開く
+	 */
 	rc = vfs_opendir(cur, dir, VFS_O_RDONLY, &dirfd);
 	kassert( rc == 0 );
 
-	rc = vfs_getdents(tst_ioctx.cur, dirfd, &buf[0], 0, BUF_SIZE, &nread);
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, dirfd, &f);
+
+	/* ディレクトリエントリの表示
+	 */
+	rc = vfs_getdents(tst_ioctx.cur, f, &buf[0], 0, BUF_SIZE, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 
 	for (bpos = 0, d = (vfs_dirent *) (buf + bpos);
@@ -66,6 +75,10 @@ show_ls(vfs_ioctx *cur, char *dir){
 		    (long long) d->d_off, d->d_name);
 	}
 
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+	/* ディレクトリのクローズ
+	 */
 	rc = vfs_closedir(tst_ioctx.cur, dirfd);
 	kassert( rc == 0 );
 }
@@ -97,14 +110,20 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/* ディレクトリエントリ取得
+	/* カーネルファイルディスクリプタ獲得
 	 */
-	rc = vfs_getdents(tst_ioctx.cur, dirfd, &buf[0], 0, BUF_SIZE, &nread);
+	rc = vfs_fd_get(tst_ioctx.cur, dirfd, &f);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
+	/* ディレクトリエントリ取得
+	 */
+	rc = vfs_getdents(tst_ioctx.cur, f, &buf[0], 0, BUF_SIZE, &nread);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 	for (bpos = 0, d = (vfs_dirent *) (buf + bpos);
 	     nread > bpos; bpos += d->d_reclen) {
@@ -122,6 +141,8 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		kprintf("%4d %10lld  %s\n", d->d_reclen,
 		    (long long) d->d_off, d->d_name);
 	}
+
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	/* ディレクトリクローズ
 	 */

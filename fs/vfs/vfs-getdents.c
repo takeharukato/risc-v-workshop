@@ -15,7 +15,7 @@
 /**
    指定されたパスのディレクトリエントリ情報を得る
    @param[in]  ioctx  I/Oコンテキスト
-   @param[in]  fd     ユーザファイルディスクリプタ
+   @param[in]  fp     カーネルファイルディスクリプタ
    @param[in]  buf    データ読み込み先カーネル内アドレス
    @param[in]  off    ディレクトリエントリ読み出しオフセット(単位:バイト)
    @param[in]  buflen ディレクトリエントリ情報書き込み先バッファ長(単位:バイト)
@@ -28,55 +28,43 @@
    @retval    -EINVAL 不正なスーパブロックを指定した
  */
 int
-vfs_getdents(vfs_ioctx *ioctx, int fd, void *buf, off_t off,
+vfs_getdents(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, off_t off,
     ssize_t buflen, ssize_t *rdlenp){
-	file_descriptor *f;
 	int             rc;
 	ssize_t   rd_bytes;
 
-	/*
-	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
-	 */
-	rc = vfs_fd_get(ioctx, fd, &f); /* ファイルディスクリプタへの参照を得る */
-	if ( rc != 0 ) {
+	if ( 0 > buflen ) {
 
-		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
+		rc = -EINVAL; /* バッファ長が負 */
 		goto error_out;
 	}
 
-	if ( 0 > buflen )
-		return -EINVAL; /* バッファ長が負 */
-
-	kassert(f->f_vn != NULL);
-	kassert(f->f_vn->v_mount != NULL);
-	kassert(f->f_vn->v_mount->m_fs != NULL);
-	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
-
-	rc = -ENOSYS;  /*  ハンドラが定義されていない場合は, -ENOSYSを返却して復帰  */
+	kassert(fp->f_vn != NULL);
+	kassert(fp->f_vn->v_mount != NULL);
+	kassert(fp->f_vn->v_mount->m_fs != NULL);
+	kassert( is_valid_fs_calls( fp->f_vn->v_mount->m_fs->c_calls ) );
 
 	rd_bytes = buflen; /* 読み取り長を設定 */
+
+	if ( fp->f_vn->v_mount->m_fs->c_calls->fs_getdents == NULL ) {
+
+		rc = -ENOSYS; /* ハンドラが定義されていない場合は, -ENOSYSを返却して復帰 */
+		goto error_out;
+	}
 
 	/*
 	 * ファイルシステム固有のディレクトリエントリ読込み処理を実行
 	 */
-	if ( f->f_vn->v_mount->m_fs->c_calls->fs_getdents != NULL ) {
-
-		rc = f->f_vn->v_mount->m_fs->c_calls->fs_getdents(
-			f->f_vn->v_mount->m_fs_super,
-			f->f_vn->v_fs_vnode, buf, off, buflen, &rd_bytes);
-		if ( 0 > rc )
-			goto put_fd_out;  /* エラー復帰する */
-	}
+	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_getdents(
+		fp->f_vn->v_mount->m_fs_super,
+		fp->f_vn->v_fs_vnode, buf, off, buflen, &rd_bytes);
+	if ( 0 > rc )
+		goto error_out;  /* エラー復帰する */
 
 	if ( rdlenp != NULL )
 		*rdlenp = rd_bytes;  /* 読み取り長を返却 */
 
-	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
-
 	return 0;
-
-put_fd_out:
-	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 error_out:
 	return rc;

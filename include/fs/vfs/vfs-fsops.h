@@ -38,8 +38,8 @@ int vfs_write(struct _vfs_ioctx *_ioctx, int _fd, const void *_buf, ssize_t _len
     ssize_t *_wrlenp);
 int vfs_lseek(struct _vfs_ioctx *_ioctx, int _fd, off_t _pos, vfs_seek_whence _whence);
 int vfs_ioctl(struct _vfs_ioctx *_ioctx, int _fd, int _op, void *_buf, size_t _len);
-int vfs_getdents(struct _vfs_ioctx *_ioctx, int _fd, void *_buf, off_t _off,
-    ssize_t _buflen, ssize_t *_rdlenp);
+int vfs_getdents(struct _vfs_ioctx *_ioctx, struct _file_descriptor *_fp, void *_buf,
+    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 int vfs_create(struct _vfs_ioctx *_ioctx, char *_path, struct _vfs_file_stat *_stat);
 int vfs_unlink(struct _vfs_ioctx *_ioctx, char *_path);
 int vfs_rename(struct _vfs_ioctx *_ioctx, char *_old_path, char *_new_path);
