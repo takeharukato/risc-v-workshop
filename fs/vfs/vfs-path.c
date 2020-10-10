@@ -385,7 +385,7 @@ vfs_path_resolve_dotdirs(char *cur_abspath, char **new_pathp){
 
 	kassert( new_pathp != NULL );
 
-	*new_pathp = kstrdup(outbuf);  /* 文字列を複製する */
+	*new_pathp = strdup(outbuf);  /* 文字列を複製する */
 
 	kfree(outbuf);  /* 一時領域を開放する */
 
@@ -450,20 +450,26 @@ vfs_new_path(const char *path, char *conv){
 
 /**
    パスを結合する
-   @param[in]  path1 入力パス1
-   @param[in]  path2 入力パス2
-   @param[out] conv  変換後のパス
+   @param[in]  path1  入力パス1
+   @param[in]  path2  入力パス2
+   @param[out] convp  変換後のパスを指し示すポインタのアドレス
    @retval  0             正常終了
    @retval -ENOENT        パスが含まれていない
+   @retval -ENOMEM        メモリ不足
    @retval -ENAMETOOLONG  パス名が長すぎる
  */
 int
-vfs_cat_paths(char *path1, char *path2, char *conv){
-	size_t    len1;
-	size_t    len2;
-	size_t     len;
-	char       *ep;
-	char       *sp;
+vfs_cat_paths(char *path1, char *path2, char **convp){
+	int           rc;
+	size_t      len1;
+	size_t      len2;
+	size_t       len;
+	char  *path1_str;
+	char  *path2_str;
+	char         *ep;
+	char         *sp;
+	char       *conv;
+	char    *dupconv;
 
 	len1 = len2 = 0;
 
@@ -476,12 +482,38 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	if ( ( len1 == 0 ) && ( len2 == 0 ) )
 		return -ENOENT;  /* 両者にパスが含まれていない */
 
+	if ( convp == NULL )
+		return 0; /* パスを返却しないで正常終了する */
+
+	/* 第1引数の文字列を複製
+	 */
+	if ( len1 > 0 ) {
+
+		path1_str = strdup(path1);
+		if ( path1_str == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto error_out;
+		}
+	}
+
+	/* 第2引数の文字列を複製
+	 */
+	if ( len2 > 0 ) {
+
+		path2_str = strdup(path2);
+		if ( path2_str == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto free_path1_str_out;
+		}
+	}
 	/*
 	 *一つ目のパスの終端のパスデリミタを取り除く
 	 */
 	if ( len1 > 0 ) {
 
-		ep = &path1[len1 - 1];
+		ep = &path1_str[len1 - 1];
 		while( *ep == VFS_PATH_DELIM ) {
 
 			*ep-- = '\0';
@@ -494,7 +526,7 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	 */
 	if ( len2 > 0 ) {
 
-		sp = path2;
+		sp = path2_str;
 		while( *sp == VFS_PATH_DELIM ) {
 
 			++sp;
@@ -505,28 +537,64 @@ vfs_cat_paths(char *path1, char *path2, char *conv){
 	/*
 	 * 文字列間にパスデリミタを付与して結合する
 	 */
-	len = len1 + len2;
+	if ( ( len1 == 0 ) || ( len2 == 0 ) )
+		len = len1 + len2 + 1; /* 文字列長の合計にヌル文字分を追加 */
+	else
+		len = len1 + len2 + 2; /* 文字列長の合計にヌル文字とパスデリミタ分を追加 */
 
-	if ( len >= VFS_PATH_MAX )
-		return -ENAMETOOLONG;
+	if ( len >= VFS_PATH_MAX ) {
+
+		rc = -ENAMETOOLONG;  /* パス名が長すぎる */
+		goto free_path2_str_out;
+	}
+
+	conv = kmalloc(len, KMALLOC_NORMAL);  /* 返却先バッファを獲得 */
+	if ( conv == NULL ) {
+
+		rc = -ENOMEM; /* メモリ不足 */
+		goto free_path2_str_out;
+	}
 
 	if ( len1 == 0 ) { /* 二つ目のパスを返却 */
 
-		strcpy(conv, path2);
-		return 0;
+		strcpy(conv, path2_str);
+		goto duplicate_conv;
 	}
 
 	if ( len2 == 0 ) { /* 一つ目のパスを返却 */
 
-		strcpy(conv, path1);
-		return 0;
+		strcpy(conv, path1_str);
+		goto duplicate_conv;
 	}
 
-	len += 2;  /* パスデリミタとヌル終端分の長さを追加 */
-	if ( len >= VFS_PATH_MAX )
-		return -ENAMETOOLONG;
-
+	/* パスをデリミタで接続 */
 	ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
 
+duplicate_conv:
+	kassert( convp != NULL );
+
+	dupconv = strdup(conv);  /* 文字列を複製 */
+	if ( dupconv == NULL ) {
+
+		rc = -ENOMEM;  /* メモリ不足 */
+		goto free_conv_out;
+	}
+
+	*convp = dupconv;  /* 結果を返却 */
+
 	return 0;
+
+free_conv_out:
+	kfree(conv);        /* 変換用のバッファを解放     */
+
+free_path2_str_out:
+	if ( len2 > 0 )
+		kfree(path2_str);   /* 第2引数文字列の複製を解放 */
+
+free_path1_str_out:
+	if ( len1 > 0 )
+		kfree(path1_str);   /* 第1引数文字列の複製を解放 */
+
+error_out:
+	return rc;
 }
