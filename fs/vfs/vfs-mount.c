@@ -1026,8 +1026,6 @@ unmount_common(vnode *root_vnode){
 
 	if ( mount == NULL ) {  /* マウントポイントが見つからなかった */
 
-		kprintf(KERN_ERR "vfs_unmount: mount id %u not on root v-node @%p\n",
-		    (unsigned)root_vnode->v_mount->m_id, root_vnode);
 		rc = -ENOENT;   /* マウントポイントの参照が得られなかった */
 		goto unlock_out;
 	}
@@ -1082,7 +1080,8 @@ unmount_common(vnode *root_vnode){
 	return 0;
 
 unref_mount_in_lock_out:
-	dec_fs_mount_ref_nolock(mount);
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
+
 unlock_out:
 	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
 	return rc;

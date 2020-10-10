@@ -21,14 +21,14 @@ endif
 ifeq ($(CONFIG_HAL_USE_SBI),y)
 objects += rv64-sbi.o
 else
-objects += rv64-mmode.o rv64-ksbi.o
+objects += rv64-mmode.o
 endif
 
 depends = $(patsubst %.o,%.d,${objects})
 ifeq ($(CONFIG_SMP),y)
 QEMU_CPU_OPTS = -smp ${CONFIG_CPUS_NR}
 else
-QEMU_CPU_OPTS = 
+QEMU_CPU_OPTS =
 endif
 
 ifeq ($(CONFIG_HAL_USE_SBI),y)
@@ -73,5 +73,3 @@ distclean: clean
 	${RM} ${DIST_CLEAN_FILES}
 
 -include *.d
-
-
