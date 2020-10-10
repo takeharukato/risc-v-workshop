@@ -37,7 +37,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	size_t          name_len;
 	size_t          path_len;
 
-	filepath = kstrdup(path);  /* 削除対象ファイルパス文字列の複製を得る */
+	filepath = strdup(path);  /* 削除対象ファイルパス文字列の複製を得る */
 	if ( filepath == NULL ) {
 
 		rc = -ENOMEM;    /* メモリ不足 */
@@ -76,7 +76,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	/* パス(ディレクトリ)検索時に使用する一時領域を確保
 	 */
 	path_len = strlen(path);
-	pathname = kstrdup(path);
+	pathname = strdup(path);
 	if ( pathname == NULL ) {
 
 		rc = -ENOMEM;

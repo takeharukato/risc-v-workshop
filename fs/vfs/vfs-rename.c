@@ -55,7 +55,7 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 
 	/* 変更前のパス(ディレクトリ)検索時に使用する一時領域を確保
 	 */
-	old_pathname = kstrdup(old_path);
+	old_pathname = strdup(old_path);
 	if ( old_pathname == NULL ) {
 
 		rc = -ENOMEM;
@@ -76,7 +76,7 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 
 	/* 変更後のパス(ディレクトリ)検索時に使用する一時領域を確保
 	 */
-	new_pathname = kstrdup(new_path);
+	new_pathname = strdup(new_path);
 	if ( new_pathname == NULL ) {
 
 		rc = -ENOMEM;

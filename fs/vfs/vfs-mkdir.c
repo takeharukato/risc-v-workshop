@@ -46,7 +46,7 @@ vfs_mkdir(vfs_ioctx *ioctx, char *path){
 	}
 
 	path_len = strlen(path);
-	pathname = kstrdup(path);
+	pathname = strdup(path);
 	if ( pathname == NULL ) {
 
 		rc = -ENOMEM;

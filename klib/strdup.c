@@ -17,7 +17,7 @@
    @return 文字列の複製
  */
 char *
-kstrdup(const char *src){
+strdup(const char *src){
 	size_t len;
 	void    *m;
 

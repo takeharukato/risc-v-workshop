@@ -277,7 +277,7 @@ vfs_register_filesystem(const char *name, vfs_fstype_flags fstype, fs_calls *cal
 	/*
 	 * 各パラメータをセットする
 	 */
-	container->c_name = kstrdup(name); /* ファイルシステム名 */
+	container->c_name = strdup(name); /* ファイルシステム名 */
 	if ( container->c_name == NULL ) {
 
 		rc = -ENOMEM;

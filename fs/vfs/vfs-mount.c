@@ -261,7 +261,7 @@ init_mount(fs_mount *mount, char *path, fs_container *fs) {
 	mount->m_root = NULL;            /*  ルートv-nodeの初期化                    */
 	mount->m_mount_point = NULL;     /*  マウントポイントvnodeの初期化           */
 	mount->m_mount_flags = VFS_MNT_MNTFLAGS_NONE;  /*  マウントフラグの初期化    */
-	mount->m_mount_path = kstrdup(path);    /*  マウントポイントパスの複製       */
+	mount->m_mount_path = strdup(path);     /*  マウントポイントパスの複製       */
 
 	if ( mount->m_mount_path == NULL ) {
 

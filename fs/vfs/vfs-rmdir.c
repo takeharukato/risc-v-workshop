@@ -37,7 +37,7 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	size_t       path_len;
 	vfs_file_stat      st;
 
-	rmdirpath = kstrdup(path);  /* 削除対象ディレクトリのパス文字列を複製する */
+	rmdirpath = strdup(path);  /* 削除対象ディレクトリのパス文字列を複製する */
 	if ( rmdirpath == NULL ) {
 
 		rc = -ENOMEM;    /* メモリ不足 */
@@ -77,7 +77,7 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	/* パス(親ディレクトリ)検索時に使用する一時領域を確保
 	 */
 	path_len = strlen(path);
-	pathname = kstrdup(path);
+	pathname = strdup(path);
 	if ( pathname == NULL ) {
 
 		rc = -ENOMEM;
