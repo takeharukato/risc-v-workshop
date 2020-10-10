@@ -51,8 +51,8 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 
 	/* ファイルからの読込みを実施 */
 	rd_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_read(
-		fp->f_vn->v_mount->m_fs_super,
-		fp->f_vn->v_id, fp->f_vn->v_fs_vnode, fp->f_private, buf, fp->f_pos, len);
+		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
+		buf, fp->f_pos, len, fp->f_private);
 	if ( 0 > rd_bytes ) {
 
 		rc = rd_bytes;  /* エラーコードを返却 */

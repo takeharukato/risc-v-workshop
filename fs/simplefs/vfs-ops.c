@@ -306,15 +306,15 @@ simplefs_fsync(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode) {
    @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
    @param[in]  vnid        操作対象ファイルのv-node ID
    @param[in]  fs_vnode    操作対象ファイルのv-node情報
-   @param[in]  file_priv   ファイル記述子のプライベート情報
    @param[in]  buf         読み込みバッファ
    @param[in]  pos         ファイル内での読み込み開始オフセット(単位: バイト)
    @param[in]  len         読み込み長(単位: バイト)
+   @param[in]  file_priv   ファイル記述子のプライベート情報
    @retval     0           正常終了
  */
 ssize_t
 simplefs_read(vfs_fs_super fs_super,  vfs_vnode_id vnid, vfs_fs_vnode fs_vnode,
-    vfs_file_private file_priv, void *buf, off_t pos, ssize_t len) {
+    void *buf, off_t pos, ssize_t len, vfs_file_private file_priv) {
 	simplefs_inode       *inode;
 	simplefs_super_block *super;
 	simplefs_ino           inum;
@@ -348,16 +348,16 @@ unlock_out:
    @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
    @param[in]  vnid        操作対象ファイルのv-node ID
    @param[in]  fs_vnode    操作対象ファイルのv-node情報
-   @param[in]  file_priv   ファイル記述子のプライベート情報
    @param[in]  buf         書き込みバッファ
    @param[in]  pos         ファイル内での書き込み開始オフセット(単位: バイト)
    @param[in]  len         書き込み長(単位: バイト)
+   @param[in]  file_priv   ファイル記述子のプライベート情報
    @retval     0           正常終了
  */
 ssize_t
 simplefs_write(vfs_fs_super fs_super, vfs_vnode_id vnid,
-		    vfs_fs_vnode fs_vnode, vfs_file_private file_priv,
-    const void *buf, off_t pos, ssize_t len){
+    vfs_fs_vnode fs_vnode, const void *buf, off_t pos, ssize_t len,
+    vfs_file_private file_priv){
 	simplefs_inode       *inode;
 	simplefs_super_block *super;
 	simplefs_ino           inum;

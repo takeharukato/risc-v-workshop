@@ -63,13 +63,14 @@ typedef struct _fs_calls {
 	    vfs_file_private _file_priv);
 	int (*fs_fsync)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode);
 	ssize_t (*fs_read)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
-	    void *_buf, off_t _pos, ssize_t _len);
+	    vfs_fs_vnode _fs_vnode, void *_buf, off_t _pos, ssize_t _len,
+	    vfs_file_private _file_priv);
 	ssize_t (*fs_write)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, vfs_file_private _file_priv,
-	    const void *_buf, off_t _pos, ssize_t _len);
+	    vfs_fs_vnode _fs_vnode, const void *_buf, off_t _pos, ssize_t _len,
+	    vfs_file_private _file_priv);
 	int (*fs_seek)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_vnode,
-	    off_t _pos, vfs_seek_whence _whence, vfs_file_private _file_priv, off_t *_new_posp);
+	    off_t _pos, vfs_seek_whence _whence, vfs_file_private _file_priv,
+	    off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
 	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,

@@ -64,8 +64,8 @@ vfs_write(vfs_ioctx *ioctx, file_descriptor *fp, const void *buf, ssize_t len,
 
 	/* ファイルへの書き込みを実施 */
 	wr_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_write(
-		fp->f_vn->v_mount->m_fs_super,
-		fp->f_vn->v_id, fp->f_vn->v_fs_vnode, fp->f_private, buf, fp->f_pos, len);
+		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
+		buf, fp->f_pos, len, fp->f_private);
 	if ( 0 > wr_bytes ) {
 
 		rc = wr_bytes;  /* エラーコードを返却 */
