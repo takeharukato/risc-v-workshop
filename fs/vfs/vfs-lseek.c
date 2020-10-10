@@ -14,10 +14,10 @@
 
 /**
    ファイルポジションを更新する
-   @param[in] ioctx     I/Oコンテキスト
-   @param[in] fd        ユーザファイルディスクリプタ
-   @param[in] pos       ファイルポジション
-   @param[in] whence    ファイルポジションの意味
+   @param[in] ioctx  I/Oコンテキスト
+   @param[in] fp     カーネルファイルディスクリプタ
+   @param[in] pos    ファイルポジション
+   @param[in] whence ファイルポジションの意味
    - VFS_SEEK_WHENCE_SET オフセットは pos バイトに設定される。
    - VFS_SEEK_WHENCE_CUR オフセットは現在位置に pos バイトを足した位置になる。
    - VFS_SEEK_WHENCE_END オフセットはファイルのサイズに pos バイトを足した位置になる。
@@ -26,23 +26,12 @@
    @retval -EINVAL whenceが不正
 */
 int
-vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
+vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence whence){
 	int              rc;
 	int     getattr_res;
-	file_descriptor  *f;
 	off_t       new_pos;
 	off_t       arg_pos;
 	vfs_file_stat    st;
-
-	/*
-	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
-	 */
-	rc = vfs_fd_get(ioctx, fd, &f); /* ファイルディスクリプタへの参照を得る */
-	if ( rc != 0 ) {
-
-		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
-		goto error_out;
-	}
 
 	if ( ( whence != VFS_SEEK_WHENCE_SET )
 	     && ( whence != VFS_SEEK_WHENCE_CUR )
@@ -51,10 +40,10 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 	     && ( whence != VFS_SEEK_WHENCE_HOLE ) )
 		return -EINVAL;  /*  whenceが不正  */
 
-	kassert(f->f_vn != NULL);
-	kassert(f->f_vn->v_mount != NULL);
-	kassert(f->f_vn->v_mount->m_fs != NULL);
-	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
+	kassert(fp->f_vn != NULL);
+	kassert(fp->f_vn->v_mount != NULL);
+	kassert(fp->f_vn->v_mount->m_fs != NULL);
+	kassert( is_valid_fs_calls( fp->f_vn->v_mount->m_fs->c_calls ) );
 
 	/* ファイル末尾からのシークやホールへのシークのために,
 	 * ファイルサイズ情報を得る
@@ -64,13 +53,13 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 
 		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 		/* ファイルサイズを取得する */
-		getattr_res = vfs_getattr(f->f_vn, VFS_VSTAT_MASK_SIZE, &st);
+		getattr_res = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
 
 		/* ファイルサイズが取れない場合は,
 		 * 現在のポジションを仮に設定する
 		 */
 		if ( getattr_res != 0 )
-			new_pos = f->f_pos;
+			new_pos = fp->f_pos;
 	}
 
 	/*
@@ -90,7 +79,7 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 		break;
 
 	case VFS_SEEK_WHENCE_CUR:
-		if ( ( 0 > arg_pos ) && ( ( -1 * arg_pos ) > f->f_pos ) ) {
+		if ( ( 0 > arg_pos ) && ( ( -1 * arg_pos ) > fp->f_pos ) ) {
 
 			/* 現在位置から前の位置にシークする場合で,
 			 * ファイル先頭を超える場合は, ファイルポジションを
@@ -98,9 +87,9 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 			 * 引数を補正する
 			 */
 			new_pos = 0;  /* ファイルポジションをファイルの先頭に設定 */
-			arg_pos = -1 * f->f_pos; /* 現在のファイルポジション分前に戻る */
+			arg_pos = -1 * fp->f_pos; /* 現在のファイルポジション分前に戻る */
 		} else
-			new_pos = f->f_pos + arg_pos; /* 指定された位置に設定 */
+			new_pos = fp->f_pos + arg_pos; /* 指定された位置に設定 */
 		break;
 
 	case VFS_SEEK_WHENCE_END:
@@ -147,31 +136,25 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 
 	kassert( new_pos >= 0 );  /* VFS層の返却値が負にならないことを確認 */
 
-	if ( f->f_vn->v_mount->m_fs->c_calls->fs_seek == NULL )
+	if ( fp->f_vn->v_mount->m_fs->c_calls->fs_seek == NULL )
 		goto success;  /* seek処理が定義されていなければVFS層の設定値を返却 */
 
 	/*  ファイルシステム固有のseek処理を実施
 	 */
-	rc = f->f_vn->v_mount->m_fs->c_calls->fs_seek(f->f_vn->v_mount->m_fs_super,
-						      f->f_vn->v_fs_vnode,
-						      arg_pos, whence, f->f_private,
+	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_seek(fp->f_vn->v_mount->m_fs_super,
+						      fp->f_vn->v_fs_vnode,
+						      arg_pos, whence, fp->f_private,
 						      &new_pos);
 	if ( rc != 0 )
-		goto put_fd_out;
+		goto error_out;
 
 	if ( 0 > new_pos )
 		new_pos = 0;  /*  ファイルポジションが負になる場合は0に補正  */
 success:
-	f->f_pos = new_pos;  /* ファイルポジションを更新 */
-
-	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+	fp->f_pos = new_pos;  /* ファイルポジションを更新 */
 
 	return 0;
 
-put_fd_out:
-	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
-
 error_out:
 	return rc;
-
 }

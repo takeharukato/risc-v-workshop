@@ -240,13 +240,23 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/* seek処理
+	/* カーネルファイルディスクリプタ獲得
 	 */
-	rc = vfs_lseek(tst_ioctx.cur, fd, 0, VFS_SEEK_WHENCE_SET);
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* seek処理
+	 */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 
 	/* カーネルファイルディスクリプタ獲得
