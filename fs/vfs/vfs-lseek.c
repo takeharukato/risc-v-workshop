@@ -34,13 +34,6 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 	off_t       arg_pos;
 	vfs_file_stat    st;
 
-	if ( ( whence != VFS_SEEK_WHENCE_SET )
-	     && ( whence != VFS_SEEK_WHENCE_CUR )
-	     && ( whence != VFS_SEEK_WHENCE_END )
-	     && ( whence != VFS_SEEK_WHENCE_DATA )
-	     && ( whence != VFS_SEEK_WHENCE_HOLE ) )
-		return -EINVAL;  /*  whenceが不正  */
-
 	/*
 	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
 	 */
@@ -50,6 +43,13 @@ vfs_lseek(vfs_ioctx *ioctx, int fd, off_t pos, vfs_seek_whence whence){
 		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
 		goto error_out;
 	}
+
+	if ( ( whence != VFS_SEEK_WHENCE_SET )
+	     && ( whence != VFS_SEEK_WHENCE_CUR )
+	     && ( whence != VFS_SEEK_WHENCE_END )
+	     && ( whence != VFS_SEEK_WHENCE_DATA )
+	     && ( whence != VFS_SEEK_WHENCE_HOLE ) )
+		return -EINVAL;  /*  whenceが不正  */
 
 	kassert(f->f_vn != NULL);
 	kassert(f->f_vn->v_mount != NULL);

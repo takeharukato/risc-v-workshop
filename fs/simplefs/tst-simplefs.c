@@ -78,6 +78,7 @@ static void __unused
 simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	int             rc;
 	int             fd;
+	file_descriptor *f;
 	int          dirfd;
 	ssize_t      nread;
 	vfs_file_stat   st;
@@ -175,13 +176,21 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/* EOFリード
+	/* カーネルファイルディスクリプタ獲得
 	 */
-	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	/* EOFリード
+	 */
+	rc = vfs_read(tst_ioctx.cur, f, &buf[0], BUF_SIZE, &rw_bytes);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	if ( rw_bytes == 0 )  /* EOF */
 		ktest_pass( sp );
@@ -196,15 +205,23 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 	/* ファイル読み取り
 	 */
-	rc = vfs_read(tst_ioctx.cur, fd, &buf[0], BUF_SIZE, &rw_bytes);
+	rc = vfs_read(tst_ioctx.cur, f, &buf[0], BUF_SIZE, &rw_bytes);
 	if ( rw_bytes == ( len + 1 ) ) {
 
 		ktest_pass( sp );
 		kprintf("Read: %s", buf);
 	} else
 		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	/* 名前の変更
 	 */

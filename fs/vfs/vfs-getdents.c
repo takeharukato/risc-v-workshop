@@ -34,9 +34,7 @@ vfs_getdents(vfs_ioctx *ioctx, int fd, void *buf, off_t off,
 	int             rc;
 	ssize_t   rd_bytes;
 
-	if ( 0 > buflen )
-		return -EINVAL; /* バッファ長が負 */
-		/*
+	/*
 	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
 	 */
 	rc = vfs_fd_get(ioctx, fd, &f); /* ファイルディスクリプタへの参照を得る */
@@ -45,6 +43,9 @@ vfs_getdents(vfs_ioctx *ioctx, int fd, void *buf, off_t off,
 		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
 		goto error_out;
 	}
+
+	if ( 0 > buflen )
+		return -EINVAL; /* バッファ長が負 */
 
 	kassert(f->f_vn != NULL);
 	kassert(f->f_vn->v_mount != NULL);

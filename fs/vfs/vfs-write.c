@@ -31,9 +31,6 @@ vfs_write(vfs_ioctx *ioctx, int fd, const void *buf, ssize_t len, ssize_t *wrlen
 	int             rc;
 	ssize_t   wr_bytes;
 
-	if ( 0 > len )
-		return -EINVAL;
-
 	/*
 	 * ユーザファイルディスクリプタに対応するファイルディスクリプタを取得
 	 */
@@ -43,6 +40,9 @@ vfs_write(vfs_ioctx *ioctx, int fd, const void *buf, ssize_t len, ssize_t *wrlen
 		rc = -EBADF;  /*  不正なユーザファイルディスクリプタを指定した */
 		goto error_out;
 	}
+
+	if ( 0 > len )
+		return -EINVAL;
 
 	if ( ( f->f_flags & VFS_FDFLAGS_RWMASK ) == VFS_FDFLAGS_RDONLY ) {
 
