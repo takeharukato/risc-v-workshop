@@ -10,6 +10,8 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
+#include <kern/page-if.h>
+
 #include <kern/vfs-if.h>
 
 #include <kern/ktest.h>
@@ -20,10 +22,51 @@ char path1[VFS_PATH_MAX+1];
 char path2[VFS_PATH_MAX+1];
 char path3[VFS_PATH_MAX+1];
 
+
 static void
 vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	int rc;
+	char *new_path;
+	char *old_path="/bin/../sbin/../..//usr/sbin//./subdir/test.txt";
+	char *expected="/usr/sbin/subdir/test.txt";
 
+	/* "./", "../"の解決処理
+	 */
+	rc = vfs_path_resolve_dotdirs("bin/", &new_path);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_path_resolve_dotdirs(NULL, &new_path);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	rc = vfs_path_resolve_dotdirs(old_path, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );  /* パスを返却はしないが正常終了する */
+	else
+		ktest_fail( sp );
+
+	rc = vfs_path_resolve_dotdirs(old_path, &new_path);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rc == 0 ) {
+
+		if ( strcmp(new_path, expected) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+		kfree(new_path);
+	}
+
+	/* ディレクトリ指定パス('/'で終わるパス)を明にディレクトリ名/.に変換する
+	 */
 	strcpy(path1, "/usr/bin");
 	memset(path2, 0, VFS_PATH_MAX+1);
 
@@ -230,4 +273,3 @@ tst_vfs_path(void){
 	ktest_def_test(&tstat_vfs_path, "vfs_path1", vfs_path1, NULL);
 	ktest_run(&tstat_vfs_path);
 }
-

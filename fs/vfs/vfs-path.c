@@ -10,6 +10,8 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
+#include <kern/page-if.h>
+
 #include <kern/vfs-if.h>
 
 #include <fs/vfs/vfs-internal.h>
@@ -258,6 +260,139 @@ vfs_path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv
 	 * ファイルの親ディレクトリのvnodeを得る
 	 */
 	return path_to_dir_vnode(ioctx, path, pathlen, outv, filename, fnamelen);
+}
+
+/**
+   パス中の"../","./"を解釈したパス名を構成する
+   @param[in]  cur_abspath   現在のパス
+   @param[out] new_pathp  変換後のパスを指し示すポインタのアドレス
+   @retval  0             正常終了
+   @retval -ENOENT        パスが絶対パスでない
+ */
+int
+vfs_path_resolve_dotdirs(char *cur_abspath, char **new_pathp){
+	int          rc;
+	char       *inp;
+	char      *outp;
+	char    *outbuf;
+	char       inch;
+	size_t   outlen;
+
+	if ( new_pathp == NULL )
+		return 0; /* パスは返却しないが正常終了する */
+
+	if ( cur_abspath == NULL ) {  /* パスが指定されていない */
+
+		rc = -EINVAL;
+		goto error_out;
+	}
+
+	/* cur_abspathが絶対パス指定でない場合(パスデリミタから始まらない場合)は
+	 * 引数エラーとする
+	 */
+	if ( cur_abspath[0] != VFS_PATH_DELIM ) {
+
+		rc = -EINVAL;
+		goto error_out;
+	}
+
+	/* 出力バッファを用意する
+	 */
+	outlen = strlen(cur_abspath);
+	outbuf = kmalloc(outlen + 1, KMALLOC_NORMAL);
+	if ( outbuf == NULL ) {
+
+		rc = -ENOMEM;
+		goto error_out;
+	}
+
+	inp = cur_abspath; /* 入力位置を設定 */
+	outp = outbuf;  /* 出力位置を設定 */
+
+	/* 出力バッファの先頭にルートディレクトリのパスデリミタを配置,
+	 * ルートディレクトリの次の位置に入出力位置を設定
+	 */
+	*outp++ = *inp++;
+	kassert( *outbuf == VFS_PATH_DELIM );
+
+	for( ; ; ) {
+
+		inch = *inp++;  /* 入力ポインタ位置の文字を読み取り, 入力位置を進める */
+		if ( inch == '\0' )
+			break; /* 入力ポインタ位置が文字列終端だったら抜ける */
+
+		/* 出力ポインタがパスデリミタの直後で, かつ,
+		 * 入力ポインタ位置が"./"だった場合,
+		 * 入力ポインタを2つ進める
+		 */
+		if ( ( *( outp - 1 ) == VFS_PATH_DELIM )
+		    && ( inch == '.' )
+		    && ( *inp == VFS_PATH_DELIM ) ) {
+
+			inp += 1;  /* "./"の'/'を読み飛ばす */
+			continue;  /* 読み取りを継続する */
+		}
+
+		/* 出力ポインタがパスデリミタの直後で, かつ,
+		 * 入力ポインタ位置が"../"だった場合, 入力ポインタを3つ進め,
+		 * 出力ポインタ位置が出力バッファの先頭(ルートディレクトリのパスデリミタ)で
+		 * なければ出力ポインタの前の/を検索し, その次の位置に出力ポインタを配置する
+		 * 出力バッファ中の1つ上のディレクトリを指し示す
+		 */
+		if ( ( *( outp - 1 ) == VFS_PATH_DELIM )
+		    && ( inch == '.' ) && ( *inp == '.' )
+		    && ( *(inp + 1) == VFS_PATH_DELIM ) ) {
+
+			inp += 2;  /* "../"の"./"を読み飛ばす */
+
+			/* ルートディレクトリを指していなければ
+			 * 出力先を一つ上のディレクトリ位置まで戻す
+			 */
+			if ( ( outp - 1 ) > outbuf ) {
+
+
+				outp -= 2; /* 一つ上の上のディレクトリに移る */
+				while( ( outp != outbuf ) && ( *outp != VFS_PATH_DELIM ) )
+					--outp;  /* パスデリミタの位置まで戻す */
+
+				/* 先頭にパスデリミタをセットしているのでパスデリミタを
+				 * 指しているはず
+				 */
+				kassert( *outp == VFS_PATH_DELIM );
+				++outp;  /* デリミタの次の位置から書き出しを行う */
+			}
+			continue;  /* 読み取りを継続する */
+		}
+
+		if ( inch == VFS_PATH_DELIM ) { /* パスデリミタだった場合 */
+
+			/* 後続の連続したパスデリミタを読み飛ばす */
+			while( *inp == VFS_PATH_DELIM )
+				++inp; /* デリミタを飛ばす */
+
+			 /* 直前がデリミタである場合は出力しない
+			  * (e.g., "/bin/..//"の場合, "../を処理した時点では,
+			  * "/"の直後を指しているため, ここでデリミタを出力することで
+			  * 連続したデリミタが出力されてしまうことを避けるため。
+			  */
+			if ( *( outp - 1 ) == VFS_PATH_DELIM )
+				continue;
+		}
+		*outp++ = inch;  /* 出力バッファに文字を書き込む */
+	}
+
+	*outp = '\0';  /* ヌルターミネートする */
+
+	kassert( new_pathp != NULL );
+
+	*new_pathp = kstrdup(outbuf);  /* 文字列を複製する */
+
+	kfree(outbuf);  /* 一時領域を開放する */
+
+	return 0;
+
+error_out:
+	return rc;
 }
 
 /**
