@@ -38,6 +38,7 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 	int                    fd;
 	vnode                  *v;
 	vfs_open_flags dir_oflags;
+	vfs_file_stat          st;
 
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
@@ -49,7 +50,16 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 		goto out;
 	}
 
-	/*  TODO: ディレクトリであることを確認 */
+	/* ディレクトリであることを確認
+	 */
+	vfs_init_attr_helper(&st);
+	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
+	if ( !S_ISDIR(st.st_mode) ) {
+
+		rc = -ENOTDIR;  /* ディレクトリではないファイルを開こうとした */
+		goto unref_vnode_out;
+	}
+
 	dir_oflags = oflags|VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
 
 	/* vnodeに対するファイルディスクリプタを取得
@@ -115,7 +125,28 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		goto free_filepath_out;
 	}
 
-	/*  TODO: ディレクトリでないことを確認 */
+	/* ディレクトリでないことを確認
+	 */
+	vfs_init_attr_helper(&st);
+	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
+	if ( S_ISDIR(st.st_mode) ) {
+
+		/* VFS_O_DIRECTORYフラグを付けてディレクトリを開けたか,
+		 * 読み込み専用でディレクトリを開いている場合は
+		 * ディレクトリオープン処理を呼び出す
+		 */
+		if ( ( oflags & VFS_O_DIRECTORY )
+			&& ( ( oflags & VFS_O_RWMASK ) == VFS_O_RDONLY) ) {
+
+			/* ディレクトリを開く */
+			rc = vfs_opendir(ioctx, path, oflags, fdp);
+			goto free_filepath_out;
+		}
+
+		rc = -EISDIR;  /* ディレクトリを開こうとした */
+		goto free_filepath_out;
+	}
+
 	if ( ( oflags & VFS_O_CREAT ) != 0 ) {  /* ファイル生成処理 */
 
 		if ( ( rc == 0 ) && ( ( oflags & VFS_O_EXCL ) != 0 ) ) {
