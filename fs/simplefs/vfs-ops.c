@@ -427,18 +427,22 @@ simplefs_ioctl(vfs_fs_super fs_super,  vfs_vnode_id vnid, vfs_fs_vnode fs_vnode,
 	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
 	argp = (simplefs_ioctl_arg *)buf;          /* 引数情報を参照 */
 
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+
 	if ( op == SIMPLEFS_IOCTL_CMD_GETINODE ) {
 
 		/* I-node情報を参照 */
 		rc = simplefs_refer_inode(super, argp->inum, &inodep);
 		if ( rc != 0 )
-			goto error_out;
+			goto unlock_out;
 		memmove(&argp->inode, inodep, sizeof(simplefs_inode));
 	}
 
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 	return 0;
 
-error_out:
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
 	return rc;
 }
 
