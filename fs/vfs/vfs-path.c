@@ -31,12 +31,20 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 	char       *next_p;
 	vnode      *curr_v;
 	vnode      *next_v;
+	char     *copypath;
 	vfs_vnode_id  vnid;
 	int             rc;
 
 	kassert( ioctx->ioc_root != NULL );
 
-	p = path;
+	copypath = strdup(path);  /* 引数で渡されたパスの複製を得る */
+	if ( copypath == NULL ) {
+
+		rc = -ENOMEM;  /* メモリ不足 */
+		goto error_out;
+	}
+
+	p = copypath;
 
 	if ( *p == VFS_PATH_DELIM ) { /* 絶対パス指定  */
 
@@ -118,7 +126,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 				rc = -EIO;  /*  IFを満たさないエラーは-EIOに変換  */
 
 			vfs_vnode_ref_dec(curr_v);
-			goto error_out;
+			goto free_copypath_out;
 		}
 
 		/*
@@ -131,7 +139,7 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			    " (fsid 0x%x vnid 0x%Lx)\n",
 			    (unsigned)curr_v->v_mount->m_id, (unsigned long long)vnid);
 			vfs_vnode_ref_dec(curr_v);
-			goto error_out;
+			goto free_copypath_out;
 		}
 
 		/*  vnodeの参照を開放  */
@@ -158,6 +166,9 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 
 	*outv = curr_v;
 
+free_copypath_out:
+	kfree(copypath);  /* 一時領域を解放する */
+
 error_out:
 	return rc;
 }
@@ -171,13 +182,15 @@ error_out:
    @param[out] filename パス中のファイル名部分を返却する領域のアドレス
    @param[in]  fnamelen filenameが指し示す領域の長さ
    @retval  0        正常終了
-   @retval  -ENOENT   パスが見つからなかった
-   @retval  -EIO      パス検索時にI/Oエラーが発生した
+   @retval  -ENOMEM  メモリ不足
+   @retval  -ENOENT  パスが見つからなかった
+   @retval  -EIO     パス検索時にI/Oエラーが発生した
 */
 static int
 path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
     char *filename, size_t fnamelen){
-	char *p;
+	int         rc;
+	char        *p;
 
 	kassert( pathlen > 0 );
 	kassert( fnamelen > 0 );
@@ -218,7 +231,9 @@ path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
 	/*
 	 * パス中のディレクトリ部分(親ディレクトリ)のvnodeを得る
 	 */
-	return path_to_vnode(ioctx, path, outv);
+	rc = path_to_vnode(ioctx, path, outv);
+
+	return rc;
 }
 
 /**

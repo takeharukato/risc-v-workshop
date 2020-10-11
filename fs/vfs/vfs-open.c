@@ -100,7 +100,6 @@ int
 vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode, int *fdp) {
 	int              rc;
 	int              fd;
-	char      *filepath;
 	file_descriptor *fp;
 	vnode            *v;
 	vfs_file_stat    st;
@@ -108,22 +107,15 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 	if ( oflags & VFS_O_DIRECTORY )
 		return vfs_opendir(ioctx, path, oflags, fdp);  /* ディレクトリを開く */
 
-	filepath = strdup(path);
-	if ( filepath == NULL ) {
-
-		rc = -ENOMEM;
-		goto error_out;
-	}
-
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
-	rc = vfs_path_to_vnode(ioctx, filepath, &v);
+	rc = vfs_path_to_vnode(ioctx, path, &v);
 	if ( ( rc != 0 ) && ( ( rc != -ENOENT ) || ( ( oflags & VFS_O_CREAT ) != 0 ) ) ) {
 
 		/* ファイルが存在しない */
 		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
-		goto free_filepath_out;
+		goto error_out;
 	}
 
 	/* ディレクトリでないことを確認
@@ -141,11 +133,11 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 			/* ディレクトリを開く */
 			rc = vfs_opendir(ioctx, path, oflags, fdp);
-			goto free_filepath_out;
+			goto error_out;
 		}
 
 		rc = -EISDIR;  /* ディレクトリを開こうとした */
-		goto free_filepath_out;
+		goto error_out;
 	}
 
 	if ( ( oflags & VFS_O_CREAT ) != 0 ) {  /* ファイル生成処理 */
@@ -197,9 +189,6 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 unref_vnode_out:
 	vfs_vnode_ptr_put(v);  /* パス検索時に獲得したvnodeの参照を解放  */
-
-free_filepath_out:
-	kfree(filepath);
 
 error_out:
 	return rc;
