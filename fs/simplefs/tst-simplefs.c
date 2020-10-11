@@ -103,6 +103,50 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* 単純なファイルシステムをマウントする */
+	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/romnt", VFS_VSTAT_INVALID_DEVID,
+	    SIMPLEFS_FSNAME, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ファイルを作成する */
+	rc = vfs_open(tst_ioctx.cur, "/romnt/file3", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルをクローズする (openでファイルを作成しているので) */
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを作成する
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/romnt/testdir1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("After setup for readonly mount test ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	kprintf("After setup for readonly mount test ls /romnt\n");
+	show_ls(tst_ioctx.cur, "/romnt");
+
+	/* 単純なファイルシステムをアンマウントする */
+	rc = vfs_unmount(tst_ioctx.cur, "/romnt");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	/* 単純なファイルシステムをリードオンリーマウントする */
 	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/romnt", VFS_VSTAT_INVALID_DEVID,
 	    SIMPLEFS_FSNAME, (void *)VFS_MNT_RDONLY);
@@ -113,19 +157,19 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 
 	/* ディレクトリエントリ情報取得
 	 */
-	kprintf("After mkdir ls /\n");
+	kprintf("After ro mount ls /\n");
 	show_ls(tst_ioctx.cur, "/");
 
 	/* 作成したディレクトリ内のディレクトリエントリ情報取得
 	 */
-	kprintf("After mkdir ls /romnt\n");
+	kprintf("After romount ls /romnt\n");
 	show_ls(tst_ioctx.cur, "/romnt");
 
 	/* 通常ファイル作成
 	 */
 	/* ファイル作成オープン (エラー)
 	 */
-	rc = vfs_open(tst_ioctx.cur, "/romnt/file3", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+	rc = vfs_open(tst_ioctx.cur, "/romnt/file4", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
 	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
 	if ( rc == -EROFS )
 		ktest_pass( sp );
@@ -144,7 +188,7 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 
 		/* ファイルのアンリンク
 		 */
-		rc = vfs_unlink(tst_ioctx.cur, "/romnt/file3");
+		rc = vfs_unlink(tst_ioctx.cur, "/romnt/file4");
 		if ( rc == 0 )
 			ktest_pass( sp );
 		else
@@ -154,14 +198,14 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 	/* ファイルのアンリンク
 	 */
 	rc = vfs_unlink(tst_ioctx.cur, "/romnt/file3");
-	if ( ( rc == -EROFS ) || ( rc == -ENOENT ) )
+	if ( rc == -EROFS )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
 	/* ディレクトリ作成
 	 */
-	rc = vfs_mkdir(tst_ioctx.cur, "/romnt/testdir");
+	rc = vfs_mkdir(tst_ioctx.cur, "/romnt/testdir2");
 	if ( rc == -EROFS )
 		ktest_pass( sp );
 	else
@@ -171,7 +215,7 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 
 		/* 生成したディレクトリの削除
 		 */
-		rc = vfs_rmdir(tst_ioctx.cur, "/romnt/testdir");
+		rc = vfs_rmdir(tst_ioctx.cur, "/romnt/testdir2");
 		if ( rc == 0 )
 			ktest_pass( sp );
 		else
@@ -180,8 +224,8 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 
 	/* ディレクトリ削除
 	 */
-	rc = vfs_rmdir(tst_ioctx.cur, "/romnt/testdir");
-	if ( ( rc == -EROFS ) || ( rc == -ENOENT ) )
+	rc = vfs_rmdir(tst_ioctx.cur, "/romnt/testdir1");
+	if ( rc == -EROFS )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
