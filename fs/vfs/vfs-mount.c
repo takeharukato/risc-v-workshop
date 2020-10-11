@@ -1021,13 +1021,15 @@ unmount_common(vnode *root_vnode){
 	if ( rc != 0 ) {
 
 		rc = -ENOENT;   /* マウントポイント情報の参照が得られなかった */
-		goto unlock_out;
+		mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+		goto error_out;
 	}
 
 	if ( mount == NULL ) {  /* マウントポイントが見つからなかった */
 
 		rc = -ENOENT;   /* マウントポイントの参照が得られなかった */
-		goto unlock_out;
+		mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+		goto error_out;
 	}
 
 	kassert( mount->m_fs != NULL );
@@ -1039,7 +1041,7 @@ unmount_common(vnode *root_vnode){
 	if ( mount->m_root != root_vnode ) {
 
 		rc = -EINVAL;
-		goto unref_mount_in_lock_out;
+		goto unref_mount_in_lock_out;  /*  アンマウント不能  */
 	}
 
 	/* ボリューム中のv-nodeを書き出し,
@@ -1048,6 +1050,7 @@ unmount_common(vnode *root_vnode){
 	rc = sync_and_lock_vnodes(mount);
 	if ( rc != 0 )
 		goto unref_mount_in_lock_out;  /*  アンマウント不能  */
+
 	/*
 	 * ファイルシステム固有なアンマウント処理を実施
 	 */
@@ -1080,10 +1083,12 @@ unmount_common(vnode *root_vnode){
 	return 0;
 
 unref_mount_in_lock_out:
-	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
-
-unlock_out:
+	/* vfs_fs_mount_put中でマウントテーブルロックを獲得して参照を解放するので
+	 * マウントテーブルのロックを先に解放する
+	 */
 	mutex_unlock(&g_mnttbl.mt_mtx);  /* マウントテーブルをアンロック  */
+	vfs_fs_mount_put(mount);  /* マウントポイントの参照解放 */
+error_out:
 	return rc;
 }
 
