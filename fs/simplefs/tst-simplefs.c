@@ -96,6 +96,19 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 	int            dirfd;
 	int               fd;
 	file_descriptor   *f;
+	vfs_file_stat     st;
+	char   buf[BUF_SIZE];
+	ssize_t     rw_bytes;
+
+	/* createによるディレクトリ作成 (エラー)
+	 */
+	vfs_init_attr_helper(&st);
+	st.st_mode = S_IFDIR|S_IRWXU|S_IRWXG|S_IRWXO;
+	rc = vfs_create(tst_ioctx.cur, "/faildir", &st);
+	if ( rc == -EISDIR )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 
 	/* openによるディレクトリオープン (エラー)
 	 */
@@ -150,14 +163,6 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	/* 通常ファイルのディレクトリオープン (エラー)
-	 */
-	rc = vfs_opendir(tst_ioctx.cur, "/file3", VFS_O_RDONLY, &dirfd);
-	if ( rc == -ENOTDIR )
-		ktest_pass( sp );
-	else
-		ktest_fail( sp );
-
 	if ( rc == 0 ) {
 
 		/* 生成したファイルのオープン (エラー)
@@ -178,8 +183,33 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 				ktest_pass( sp );
 			else
 				ktest_fail( sp );
+
+			/* ディレクトリのクローズ(エラー)
+			 */
+			rc = vfs_closedir(tst_ioctx.cur, fd);
+			if ( rc == -EBADF )
+				ktest_pass( sp );
+			else
+				ktest_fail( sp );
+
+			/* カーネルファイルディスクリプタ獲得 (エラー)
+			 */
+			rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+			if ( rc == -EBADF )
+				ktest_pass( sp );
+			else
+				ktest_fail( sp );
+
 		}
 	}
+
+	/* 通常ファイルのディレクトリオープン (エラー)
+	 */
+	rc = vfs_opendir(tst_ioctx.cur, "/file3", VFS_O_RDONLY, &dirfd);
+	if ( rc == -ENOTDIR )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 
 	/* ファイルのトランケート+追記オープン
 	 * トランケートと追記処理の順序の妥当性確認のため両方を設定
@@ -190,6 +220,21 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/* 負の読み込み長チェック (エラー)
+	 */
+	rc = vfs_read(tst_ioctx.cur, f, &buf[0], -1, &rw_bytes);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	/* カーネルファイルディスクリプタ獲得
 	 */
@@ -198,7 +243,13 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
+	/* 負の書き込み長チェック (エラー)
+	 */
+	rc = vfs_write(tst_ioctx.cur, f, &buf[0], -1, &rw_bytes);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	/* 生成したファイルのクローズ
