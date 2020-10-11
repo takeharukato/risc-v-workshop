@@ -98,11 +98,12 @@ out:
  */
 int
 vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode, int *fdp) {
-	int             rc;
-	int             fd;
-	char     *filepath;
-	vnode           *v;
-	vfs_file_stat   st;
+	int              rc;
+	int              fd;
+	char      *filepath;
+	file_descriptor *fp;
+	vnode            *v;
+	vfs_file_stat    st;
 
 	if ( oflags & VFS_O_DIRECTORY )
 		return vfs_opendir(ioctx, path, oflags, fdp);  /* ディレクトリを開く */
@@ -174,14 +175,19 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 			goto unref_vnode_out;  /* サイズ更新に失敗した */
 	}
 
-	//if ( oflags & VFS_O_APPEND ) /* ファイルポジションを末尾に設定する */
-
 	/*
 	 * vnodeに対するファイルディスクリプタを取得
 	 */
-	rc = vfs_fd_alloc(ioctx, v, oflags, &fd, NULL);
+	rc = vfs_fd_alloc(ioctx, v, oflags, &fd, &fp);
 	if ( rc != 0 )
 		goto unref_vnode_out;
+
+	if ( oflags & VFS_O_APPEND ) { /* ファイルポジションを末尾に設定する */
+
+		rc = vfs_lseek(ioctx, fp, 0, VFS_SEEK_WHENCE_END);
+		if ( rc != 0 )
+			goto unref_vnode_out;  /* サイズ取得に失敗した */
+	}
 
 	*fdp = fd;  /* ユーザファイルディスクリプタを返却 */
 
