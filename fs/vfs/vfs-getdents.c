@@ -21,11 +21,9 @@
    @param[in]  buflen ディレクトリエントリ情報書き込み先バッファ長(単位:バイト)
    @param[out] rdlenp 書き込んだディレクトリエントリ情報のサイズ(単位:バイト)返却領域
    @retval     0      正常終了
-   @retval    -ESRCH  ディレクトリエントリが見つからなかった
-   @retval    -ENOENT ゾーンが割り当てられていない
-   @retval    -E2BIG  ファイルサイズの上限を超えている
-   @retval    -EIO    ページキャッシュアクセスに失敗した
-   @retval    -EINVAL 不正なスーパブロックを指定した
+   @retval    -ENOSYS getdentsをサポートしていない
+   @retval    -EINVAL バッファ長に負の値を指定した
+   @note       下位のファイルシステムの責任でoffの妥当性を確認する
  */
 int
 vfs_getdents(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, off_t off,
@@ -58,7 +56,7 @@ vfs_getdents(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, off_t off,
 	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_getdents(
 		fp->f_vn->v_mount->m_fs_super,
 		fp->f_vn->v_fs_vnode, buf, off, buflen, &rd_bytes);
-	if ( 0 > rc )
+	if ( rc != 0 )
 		goto error_out;  /* エラー復帰する */
 
 	if ( rdlenp != NULL )

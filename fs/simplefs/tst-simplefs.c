@@ -99,6 +99,7 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 	vfs_file_stat     st;
 	char   buf[BUF_SIZE];
 	ssize_t     rw_bytes;
+	ssize_t        nread;
 
 	/* createによるディレクトリ作成 (エラー)
 	 */
@@ -133,6 +134,24 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, dirfd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 負のバッファ長チェック (エラー)
+	 */
+	rc = vfs_getdents(tst_ioctx.cur, f, &buf[0], 0, -1, &nread);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
 	/* closeによるディレクトリクローズ
 	 */
