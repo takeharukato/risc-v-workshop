@@ -129,7 +129,7 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 			new_dir_v->v_id, new_dir_v->v_fs_vnode, new_filename);
 
 		vfs_vnode_unlock(new_dir_v);
-		vfs_vnode_lock(old_dir_v);
+		vfs_vnode_unlock(old_dir_v);
 	} else if ( cmpval > 0 ) {
 
 		/* old_dir_vの方がnew_dir_vより大きい */
@@ -153,7 +153,7 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 			old_dir_v->v_id, old_dir_v->v_fs_vnode, old_filename,
 			new_dir_v->v_id, new_dir_v->v_fs_vnode, new_filename);
 
-		vfs_vnode_lock(old_dir_v);
+		vfs_vnode_unlock(old_dir_v);
 		vfs_vnode_unlock(new_dir_v);
 	} else { /* 同一ディレクトリの場合, old_dir_vだけをロックする */
 
