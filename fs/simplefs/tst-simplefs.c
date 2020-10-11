@@ -150,6 +150,14 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* 通常ファイルのディレクトリオープン (エラー)
+	 */
+	rc = vfs_opendir(tst_ioctx.cur, "/file3", VFS_O_RDONLY, &dirfd);
+	if ( rc == -ENOTDIR )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	if ( rc == 0 ) {
 
 		/* 生成したファイルのオープン (エラー)
