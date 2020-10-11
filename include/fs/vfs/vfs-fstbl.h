@@ -44,7 +44,8 @@ typedef struct _fs_table{
  */
 typedef struct _fs_calls {
 	int (*fs_mount)(vfs_mnt_id _mntid, dev_id _dev,
-	    void *_args, vfs_fs_super *_fs_superp, vfs_vnode_id *_root_vnidp);
+	    void *_args, vfs_fs_super *_fs_superp, vfs_mnt_flags *_mnt_flagsp,
+	    vfs_vnode_id *_root_vnidp);
 	int (*fs_unmount)(vfs_fs_super _fs_super);
 	int (*fs_sync)(vfs_fs_super _fs_super);
 	int (*fs_lookup)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode,

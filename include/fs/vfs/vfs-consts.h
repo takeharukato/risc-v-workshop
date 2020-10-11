@@ -36,6 +36,8 @@
 #define VFS_MNT_UNMOUNTING      UINT64_C(1)   /**< アンマウント中             */
 #define VFS_MNT_RDONLY          UINT64_C(2)   /**< 書き込み禁止               */
 #define VFS_MNT_NOATIME         UINT64_C(4)   /**< アクセス時刻を更新しない   */
+/** 下位のファイルシステムから設定可能な値 */
+#define VFS_MNT_FSLAYER_MASK (VFS_MNT_RDONLY|VFS_MNT_NOATIME)
 
 /**
    openフラグ

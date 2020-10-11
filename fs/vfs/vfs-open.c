@@ -143,9 +143,13 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 			vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 			st.st_mode = omode;  /* ファイルモード */
 			is_created = vfs_create(ioctx, path, &st); /* ファイルを生成する */
-			if ( is_created != 0 )
-				goto error_out;  /* ファイル生成に失敗した */
+			if ( is_created != 0 ) {
 
+				if ( is_created == -EROFS )
+					rc = -EROFS;  /* 読み取り専用でマウントしている */
+
+				goto error_out;  /* ファイル生成に失敗した */
+			}
 			/* 作成したファイルに対するvnodeの参照を取得
 			 */
 			rc = vfs_path_to_vnode(ioctx, path, &v);

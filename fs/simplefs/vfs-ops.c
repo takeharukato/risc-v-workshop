@@ -21,6 +21,7 @@
    @param[in] dev         デバイスID
    @param[in] args        マウントオプション
    @param[out] fs_superp  スーパブロックを指し示すポインタのアドレス
+   @param[out] mnt_flagsp v-node層に引き渡すマウントフラグ返却領域
    @param[out] root_vnidp ルートディレクトリのv-node ID返却領域
    @retval     0          正常終了
    @retval -ENOENT 空きスーパブロックがない
@@ -28,12 +29,26 @@
  */
 int
 simplefs_mount(vfs_mnt_id mntid, dev_id dev,
-	       void *args, vfs_fs_super *fs_superp, vfs_vnode_id *root_vnidp){
+    void *args, vfs_fs_super *fs_superp, vfs_mnt_flags *mnt_flagsp,
+    vfs_vnode_id *root_vnidp){
 	int                           rc;
 	simplefs_super_block *free_super;
+	vfs_mnt_flags      new_mnt_flags;
 
 	kassert( fs_superp != NULL );
+	kassert( mnt_flagsp != NULL );
 	kassert( root_vnidp != NULL );
+
+	/* マウントフラグを設定
+	 */
+	if ( args == NULL )
+		new_mnt_flags = VFS_MNT_MNTFLAGS_NONE;  /* 設定値なし */
+	else {
+
+		/* 引数に直接マウントフラグを与える */
+		new_mnt_flags = (vfs_mnt_flags)(uintptr_t)args;
+		new_mnt_flags &= VFS_MNT_FSLAYER_MASK;
+	}
 
 	for( ; ; ) {
 
@@ -54,8 +69,8 @@ simplefs_mount(vfs_mnt_id mntid, dev_id dev,
 		mutex_unlock(&free_super->mtx);  /* スーパブロック情報のロックを解放 */
 	}
 
-
 	*fs_superp = free_super;  /* スーパブロック情報を返却 */
+	*mnt_flagsp = new_mnt_flags; /* 共通マウントオプション設定 */
 	*root_vnidp = SIMPLEFS_INODE_ROOT_INO; /* ルートディレクトリのv-node番号を返却 */
 
 	return 0;

@@ -694,6 +694,7 @@ error_out:
    @param[in] id          マウントポイントID
    @param[in] dev         デバイスID
    @param[in] args        引数情報
+   @param[out] mnt_flagsp v-node層に引き渡すマウントフラグ返却領域
    @param[out] fs_superp  スーパブロック情報返却領域
    @param[out] root_vnidp マウントポイントのv-node ID返却領域
    @retval  0      正常終了
@@ -702,7 +703,8 @@ error_out:
  */
 static int
 tst_vfs_tstfs_mount(vfs_mnt_id id, dev_id dev, void *args,
-		 vfs_fs_super *fs_superp, vfs_vnode_id *root_vnidp){
+    vfs_fs_super *fs_superp, vfs_mnt_flags *mnt_flagsp,
+    vfs_vnode_id *root_vnidp){
 	int                       rc;
 	uint32_t               major;
 	tst_vfs_tstfs_super   *super;

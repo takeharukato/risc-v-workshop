@@ -1754,11 +1754,12 @@ unlock_out:
 int
 vfs_mount_with_fsname(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_name,
 	  void *args){
-	int                      rc;
-	fs_mount             *mount;
-	vnode        *covered_vnode;
-	vfs_vnode_id        root_id;
-	void              *mnt_args;
+	int                       rc;
+	fs_mount              *mount;
+	vnode         *covered_vnode;
+	vfs_vnode_id         root_id;
+	void               *mnt_args;
+	vfs_mnt_flags  new_mnt_flags;
 
 	kassert( path != NULL );
 
@@ -1863,14 +1864,19 @@ vfs_mount_with_fsname(vfs_ioctx *ioctxp, char *path, dev_id dev, const char *fs_
 	 */
 	if ( mount->m_fs->c_calls->fs_mount != NULL ) {
 
+		new_mnt_flags = VFS_MNT_MNTFLAGS_NONE;  /* マウントフラグ値をクリア */
 		rc = mount->m_fs->c_calls->fs_mount(mount->m_id,
-		    dev, mnt_args, &mount->m_fs_super, &root_id);
+		    dev, mnt_args, &mount->m_fs_super, &new_mnt_flags, &root_id);
 		if ( rc != 0 ) {
 
 			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )
 				rc = -EINVAL;  /*  マウントオプション不正  */
 			goto unref_covers_vnode_out;
 		}
+
+		/* 下位のファイルシステムで設定可能なフラグのみを取得 */
+		new_mnt_flags &= VFS_MNT_FSLAYER_MASK;
+		mount->m_mount_flags |= new_mnt_flags;  /* マウントフラグを設定 */
 	}
 
 	/*
