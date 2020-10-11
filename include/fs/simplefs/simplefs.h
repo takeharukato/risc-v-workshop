@@ -30,7 +30,7 @@
 /** 最大ファイルサイズ (単位:バイト) */
 #define SIMPLEFS_SUPER_MAX_FILESIZE   ( SIMPLEFS_SUPER_BLOCK_SIZE * SIMPLEFS_IDATA_NR )
 
-#define SIMPLEFS_SUPER_INVALID_BLOCK  ((UINT64_C(1)<<32) - 1)   /**< 無効ブロック       */
+#define SIMPLEFS_SUPER_INVALID_BLOCK  UINT32_C(-1)  /**< 無効ブロック */
 
 #define SIMPLEFS_SUPER_UNINITIALIZED  (0x0)   /**< 未初期化           */
 #define SIMPLEFS_SUPER_INITIALIZED    (0x1)   /**< 初期化済み         */
@@ -42,7 +42,7 @@
 #define SIMPLEFS_INODE_ROOT_INO       (0x1)   /**< ルートI-node番号   */
 
 /** ファイルモードを抽出マスク */
-#define SIMPLEFS_INODE_MODE_MASK     ((UINT32_C(1) << 16) - 1)
+#define SIMPLEFS_INODE_MODE_MASK      UINT16_C(-1)
 
 #define SIMPLEFS_IOCTL_CMD_GETINODE  (0x1)    /**< i-node取得 */
 

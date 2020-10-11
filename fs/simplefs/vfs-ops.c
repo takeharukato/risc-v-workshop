@@ -471,7 +471,8 @@ simplefs_create(vfs_fs_super fs_super, vfs_vnode_id fs_dir_vnid, vfs_fs_vnode fs
 	uint16_t              major;
 	uint16_t              minor;
 
-	mode = stat->st_mode & SIMPLEFS_INODE_MODE_MASK; /* ファイルモードを抽出 */
+	mode = stat->st_mode &
+		(vfs_fs_mode)SIMPLEFS_INODE_MODE_MASK; /* ファイルモードを抽出 */
 
 	if  ( !S_ISREG(mode) && !S_ISCHR(mode) && !S_ISBLK(mode) )
 		return -EINVAL;  /* 通常ファイル, デバイスファイル以外を作成しようとした */
