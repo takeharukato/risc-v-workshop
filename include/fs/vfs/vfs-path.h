@@ -17,7 +17,7 @@ struct _vfs_ioctx;
 struct _vnode;
 
 int vfs_path_to_vnode(struct _vfs_ioctx *_ioctx, char *_path, struct _vnode **_outv);
-int vfs_path_to_dir_vnode(struct _vfs_ioctx *_ioctx, char *_path, size_t _pathlen,
+int vfs_path_to_dir_vnode(struct _vfs_ioctx *_ioctx, char *_path,
 			  struct _vnode **_outv, char *_filename, size_t _fnamelen);
 int vfs_path_resolve_dotdirs(char *_cur_abspath, char **_new_pathp);
 int vfs_new_path(const char *_path, char *_conv);

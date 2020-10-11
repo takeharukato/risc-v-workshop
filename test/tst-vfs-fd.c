@@ -26,7 +26,6 @@ static ktest_stats tstat_vfs_fd=KTEST_INITIALIZER;
 static int
 open_fd(vfs_ioctx *cur_ioctx, const char *path, vfs_open_flags omode, file_descriptor **fpp){
 	int                          rc;
-	size_t                      len;
 	vnode                        *v;
 	int                          fd;
 	char fname[TST_VFS_FD_FNAMELEN];
@@ -34,9 +33,7 @@ open_fd(vfs_ioctx *cur_ioctx, const char *path, vfs_open_flags omode, file_descr
 	if ( path == NULL )
 		return -EINVAL;
 
-	len = strlen(path);
-
-	rc = vfs_path_to_dir_vnode(cur_ioctx, (char *)path, len, &v,
+	rc = vfs_path_to_dir_vnode(cur_ioctx, (char *)path, &v,
 	    fname, TST_VFS_FD_FNAMELEN);
 	if ( rc != 0 )
 		goto error_out;

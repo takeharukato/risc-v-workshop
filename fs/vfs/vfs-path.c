@@ -258,7 +258,6 @@ vfs_path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv) {
    指定されたディレクトリのvnodeの参照を獲得する
    @param[in]  ioctx    パス検索に使用するI/Oコンテキスト
    @param[in]  path     検索対象のパス文字列
-   @param[in]  pathlen  検索対象のパス文字列領域の長さ
    @param[out] outv     見つかったvnodeを指し示すポインタのアドレス
    @param[out] filename パス中のファイル名部分を返却する領域のアドレス
    @param[in]  fnamelen filenameが指し示す領域の長さ
@@ -268,13 +267,36 @@ vfs_path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv) {
    @note parenti相当のIF
  */
 int
-vfs_path_to_dir_vnode(vfs_ioctx *ioctx, char *path, size_t pathlen, vnode **outv,
+vfs_path_to_dir_vnode(vfs_ioctx *ioctx, char *path, vnode **outv,
     char *filename, size_t fnamelen) {
+	int         rc;
+	char *copypath;
+	size_t pathlen;
+
+	pathlen = strlen(path) + 1;  /* ヌル文字を含む領域の長さ */
+	copypath = strdup(path);  /* 引数で渡されたパスの複製を得る */
+	if ( copypath == NULL ) {
+
+		rc = -ENOMEM;  /* メモリ不足 */
+		goto error_out;
+	}
 
 	/*
 	 * ファイルの親ディレクトリのvnodeを得る
 	 */
-	return path_to_dir_vnode(ioctx, path, pathlen, outv, filename, fnamelen);
+	rc = path_to_dir_vnode(ioctx, copypath, pathlen, outv, filename, fnamelen);
+	if ( rc != 0 )
+		goto free_copypath_out;
+
+	kfree(copypath);  /* 一時領域を開放する */
+
+	return 0;
+
+free_copypath_out:
+	kfree(copypath);  /* 一時領域を開放する */
+
+error_out:
+	return rc;
 }
 
 /**

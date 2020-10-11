@@ -31,24 +31,14 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	vnode            *file_v;
 	vfs_file_stat         st;
 	vnode             *dir_v;
-	char           *filepath;
-	char           *pathname;
 	char           *filename;
 	size_t          name_len;
-	size_t          path_len;
-
-	filepath = strdup(path);  /* 削除対象ファイルパス文字列の複製を得る */
-	if ( filepath == NULL ) {
-
-		rc = -ENOMEM;    /* メモリ不足 */
-		goto error_out;
-	}
 
 	/* 操作対象ファイルのv-nodeを得る
 	 */
-	rc = vfs_path_to_vnode(ioctx, filepath, &file_v);
+	rc = vfs_path_to_vnode(ioctx, path, &file_v);
 	if ( rc != 0 )
-		goto free_filepath_out;
+		goto error_out;
 
 	/*  操作対象ファイルの属性情報を得る
 	 */
@@ -73,23 +63,13 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 		goto filev_put_out;
 	}
 
-	/* パス(ディレクトリ)検索時に使用する一時領域を確保
-	 */
-	path_len = strlen(path);
-	pathname = strdup(path);
-	if ( pathname == NULL ) {
-
-		rc = -ENOMEM;
-		goto free_filename_out;
-	}
-
 	/*
 	 * パス(ディレクトリ)検索
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, pathname, path_len + 1, &dir_v,
+	rc = vfs_path_to_dir_vnode(ioctx, path, &dir_v,
 	    filename, name_len + 1);
 	if (rc != 0)
-		goto free_pathname_out;
+		goto free_filename_out;
 
 	kassert(dir_v != NULL);
 	kassert(dir_v->v_mount != NULL);
@@ -133,27 +113,19 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	 */
 
 	vfs_vnode_ptr_put(dir_v);  /* パス検索時に取得したディレクトリv-nodeの参照を解放 */
-	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 	kfree(filename);  /*  パス(ファイル名)検索時に使用した一時領域を解放  */
 	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
-	kfree(filepath);  /*  削除対象ファイルパス文字列の複製を解放  */
 
 	return 0;
 
 dir_v_put_out:
 	vfs_vnode_ptr_put(dir_v);  /* パス検索時に取得したディレクトリv-nodeの参照を解放 */
 
-free_pathname_out:
-	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
-
 free_filename_out:
 	kfree(filename);  /*  パス(ファイル名)検索時に使用した一時領域を解放  */
 
 filev_put_out:
 	vfs_vnode_ptr_put(file_v);  /*  削除対象ファイルへのvnodeの参照を解放  */
-
-free_filepath_out:
-	kfree(filepath);  /*  削除対象ファイルパス文字列の複製を解放  */
 
 error_out:
 	return rc;

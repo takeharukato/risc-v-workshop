@@ -30,11 +30,9 @@ int
 vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	int                rc;
 	vnode              *v;
-	char        *pathname;
 	char        *filename;
 	vfs_vnode_id new_vnid;
 	size_t       name_len;
-	size_t       path_len;
 
 	if  ( S_ISDIR(stat->st_mode) )
 		return -EISDIR;  /* ディレクトリを作成しようとした */
@@ -50,20 +48,12 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 		goto error_out;
 	}
 
-	path_len = strlen(path);
-	pathname = strdup(path);
-	if ( pathname == NULL ) {
-
-		rc = -ENOMEM;
-		goto free_filename_out;
-	}
-
 	/*
 	 * パス(ディレクトリ)検索
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, pathname, path_len + 1, &v, filename, name_len + 1);
+	rc = vfs_path_to_dir_vnode(ioctx, path, &v, filename, name_len + 1);
 	if (rc != 0)
-		goto free_pathname_out;
+		goto free_filename_out;
 
 	kassert(v != NULL);
 	kassert(v->v_mount != NULL);
@@ -93,9 +83,6 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 
 vnode_put_out:
 	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
-
-free_pathname_out:
-	kfree(pathname);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 
 free_filename_out:
 	kfree(filename);  /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */

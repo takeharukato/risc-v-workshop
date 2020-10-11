@@ -30,24 +30,14 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	int                rc;
 	vnode        *rmdir_v;
 	vnode          *dir_v;
-	char       *rmdirpath;
-	char        *pathname;
 	char        *filename;
 	size_t       name_len;
-	size_t       path_len;
 	vfs_file_stat      st;
 
-	rmdirpath = strdup(path);  /* 削除対象ディレクトリのパス文字列を複製する */
-	if ( rmdirpath == NULL ) {
-
-		rc = -ENOMEM;    /* メモリ不足 */
-		goto error_out;
-	}
-
 	/* 削除対象ディレクトリのv-nodeを取得 */
-	rc = vfs_path_to_vnode(ioctx, rmdirpath, &rmdir_v);
+	rc = vfs_path_to_vnode(ioctx, path, &rmdir_v);
 	if ( rc != 0 )
-		goto free_rmdirpath_out;  /* ディレクトリが見つからなかった */
+		goto error_out;  /* ディレクトリが見つからなかった */
 
 	/* ファイル種別を確認
 	 */
@@ -74,22 +64,12 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 		goto put_target_dir_vnode;
 	}
 
-	/* パス(親ディレクトリ)検索時に使用する一時領域を確保
-	 */
-	path_len = strlen(path);
-	pathname = strdup(path);
-	if ( pathname == NULL ) {
-
-		rc = -ENOMEM;
-		goto free_filename_out;
-	}
-
 	/* パス(親ディレクトリ)検索
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, pathname, path_len + 1, &dir_v, filename,
+	rc = vfs_path_to_dir_vnode(ioctx, path, &dir_v, filename,
 	    name_len + 1);
 	if (rc != 0)
-		goto free_pathname_out;
+		goto free_filename_out;
 
 	kassert(dir_v != NULL);
 	kassert(dir_v->v_mount != NULL);
@@ -129,27 +109,19 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	}
 
 	vfs_vnode_ptr_put(dir_v);      /*  パス検索時に取得したvnodeへの参照を解放  */
-	kfree(pathname);      /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 	kfree(filename);      /*  パス(ディレクトリ)検索時に使用した一時領域を解放  */
 	vfs_vnode_ptr_put(rmdir_v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
-	kfree(rmdirpath);           /* 削除対象ディレクトリのパス文字列の複製を解放 */
 
 	return 0;
 
 put_dir_vnode:
 	vfs_vnode_ptr_put(dir_v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
-free_pathname_out:
-	kfree(pathname);  /*  パス(親ディレクトリ)検索時に使用した一時領域を解放  */
-
 free_filename_out:
 	kfree(filename);  /*  パス(削除対象ディレクトリ)検索時に使用した一時領域を解放  */
 
 put_target_dir_vnode:
 	vfs_vnode_ptr_put(rmdir_v);  /*  削除対象ディレクトリのv-nodeへの参照を解放  */
-
-free_rmdirpath_out:
-	kfree(rmdirpath);  /* 削除対象ディレクトリのパス文字列の複製を解放 */
 
 error_out:
 	return rc;

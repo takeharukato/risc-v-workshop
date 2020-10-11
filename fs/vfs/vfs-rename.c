@@ -31,18 +31,14 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 	int                       rc;
 	vnode             *old_dir_v;
 	vnode             *new_dir_v;
-	char           *old_pathname;
 	char           *old_filename;
-	size_t      old_pathname_len;
 	size_t      old_filename_len;
-	char           *new_pathname;
 	char           *new_filename;
-	size_t      new_pathname_len;
 	size_t      new_filename_len;
 	int                   cmpval;
 
 	/* 変更前のパス格納に必要なサイズを算出 */
-	old_filename_len = old_pathname_len = strlen(old_path);
+	old_filename_len = strlen(old_path);
 
 	/* 変更前のパス(ファイル名)検索時に使用する一時領域を確保
 	 */
@@ -53,17 +49,8 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 		goto error_out;
 	}
 
-	/* 変更前のパス(ディレクトリ)検索時に使用する一時領域を確保
-	 */
-	old_pathname = strdup(old_path);
-	if ( old_pathname == NULL ) {
-
-		rc = -ENOMEM;
-		goto free_old_filename_out;
-	}
-
 	/* 変更後のパス格納に必要なサイズを算出 */
-	new_filename_len = new_pathname_len = strlen(new_path);
+	new_filename_len = strlen(new_path);
 
 	/* 変更後のパス(ファイル名)検索時に使用する一時領域を確保
 	 */
@@ -71,28 +58,19 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 	if ( new_filename == NULL ) {
 
 		rc = -ENOMEM;  /* メモリ不足 */
-		goto free_old_pathname_out;
-	}
-
-	/* 変更後のパス(ディレクトリ)検索時に使用する一時領域を確保
-	 */
-	new_pathname = strdup(new_path);
-	if ( new_pathname == NULL ) {
-
-		rc = -ENOMEM;
-		goto free_new_filename_out;
+		goto free_old_filename_out;
 	}
 
 	/* 変更前のパスのディレクトリのv-nodeへの参照を獲得
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, old_pathname, old_pathname_len + 1, &old_dir_v,
+	rc = vfs_path_to_dir_vnode(ioctx, old_path, &old_dir_v,
 	    old_filename, old_filename_len + 1);
 	if ( rc != 0 )
-		goto free_new_pathname_out;
+		goto free_new_filename_out;
 
 	/* 変更後のパスのディレクトリのv-nodeへの参照を獲得
 	 */
-	rc = vfs_path_to_dir_vnode(ioctx, new_pathname, new_pathname_len + 1, &new_dir_v,
+	rc = vfs_path_to_dir_vnode(ioctx, new_path, &new_dir_v,
 	    new_filename, new_filename_len + 1);
 	if ( rc != 0 )
 		goto old_dir_v_put_out;
@@ -196,9 +174,7 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 
 	vfs_vnode_ptr_put(new_dir_v);
 	vfs_vnode_ptr_put(old_dir_v);
-	kfree(new_pathname);
 	kfree(new_filename);
-	kfree(old_pathname);
 	kfree(old_filename);
 
 	return 0;
@@ -209,14 +185,8 @@ new_dir_v_put_out:
 old_dir_v_put_out:
 	vfs_vnode_ptr_put(old_dir_v);
 
-free_new_pathname_out:
-	kfree(new_pathname);
-
 free_new_filename_out:
 	kfree(new_filename);
-
-free_old_pathname_out:
-	kfree(old_pathname);
 
 free_old_filename_out:
 	kfree(old_filename);
