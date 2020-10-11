@@ -26,9 +26,9 @@
 #define	RV64_SBI_CONSOLE_GETCHAR		(2)  /**< コンソールからの入力             */
 #define	RV64_SBI_CLEAR_IPI			(3)  /**< IPI受付完了                      */
 #define	RV64_SBI_SEND_IPI			(4)  /**< IPI送信                          */
-#define	RV64_SBI_REMOTE_FENCE_I		(5)  /**< 命令完了待ち合せ                 */
+#define	RV64_SBI_REMOTE_FENCE_I		        (5)  /**< 命令完了待ち合せ                 */
 #define	RV64_SBI_REMOTE_SFENCE_VMA		(6)  /**< メモリストア完了待ち合せ         */
-#define	RV64_SBI_REMOTE_SFENCE_VMA_ASID	(7)  /**< ASID付きメモリストア完了待ち合せ */
+#define	RV64_SBI_REMOTE_SFENCE_VMA_ASID	        (7)  /**< ASID付きメモリストア完了待ち合せ */
 #define	RV64_SBI_SHUTDOWN			(8)  /**< シャットダウン                   */
 
 /*
