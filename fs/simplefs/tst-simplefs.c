@@ -28,6 +28,8 @@ static struct _simplefs_vfs_ioctx{
 	vfs_ioctx          *cur;
 }tst_ioctx;
 
+static simplefs_ioctl_arg ioctl_arg; /* ioctl引数 */
+
 /**
    ディレクトリエントリの表示
    @param[in] cur I/Oコンテキスト
@@ -83,7 +85,131 @@ show_ls(vfs_ioctx *cur, char *dir){
 	kassert( rc == 0 );
 }
 
-static simplefs_ioctl_arg ioctl_arg;
+/**
+   パラメタテスト
+   @param[in] sp  テスト統計情報
+   @param[in] arg 引数
+ */
+static void __unused
+simplefs3(struct _ktest_stats *sp, void __unused *arg){
+	int               rc;
+	int            dirfd;
+	int               fd;
+	file_descriptor   *f;
+
+	/* openによるディレクトリオープン (エラー)
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/", VFS_O_DIRECTORY|VFS_O_RDWR, 0, &dirfd);
+	if ( rc == -EISDIR )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* openによるディレクトリオープン (エラー)
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/", VFS_O_RDONLY, 0, &dirfd);
+	if ( rc == -EISDIR )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* openによるディレクトリオープン
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/", VFS_O_DIRECTORY|VFS_O_RDONLY, 0, &dirfd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* closeによるディレクトリクローズ
+	 */
+	rc = vfs_close(tst_ioctx.cur, dirfd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+
+	/* 通常ファイル作成
+	 */
+
+	/* 生成したファイルのオープン
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/file3", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 生成したファイルのクローズ
+	 */
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rc == 0 ) {
+
+		/* 生成したファイルのオープン (エラー)
+		 */
+		rc = vfs_open(tst_ioctx.cur, "/file3", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+		    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
+		if ( rc == -EEXIST )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		if ( rc == -EEXIST ) {
+
+			/* 生成したファイルのクローズ(エラー)
+			 */
+			rc = vfs_close(tst_ioctx.cur, fd);
+			if ( rc == -EBADF )
+				ktest_pass( sp );
+			else
+				ktest_fail( sp );
+		}
+	}
+
+	/* ファイルのトランケート+追記オープン
+	 * トランケートと追記処理の順序の妥当性確認のため両方を設定
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/file3", VFS_O_RDWR|VFS_O_TRUNC|VFS_O_APPEND,
+	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+	/* 生成したファイルのクローズ
+	 */
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルのアンリンク
+	 */
+	rc = vfs_unlink(tst_ioctx.cur, "/file3");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+}
 
 /**
    正常系テスト
@@ -519,6 +645,8 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 
 	simplefs2(sp, arg);
+
+	simplefs3(sp, arg);
 
 	/* 子I/Oコンテキスト解放 */
 	vfs_ioctx_free(tst_ioctx.cur);

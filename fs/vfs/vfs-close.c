@@ -73,8 +73,8 @@ vfs_close(vfs_ioctx *ioctx, int fd){
 
 	if ( f->f_vn->v_mode & VFS_VNODE_MODE_DIR ) { /* ディレクトリの場合 */
 
-		rc = vfs_closedir(ioctx, fd);  /* ディレクトリをクローズする */
-		goto put_fd_out;  /* ファイルディスクリプタの参照を解放して復帰する */
+		vfs_fd_put(f);  /*  ファイルディスクリプタへの参照を解放する  */
+		return vfs_closedir(ioctx, fd);  /* ディレクトリをクローズする */
 	}
 
 	rc = vfs_fd_remove(ioctx, f);  /*  ユーザファイルディスクリプタを解放  */
@@ -83,9 +83,4 @@ vfs_close(vfs_ioctx *ioctx, int fd){
 	vfs_fd_put(f);  /*  ファイルディスクリプタへの参照を解放する  */
 
 	return 0;
-
-put_fd_out:
-	vfs_fd_put(f);  /*  ファイルディスクリプタへの参照を解放する  */
-
-	return rc;
 }

@@ -60,7 +60,7 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 		goto unref_vnode_out;
 	}
 
-	dir_oflags = oflags|VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
+	dir_oflags = oflags & VFS_O_OPENDIR_MASK; /* ファイルオープンモードを補正 */
 
 	/* vnodeに対するファイルディスクリプタを取得
 	 */
@@ -99,44 +99,32 @@ out:
 int
 vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode, int *fdp) {
 	int              rc;
+	int      is_created;
 	int              fd;
 	file_descriptor *fp;
 	vnode            *v;
 	vfs_file_stat    st;
 
-	if ( oflags & VFS_O_DIRECTORY )
-		return vfs_opendir(ioctx, path, oflags, fdp);  /* ディレクトリを開く */
+	/* VFS_O_DIRECTORYフラグを付けてディレクトリを開けたか,
+	 * 読み込み専用でディレクトリを開いている場合は
+	 * ディレクトリオープン処理を呼び出す
+	 */
+	if ( ( oflags & VFS_O_DIRECTORY )
+	    && ( ( oflags & VFS_O_RWMASK ) == VFS_O_RDONLY) ) {
+
+		/* ディレクトリを開く */
+		return vfs_opendir(ioctx, path, oflags, fdp);
+	}
 
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
 	 */
 	rc = vfs_path_to_vnode(ioctx, path, &v);
-	if ( ( rc != 0 ) && ( ( rc != -ENOENT ) || ( ( oflags & VFS_O_CREAT ) != 0 ) ) ) {
+	if ( ( rc != 0 ) &&
+	    ( ( rc != -ENOENT ) || ( ( oflags & VFS_O_CREAT ) == 0 ) ) ) {
 
-		/* ファイルが存在しない */
+		/* ファイルが存在しないか, ファイル生成指示がない */
 		kassert( ( rc == -ENOMEM ) || ( rc == -ENOENT ) || ( rc == -EIO ) );
-		goto error_out;
-	}
-
-	/* ディレクトリでないことを確認
-	 */
-	vfs_init_attr_helper(&st);
-	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
-	if ( S_ISDIR(st.st_mode) ) {
-
-		/* VFS_O_DIRECTORYフラグを付けてディレクトリを開けたか,
-		 * 読み込み専用でディレクトリを開いている場合は
-		 * ディレクトリオープン処理を呼び出す
-		 */
-		if ( ( oflags & VFS_O_DIRECTORY )
-			&& ( ( oflags & VFS_O_RWMASK ) == VFS_O_RDONLY) ) {
-
-			/* ディレクトリを開く */
-			rc = vfs_opendir(ioctx, path, oflags, fdp);
-			goto error_out;
-		}
-
-		rc = -EISDIR;  /* ディレクトリを開こうとした */
 		goto error_out;
 	}
 
@@ -152,17 +140,37 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 			vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 			st.st_mode = omode;  /* ファイルモード */
-			rc = vfs_create(ioctx, path, &st); /* ファイルを生成する */
+			is_created = vfs_create(ioctx, path, &st); /* ファイルを生成する */
+			if ( is_created != 0 )
+				goto error_out;  /* ファイル生成に失敗した */
+
+			/* 作成したファイルに対するvnodeの参照を取得
+			 */
+			rc = vfs_path_to_vnode(ioctx, path, &v);
 			if ( rc != 0 )
-				goto unref_vnode_out;  /* ファイル生成に失敗した */
+				goto error_out;  /* ファイル生成に失敗した */
 		}
 	}
 
+	/* ディレクトリでないことを確認
+	 */
+	vfs_init_attr_helper(&st);
+	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
+	if ( S_ISDIR(st.st_mode) ) {
+
+		rc = -EISDIR;  /* ディレクトリを開こうとした */
+		goto unref_vnode_out;
+	}
+
+	/* ファイルサイズを0に切り詰める
+	 * ファイルサイズが変わるので, O_APPENDのフラグより先に処理する
+	 */
 	if ( oflags & VFS_O_TRUNC ) { /* ファイルサイズを0にする */
 
 		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
 		st.st_size = 0;    /* ファイルサイズを0にする */
-		rc = vfs_setattr(v, &st, VFS_VSTAT_MASK_SIZE); /* ファイルサイズのみを設定する */
+		/* ファイルサイズのみを設定する */
+		rc = vfs_setattr(v, &st, VFS_VSTAT_MASK_SIZE);
 		if ( rc != 0 )
 			goto unref_vnode_out;  /* サイズ更新に失敗した */
 	}
