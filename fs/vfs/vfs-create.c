@@ -19,12 +19,11 @@
    @param[in] path  ファイルパス
    @param[in] stat  ファイル作成時の属性情報 (ファイル種別/デバイス番号など)
    @retval  0      正常終了
-   @retval -EBADF  正当なユーザファイルディスクリプタでない
-   @retval -EIO    I/Oエラー
    @retval -ENOMEM メモリ不足
    @retval -ENOSYS createをサポートしていない
    @retval -EISDIR ディレクトリを作成しようとした
    @retval -EROFS  読み取り専用でマウントされている
+   @retval -EIO    I/Oエラー
  */
 int
 vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){

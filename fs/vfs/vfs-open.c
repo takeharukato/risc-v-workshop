@@ -25,11 +25,11 @@
    @param[in]  oflags open時に指定したモード
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @retval  0       正常終了
-   @retval -EBADF   不正なユーザファイルディスクリプタを指定した
    @retval -ENOMEM  メモリ不足
-   @retval -ENOENT  パスが見つからなかった
+   @retval -ENOENT  パスが見つからなかった/削除中のv-nodeを指定した
    @retval -ENOSPC  ユーザファイルディスクリプタに空きがない
    @retval -ENOTDIR ディレクトリ以外のファイルを開こうとした
+   @retval -EPERM   ディレクトリを書き込みで開こうとした
    @retval -EIO     I/Oエラーが発生した
  */
 int
@@ -89,11 +89,13 @@ out:
    @param[in]  omode  open時に指定したファイル種別/アクセス権
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @retval  0      正常終了
-   @retval -EBADF  不正なユーザファイルディスクリプタを指定した
+   @retval -EPERM  ディレクトリを書き込みで開こうとした
    @retval -ENOMEM メモリ不足
-   @retval -ENOENT パスが見つからなかった
+   @retval -ENOENT パスが見つからなかった/削除中のv-nodeを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EISDIR ディレクトリを開こうとした
+   @retval -ENOSYS create/getattr/setattrをサポートしていない
+   @retval -EROFS  読み取り専用でマウントされている
    @retval -EIO    I/Oエラーが発生した
  */
 int
@@ -156,6 +158,9 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 	 */
 	vfs_init_attr_helper(&st);
 	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
+	if ( rc != 0 )
+		goto unref_vnode_out;  /* ファイル属性獲得失敗 */
+
 	if ( S_ISDIR(st.st_mode) ) {
 
 		rc = -EISDIR;  /* ディレクトリを開こうとした */

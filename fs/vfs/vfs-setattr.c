@@ -21,6 +21,7 @@
    @retval  0      正常終了
    @retval -EIO    I/Oエラー
    @retval -ENOSYS setattrをサポートしていない
+   @retval -EROFS  読み取り専用でマウントされている
    @note v-nodeへの参照を呼び出し元でも獲得してから呼び出す
 */
 int
@@ -38,6 +39,12 @@ vfs_setattr(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 	kassert(v->v_mount != NULL);
 	kassert(v->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
+
+	if ( v->v_mount->m_mount_flags & VFS_MNT_RDONLY ) {
+
+		rc = -EROFS;  /* 読み取り専用でマウントされている */
+		goto error_out;
+	}
 
 	vfs_mark_dirty_vnode(v);  /* 属性変更に伴いv-nodeを更新済みに設定 */
 

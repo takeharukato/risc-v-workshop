@@ -25,11 +25,13 @@ static kmem_cache file_descriptor_cache; /**< ファイルディスクリプタ�
    @param[out] fpp ファイルディスクリプタを指し示すポインタのアドレス
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  削除中のv-nodeを指定した
  */
 static int
 alloc_fd(vnode *v, file_descriptor **fpp){
 	int             rc;
 	file_descriptor *f;
+	bool           res;
 
 	rc = slab_kmem_cache_alloc(&file_descriptor_cache, KMALLOC_NORMAL,
 	    (void **)&f);
@@ -51,11 +53,21 @@ alloc_fd(vnode *v, file_descriptor **fpp){
 	/*  ファイルディスクリプタからv-nodeを参照するため,
 	 *  v-node参照カウンタを加算
 	 */
-	vfs_vnode_ref_inc(f->f_vn);
+	res = vfs_vnode_ref_inc(f->f_vn);
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 削除中のv-nodeを指定した */
+		goto free_fd_out;  /* ファイルディスクリプタを解放 */
+	}
 
 	*fpp = f;  /*  ファイルディスクリプタを返却  */
 
 	return 0;
+
+free_fd_out:
+	slab_kmem_cache_free(f);    /*  ファイルディスクリプタを解放  */
+	if ( rc != 0 )
+		return rc;
 
 error_out:
 	return rc;
@@ -298,10 +310,10 @@ dec_fd_ref(file_descriptor *f){
    @param[out] fdp    ユーザファイルディスクリプタを返却する領域
    @param[out] fpp    ファイルディスクリプタを返却する領域
    @retval  0      正常終了
-   @retval -EBADF  不正なユーザファイルディスクリプタを指定した
    @retval -ENOSPC ユーザファイルディスクリプタに空きがない
    @retval -EPERM  ディレクトリを書き込みで開こうとした
    @retval -ENOMEM メモリ不足
+   @retval -ENOENT パスが見つからなかった/削除中のv-nodeを指定した
    @retval -EIO    I/Oエラー
  */
 int

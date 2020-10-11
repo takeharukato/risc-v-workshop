@@ -127,6 +127,9 @@ vfs_copy_attr_helper(vfs_file_stat *dest, vfs_file_stat *src, vfs_vstat_mask sta
    NULLの場合は, 現在時刻を設定する
    @param[in]  stat_mask  更新対象時刻を表すマスク
    @retval     0          正常終了
+   @retval    -EIO    I/Oエラー
+   @retval    -ENOSYS setattrをサポートしていない
+   @retval    -EROFS  読み取り専用でマウントされている
    @note v-nodeへの参照を呼び出し元でも獲得してから呼び出す
  */
 int
