@@ -453,7 +453,7 @@ proc_grow_stack(proc *dest, vm_vaddr newsp){
 		}
 
 		/* スタックページを割り当てる */
-		rc = vm_map_userpage(dest->pgt, pg_cur,
+		rc = vm_userpage_map(dest->pgt, pg_cur,
 		    dest->segments[PROC_STACK_SEG].prot, VM_FLAGS_USER, PAGE_SIZE, PAGE_SIZE);
 		if ( rc != 0 )
 			goto error_out;

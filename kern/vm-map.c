@@ -355,7 +355,7 @@ error_out:
    @note      アドレス空間のロックを獲得した状態で呼び出す
  */
 int
-vm_map_userpage(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags,
+vm_userpage_map(vm_pgtbl pgt, vm_vaddr vaddr, vm_prot prot, vm_flags flags,
     vm_size pgsize, vm_size size){
 	int                rc;
 	vm_vaddr    sta_vaddr;

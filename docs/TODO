@@ -1,31 +1,55 @@
 * mutex_lockでエラーチェックをしていないものがある
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正
-  - rename処理でデッドロックを引き起こさないようにディレクトリエントリのv-nodeロックを
-    v-node ID順に行うようにすること
-* vfsオペレーションにアクセス権チェック, I-node時刻更新,
-  リードオンリーファイルシステムチェックを入れる
+* v-nodeにページキャッシュ機構を追加し, prepare_write(ページをブロックにマッピング),
+write(ページ更新), commit_write(ページを2次記憶に書き出し), readオペレーションをvfsオペレーションに追加)
+  - ページキャッシュ機構を再設計
+* vfsオペレーションにアクセス権チェックを追加
+* 未使用IFであるvfs_vnode_put/vfs_vnode_removeのテストまたは削除
 
-* ファイル/ディレクトリ作成時についてのメモ
-  ファイル作成先のディレクトリに名前とinode(ディレクトリエントリ)作成する
-  新規作成したファイルのnlinkを1にする。
-  新規作成したファイルが, ディレクトリだった場合は, 作成したinode(作成対象のディレクトリ)の
-  nlinkを+1
-  (作成したディレクトリのnlinkは2になる), 親ディレクトリのnlinkを+1する
-
-* システムコール<=>vfs間IFを実装
-  - vfs_openのレビュールートテスト
-    - 参照カウンタの一貫性
-    - 多重ロック整合性確認
-  - creatシステムコールIFを実装
-
-* mount/unmount/fd+ioctxの全ルートテストを実施
 * 可変長のIDビットマップ機構を導入し, VFSの上限制限を撤廃
 * ツールにchdir/mkdir/mknodを追加
 * プロセスヒープの伸縮処理を追加
 * スレッド終了処理で全てのメンバが解放されていることをレビューで確認
 * プロセス内のすべてのスレッドに対する操作を行うマクロを追加
+* MachVMのvm_map インターフェースのサブセットを実装
+  vm_map_create
+  vm_map_delete
+  vm_map_entry_link
+  vm_map_entry_unlink
+  vm_map_find
+  vm_map_findspace
+  vm_map_init
+  vm_map_insert(fileマップ用に別関数にしてもよい)
+  vm_map_lock, vm_map_trylock, vm_map_unlock
+  vm_map_check_protection
+  vm_map_lookup, vm_map_lookup_done
+  vm_map_protect
+  vm_map_remove
+  vm_map_stack
+  vm_map_growstack
 
-* openしてクローズしていないファイルディスクリプタがある状態でiotctxを破棄してもsegvにならないことを確認する
+* フィードバックスケジューラ(4.4BSDスケジューラ機能)を実装
+* mutexに優先度継承機能を追加
+
+
+* ファイル/ディレクトリ作成時についてのメモ [済み]
+  ファイル作成先のディレクトリに名前とinode(ディレクトリエントリ)作成する
+  新規作成したファイルのnlinkを1にする。
+  新規作成したファイルが, ディレクトリだった場合は, 作成したinode(作成対象のディレクトリ)の
+  nlinkを+1
+  (作成したディレクトリのnlinkは2になる), 親ディレクトリのnlinkを+1する
+* mount/unmount/fd+ioctxの全ルートテストを実施
+  (未使用IFであるvfs_vnode_put/vfs_vnode_removeを除く) [済み]
+* 基本的なシステムコール<=>vfs間IFを実装[済み]
+  - vfs_openのレビュールートテスト[済み]
+    - 参照カウンタの一貫性[済み]
+    - 多重ロック整合性確認[済み]
+  - root fsマウント/通常マウント/通常アンマウント/root fsアンマウントのテスト[済み]
+  - ファイルディスクリプタ未クローズ時のアンマウント失敗エラールートテスト[済み]
+* rename処理でデッドロックを引き起こさないようにディレクトリエントリのv-nodeロックを
+    v-node ID順に行うようにすること[済み]
+* I-node時刻更新, リードオンリーファイルシステムチェックを入れる[済み]
+* openしてクローズしていないファイルディスクリプタがある状態でiotctxを破棄してもsegvにならないことを確認する[済み]
   - ファイルを未クローズの時にunmountが走行するとv-nodeが解放されて
     ファイルディスクリプタから解放済みのv-nodeが参照されたままになり
     不正メモリアクセスになる問題を修正すること[済み]

@@ -44,7 +44,7 @@ vmmap1(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
-	rc = vm_map_userpage(pgt1, USER_VMA_ADDR, VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE,
+	rc = vm_userpage_map(pgt1, USER_VMA_ADDR, VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE,
 	    VM_FLAGS_USER, PAGE_SIZE, PAGE_SIZE*2);
 	if ( rc == 0 )
 		ktest_pass( sp );
@@ -90,4 +90,3 @@ tst_vmmap(void){
 	ktest_def_test(&tstat_vmmap, "vmmap1", vmmap1, NULL);
 	ktest_run(&tstat_vmmap);
 }
-
