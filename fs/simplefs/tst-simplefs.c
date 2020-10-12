@@ -86,6 +86,214 @@ show_ls(vfs_ioctx *cur, char *dir){
 }
 
 /**
+   lseekのテスト
+   @param[in] sp  テスト統計情報
+   @param[in] arg 引数
+ */
+static void __unused
+simplefs5(struct _ktest_stats *sp, void __unused *arg){
+	int               rc;
+	int               fd;
+	file_descriptor   *f;
+	vfs_file_stat     st;
+	off_t        cur_pos;
+
+	/* テスト用ファイルを作成する */
+	rc = vfs_open(tst_ioctx.cur, "/file5", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* whence エラーチェック */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET - 1);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* whence エラーチェック */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_HOLE + 1);
+	if ( rc == -EINVAL )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 先頭からのシークで負の値を与える */
+	rc = vfs_lseek(tst_ioctx.cur, f, -1, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
+	/* ファイルサイズを取得する */
+	rc = vfs_getattr(f->f_vn, VFS_VSTAT_MASK_SIZE, &st);
+	if ( rc == 0 ) {
+
+		/* 末尾からのシークでファイルサイズを超える負の値を与える */
+		rc = vfs_lseek(tst_ioctx.cur, f, (st.st_size + 1) * -1, VFS_SEEK_WHENCE_END);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		/* 末尾からのシークでファイルサイズを超える値を与える */
+		rc = vfs_lseek(tst_ioctx.cur, f, st.st_size + 1, VFS_SEEK_WHENCE_END);
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+		if ( ( rc == 0 ) && ( f->f_pos == st.st_size + 1 ) )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+	}
+
+	/* 先頭に戻す */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	cur_pos = f->f_pos;  /* 現在位置を覚えておく */
+
+	/* 先頭に戻す */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 現在位置から10バイト進む */
+	rc = vfs_lseek(tst_ioctx.cur, f, 10, VFS_SEEK_WHENCE_CUR);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == (cur_pos + 10) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 現在位置から5バイト戻る */
+	rc = vfs_lseek(tst_ioctx.cur, f, -5, VFS_SEEK_WHENCE_CUR);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == (cur_pos + 10 - 5) ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 現在位置からファイルサイズ以上戻る */
+	rc = vfs_lseek(tst_ioctx.cur, f, -1 * (st.st_size + f->f_pos + 1),
+	    VFS_SEEK_WHENCE_CUR);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 先頭に戻す */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* データブロックまでのシーク */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_DATA);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* データブロックシークでファイルサイズ以上戻る */
+	rc = vfs_lseek(tst_ioctx.cur, f, -1 * (st.st_size + f->f_pos + 1),
+	    VFS_SEEK_WHENCE_DATA);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( ( rc == 0 ) && ( f->f_pos == 0 ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ホールまでのシーク */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_HOLE);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 先頭に戻す */
+	rc = vfs_lseek(tst_ioctx.cur, f, 0, VFS_SEEK_WHENCE_SET);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+	/* ファイルをクローズする (openでファイルを作成しているので) */
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルのアンリンク
+	 */
+	rc = vfs_unlink(tst_ioctx.cur, "/file5");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+}
+
+/**
    リードオンリーファイルシステムのテスト
    @param[in] sp  テスト統計情報
    @param[in] arg 引数
@@ -1064,6 +1272,8 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 	simplefs3(sp, arg);
 
 	simplefs4(sp, arg);
+
+	simplefs5(sp, arg);
 
 	/* 子I/Oコンテキスト解放 */
 	vfs_ioctx_free(tst_ioctx.cur);

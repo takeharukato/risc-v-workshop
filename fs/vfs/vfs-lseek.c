@@ -67,6 +67,7 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 	 *  論理的なファイルポジション)をnew_posに保存
 	 */
 	arg_pos = pos;  /* 引数で指定されたファイルポジションを格納 */
+	new_pos = fp->f_pos;  /* サイズ不明の場合は, 現在位置を指す */
 
 	switch( whence ) {
 
@@ -74,10 +75,11 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 
 		if ( 0 > arg_pos )
 			arg_pos = 0;
-		new_pos = pos;
+		new_pos = arg_pos;
 		break;
 
 	case VFS_SEEK_WHENCE_CUR:
+
 		if ( ( 0 > arg_pos ) && ( ( -1 * arg_pos ) > fp->f_pos ) ) {
 
 			/* 現在位置から前の位置にシークする場合で,
@@ -119,16 +121,29 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 		 *  posが参照する場所がホールであったとしても,
 		 *  連続する0の列のデータで構成されているとみなす。
 		 */
-		new_pos = arg_pos;
+		if ( res == 0 ) {
+
+			/* ファイル末尾から前の位置にシークする場合で,
+			 * ファイル先頭を超える場合は, ファイルポジションを
+			 * ファイルの先頭に設定の上, ファイル先頭をシークするように
+			 * 引数を補正する
+			 */
+			if ( ( 0 > arg_pos ) && ( ( -1 * arg_pos ) > st.st_size ) )
+				new_pos = 0;
+			else
+				new_pos = arg_pos;
+		}
 		break;
 
 	case VFS_SEEK_WHENCE_HOLE:
+
 		/*  指定位置以降の次にホールがある位置をシークする(GNU 拡張)
 		 *  ファイルサイズ情報を獲得できた場合は,VFS層でファイルの末尾を返す。
 		 */
 		if ( res == 0 )
 			new_pos = st.st_size;
 		break;
+
 	default:
 		break;
 	}
