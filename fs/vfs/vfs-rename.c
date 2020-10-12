@@ -97,28 +97,27 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 		/* ファイルシステム固有なリネーム処理がない場合は,
 		 * -ENOSYSを返却して復帰する
 		 */
-		rc = -ENOSYS;
+		rc = -ENOSYS; /* ファイルシステム固有なリネーム処理がない */
 		goto new_dir_v_put_out;
 	}
 
-	/*
+	/* v-nodeロックに伴うデッドロックを避けるために,
 	 * ディレクトリのv-nodeを小さい順にロックする
 	 */
 	cmpval = vfs_vnode_cmp(old_dir_v, new_dir_v);
-	if ( 0 > cmpval ) {
+	if ( 0 > cmpval ) {  /* old_dir_vの方がnew_dir_vより小さい */
 
-		/* old_dir_vの方がnew_dir_vより小さい */
-		rc = vfs_vnode_lock(old_dir_v);
+		rc = vfs_vnode_lock(old_dir_v);  /* old_pathのディレクトリ部のロックを獲得 */
 		kassert( rc != -ENOENT );
-		if ( rc != 0 )
-			goto new_dir_v_put_out; /* イベントを受信したまたはメモリ不足 */
+		if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+			goto new_dir_v_put_out;
 
-		rc = vfs_vnode_lock(new_dir_v);
+		rc = vfs_vnode_lock(new_dir_v);  /* new_pathのディレクトリ部のロックを獲得 */
 		kassert( rc != -ENOENT );
-		if ( rc != 0 ) {
+		if ( rc != 0 ) { /* イベントを受信したまたはメモリ不足 */
 
 			vfs_vnode_unlock(old_dir_v);
-			goto new_dir_v_put_out; /* イベントを受信したまたはメモリ不足 */
+			goto new_dir_v_put_out;
 		}
 
 		/* ファイルシステム固有のrename処理を呼び出す
@@ -128,22 +127,22 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 			old_dir_v->v_id, old_dir_v->v_fs_vnode, old_filename,
 			new_dir_v->v_id, new_dir_v->v_fs_vnode, new_filename);
 
-		vfs_vnode_unlock(new_dir_v);
-		vfs_vnode_unlock(old_dir_v);
-	} else if ( cmpval > 0 ) {
+		vfs_vnode_unlock(new_dir_v);  /* new_pathのディレクトリ部のロックを解放 */
+		vfs_vnode_unlock(old_dir_v);  /* old_pathのディレクトリ部のロックを解放 */
+	} else if ( cmpval > 0 ) {  /* old_dir_vの方がnew_dir_vより大きい */
 
-		/* old_dir_vの方がnew_dir_vより大きい */
-		rc = vfs_vnode_lock(new_dir_v);
+		rc = vfs_vnode_lock(new_dir_v);  /* new_pathのディレクトリ部のロックを獲得 */
 		kassert( rc != -ENOENT );
-		if ( rc != 0 )
-			goto new_dir_v_put_out; /* イベントを受信したまたはメモリ不足 */
+		if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+			goto new_dir_v_put_out;
 
-		rc = vfs_vnode_lock(old_dir_v);
+		rc = vfs_vnode_lock(old_dir_v);  /* old_pathのディレクトリ部のロックを獲得 */
 		kassert( rc != -ENOENT );
-		if ( rc != 0 ) {
+		if ( rc != 0 ) {  /* イベントを受信したまたはメモリ不足 */
 
+			/* new_pathのディレクトリ部のロックを解放 */
 			vfs_vnode_unlock(new_dir_v);
-			goto new_dir_v_put_out; /* イベントを受信したまたはメモリ不足 */
+			goto new_dir_v_put_out;
 		}
 
 		/* ファイルシステム固有のrename処理を呼び出す
@@ -153,14 +152,14 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 			old_dir_v->v_id, old_dir_v->v_fs_vnode, old_filename,
 			new_dir_v->v_id, new_dir_v->v_fs_vnode, new_filename);
 
-		vfs_vnode_unlock(old_dir_v);
-		vfs_vnode_unlock(new_dir_v);
+		vfs_vnode_unlock(old_dir_v);  /* old_pathのディレクトリ部のロックを解放 */
+		vfs_vnode_unlock(new_dir_v);  /* new_pathのディレクトリ部のロックを解放 */
 	} else { /* 同一ディレクトリの場合, old_dir_vだけをロックする */
 
-		rc = vfs_vnode_lock(old_dir_v);
+		rc = vfs_vnode_lock(old_dir_v);  /* old_pathのディレクトリ部のロックを獲得 */
 		kassert( rc != -ENOENT );
-		if ( rc != 0 )
-			goto new_dir_v_put_out; /* イベントを受信したまたはメモリ不足 */
+		if ( rc != 0 )  /* イベントを受信したまたはメモリ不足 */
+			goto new_dir_v_put_out;
 
 		/* ファイルシステム固有のrename処理を呼び出す
 		 */
@@ -169,27 +168,27 @@ vfs_rename(vfs_ioctx *ioctx, char *old_path, char *new_path){
 			old_dir_v->v_id, old_dir_v->v_fs_vnode, old_filename,
 			old_dir_v->v_id, old_dir_v->v_fs_vnode, new_filename);
 
-		vfs_vnode_unlock(old_dir_v);
+		vfs_vnode_unlock(old_dir_v);  /* old_pathのディレクトリ部のロックを解放 */
 	}
 
-	vfs_vnode_ptr_put(new_dir_v);
-	vfs_vnode_ptr_put(old_dir_v);
-	kfree(new_filename);
-	kfree(old_filename);
+	vfs_vnode_ptr_put(new_dir_v);  /* new_pathのディレクトリ部の参照を解放 */
+	vfs_vnode_ptr_put(old_dir_v);  /* old_pathのディレクトリ部の参照を解放 */
+	kfree(new_filename);  /* new_pathのファイル名の複製を解放 */
+	kfree(old_filename);  /* old_pathのファイル名の複製を解放 */
 
 	return 0;
 
 new_dir_v_put_out:
-	vfs_vnode_ptr_put(new_dir_v);
+	vfs_vnode_ptr_put(new_dir_v);  /* new_pathのディレクトリ部の参照を解放 */
 
 old_dir_v_put_out:
-	vfs_vnode_ptr_put(old_dir_v);
+	vfs_vnode_ptr_put(old_dir_v);  /* old_pathのディレクトリ部の参照を解放 */
 
 free_new_filename_out:
-	kfree(new_filename);
+	kfree(new_filename);  /* new_pathのファイル名の複製を解放 */
 
 free_old_filename_out:
-	kfree(old_filename);
+	kfree(old_filename);  /* old_pathのファイル名の複製を解放 */
 
 error_out:
 	return rc;
