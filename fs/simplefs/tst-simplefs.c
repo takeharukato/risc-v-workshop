@@ -94,6 +94,9 @@ static void __unused
 simplefs4(struct _ktest_stats *sp, void __unused *arg){
 	int               rc;
 	int               fd;
+	file_descriptor   *f;
+	char   buf[BUF_SIZE];
+	ssize_t     rw_bytes;
 
 	/* ディレクトリ作成
 	 */
@@ -226,6 +229,73 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	rc = vfs_rmdir(tst_ioctx.cur, "/romnt/testdir1");
 	if ( rc == -EROFS )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 名前の変更
+	 */
+	rc = vfs_rename(tst_ioctx.cur, "/romnt/file3", "/romnt/file4");
+	if ( rc == -EROFS )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rc == 0 ) {  /* 元の名前に戻す */
+
+		rc = vfs_rename(tst_ioctx.cur, "/romnt/file4", "/romnt/file3");
+		if ( rc == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+	}
+	/* 読み取り専用ファイルシステム上のファイルのオープン
+	 */
+	rc = vfs_open(tst_ioctx.cur, "/romnt/file3", VFS_O_RDONLY, 0, &fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 最終更新時刻を更新する  */
+	rc = vfs_time_attr_helper(f->f_vn, NULL, VFS_VSTAT_MASK_MTIME);
+	if ( rc == -EROFS )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+
+	/* カーネルファイルディスクリプタ獲得
+	 */
+	rc = vfs_fd_get(tst_ioctx.cur, fd, &f);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* リードオンリーファイルディスクリプタを介したwrite (エラー)
+	 */
+	rc = vfs_write(tst_ioctx.cur, f, &buf[0], 1, &rw_bytes);
+	if ( rc == -EBADF )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
+
+	/* ファイルのクローズ
+	 */
+	rc = vfs_close(tst_ioctx.cur, fd);
+	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
@@ -682,6 +752,19 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 		ktest_fail( sp );
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
+	/* ディレクトリ作成
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/tmp");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After mkdir /tmp ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
 
 	/* 名前の変更
 	 */
@@ -695,6 +778,81 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	kprintf("After rename\n");
 	show_ls(tst_ioctx.cur, "/");
+
+
+	/* ディレクトリ間での名前の変更
+	 */
+	rc = vfs_rename(tst_ioctx.cur, "/file2", "/tmp/file2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	 else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rename /tmp/file2 ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rename /tmp/file2 ls /tmp\n");
+	show_ls(tst_ioctx.cur, "/tmp");
+
+	/* ディレクトリ間での名前の変更
+	 */
+	rc = vfs_rename(tst_ioctx.cur, "/tmp/file2", "/file2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	 else
+		ktest_fail( sp );
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rename /file2 ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("After rename /file2 ls /tmp\n");
+	show_ls(tst_ioctx.cur, "/tmp");
+
+
+	/* 単純なファイルシステムをマウントする */
+	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/tmp", VFS_VSTAT_INVALID_DEVID,
+	    SIMPLEFS_FSNAME, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ディレクトリ間での名前の変更
+	 */
+	rc = vfs_rename(tst_ioctx.cur, "/file2", "/tmp/file2");
+	if ( rc == -EXDEV )
+		ktest_pass( sp );
+	 else
+		ktest_fail( sp );
+
+	/* 単純なファイルシステムをアンマウントする */
+	rc = vfs_unmount(tst_ioctx.cur, "/tmp");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("Before rmdir ls /tmp\n");
+	show_ls(tst_ioctx.cur, "/tmp");
+
+	/* ディレクトリ削除
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/tmp");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 
 	/* ファイルのアンリンク
 	 */
