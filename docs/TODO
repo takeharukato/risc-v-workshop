@@ -2,6 +2,25 @@
   - ファイルを未クローズの時にunmountが走行するとv-nodeが解放されて
     ファイルディスクリプタから改造済みのv-nodeが参照されたままになり
     不正メモリアクセスになる問題を修正すること
+    =>原因は, ファイル削除後v-node参照カウンタが, fdから参照されているのか
+      mountから参照されているのかunmount_common実行時に判定できないこと
+      * クローズせずfdtblに残っているfd内のv->v_refsは2になっている
+      * この状態umountすると以下の判定でエラーになるのでマウントさせずに失敗させる
+		if ( ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) ) ||
+		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) > 1 ) ) || (★)
+		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 3 ) ) ) {
+
+			     /* root v-node でない場合で参照中の場合または
+			      * root v-node の場合で参照数が3より大きい場合は,
+			      * エラー復帰する
+      * その後unlinkすると, v->v_refsは減算され1になる
+      * この状態でunmountすると, unmount_common実行時にv-nodeの解放が行われるので
+        ファイルディスクリプタf->f_vnはNULLにならないが, 実際のv-nodeは解放済みになる
+      修正策は
+        1) v-node解放時にファイルディスクリプタからの参照をクリアするか
+        (複数fdから同一のvnを参照しうるので単純ではない)
+        2) ファイルディスクリプタの参照カウンタを制御するためのカウンタをv-nodeに新設するか
+      基本は2)と考える
 * mutex_lockでエラーチェックをしていないものがある
 * read/writeのfile_privateの位置が異なるので修正
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正
