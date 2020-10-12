@@ -558,6 +558,7 @@ init_vnode(vnode *v){
 	mutex_init(&v->v_mtx);               /*  状態更新用mutexの初期化                    */
 	/* マウント情報からの参照分を設定して初期化する */
 	refcnt_init(&v->v_refs);             /*  参照カウンタの初期化                       */
+	v->v_fduse = 0;                      /*  ファイルディスクリプタからの利用数初期化   */
 	v->v_fs_vnode = NULL;                /*  ファイルシステム固有v-nodeの初期化         */
 	wque_init_wait_queue(&v->v_waiters); /*  v-nodeウエイトキューの初期化               */
 	v->v_id = VFS_INVALID_VNID;          /*  vnidの初期化                               */
@@ -863,7 +864,8 @@ sync_and_lock_vnodes(fs_mount *mount){
 
 		mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
 		if ( ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) ) ||
-		     ( (v != mount->m_root) && ( refcnt_read(&v->v_refs) > 1 ) ) ||
+		     ( (v != mount->m_root)
+		       && ( ( refcnt_read(&v->v_refs) > 1 ) || ( v->v_fduse > 0 ) ) ) ||
 		     ( (v == mount->m_root) && ( refcnt_read(&v->v_refs) > 3 ) ) ) {
 
 			     /* root v-node でない場合で参照中の場合または
@@ -1123,6 +1125,53 @@ vfs_vnode_ref_dec(vnode *v){
 	kassert( v->v_mount != NULL ); /* v-nodeテーブルに登録されていることを確認 */
 
 	res = dec_vnode_ref_nolock(v); /* 参照カウンタをデクリメントする */
+	return res;
+}
+
+/**
+   v-nodeのファイルディスクリプタからの利用数を加算する
+   @param[in] v  v-node情報
+   @retval    真 v-nodeのファイルディスクリプタからの利用数を加算した
+   @retval    偽 v-nodeのファイルディスクリプタからの利用数を加算できなかった
+ */
+bool
+vfs_vnode_fduse_inc(vnode *v) {
+	bool           res;
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	res = vfs_vnode_ref_inc(v);  /* v-nodeの参照数を加算 */
+	if ( !res )
+		goto unlock_out;
+
+	++v->v_fduse;  /* ファイルディスクリプタからの利用数を加算 */
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
+	return true;
+
+unlock_out:
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+	return false;
+}
+
+/**
+   v-nodeのファイルディスクリプタ利用数を減算する
+   @param[in] v  v-node情報
+   @retval    真 v-nodeの最終参照者だった
+   @retval    偽 v-nodeの最終参照者でない
+ */
+bool
+vfs_vnode_fduse_dec(vnode *v){
+	bool           res;
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	--v->v_fduse;  /* ファイルディスクリプタからの利用数を加算 */
+	res = dec_vnode_ref_nolock(v); /* 参照カウンタをデクリメントする */
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
 	return res;
 }
 

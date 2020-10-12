@@ -53,7 +53,7 @@ alloc_fd(vnode *v, file_descriptor **fpp){
 	/*  ファイルディスクリプタからv-nodeを参照するため,
 	 *  v-node参照カウンタを加算
 	 */
-	res = vfs_vnode_ref_inc(f->f_vn);
+	res = vfs_vnode_fduse_inc(f->f_vn);
 	if ( !res ) {
 
 		rc = -ENOENT;  /* 削除中のv-nodeを指定した */
@@ -81,7 +81,7 @@ static void
 free_fd(file_descriptor *f){
 
 	kassert( is_valid_fs_calls( f->f_vn->v_mount->m_fs->c_calls ) );
-	/* プロセス/グローバルの双方のファイルディスクリプタテーブルからの参照を解放済み */
+	/* ファイルディスクリプタテーブルからの参照を解放済み */
 	kassert( refcnt_read(&f->f_refs) == 0 );
 
 	/*
@@ -91,7 +91,7 @@ free_fd(file_descriptor *f){
 		f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
 		    f->f_vn->v_fs_vnode, f->f_private);
 
-	vfs_vnode_ref_dec(f->f_vn);  /*  v-nodeの参照を解放  */
+	vfs_vnode_fduse_dec(f->f_vn);   /*  v-nodeの参照を解放  */
 
 	slab_kmem_cache_free(f);    /*  ファイルディスクリプタを解放  */
 }

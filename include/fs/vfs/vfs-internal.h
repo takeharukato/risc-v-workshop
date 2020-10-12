@@ -19,11 +19,15 @@ struct _fs_container;
 bool vfs_vnode_ref_inc(struct _vnode *_v);
 bool vfs_vnode_ref_dec(struct _vnode *_v);
 
+bool vfs_vnode_fduse_inc(struct _vnode *_v);
+bool vfs_vnode_fduse_dec(struct _vnode *_v);
+
 bool vfs_fs_mount_ref_dec(struct _fs_mount *_mount);
 bool vfs_fs_mount_ref_inc(struct _fs_mount *_mount);
 
 bool vfs_fs_ref_inc(struct _fs_container *_container);
 bool vfs_fs_ref_dec(struct _fs_container *_container);
+
 void vfs_init_filesystem_table(void);
 void vfs_init_mount_table(void);
 void vfs_init_ioctx(void);

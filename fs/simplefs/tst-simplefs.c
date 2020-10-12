@@ -118,20 +118,14 @@ simplefs4(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	/*
-	   TODO: ファイルを未クローズの時にunmountが走行するとv-nodeが解放されて
-	   ファイルディスクリプタから改造済みのv-nodeが参照されたままになり
-	   不正メモリアクセスになる問題を修正すること
-	   以下の#if 1を#if 0にすると再現可能
-	 */
-#if 1
+
 	/* ファイルをクローズする (openでファイルを作成しているので) */
 	rc = vfs_close(tst_ioctx.cur, fd);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-#endif
+
 	/* テスト用ディレクトリを作成する
 	 */
 	rc = vfs_mkdir(tst_ioctx.cur, "/romnt/testdir1");
