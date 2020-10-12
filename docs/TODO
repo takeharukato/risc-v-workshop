@@ -1,5 +1,4 @@
 * mutex_lockでエラーチェックをしていないものがある
-* read/writeのfile_privateの位置が異なるので修正
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正
   - rename処理でデッドロックを引き起こさないようにディレクトリエントリのv-nodeロックを
     v-node ID順に行うようにすること
@@ -57,6 +56,7 @@
       v-nodeのmutexを保持して参照・更新する(ファイルディスクリプタ制御はタスクコンテキストなので
       mutexによる排他, アンマウント時にunmount_commonでv-nodeのmutexを保持してカウント数を確認
       する内部仕様であるため。
+* read/writeのfile_privateの位置が異なるので修正[済み]
 * RB_TREEの比較関数の仕様を確認して修正(大小関係が逆になっているものがある) [澄み]
 * アンマウント時にmount->m_root(マウントポイントのv-node)の参照が0になり,
   root v-nodeとマウントポイントの双方が正しく解放されること(root v-nodeの解放に伴って
