@@ -74,8 +74,17 @@ vfs_mkdir(vfs_ioctx *ioctx, char *path){
 	 * ファイルシステム固有なディレクトリ作成処理を実施
 	 */
 	/* TODO: ディレクトリ生成ユーザ/グループを設定 */
+
+	rc = vfs_vnode_lock(v);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto put_vnode_out;
+
 	rc = v->v_mount->m_fs->c_calls->fs_mkdir(v->v_mount->m_fs_super,
 	    v->v_id, v->v_fs_vnode, filename, &new_vnid);
+
+	vfs_vnode_unlock(v);  /* v-nodeのロックを解放 */
+
 	if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
 		rc = -EIO;  /*  エラーコードを補正  */
 

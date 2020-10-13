@@ -54,11 +54,20 @@ vfs_setattr(vnode *v, vfs_file_stat *stat, vfs_vstat_mask stat_mask){
 		goto error_out;
 	}
 
+	rc = vfs_vnode_lock(v);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
+
 	/* ファイル属性情報を設定する
 	 */
 	rc = v->v_mount->m_fs->c_calls->fs_setattr(
 		v->v_mount->m_fs_super, v->v_id,
 		v->v_fs_vnode, &st, attr_mask);
+
+	vfs_vnode_unlock(v);  /* v-nodeのロックを解放 */
+
 	if ( rc != 0 )
 		goto error_out;  /* エラー復帰する */
 

@@ -62,10 +62,18 @@ vfs_write(vfs_ioctx *ioctx, file_descriptor *fp, const void *buf, ssize_t len,
 		goto error_out;
 	}
 
+	rc = vfs_vnode_lock(fp->f_vn);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
 	/* ファイルへの書き込みを実施 */
 	wr_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_write(
 		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
 		buf, fp->f_pos, len, fp->f_private);
+
+	vfs_vnode_unlock(fp->f_vn);  /* v-nodeのロックを解放 */
+
 	if ( 0 > wr_bytes ) {
 
 		rc = wr_bytes;  /* エラーコードを返却 */

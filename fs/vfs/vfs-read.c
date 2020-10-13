@@ -49,10 +49,18 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 		goto error_out;
 	}
 
+	rc = vfs_vnode_lock(fp->f_vn);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
 	/* ファイルからの読込みを実施 */
 	rd_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_read(
 		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
 		buf, fp->f_pos, len, fp->f_private);
+
+	vfs_vnode_unlock(fp->f_vn);  /* v-nodeのロックを解放 */
+
 	if ( 0 > rd_bytes ) {
 
 		rc = rd_bytes;  /* エラーコードを返却 */

@@ -50,12 +50,20 @@ vfs_getdents(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, off_t off,
 		goto error_out;
 	}
 
+	rc = vfs_vnode_lock(fp->f_vn);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
 	/*
 	 * ファイルシステム固有のディレクトリエントリ読込み処理を実行
 	 */
 	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_getdents(
 		fp->f_vn->v_mount->m_fs_super,
 		fp->f_vn->v_fs_vnode, buf, off, buflen, &rd_bytes);
+
+	vfs_vnode_unlock(fp->f_vn);  /* v-nodeのロックを解放 */
+
 	if ( rc != 0 )
 		goto error_out;  /* エラー復帰する */
 

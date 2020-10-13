@@ -75,8 +75,17 @@ vfs_create(vfs_ioctx *ioctx, char *path, vfs_file_stat *stat){
 	 * ファイルシステム固有なファイル作成処理を実施
 	 */
 	/* TODO: statにファイル生成ユーザ/グループを設定 */
+
+	rc = vfs_vnode_lock(v);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto vnode_put_out;
+
 	rc = v->v_mount->m_fs->c_calls->fs_create(v->v_mount->m_fs_super,
 	    v->v_id, v->v_fs_vnode, filename, stat, &new_vnid);
+
+	vfs_vnode_unlock(v);  /* v-nodeのロックを解放 */
+
 	if ( ( rc != 0 ) && ( rc != -EIO ) && ( rc != -ENOSYS ) )
 		rc = -EIO;  /*  エラーコードを補正  */
 

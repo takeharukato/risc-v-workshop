@@ -153,12 +153,20 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 	if ( fp->f_vn->v_mount->m_fs->c_calls->fs_seek == NULL )
 		goto success;  /* seek処理が定義されていなければVFS層の設定値を返却 */
 
+	rc = vfs_vnode_lock(fp->f_vn);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
 	/*  ファイルシステム固有のseek処理を実施
 	 */
 	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_seek(fp->f_vn->v_mount->m_fs_super,
 						      fp->f_vn->v_fs_vnode,
 						      arg_pos, whence, fp->f_private,
 						      &new_pos);
+
+	vfs_vnode_unlock(fp->f_vn);  /* v-nodeのロックを解放 */
+
 	if ( rc != 0 )
 		goto error_out;
 

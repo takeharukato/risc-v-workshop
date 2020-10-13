@@ -94,9 +94,18 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	/*
 	 * ファイルシステム固有なディレクトリ削除処理を実施
 	 */
+
 	/* TODO: アクセス権確認 */
+
+	rc = vfs_vnode_lock(dir_v);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto put_dir_vnode;
+
 	rc = dir_v->v_mount->m_fs->c_calls->fs_rmdir(dir_v->v_mount->m_fs_super,
 	    dir_v->v_id, dir_v->v_fs_vnode, filename);
+
+	vfs_vnode_unlock(dir_v);  /* v-nodeのロックを解放 */
 
 	/* ディレクトリの削除に成功した場合は, v-nodeの削除フラグを設定
 	 */

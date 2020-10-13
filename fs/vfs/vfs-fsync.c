@@ -41,8 +41,9 @@ vfs_fsync(vfs_ioctx *ioctx, file_descriptor *fp){
 
 	/* ファイルシステム固有のファイル書き戻し処理を実施
 	 * ファイルシステム固有のファイル書き戻し処理がない場合は正常終了する
+	 * @note v-nodeのロックは, vfs_vnode_fsyncで獲得する。
 	 */
-	rc = vfs_vnode_fsync(fp->f_vn);
+	rc = vfs_vnode_fsync(fp->f_vn);  /* fsync処理を呼ぶ */
 
 error_out:
 	return rc;

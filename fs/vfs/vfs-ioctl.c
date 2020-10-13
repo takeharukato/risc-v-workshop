@@ -46,11 +46,18 @@ vfs_ioctl(vfs_ioctx *ioctx, file_descriptor *fp, int op, void *buf, size_t len){
 		goto error_out;
 	}
 
+	rc = vfs_vnode_lock(fp->f_vn);  /* v-nodeのロックを獲得 */
+	kassert( rc != -ENOENT );
+	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+		goto error_out;
+
 	/* ファイルの制御処理を実施 */
 	rc = fp->f_vn->v_mount->m_fs->c_calls->fs_ioctl(
 		fp->f_vn->v_mount->m_fs_super,
 		fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
 		op, buf, len, fp->f_private);
+
+	vfs_vnode_unlock(fp->f_vn);  /* v-nodeのロックを解放 */
 
 error_out:
 	return rc;
