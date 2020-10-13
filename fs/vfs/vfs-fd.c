@@ -87,10 +87,13 @@ free_fd(file_descriptor *f){
 	/*
 	 * ファイルシステム固有のファイルディスクリプタ解放処理を実施
 	 */
-	if ( f->f_vn->v_mount->m_fs->c_calls->fs_release_fd != NULL )
-		f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
-		    f->f_vn->v_fs_vnode, f->f_private);
+	if ( f->f_vn->v_mount->m_fs->c_calls->fs_release_fd == NULL )
+		goto fduse_dec_out;
 
+	f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
+	    f->f_vn->v_fs_vnode, f->f_private);
+
+fduse_dec_out:
 	vfs_vnode_fduse_dec(f->f_vn);   /*  v-nodeの参照を解放  */
 
 	slab_kmem_cache_free(f);    /*  ファイルディスクリプタを解放  */
@@ -152,10 +155,12 @@ del_fd_nolock(vfs_ioctx *ioctx, int fd){
 	/*
 	 * ファイルシステム固有のクローズ処理を実施
 	 */
-	if ( f->f_vn->v_mount->m_fs->c_calls->fs_close != NULL )
-		f->f_vn->v_mount->m_fs->c_calls->fs_close(f->f_vn->v_mount->m_fs_super,
-		    f->f_vn->v_fs_vnode, f->f_private);
+	if ( f->f_vn->v_mount->m_fs->c_calls->fs_close == NULL )
+		goto bitclr;
 
+	f->f_vn->v_mount->m_fs->c_calls->fs_close(f->f_vn->v_mount->m_fs_super,
+	    f->f_vn->v_fs_vnode, f->f_private);
+bitclr:
 	bitops_clr(fd, &ioctx->ioc_bmap) ; /* 使用中ビットをクリア */
 	ioctx->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */
 
@@ -365,11 +370,19 @@ vfs_fd_alloc(vfs_ioctx *ioctx, vnode *v, vfs_open_flags omode, int *fdp,
 
 	if ( v->v_mount->m_fs->c_calls->fs_open != NULL ) {
 
+		rc = vfs_vnode_lock(v);  /* v-nodeのロックを獲得 */
+		kassert( rc != -ENOENT );
+		if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+			goto put_fd_out;
+
 		/*
 		 * ファイルシステム固有のオープン処理を実施
 		 */
 		rc = v->v_mount->m_fs->c_calls->fs_open(v->v_mount->m_fs_super,
 		    v->v_fs_vnode, omode, &file_priv);
+
+		vfs_vnode_unlock(v);  /* v-nodeのロックを解放 */
+
 		if (rc != 0) {
 
 			if ( ( rc != -ENOMEM ) && ( rc != -EIO ) )

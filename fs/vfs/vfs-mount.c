@@ -805,7 +805,8 @@ fsync_vnode_common(vnode *v){
 	rc = 0;  /*  正常終了 */
 
 	/* ファイルシステム固有のv-node書き戻し処理がない場合は
-	 * v-nodeのみ書き戻す
+	 * v-nodeのみ書き戻す (v-nodeのロックは呼び出し元で得ているか,
+	 * ロック不可条件下(アンマウント中)で呼ばれる
 	 */
 	if ( v->v_mount->m_fs->c_calls->fs_fsync != NULL )
 		rc = v->v_mount->m_fs->c_calls->fs_fsync(v->v_mount->m_fs_super,
@@ -1056,9 +1057,10 @@ unmount_common(vnode *root_vnode){
 	/*
 	 * ファイルシステム固有なアンマウント処理を実施
 	 */
-	if ( mount->m_fs->c_calls->fs_unmount != NULL )
-		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
+	if ( mount->m_fs->c_calls->fs_unmount != NULL ) {
 
+		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
+	}
 	/*
 	 * root v-node以外のv-nodeを解放
 	 */

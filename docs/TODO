@@ -1,5 +1,6 @@
-* mutex_lockでエラーチェックをしていないものがある
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正
+  - vnodeロックをとっていないところに理由を記載する(lookupはロック獲得済み, v-node releaseは競合がいない, fdのreleaseは, i-nodeに依存しない、依存する場合はv-node releaseで処理する)
+* mutex_lockでエラーチェックをしていないものがある
 * v-nodeにページキャッシュ機構を追加し, prepare_write(ページをブロックにマッピング),
 write(ページ更新), commit_write(ページを2次記憶に書き出し), readオペレーションをvfsオペレーションに追加)
   - ページキャッシュ機構を再設計
