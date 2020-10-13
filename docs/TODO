@@ -1,5 +1,19 @@
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正
-  - vnodeロックをとっていないところに理由を記載する(lookupはロック獲得済み, v-node releaseは競合がいない, fdのreleaseは, i-nodeに依存しない、依存する場合はv-node releaseで処理する)
+  - vnodeロックをとっていないところに理由を記載する
+  a) lookupはロック獲得済み
+  b) v-node releaseはv-node解放時なので競合となるスレッドがいない
+  c) fdのreleaseは, ファイルの属性更新やファイルのデータ参照・更新を行わない
+     (ファイルディスクリプタプライベート情報の解放), 依存する場合はv-node releaseで処理する
+  d) read/writeは, システムコール処理部でロックを獲得・解放する
+     システムコール処理部でメモリマッピングを解析しながらページ単位で
+     読み書きしながらシステムコールで指定されたread/write長を満たすかエラーになるまで
+     v-nodeロックを保持し続けなければならない
+  e) v-nodeロックを自スレッドが保持していることを a) lookup, d) read/write時にv-nodeロックを
+     保持していることを確認するassertを追加する.
+     v-nodeロックを自スレッドが保持していることを記録する処理は, v-nodeのBUSYビットを立てる
+     ところで行う(vnode_lock以外にBUSYビットを立てるところがあるので)
+     v-nodeのBUSYビットを立てる/落とす関数を新設する
+* vfsにchdir/get_cwd/chrootを追加。
 * mutex_lockでエラーチェックをしていないものがある
 * v-nodeにページキャッシュ機構を追加し, prepare_write(ページをブロックにマッピング),
 write(ページ更新), commit_write(ページを2次記憶に書き出し), readオペレーションをvfsオペレーションに追加)
