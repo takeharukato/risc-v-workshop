@@ -12,6 +12,8 @@
 
 #include <kern/mutex.h>
 #include <kern/page-if.h>
+#include <kern/thr-if.h>
+
 #include <kern/vfs-if.h>
 
 #include <fs/vfs/vfs-internal.h>
@@ -157,6 +159,48 @@ check_vnode_flags_nolock(vnode *v, vfs_vnode_flags flags) {
 }
 
 /**
+   v-node mutexを獲得せずにv-nodeを使用中に設定する (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+mark_vnode_busy_nolock(vnode *v) {
+	vfs_vnode_flags old_flags;
+
+	old_flags = v->v_flags; /* 更新前のフラグ値を獲得 */
+
+	v->v_flags |= VFS_VFLAGS_BUSY;      /*  フラグをセットする */
+
+	kassert( v->v_locked_by == NULL );  /*  ロック獲得者がいないことを確認 */
+	v->v_locked_by = ti_get_current_thread();  /* 自スレッドをロック獲得スレッドに設定 */
+
+	/* フラグ更新を通知 */
+	if ( !( old_flags & VFS_VFLAGS_BUSY )
+	    && ( !wque_is_empty(&v->v_waiters) ) )   /*  v-nodeを待っているスレッドを起床 */
+		wque_wakeup(&v->v_waiters, WQUE_RELEASED);
+}
+
+/**
+   v-node mutexを獲得せずにv-nodeの使用中フラグ(VFS_VFLAGS_BUSY)をクリアする (内部関数)
+   @param[in] v 操作対象のv-node
+ */
+static void
+unmark_vnode_busy_nolock(vnode *v) {
+	vfs_vnode_flags old_flags;
+
+	old_flags = v->v_flags; /* 更新前のフラグ値を獲得 */
+
+	v->v_flags &= ~VFS_VFLAGS_BUSY;      /*  フラグをクリアする */
+
+	kassert( v->v_locked_by != NULL );  /* ロック獲得者がいることを確認 */
+	v->v_locked_by = NULL;              /* ロック獲得スレッドをクリア   */
+
+	/* フラグ更新を通知 */
+	if  ( ( old_flags & VFS_VFLAGS_BUSY )
+	    && ( !wque_is_empty(&v->v_waiters) ) ) /*  v-nodeを待っているスレッドを起床 */
+		wque_wakeup(&v->v_waiters, WQUE_RELEASED);
+}
+
+/**
    v-nodeのフラグ値を設定する (内部関数)
    @param[in] v     操作対象のv-node
    @param[in] flags 設定するフラグ値
@@ -213,6 +257,81 @@ unmark_vnode_flag(vnode *v, vfs_vnode_flags flags) {
 	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
 
 	return !res;      /* 最終参照ではなければフラグをセットできている  */
+}
+
+/**
+   v-nodeを使用中に設定する (内部関数)
+   @param[in] v     操作対象のv-node
+   @retval    真    フラグを設定できた
+   @retval    偽    フラグを設定できなかった
+   @note LO: v-nodeロック, ウエイトキューロックの順にロックを獲得する
+ */
+static bool
+mark_vnode_busy(vnode *v){
+	bool          res;
+
+	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
+	if ( !res )
+		return false; /* すでに削除中のv-nodeだった */
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	if ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) )
+		goto unlock_out;  /* フラグ設定済み */
+
+	mark_vnode_busy_nolock(v);  /* 使用中に設定 */
+
+unlock_out:
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
+
+	return !res;      /* 最終参照でなければフラグをセットできている  */
+}
+
+/**
+   v-nodeの使用中フラグをクリアする (内部関数)
+   @param[in] v 操作対象のv-node
+   @retval    真    フラグを設定できた
+   @retval    偽    フラグを設定できなかった
+ */
+static bool
+unmark_vnode_busy(vnode *v) {
+	bool res;
+
+	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
+	if ( !res )
+		return false; /* すでに削除中のv-nodeだった */
+
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	unmark_vnode_busy_nolock(v); /* 使用中フラグをクリアする */
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+
+	res = vfs_vnode_ref_dec(v);  /* 参照を解放 */
+
+	return !res;      /* 最終参照ではなければフラグをセットできている  */
+}
+
+/**
+   自スレッドがv-nodeをロックしていることを確認する (内部関数)
+   @param[in] v 操作対象のv-node
+   @retval    真     自スレッドがv-nodeをロックしている
+   @retval    偽     自スレッドがv-nodeをロックしていない
+ */
+static bool
+check_vnode_locked_by_self_nolock(vnode *v) {
+	bool  rc;
+
+	/* ロック済みv-nodeで, 自スレッドがロックを所持している場合は, 真を返す */
+	if ( ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) )
+	    && ( v->v_locked_by == ti_get_current_thread() ) )
+		rc = true;
+	else
+		rc = false;
+
+	return rc;
 }
 
 /**
@@ -564,10 +683,12 @@ init_vnode(vnode *v){
 	v->v_id = VFS_INVALID_VNID;          /*  vnidの初期化                               */
 	v->v_mount = NULL;                   /*  マウント情報の初期化                       */
 	v->v_mount_on = NULL;                /*  マウント先ボリュームのマウント情報を初期化 */
+	v->v_locked_by = NULL;               /*  ロック獲得スレッドを初期化                 */
 	v->v_mode = VFS_VNODE_MODE_NONE;     /*  ファイルモードの初期化                     */
 	v->v_flags = VFS_VFLAGS_FREE;        /*  未使用v-nodeとして初期化                   */
-	mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY);  /*  使用中に設定する */
-	unmark_vnode_flag_nolock(v, VFS_VFLAGS_VALID); /*  ファイルシステム固有v-node未読み込み    */
+	mark_vnode_busy_nolock(v);           /*  使用中に設定する */
+	/*  ファイルシステム固有v-node未読み込み    */
+	unmark_vnode_flag_nolock(v, VFS_VFLAGS_VALID);
 
 	return ;
 }
@@ -654,7 +775,8 @@ trylock_vnode(vnode *v) {
 	if ( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) )
 		return -EBUSY; /* 他スレッドがロックを獲得中 */
 
-	res = mark_vnode_flag(v, VFS_VFLAGS_BUSY);  /*  使用中に設定する */
+	res = mark_vnode_busy(v);   /*  使用中に設定する */
+
 	kassert( res );  /* trylock_vnode呼び出し前に参照を得ているのでフラグを設定可能 */
 
 	return 0;
@@ -725,9 +847,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 
 			rc = add_vnode_to_mount_nolock(v->v_mount, v); /* v-nodeを登録する */
 
-			/* v-nodeのロックを解除 */
-			unmark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY);
-
+			unmark_vnode_busy_nolock(v);  /* v-nodeのロックを解除 */
 			if ( rc != 0 )
 				goto unlock_out;  /* v-nodeを登録できなかった */
 		}
@@ -896,7 +1016,7 @@ sync_and_lock_vnodes(fs_mount *mount){
 		kassert( is_valid_fs_calls( v->v_mount->m_fs->c_calls ) );
 
 		if ( v != mount->m_root ) /* ルートv-node以外をロックする */
-			mark_vnode_flag_nolock(v, VFS_VFLAGS_BUSY);
+			mark_vnode_busy_nolock(v);  /* v-nodeをロックする */
 
 		mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
 	}
@@ -1538,7 +1658,7 @@ vfs_vnode_unlock(vnode *v) {
 	/* ロック済みv-nodeであることを確認 */
 	kassert( check_vnode_flags_nolock(v, VFS_VFLAGS_BUSY) );
 
-	res = unmark_vnode_flag(v, VFS_VFLAGS_BUSY); /* v-nodeのロックを解除する */
+	res = unmark_vnode_busy(v); /* v-nodeのロックを解除する */
 	kassert( res );
 
 	mutex_unlock(&v->v_mount->m_mtx); /* マウントポイントのロックを解放 */
@@ -1546,6 +1666,37 @@ vfs_vnode_unlock(vnode *v) {
 	vfs_vnode_ref_dec(v);  /* 参照を解放する */
 
 	return ;
+}
+
+/**
+   自スレッドがv-nodeをロックしていることを確認する
+   @param[in] v 操作対象のv-node
+   @retval    真     自スレッドがv-nodeをロックしている
+   @retval    偽     自スレッドがv-nodeをロックしていない
+   @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
+ */
+bool
+vfs_vnode_locked_by_self(vnode *v) {
+	bool  rc;
+	bool res;
+
+	/* マウントポイントの参照獲得
+	 */
+
+	res = vfs_vnode_ref_inc(v);  /* 参照を獲得する */
+	if ( !res )
+		return false;  /* 削除中のv-node */
+
+	mutex_lock(&v->v_mount->m_mtx);  /* マウントポイントのロックを獲得 */
+
+	/* 自スレッドがロックを獲得していることを確認 */
+	rc = check_vnode_locked_by_self_nolock(v);
+
+	mutex_unlock(&v->v_mount->m_mtx); /* マウントポイントのロックを解放 */
+
+	vfs_vnode_ref_dec(v);  /* 参照を解放する */
+
+	return rc;
 }
 
 /**

@@ -90,6 +90,10 @@ free_fd(file_descriptor *f){
 	if ( f->f_vn->v_mount->m_fs->c_calls->fs_release_fd == NULL )
 		goto fduse_dec_out;
 
+	/* @note ファイルディスクリプタの解放処理では, ファイルの属性更新や
+	 * ファイルのデータ参照・更新を行わず, ファイルディスクリプタプライベート情報の解放に
+	 * 関する処理のみを行うことから, v-nodeをロックせずに呼び出す
+	 */
 	f->f_vn->v_mount->m_fs->c_calls->fs_release_fd(f->f_vn->v_mount->m_fs_super,
 	    f->f_vn->v_fs_vnode, f->f_private);
 
@@ -155,11 +159,17 @@ del_fd_nolock(vfs_ioctx *ioctx, int fd){
 	/*
 	 * ファイルシステム固有のクローズ処理を実施
 	 */
+	/* @note ファイルディスクリプタの解放処理では, ファイルの属性更新や
+	 * ファイルのデータ参照・更新を行わず, ファイルディスクリプタプライベート情報に
+	 * 関する処理のみを行うことから, v-nodeをロックせずに呼び出す
+	 * ファイルディスクリプタプライベート情報の解放は, fs_release_fdで実施する。
+	 */
 	if ( f->f_vn->v_mount->m_fs->c_calls->fs_close == NULL )
 		goto bitclr;
 
 	f->f_vn->v_mount->m_fs->c_calls->fs_close(f->f_vn->v_mount->m_fs_super,
 	    f->f_vn->v_fs_vnode, f->f_private);
+
 bitclr:
 	bitops_clr(fd, &ioctx->ioc_bmap) ; /* 使用中ビットをクリア */
 	ioctx->ioc_fds[fd] = NULL;  /*  ファイルディスクリプタテーブルのエントリをクリア  */

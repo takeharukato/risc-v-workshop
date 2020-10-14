@@ -45,18 +45,13 @@ vfs_getattr(vnode *v, vfs_vstat_mask stat_mask, vfs_file_stat *statp){
 		goto error_out;
 	}
 
-	rc = vfs_vnode_lock(v);  /* v-nodeのロックを獲得 */
-	kassert( rc != -ENOENT );
-	if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
-		goto error_out;
-
 	/* ファイル属性情報を設定する
+	 */
+	/* @note ファイル属性情報獲得処理は, VFS層内部からも呼ばれるためv-nodeをロックせずに
+	 * 呼び出す
 	 */
 	rc = v->v_mount->m_fs->c_calls->fs_getattr(v->v_mount->m_fs_super,
 						   v->v_fs_vnode, attr_mask, &st);
-
-	vfs_vnode_unlock(v);  /* v-nodeのロックを解放 */
-
 	if ( rc != 0 )
 		goto error_out;  /* エラー復帰する */
 

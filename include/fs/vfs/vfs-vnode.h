@@ -20,6 +20,8 @@
 #include <kern/wqueue.h>
 #include <klib/rbtree.h>
 
+struct _thread;
+
 /**
    V-node(仮想I-node)
  */
@@ -36,6 +38,7 @@ typedef struct _vnode{
 					    * マウント先ボリュームのマウント情報
 					    * (マウントポイントでない場合は, NULL)
 					    */
+	struct _thread      *v_locked_by;  /**< ロック獲得スレッド                */
 	vfs_fs_mode               v_mode;  /**< ファイル種別/アクセス フラグ      */
 	vfs_vnode_flags          v_flags;  /**< v-nodeのステータスフラグ          */
 }vnode;
@@ -50,6 +53,7 @@ void vfs_unmark_dirty_vnode(struct _vnode *v);
 bool vfs_is_dirty_vnode(struct _vnode *_v);
 int vfs_vnode_lock(struct _vnode *_v);
 void vfs_vnode_unlock(struct _vnode *_v);
+bool vfs_vnode_locked_by_self(struct _vnode *v);
 int vfs_vnode_fsync(struct _vnode *_v);
 int vfs_vnode_mnt_cmp(struct _vnode *_v1, struct _vnode *_v2);
 int vfs_vnode_cmp(struct _vnode *_v1, struct _vnode *_v2);

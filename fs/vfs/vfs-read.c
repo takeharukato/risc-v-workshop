@@ -50,6 +50,12 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 	}
 
 	/* ファイルからの読込みを実施 */
+	/* @note システムコール処理部でv-nodeをロック, アンロックする
+	 * システムコール処理部でメモリマッピングを解析しながらページ単位で
+	 * 読み書きしながらシステムコールで指定されたread/write長を満たすかエラーになるまで
+	 * v-nodeロックを保持し続けなければならないため, vfs層のread/write処理部では,
+	 * 読み書き完了までの全期間でロックを保持できないためである。
+	 */
 	rd_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_read(
 		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
 		buf, fp->f_pos, len, fp->f_private);
