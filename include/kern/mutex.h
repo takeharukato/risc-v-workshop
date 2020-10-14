@@ -27,10 +27,10 @@ typedef uint32_t mutex_counter;  /* ミューテックスカウンタ */
    カーネル内ミューテックス
  */
 typedef struct _mutex{
-	struct _spinlock       lock; /*< カウンタのロック           */
-	struct _thread       *owner; /*< ミューテックス獲得スレッド */
-	struct _wque_waitqueue wque; /*< ウエイトキュー             */
-	mutex_counter     resources; /*< 利用可能資源数 (単位:個)   */
+	struct _spinlock       lock; /**< カウンタのロック           */
+	struct _thread       *owner; /**< ミューテックス獲得スレッド */
+	struct _wque_waitqueue wque; /**< ウエイトキュー             */
+	mutex_counter     resources; /**< 利用可能資源数 (単位:個)   */
 }mutex;
 
 /**
