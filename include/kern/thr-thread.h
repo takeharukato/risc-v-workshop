@@ -42,7 +42,7 @@
 
 #define THR_TID_IDLE              (ULONGLONG_C(0))          /**< アイドルスレッドのスレッドID */
 #define THR_TID_REAPER            (ULONGLONG_C(2))          /**< 刈り取りスレッドのスレッドID */
-#define THR_PRIO_REAPER           (SCHED_MAX_SYS_PRIO - 1)  /**< 刈り取りスレッドの優先度 */
+#define THR_PRIO_REAPER           (SCHED_MAX_SYS_PRIO)  /**< 刈り取りスレッドの優先度 */
 
 struct _thread_info;
 struct _proc;
