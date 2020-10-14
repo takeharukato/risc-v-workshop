@@ -14,3 +14,25 @@ si
 x /i $pc
 end
 
+#
+#赤黒木操作
+#
+# rbtree_min ヘッド名 rbtreeのエントリ名 -1または1
+# 第3引数に-1を指定するとMIN, 1を指定するとMAXが得られる
+# $rbtree_minmax_retvalに対象の構造体へのアドレスが得られる
+# rbtree_minmax &g_thrdb.head ent -1
+#(elm)->field.rbe_left
+#(elm)->field.rbe_right
+#(elm)->field.rbe_parent
+define rbtree_minmax
+  set $tmp = ($arg0)->rbh_root
+  set $val = $arg2
+  while $tmp != NULL
+    set $parent = $tmp
+    if $val < 0
+      set $tmp = ($tmp)->$arg1.rbe_left
+    else
+      set $tmp = ($tmp)->$arg1.rbe_right
+    end
+    set $rbtree_minmax_retval = $parent
+end
