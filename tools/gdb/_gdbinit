@@ -44,16 +44,16 @@ end
 # (gdb) p $rbtree_minmax_retval
 # $1 = (struct _thread *) 0x7fffecf73cf8
 define rbtree_minmax
-  set $tmp = ($arg0)->rbh_root
+  set $tmp_rb_minmax = ($arg0)->rbh_root
   set $val = $arg2
-  while $tmp != NULL
-    set $parent = $tmp
+  while $tmp_rb_minmax != NULL
+    set $parent = $tmp_rb_minmax
     if $val < 0
-      rbtree_rb_left $tmp $arg1
-      set $tmp = $rbtree_rb_left_retval
+      rbtree_rb_left $tmp_rb_minmax $arg1
+      set $tmp_rb_minmax = $rbtree_rb_left_retval
     else
-      rbtree_rb_right $tmp $arg1
-      set $tmp = $rbtree_rb_right_retval
+      rbtree_rb_right $tmp_rb_minmax $arg1
+      set $tmp_rb_minmax = $rbtree_rb_right_retval
     end
     set $rbtree_minmax_retval = $parent
 end
@@ -69,36 +69,56 @@ end
 # (gdb) p $rbtree_next_retval
 # $2 = (struct _thread *) 0x7fffecf73ad0
 define rbtree_next
-  set $tmp = $arg0
-  rbtree_rb_right $tmp $arg1
+  set $tmp_rbtree_next = $arg0
+  rbtree_rb_right $tmp_rbtree_next $arg1
   if $rbtree_rb_right_retval != NULL
-    rbtree_rb_right $tmp $arg1
-    set $tmp = $rbtree_rb_right_retval
-    rbtree_rb_left $tmp $arg1
+    rbtree_rb_right $tmp_rbtree_next $arg1
+    set $tmp_rbtree_next = $rbtree_rb_right_retval
+    rbtree_rb_left $tmp_rbtree_next $arg1
     while $rbtree_rb_left_retval != NULL
-      rbtree_rb_left $tmp $arg1
-      set $tmp = $rbtree_rb_left_retval
+      rbtree_rb_left $tmp_rbtree_next $arg1
+      set $tmp_rbtree_next = $rbtree_rb_left_retval
     end
   else
-    rbtree_rb_parent $tmp $arg1
-    set $tmp2 = $rbtree_rb_parent_retval
-    rbtree_rb_left $tmp2 $arg1
-    set $tmp3 = $rbtree_rb_left_retval
-    if ( ( $tmp2 != NULL ) && ( $tmp == $tmp3 ) )
-      rbtree_rb_parent $tmp $arg1
-      set $tmp = $rbtree_rb_parent_retval
+    rbtree_rb_parent $tmp_rbtree_next $arg1
+    set $tmp_rbtree_next2 = $rbtree_rb_parent_retval
+    rbtree_rb_left $tmp_rbtree_next2 $arg1
+    set $tmp_rbtree_next3 = $rbtree_rb_left_retval
+    if ( ( $tmp_rbtree_next2 != NULL ) && ( $tmp_rbtree_next == $tmp_rbtree_next3 ) )
+      rbtree_rb_parent $tmp_rbtree_next $arg1
+      set $tmp_rbtree_next = $rbtree_rb_parent_retval
     else
-      rbtree_rb_parent $tmp $arg1
-      set $tmp2 = $rbtree_rb_parent_retval
-      rbtree_rb_right $tmp2 $arg1
-      set $tmp3 = $rbtree_rb_right_retval
-      while ( ( $tmp2 != NULL ) && ( $tmp == $tmp3 ) )
-	rbtree_rb_parent $tmp $arg1
-	set $tmp = $rbtree_rb_parent_retval
+      rbtree_rb_parent $tmp_rbtree_next $arg1
+      set $tmp_rbtree_next2 = $rbtree_rb_parent_retval
+      rbtree_rb_right $tmp_rbtree_next2 $arg1
+      set $tmp_rbtree_next3 = $rbtree_rb_right_retval
+      while ( ( $tmp_rbtree_next2 != NULL ) && ( $tmp_rbtree_next == $tmp_rbtree_next3 ) )
+	rbtree_rb_parent $tmp_rbtree_next $arg1
+	set $tmp_rbtree_next = $rbtree_rb_parent_retval
       end
-      rbtree_rb_parent $tmp $arg1
-      set $tmp = $rbtree_rb_parent_retval
+      rbtree_rb_parent $tmp_rbtree_next $arg1
+      set $tmp_rbtree_next = $rbtree_rb_parent_retval
     end
   end
-  set $rbtree_next_retval = $tmp
+  set $rbtree_next_retval = $tmp_rbtree_next
+end
+
+
+# rbtree_foreach ヘッド名 rbtreeのエントリ名
+# rbtreeの要素をリストアップする
+# rbtree_foreach
+# 使用例: rbtree_foreach  &g_thrdb.head ent
+# (gdb) rbtree_minmax &g_thrdb.head ent -1
+# (gdb) p $rbtree_minmax_retval
+# $1 = (struct _thread *) 0x7fffecf73cf8
+# (gdb) rbtree_next $rbtree_minmax_retval ent
+# (gdb) p $rbtree_next_retval
+# $2 = (struct _thread *) 0x7fffecf73ad0
+define rbtree_foreach
+  rbtree_minmax $arg0 $arg1 -1
+  set $var = $rbtree_minmax_retval
+  while ( $var != NULL )
+    rbtree_next $var $arg1
+    set $var = $rbtree_next_retval
+  end
 end
