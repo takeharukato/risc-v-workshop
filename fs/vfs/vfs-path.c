@@ -118,6 +118,17 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		kassert( curr_v->v_mount->m_fs != NULL );
 		kassert( curr_v->v_mount->m_fs->c_calls != NULL );
 		kassert( is_valid_fs_calls( curr_v->v_mount->m_fs->c_calls ) );
+
+		kassert( !vfs_vnode_locked_by_self(curr_v) );  /* 自己再入しないことを確認 */
+
+		/* ファイル名検索中にディレクトリエントリを書き換えられないように
+		 * v-nodeのロックを獲得
+		 */
+		rc = vfs_vnode_lock(curr_v);
+		kassert( rc != -ENOENT );
+		if ( rc != 0 ) /* イベントを受信したまたはメモリ不足 */
+			goto free_copypath_out;
+
 		rc = curr_v->v_mount->m_fs->c_calls->fs_lookup(curr_v->v_mount->m_fs_super,
 							 curr_v->v_fs_vnode, p, &vnid);
 		if (rc != 0) {
@@ -125,9 +136,12 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			if ( ( rc != -EIO ) && ( rc != -ENOENT ) )
 				rc = -EIO;  /*  IFを満たさないエラーは-EIOに変換  */
 
-			vfs_vnode_ref_dec(curr_v);
+			vfs_vnode_unlock(curr_v);  /* v-nodeのロックを解放 */
+			vfs_vnode_ref_dec(curr_v); /*  vnodeの参照を開放  */
 			goto free_copypath_out;
 		}
+
+		vfs_vnode_unlock(curr_v);  /* v-nodeのロックを解放 */
 
 		/*
 		 * マウントポイントID, v-node IDをキーにv-nodeの参照を獲得
@@ -138,12 +152,12 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			kprintf(KERN_ERR "path_to_vnode: could not lookup vnode"
 			    " (fsid 0x%x vnid 0x%Lx)\n",
 			    (unsigned)curr_v->v_mount->m_id, (unsigned long long)vnid);
-			vfs_vnode_ref_dec(curr_v);
+
+			vfs_vnode_ref_dec(curr_v); /*  vnodeの参照を開放  */
 			goto free_copypath_out;
 		}
 
-		/*  vnodeの参照を開放  */
-		vfs_vnode_ref_dec(curr_v);
+		vfs_vnode_ref_dec(curr_v);  /*  vnodeの参照を開放  */
 
 		/*
 		 * 次の要素を参照
