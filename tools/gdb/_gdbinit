@@ -17,22 +17,88 @@ end
 #
 #赤黒木操作
 #
-# rbtree_min ヘッド名 rbtreeのエントリ名 -1または1
+# rbtree_left rbtreeの要素 rbtreeのエントリ名
+# rbtreeの左の要素を得る
+# $rbtree_left_retvalに対象の構造体へのアドレスが得られる
+define rbtree_rb_left
+  set $rbtree_rb_left_retval = ($arg0)->$arg1.rbe_left
+end
+# rbtree_right rbtreeの要素 rbtreeのエントリ名
+# rbtreeの右の要素を得る
+# $rbtree_right_retvalに対象の構造体へのアドレスが得られる
+define rbtree_rb_right
+  set $rbtree_rb_right_retval = ($arg0)->$arg1.rbe_right
+end
+# rbtree_parent rbtreeの要素 rbtreeのエントリ名
+# rbtreeの親の要素を得る
+# $rbtree_parent_retvalに対象の構造体へのアドレスが得られる
+define rbtree_rb_parent
+  set $rbtree_rb_parent_retval = ($arg0)->$arg1.rbe_parent
+end
+# rbtree_minmax ヘッド名 rbtreeのエントリ名 -1または1
+# rbtreeの最小ノード, 最大ノードを得る
 # 第3引数に-1を指定するとMIN, 1を指定するとMAXが得られる
 # $rbtree_minmax_retvalに対象の構造体へのアドレスが得られる
-# rbtree_minmax &g_thrdb.head ent -1
-#(elm)->field.rbe_left
-#(elm)->field.rbe_right
-#(elm)->field.rbe_parent
+# 使用例:
+# (gdb) rbtree_minmax &g_thrdb.head ent -1
+# (gdb) p $rbtree_minmax_retval
+# $1 = (struct _thread *) 0x7fffecf73cf8
 define rbtree_minmax
   set $tmp = ($arg0)->rbh_root
   set $val = $arg2
   while $tmp != NULL
     set $parent = $tmp
     if $val < 0
-      set $tmp = ($tmp)->$arg1.rbe_left
+      rbtree_rb_left $tmp $arg1
+      set $tmp = $rbtree_rb_left_retval
     else
-      set $tmp = ($tmp)->$arg1.rbe_right
+      rbtree_rb_right $tmp $arg1
+      set $tmp = $rbtree_rb_right_retval
     end
     set $rbtree_minmax_retval = $parent
+end
+
+# rbtree_next rbtreeの要素 rbtreeのエントリ名
+# rbtreeの次の要素を得る
+# $rbtree_next $ent
+# 使用例:
+# (gdb) rbtree_minmax &g_thrdb.head ent -1
+# (gdb) p $rbtree_minmax_retval
+# $1 = (struct _thread *) 0x7fffecf73cf8
+# (gdb) rbtree_next $rbtree_minmax_retval ent
+# (gdb) p $rbtree_next_retval
+# $2 = (struct _thread *) 0x7fffecf73ad0
+define rbtree_next
+  set $tmp = $arg0
+  rbtree_rb_right $tmp $arg1
+  if $rbtree_rb_right_retval != NULL
+    rbtree_rb_right $tmp $arg1
+    set $tmp = $rbtree_rb_right_retval
+    rbtree_rb_left $tmp $arg1
+    while $rbtree_rb_left_retval != NULL
+      rbtree_rb_left $tmp $arg1
+      set $tmp = $rbtree_rb_left_retval
+    end
+  else
+    rbtree_rb_parent $tmp $arg1
+    set $tmp2 = $rbtree_rb_parent_retval
+    rbtree_rb_left $tmp2 $arg1
+    set $tmp3 = $rbtree_rb_left_retval
+    if ( ( $tmp2 != NULL ) && ( $tmp == $tmp3 ) )
+      rbtree_rb_parent $tmp $arg1
+      set $tmp = $rbtree_rb_parent_retval
+    else
+      rbtree_rb_parent $tmp $arg1
+      set $tmp2 = $rbtree_rb_parent_retval
+      rbtree_rb_right $tmp2 $arg1
+      set $tmp3 = $rbtree_rb_right_retval
+      while ( ( $tmp2 != NULL ) && ( $tmp == $tmp3 ) )
+	rbtree_rb_parent $tmp $arg1
+	set $tmp = $rbtree_rb_parent_retval
+      end
+      rbtree_rb_parent $tmp $arg1
+      set $tmp = $rbtree_rb_parent_retval
+    end
+  end
+  set $rbtree_next_retval = $tmp
 end
