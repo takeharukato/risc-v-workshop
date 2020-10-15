@@ -1,0 +1,3 @@
+http://transparent-to-radiation.blogspot.com/2014/01/gdbpython-script.html
+https://sourceware.org/gdb/onlinedocs/gdb/Python.html#Python
+https://interrupt.memfault.com/blog/automate-debugging-with-gdb-python-api
