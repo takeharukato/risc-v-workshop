@@ -14,15 +14,51 @@ si
 x /i $pc
 end
 
+# thread_show
+# すべてのスレッドを表示する
+# 使用例:
+# (gdb) thread_show
+define thread_show
+  rbtree_minmax &g_thrdb.head ent -1
+  set $show_tmp = $rbtree_minmax_retval
+  while $show_tmp != NULL
+    set $thread_id = ((struct _thread *)($show_tmp))->id
+    set $thread_addr = ((struct _thread *)($show_tmp))
+    set $thread_state = ((struct _thread *)($show_tmp))->state
+    set $thread_tinfo = ((struct _thread *)($show_tmp))->tinfo
+    set $thread_ksp = ((struct _thread *)($show_tmp))->ksp
+    set $thread_proc = ((struct _thread *)($show_tmp))->p
+    printf "Thread id=%u [%p] state=%u thread-info=%p ksp=%p proc=%p\n", $thread_id, $thread_addr, $thread_state, $thread_tinfo, $thread_ksp, $thread_proc
+    rbtree_next $show_tmp ent
+    set $show_tmp = $rbtree_next_retval
+  end
+end
+
 #
 #赤黒木操作
 #
+
+# rbtree_show ヘッド名 rbtreeのエントリ名
+# 赤黒木を表示する
+# 使用例:
+# (gdb) rbtree_show &g_thrdb.head ent
+define rbtree_show
+  rbtree_minmax $arg0 $arg1 -1
+  set $show_tmp = $rbtree_minmax_retval
+  while $show_tmp != NULL
+    p $show_tmp
+    rbtree_next $show_tmp $arg1
+    set $show_tmp = $rbtree_next_retval
+  end
+end
+
 # rbtree_left rbtreeの要素 rbtreeのエントリ名
 # rbtreeの左の要素を得る
 # $rbtree_left_retvalに対象の構造体へのアドレスが得られる
 define rbtree_rb_left
   set $rbtree_rb_left_retval = ($arg0)->$arg1.rbe_left
 end
+
 # rbtree_right rbtreeの要素 rbtreeのエントリ名
 # rbtreeの右の要素を得る
 # $rbtree_right_retvalに対象の構造体へのアドレスが得られる
@@ -101,24 +137,4 @@ define rbtree_next
     end
   end
   set $rbtree_next_retval = $tmp_rbtree_next
-end
-
-
-# rbtree_foreach ヘッド名 rbtreeのエントリ名
-# rbtreeの要素をリストアップする
-# rbtree_foreach
-# 使用例: rbtree_foreach  &g_thrdb.head ent
-# (gdb) rbtree_minmax &g_thrdb.head ent -1
-# (gdb) p $rbtree_minmax_retval
-# $1 = (struct _thread *) 0x7fffecf73cf8
-# (gdb) rbtree_next $rbtree_minmax_retval ent
-# (gdb) p $rbtree_next_retval
-# $2 = (struct _thread *) 0x7fffecf73ad0
-define rbtree_foreach
-  rbtree_minmax $arg0 $arg1 -1
-  set $var = $rbtree_minmax_retval
-  while ( $var != NULL )
-    rbtree_next $var $arg1
-    set $var = $rbtree_next_retval
-  end
 end
