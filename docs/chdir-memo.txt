@@ -1,0 +1,30 @@
+[1] I/Oコンテキストへカレントディレクトリ文字列の導入
+
+alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxp)
+vfs-fd.c:216:	ioctx->ioc_cwd = NULL;              /* カレントディレクトリを初期化           */
+カレントディレクトリ文字列をNULL初期化する
+
+free_ioctx(vfs_ioctx *ioctx)
+vfs-fd.c:255:	kassert( ioctx->ioc_cwd != NULL );
+カレントディレクトリ文字列を解放する
+vfs-fd.c:256:	vfs_vnode_ref_dec( ioctx->ioc_cwd );  /* カレントディレクトリへの参照を返却  */
+vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxp)
+親プロセスのI/Oコンテキストを引き渡した場合は, カレントディレクトリを引き継ぐので
+vfs-fd.c:628:		    ( parent_ioctx->ioc_cwd == NULL ) ) {
+以下の箇所でカレントディレクトリ文字列の複製を設定する
+複製に失敗したら, ルートディレクトリ/カレントディレクトリの参照を解放して,
+割り当てたI/Oコンテキストを解放する(I/Oコンテキストロック中なのでunlock_outに飛ぶ)
+vfs-fd.c:645:		 * @note 親プロセスのioctx->ioc_cwdが解放されないように
+vfs-fd.c:648:		ioctx->ioc_cwd= parent_ioctx->ioc_cwd;
+vfs-fd.c:649:		vfs_vnode_ref_inc(ioctx->ioc_cwd);
+以下の処理はI/Oコンテキストを引き継がない場合
+この場合は, システムルート"/"の複製を設定する
+システムルートの複製に失敗したらI/Oコンテキスト操作用に得たシステムルートディレクトリ
+v-nodeへの参照を解放して, 割り当てたI/Oコンテキストを解放する
+(I/Oコンテキストをロックしていないので, free_ioctx_outに飛ぶ)
+
+vfs-fd.c:690:		ioctx->ioc_cwd = root_vnode;
+vfs-fd.c:692:		vfs_vnode_ref_inc(ioctx->ioc_cwd);
+
+以下は修正不要
+vfs-path.c:61:		curr_v = ioctx->ioc_cwd;    /*  現在のディレクトリから検索を開始  */
