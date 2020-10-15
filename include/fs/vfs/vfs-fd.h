@@ -37,6 +37,8 @@ typedef struct _vfs_ioctx {
 	int                                           ioc_errno; /**< エラー番号           */
 	struct _vnode                                 *ioc_root; /**< ルートディレクトリ   */
 	struct _vnode                                  *ioc_cwd; /**< カレントディレクトリ */
+	/** カレントディレクトリ文字列 */
+	char                                        *ioc_cwdstr;
 	BITMAP_TYPE(, uint64_t, VFS_MAX_FD_TABLE_SIZE) ioc_bmap; /**< 割当てIDビットマップ */
 	/** テーブルエントリ数(単位:個)           */
 	size_t                                   ioc_table_size;
