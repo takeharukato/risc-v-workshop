@@ -71,6 +71,7 @@ end
 define rbtree_rb_parent
   set $rbtree_rb_parent_retval = ($arg0)->$arg1.rbe_parent
 end
+
 # rbtree_minmax ヘッド名 rbtreeのエントリ名 -1または1
 # rbtreeの最小ノード, 最大ノードを得る
 # 第3引数に-1を指定するとMIN, 1を指定するとMAXが得られる
@@ -114,6 +115,7 @@ define rbtree_next
     while $rbtree_rb_left_retval != NULL
       rbtree_rb_left $tmp_rbtree_next $arg1
       set $tmp_rbtree_next = $rbtree_rb_left_retval
+      rbtree_rb_left $tmp_rbtree_next $arg1
     end
   else
     rbtree_rb_parent $tmp_rbtree_next $arg1
@@ -131,6 +133,13 @@ define rbtree_next
       while ( ( $tmp_rbtree_next2 != NULL ) && ( $tmp_rbtree_next == $tmp_rbtree_next3 ) )
 	rbtree_rb_parent $tmp_rbtree_next $arg1
 	set $tmp_rbtree_next = $rbtree_rb_parent_retval
+
+        rbtree_rb_parent $tmp_rbtree_next $arg1
+        set $tmp_rbtree_next2 = $rbtree_rb_parent_retval
+	if $tmp_rbtree_next2 != NULL
+          rbtree_rb_right $tmp_rbtree_next2 $arg1
+          set $tmp_rbtree_next3 = $rbtree_rb_right_retval
+	end
       end
       rbtree_rb_parent $tmp_rbtree_next $arg1
       set $tmp_rbtree_next = $rbtree_rb_parent_retval
