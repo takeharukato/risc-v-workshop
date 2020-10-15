@@ -102,3 +102,18 @@ define rbtree_next
   end
   set $rbtree_next_retval = $tmp
 end
+
+# rbtree_foreach rbtreeの要素 rbtreeのエントリ名
+# rbtreeを順にたどる
+# rbtree_foreach &g_thrdb.head ent
+# 使用例:
+define rbtree_foreach
+  rbtree_minmax $arg0 $arg1 -1
+  set $cur_node = $rbtree_minmax_retval
+  while $cur_node != NULL
+    printf "now:%p\n", $cur_node
+    rbtree_next $cur_node $arg1
+    set $cur_node = $rbtree_next_retval
+    printf "next:%p\n", $cur_node
+  end
+end
