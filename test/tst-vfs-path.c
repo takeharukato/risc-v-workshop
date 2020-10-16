@@ -177,12 +177,90 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	/*
 	 * パス結合
 	 */
+	memset(path1, 0, VFS_PATH_MAX+1);
+	memset(path2, 0, VFS_PATH_MAX+1);
+	memset(path1, 'b', VFS_PATH_MAX-2);
 	rc = vfs_paths_cat(path1, path2, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
 
+	memset(path1, 0, VFS_PATH_MAX+1);
+	memset(path2, 0, VFS_PATH_MAX+1);
+	strcpy(path1, "/");
+	strcpy(path2, "usr");
+	rc = vfs_paths_cat(path1, path2, &path3);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc == 0 ) {
+
+		if ( strcmp("/usr",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		kfree(path3);
+	}
+
+	memset(path1, 0, VFS_PATH_MAX+1);
+	memset(path2, 0, VFS_PATH_MAX+1);
+	strcpy(path1, "/");
+	strcpy(path2, "/usr");
+	rc = vfs_paths_cat(path1, path2, &path3);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc == 0 ) {
+
+		if ( strcmp("/usr",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		kfree(path3);
+	}
+
+	memset(path1, 0, VFS_PATH_MAX+1);
+	memset(path2, 0, VFS_PATH_MAX+1);
+	strcpy(path1, "");
+	strcpy(path2, "usr");
+	rc = vfs_paths_cat(path1, path2, &path3);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc == 0 ) {
+
+		if ( strcmp("usr",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		kfree(path3);
+	}
+
+	memset(path1, 0, VFS_PATH_MAX+1);
+	memset(path2, 0, VFS_PATH_MAX+1);
+	strcpy(path1, "");
+	strcpy(path2, "usr/");
+	rc = vfs_paths_cat(path1, path2, &path3);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc == 0 ) {
+
+		if ( strcmp("usr/",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
+		kfree(path3);
+	}
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	strcpy(path1, "/usr/bin//");
@@ -192,8 +270,16 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	if ( rc == 0 )
+	if ( rc == 0 ) {
+
+		if ( strcmp("/usr/bin/home/user/",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
 		kfree(path3);
+	}
+
 	/*
 	 * 片側のパスがない
 	 */
@@ -205,8 +291,15 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	if ( rc == 0 )
+	if ( rc == 0 ) {
+
+		if ( strcmp("/home/user/",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
 		kfree(path3);
+	}
 
 	/*
 	 *  片側のパスがない
@@ -219,8 +312,15 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	if ( rc == 0 )
+	if ( rc == 0 ) {
+
+		if ( strcmp("/usr/bin",path3) == 0 )
+			ktest_pass( sp );
+		else
+			ktest_fail( sp );
+
 		kfree(path3);
+	}
 
 	/*
 	 *  両方のパスがない
@@ -232,8 +332,6 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-	if ( rc == 0 )
-		kfree(path3);
 
 	/*
 	 * PATH_MAX

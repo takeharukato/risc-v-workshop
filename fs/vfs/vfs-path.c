@@ -568,7 +568,7 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	if ( len1 > 0 ) {
 
 		ep = &path1_str[len1 - 1];
-		/* 先頭のパスデリミタは残して後続のパスデリミタを取り除く */
+		/* 先頭のパスデリミタは残して末尾のパスデリミタを取り除く */
 		while( ( len1 > 1 ) && ( *ep == VFS_PATH_DELIM ) ) {
 
 			*ep-- = '\0';
@@ -591,8 +591,10 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 
 	/*
 	 * 文字列間にパスデリミタを付与して結合する
+	 * path1が"/"の場合, または, path1またはpath2が空の場合は
+	 * ヌル文字だけを追加
 	 */
-	if ( ( ( len1 > 0 ) && ( path1_str[len1 - 1] == VFS_PATH_DELIM ) )
+	if ( ( ( len1 == 1 ) && ( path1_str[0] == VFS_PATH_DELIM ) )
 		|| ( ( len1 == 0 ) || ( len2 == 0 ) ) )
 		len = len1 + len2 + 1; /* 文字列長の合計にヌル文字分を追加 */
 	else
@@ -624,10 +626,10 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	}
 
 	/* パスをデリミタで接続 */
-	if ( ( len1 > 0 ) && ( path1_str[len1 - 1] == VFS_PATH_DELIM ) )
-		ksnprintf(conv, VFS_PATH_MAX, "%s%s", path1, sp);
+	if ( path1_str[len1 - 1] == VFS_PATH_DELIM ) /* 既にデリミタがついている場合 */
+		ksnprintf(conv, VFS_PATH_MAX, "%s%s", path1_str, sp);
 	else
-		ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
+		ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1_str, VFS_PATH_DELIM, sp);
 
 duplicate_conv:
 	kassert( convp != NULL );
