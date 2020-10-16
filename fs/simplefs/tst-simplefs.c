@@ -53,11 +53,13 @@ show_ls(vfs_ioctx *cur, char *dir){
 
 	/* カーネルファイルディスクリプタ獲得
 	 */
-	rc = vfs_fd_get(tst_ioctx.cur, dirfd, &f);
+	rc = vfs_fd_get(cur, dirfd, &f);
+	if ( rc != 0 )
+		goto close_dir_out;
 
 	/* ディレクトリエントリの表示
 	 */
-	rc = vfs_getdents(tst_ioctx.cur, f, &buf[0], 0, BUF_SIZE, &nread);
+	rc = vfs_getdents(cur, f, &buf[0], 0, BUF_SIZE, &nread);
 	kprintf("%8s %-10s %s %10s %s\n", "I-num", "type", "reclen", "off", "name");
 
 	for (bpos = 0, d = (vfs_dirent *) (buf + bpos);
@@ -79,10 +81,160 @@ show_ls(vfs_ioctx *cur, char *dir){
 
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
 
+close_dir_out:
 	/* ディレクトリのクローズ
 	 */
-	rc = vfs_closedir(tst_ioctx.cur, dirfd);
+	rc = vfs_closedir(cur, dirfd);
 	kassert( rc == 0 );
+}
+
+/**
+   I/Oコンテキストの複製, chrootのテスト
+   @param[in] sp  テスト統計情報
+   @param[in] arg 引数
+ */
+static void __unused
+simplefs7(struct _ktest_stats *sp, void __unused *arg){
+	int                         rc;
+	int                  parent_fd;
+	vfs_ioctx *chroot_ioctx = NULL;
+
+	/* テスト用ファイルを作成する */
+	rc = vfs_open(tst_ioctx.cur, "/file7", VFS_O_CREAT|VFS_O_EXCL|VFS_O_RDWR,
+	    S_IFREG|S_IRWXU|S_IRWXG|S_IRWXO, &parent_fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルのアンリンク
+	 */
+	rc = vfs_unlink(tst_ioctx.cur, "/file7");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ディレクトリ作成
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt3");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 単純なファイルシステムをマウントする */
+	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/mnt3", VFS_VSTAT_INVALID_DEVID,
+	    SIMPLEFS_FSNAME, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを作成する
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt3/pathtestdir1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを作成する2
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt3/pathtestdir1/pathtestdir2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+
+	kprintf("After setup for chroot test ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	kprintf("After setup for chroot test ls /mnt3\n");
+	show_ls(tst_ioctx.cur, "/mnt3");
+
+	kprintf("After setup for chroot test ls /mnt3/pathtestdir1\n");
+	show_ls(tst_ioctx.cur, "/mnt3/pathtestdir1");
+
+	/* I/Oコンテキストを引き継いで生成する
+	 */
+	rc = vfs_ioctx_alloc(tst_ioctx.cur, &chroot_ioctx);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("before chroot /mnt3 ls /\n");
+	show_ls(chroot_ioctx, "/");
+
+	/* /mnt3にルートディレクトリを変更する
+	 */
+	rc = vfs_chroot(chroot_ioctx, "/mnt3");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("after chroot /mnt3 ls /\n");
+	show_ls(chroot_ioctx, "/");
+
+	/* ..にカレントディレクトリを変更する
+	 */
+	rc = vfs_chdir(chroot_ioctx, "..");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("after chdir .. ls .\n");
+	show_ls(chroot_ioctx, ".");
+
+	/* I/Oコンテキスト解放 */
+	if ( chroot_ioctx != NULL )
+		vfs_ioctx_free(chroot_ioctx);
+
+	/* テスト用ディレクトリを削除する2
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt3/pathtestdir1/pathtestdir2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを削除する1
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt3/pathtestdir1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 単純なファイルシステムをアンマウントする */
+	rc = vfs_unmount(tst_ioctx.cur, "/mnt3");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを削除する
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt3");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルをクローズする (openでファイルを作成しているので) */
+	rc = vfs_close(tst_ioctx.cur, parent_fd);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* ファイルが消えていることの確認 */
+	kprintf("After rm /file7 ls / at the end of test7\n");
+	show_ls(tst_ioctx.cur, "/");
 }
 
 /**
@@ -1418,6 +1570,8 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 	simplefs5(sp, arg);
 
 	simplefs6(sp, arg);
+
+	simplefs7(sp, arg);
 
 	/* 子I/Oコンテキスト解放 */
 	vfs_ioctx_free(tst_ioctx.cur);
