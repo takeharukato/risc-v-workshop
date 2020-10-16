@@ -779,16 +779,19 @@ vfs_chdir(vfs_ioctx *ioctx, char *path){
 		}
 	} else {
 
-		/* 現在のカレントディレクトリと移動後のディレクトリのパスを結合
+		/* 相対パス指定の場合,
+		 * 現在のカレントディレクトリと移動後のディレクトリのパスを結合
 		 */
 		rc = vfs_paths_cat(ioctx->ioc_cwdstr, path, &dirname);
 		if ( rc != 0 )
-			goto error_out;  /* パス名が不正 */
+			goto error_out;  /* パス名の結合に失敗した */
 
+		/* 結合したパス名中の, "./", "../"を解決 */
 		rc = vfs_path_resolve_dotdirs(dirname, &tmpname);
 		if ( rc != 0 )
-			goto free_dirname_out; /* パス名の複製を解放してエラー復帰 */
-		kfree(dirname);  /* パス名の複製を解放 */
+			goto free_dirname_out; /* ./, ../の解決に失敗した */
+
+		kfree(dirname);     /* パス名の複製を解放                */
 		dirname = tmpname;  /* ./, ../を解決した文字列に置き換え */
 	}
 
