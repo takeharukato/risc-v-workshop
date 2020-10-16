@@ -57,5 +57,6 @@ int vfs_ioctx_alloc(struct _vfs_ioctx *_parent_ioctx, struct _vfs_ioctx **_ioctx
 void vfs_ioctx_free(struct _vfs_ioctx *_ioctx);
 
 int vfs_chdir(struct _vfs_ioctx *ioctx, char *_path);
+int vfs_chroot(struct _vfs_ioctx *ioctx, char *_path);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_FD_H  */
