@@ -86,6 +86,118 @@ show_ls(vfs_ioctx *cur, char *dir){
 }
 
 /**
+   パス解析のテスト
+   @param[in] sp  テスト統計情報
+   @param[in] arg 引数
+ */
+static void __unused
+simplefs6(struct _ktest_stats *sp, void __unused *arg){
+	int               rc;
+	vnode             *v;
+	char fname[BUF_SIZE];
+
+
+	/* ディレクトリ作成
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 単純なファイルシステムをマウントする */
+	rc = vfs_mount_with_fsname(tst_ioctx.cur, "/mnt2", VFS_VSTAT_INVALID_DEVID,
+	    SIMPLEFS_FSNAME, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを作成する
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt2/pathtestdir1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを作成する2
+	 */
+	rc = vfs_mkdir(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+
+	kprintf("After setup for dir parse test ls /\n");
+	show_ls(tst_ioctx.cur, "/");
+
+	kprintf("After setup for dir parse test ls /mnt2\n");
+	show_ls(tst_ioctx.cur, "/mnt2");
+
+	kprintf("After setup for dir parse test ls /mnt2/pathtestdir1\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1");
+
+	kprintf("ls /mnt2/pathtestdir1/pathtestdir2/..\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2/..");
+
+	kprintf("ls /mnt2/pathtestdir1/pathtestdir2/../..\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2/../..");
+
+	kprintf("ls /mnt2/pathtestdir1/pathtestdir2/../../..\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2/../../..");
+
+	kprintf("ls /mnt2/pathtestdir1/pathtestdir2/../../../\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2/../../../");
+
+	kprintf("ls /mnt2/pathtestdir1/pathtestdir2/../../../.\n");
+	show_ls(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2/../../../.");
+
+	/* '/' を含まないディレクトリパス解析 */
+	rc =  vfs_path_to_dir_vnode(tst_ioctx.cur, "mnt2", &v, fname, BUF_SIZE);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc == 0 )
+		vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+
+	/* テスト用ディレクトリを削除する2
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt2/pathtestdir1/pathtestdir2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを削除する1
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt2/pathtestdir1");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* 単純なファイルシステムをアンマウントする */
+	rc = vfs_unmount(tst_ioctx.cur, "/mnt2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* テスト用ディレクトリを削除する
+	 */
+	rc = vfs_rmdir(tst_ioctx.cur, "/mnt2");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+}
+
+/**
    lseekのテスト
    @param[in] sp  テスト統計情報
    @param[in] arg 引数
@@ -1304,6 +1416,8 @@ simplefs1(struct _ktest_stats *sp, void __unused *arg){
 	simplefs4(sp, arg);
 
 	simplefs5(sp, arg);
+
+	simplefs6(sp, arg);
 
 	/* 子I/Oコンテキスト解放 */
 	vfs_ioctx_free(tst_ioctx.cur);
