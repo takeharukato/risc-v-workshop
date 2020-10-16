@@ -317,6 +317,97 @@ dec_fd_ref(file_descriptor *f){
 	return res;
 }
 
+/**
+   変更先ディレクトリの文字列とv-nodeを取得する (内部関数)
+   @param[in]  ioctx I/Oコンテキスト
+   @param[in]  new_dir   変更先ディレクトリのファイルパス
+   @param[out] outp      変更先ディレクトリの絶対パスを指し示すポインタのアドレス
+   @param[out] vp        変更先ディレクトリのv-nodeを指し示すポインタのアドレス
+   @retval  0       正常終了
+   @retval -EINTR   非同期イベントを受信した
+   @retval -ENODEV  I/Oコンテキストが破棄された
+   @retval -ENOENT  指定されたディレクトリが見つからなかった
+   @retval -ENOTDIR 指定されたパスがディレクトリではなかった
+   @retval -ENOMEM メモリ不足
+   @retval -EIO    I/Oエラー
+ */
+static int
+change_directory_common(vfs_ioctx *ioctx, char *new_dir, char **outp, vnode **vp){
+	int                rc;
+	bool              res;
+	vnode              *v;
+	char         *dirname;
+	char         *tmpname;
+
+	kassert( new_dir != NULL );  /* パスがNULLでないことを確認 */
+
+	if ( new_dir[0] == VFS_PATH_DELIM ) {
+
+		/* 絶対パス指定("/"で始まるディレクトリ)の場合は、パス名の複製を得る
+		 */
+		dirname = strdup(new_dir);
+		if ( dirname == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto error_out;
+		}
+	} else {
+
+		/* 相対パス指定の場合,
+		 * 現在のカレントディレクトリと移動後のディレクトリのパスを結合
+		 */
+		rc = vfs_paths_cat(ioctx->ioc_cwdstr, new_dir, &dirname);
+		if ( rc != 0 )
+			goto error_out;  /* パス名の結合に失敗した */
+
+		/* 結合したパス名中の, "./", "../"を解決 */
+		rc = vfs_path_resolve_dotdirs(dirname, &tmpname);
+		if ( rc != 0 )
+			goto free_dirname_out; /* ./, ../の解決に失敗した */
+
+		kfree(dirname);     /* パス名の複製を解放                */
+		dirname = tmpname;  /* ./, ../を解決した文字列に置き換え */
+	}
+
+	/* パスのv-nodeを検索し参照を獲得する
+	 */
+	rc = vfs_path_to_vnode(ioctx, dirname, &v);
+	if ( rc != 0 )
+		goto free_dirname_out; /* パス名の複製を解放してエラー復帰 */
+
+	if ( !S_ISDIR(v->v_mode) ) {
+
+		rc = -ENOTDIR; /* ディレクトリでないv-nodeを指定した */
+		goto put_vnode_out; /* v-nodeの参照/パス名の複製を解放してエラー復帰 */
+	}
+
+	res = vfs_vnode_ref_inc(v); /* 獲得したv-nodeの参照を加算 */
+	kassert( res );  /* 最終参照者ではない */
+
+	if ( vp != NULL )
+		*vp = v;  /* v-nodeを返却 */
+	else
+		vfs_vnode_ptr_put(v);  /*  vnodeへの参照を解放  */
+
+	if ( outp != NULL )
+		*outp = dirname;   /* ディレクトリ名の複製を返却 */
+	else
+		kfree(dirname);  /* ディレクトリ名の複製を解放 */
+
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+	return 0;
+
+put_vnode_out:
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+free_dirname_out:
+	kfree(dirname);  /* ディレクトリ名の複製を解放 */
+
+error_out:
+	return rc;
+}
+
 /*
  * ファイルディスクリプタ操作 IF
  */
@@ -748,7 +839,7 @@ vfs_ioctx_free(vfs_ioctx *ioctx){
 /**
    カレントディレクトリを変更する
    @param[in] ioctx I/Oコンテキスト
-   @param[in] path  移動先ディレクトリのファイルパス
+   @param[in] path  変更先ディレクトリのファイルパス
    @retval  0       正常終了
    @retval -EINTR   非同期イベントを受信した
    @retval -ENODEV  I/Oコンテキストが破棄された
@@ -763,49 +854,11 @@ vfs_chdir(vfs_ioctx *ioctx, char *path){
 	bool              res;
 	vnode              *v;
 	char         *dirname;
-	char         *tmpname;
 
-	kassert( path != NULL );  /* パスがNULLでないことを確認 */
-
-	if ( path[0] == VFS_PATH_DELIM ) {
-
-		/* 絶対パス指定("/"で始まるディレクトリ)の場合は、パス名の複製を得る
-		 */
-		dirname = strdup(path);
-		if ( dirname == NULL ) {
-
-			rc = -ENOMEM;  /* メモリ不足 */
-			goto error_out;
-		}
-	} else {
-
-		/* 相対パス指定の場合,
-		 * 現在のカレントディレクトリと移動後のディレクトリのパスを結合
-		 */
-		rc = vfs_paths_cat(ioctx->ioc_cwdstr, path, &dirname);
-		if ( rc != 0 )
-			goto error_out;  /* パス名の結合に失敗した */
-
-		/* 結合したパス名中の, "./", "../"を解決 */
-		rc = vfs_path_resolve_dotdirs(dirname, &tmpname);
-		if ( rc != 0 )
-			goto free_dirname_out; /* ./, ../の解決に失敗した */
-
-		kfree(dirname);     /* パス名の複製を解放                */
-		dirname = tmpname;  /* ./, ../を解決した文字列に置き換え */
-	}
-
-	/* パスのv-nodeを検索し参照を獲得する
-	 */
-	rc = vfs_path_to_vnode(ioctx, dirname, &v);
+	/* 移動先のフルパス名とv-nodeへの参照を得る */
+	rc = change_directory_common(ioctx, path, &dirname, &v);
 	if ( rc != 0 )
-		goto free_dirname_out; /* パス名の複製を解放してエラー復帰 */
-
-	if ( !S_ISDIR(v->v_mode) ) {
-
-		rc = -ENOTDIR; /* ディレクトリでないv-nodeを指定した */
-		goto put_vnode_out; /* v-nodeの参照/パス名の複製を解放してエラー復帰 */
-	}
+		goto error_out; /* パス名の解決に失敗した */
 
 	rc = mutex_lock(&ioctx->ioc_mtx);  /* I/Oコンテキストをロック  */
 	if ( rc != 0 )
@@ -830,8 +883,55 @@ vfs_chdir(vfs_ioctx *ioctx, char *path){
 put_vnode_out:
 	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
-free_dirname_out:
 	kfree(dirname);  /* ディレクトリ名の複製を解放 */
+
+error_out:
+	return rc;
+}
+
+/**
+   ルートディレクトリを変更する
+   @param[in] ioctx I/Oコンテキスト
+   @param[in] path  変更先ディレクトリのファイルパス
+   @retval  0       正常終了
+   @retval -EINTR   非同期イベントを受信した
+   @retval -ENODEV  I/Oコンテキストが破棄された
+   @retval -ENOENT  指定されたディレクトリが見つからなかった
+   @retval -ENOTDIR 指定されたパスがディレクトリではなかった
+   @retval -ENOMEM メモリ不足
+   @retval -EIO    I/Oエラー
+ */
+int
+vfs_chroot(vfs_ioctx *ioctx, char *path){
+	int                rc;
+	bool              res;
+	vnode              *v;
+
+	/* 移動先のフルパス名とv-nodeへの参照を得る */
+	rc = change_directory_common(ioctx, path, NULL, &v);
+	if ( rc != 0 )
+		goto error_out; /* パス名の解決に失敗した */
+
+	rc = mutex_lock(&ioctx->ioc_mtx);  /* I/Oコンテキストをロック  */
+	if ( rc != 0 )
+		goto put_vnode_out; /* v-nodeの参照/パス名の複製を解放してエラー復帰 */
+
+	vfs_vnode_ref_dec(ioctx->ioc_root); /* ルートディレクトリのv-nodeの参照を減算 */
+
+	ioctx->ioc_root = v; /* ルートディレクトリのv-nodeを更新 */
+
+	res = vfs_vnode_ref_inc(ioctx->ioc_root); /* 獲得したv-nodeの参照を加算 */
+	kassert( res ); /* 参照加算に失敗しないことを確認 */
+
+	mutex_unlock(&ioctx->ioc_mtx);  /* I/Oコンテキストをアンロック  */
+
+	/* 正常復帰 */
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+	return 0;
+
+put_vnode_out:
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
 
 error_out:
 	return rc;
