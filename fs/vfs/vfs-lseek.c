@@ -44,23 +44,6 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 	kassert(fp->f_vn->v_mount->m_fs != NULL);
 	kassert( is_valid_fs_calls( fp->f_vn->v_mount->m_fs->c_calls ) );
 
-	/* ファイル末尾からのシークやホールへのシークのために,
-	 * ファイルサイズ情報を得る
-	 */
-	if ( ( whence == VFS_SEEK_WHENCE_END ) ||
-	     ( whence == VFS_SEEK_WHENCE_HOLE ) ) {
-
-		vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
-		/* ファイルサイズを取得する */
-		res = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
-
-		/* ファイルサイズが取れない場合は,
-		 * 現在のポジションを仮に設定する
-		 */
-		if ( res != 0 )
-			new_pos = fp->f_pos;
-	}
-
 	/*
 	 *  引数で指定されたファイルポジションをwhenceの指示に応じて補正し,
 	 *  更新後の論理ファイルポジション (ファイル種類に依存しない
@@ -68,6 +51,13 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 	 */
 	arg_pos = pos;  /* 引数で指定されたファイルポジションを格納 */
 	new_pos = fp->f_pos;  /* サイズ不明の場合は, 現在位置を指す */
+
+	/* ファイル末尾からのシークやホールへのシークのために,
+	 * ファイルサイズ情報を得る
+	 */
+	vfs_init_attr_helper(&st);  /* ファイル属性情報を初期化する */
+	/* ファイルサイズを取得する */
+	res = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
 
 	switch( whence ) {
 
@@ -112,7 +102,9 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 				arg_pos = -1 * st.st_size; /* ファイルサイズ分前に戻る */
 			} else
 				new_pos = st.st_size + arg_pos; /* 指定された位置に設定 */
-		}
+		} else
+			new_pos = fp->f_pos; /* ファイルサイズ不明時は, 現在の位置を設定 */
+
 		break;
 
 	case VFS_SEEK_WHENCE_DATA:
@@ -142,6 +134,8 @@ vfs_lseek(vfs_ioctx *ioctx, file_descriptor *fp, off_t pos, vfs_seek_whence when
 		 */
 		if ( res == 0 )
 			new_pos = st.st_size;
+		else
+			new_pos = fp->f_pos; /* ファイルサイズ不明時は, 現在の位置を設定 */
 		break;
 
 	default:

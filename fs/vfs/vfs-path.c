@@ -513,9 +513,9 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	/*
 	 *一つ目のパスの終端のパスデリミタを取り除く
 	 */
+	ep = &path1_str[len1 - 1];
 	if ( len1 > 0 ) {
 
-		ep = &path1_str[len1 - 1];
 		/* 先頭のパスデリミタは残して末尾のパスデリミタを取り除く */
 		while( ( len1 > 1 ) && ( *ep == VFS_PATH_DELIM ) ) {
 
@@ -527,9 +527,9 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	/*
 	 *二つ目のパスの先頭のパスデリミタを取り除く
 	 */
+	sp = path2_str;
 	if ( len2 > 0 ) {
 
-		sp = path2_str;
 		while( *sp == VFS_PATH_DELIM ) {
 
 			++sp;
