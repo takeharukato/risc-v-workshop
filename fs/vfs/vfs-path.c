@@ -526,6 +526,7 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	char    *dupconv;
 
 	len1 = len2 = 0;
+	path1_str = path2_str = NULL;
 
 	if ( path1 != NULL )
 		len1 = strlen(path1);
@@ -643,17 +644,25 @@ duplicate_conv:
 
 	*convp = dupconv;  /* 結果を返却 */
 
+	kfree(conv);        /* 変換用のバッファを解放     */
+
+	if ( path2_str != NULL )
+		kfree(path2_str);   /* 第2引数文字列の複製を解放 */
+
+	if ( path1_str != NULL )
+		kfree(path1_str);   /* 第1引数文字列の複製を解放 */
+
 	return 0;
 
 free_conv_out:
 	kfree(conv);        /* 変換用のバッファを解放     */
 
 free_path2_str_out:
-	if ( len2 > 0 )
+	if ( path2_str != NULL )
 		kfree(path2_str);   /* 第2引数文字列の複製を解放 */
 
 free_path1_str_out:
-	if ( len1 > 0 )
+	if ( path1_str != NULL )
 		kfree(path1_str);   /* 第1引数文字列の複製を解放 */
 
 error_out:
