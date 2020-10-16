@@ -20,7 +20,6 @@ int vfs_path_to_vnode(struct _vfs_ioctx *_ioctx, char *_path, struct _vnode **_o
 int vfs_path_to_dir_vnode(struct _vfs_ioctx *_ioctx, char *_path,
 			  struct _vnode **_outv, char *_filename, size_t _fnamelen);
 int vfs_path_resolve_dotdirs(char *_cur_abspath, char **_new_pathp);
-int vfs_new_path(const char *_path, char *_conv);
 int vfs_paths_cat(char *_a, char *_b, char **_resultp);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_PATH_H  */

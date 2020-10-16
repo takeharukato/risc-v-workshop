@@ -450,59 +450,6 @@ error_out:
 }
 
 /**
-   パスの終端が/だったら/.に変換して返却する
-   @param[in]  path 入力パス
-   @param[out] conv 変換後のパス
-   @retval  0             正常終了
-   @retval -ENOENT        パスが含まれていない
-   @retval -ENAMETOOLONG  パス名が長すぎる
- */
-int
-vfs_new_path(const char *path, char *conv){
-	size_t path_len;
-	size_t conv_len;
-	const char  *sp;
-
-	if ( path == NULL )
-		return -ENOENT;  /* パスが含まれていない */
-
-	path_len = strlen(path);
-	if ( path_len == 0 )
-		return -ENOENT;  /* パスが含まれていない */
-
-	if ( path_len >= VFS_PATH_MAX )
-		return -ENAMETOOLONG;  /* パス長が長すぎる */
-
-	sp = path;
-
-	/*
-	 * 先頭の連続した'/'を消去する
-	 */
-	while( *sp == VFS_PATH_DELIM )
-		++sp;
-	if ( *sp == '\0' )
-		return -ENOENT;  /* パスが含まれていない */
-
-	/*
-	 * 末尾の連続した'/'を消去する
-	 */
-	conv_len = strlen(sp);
-	while( ( conv_len > 0 ) && ( sp[conv_len - 1] == VFS_PATH_DELIM ) )
-		--conv_len;
-
-	if ( ( conv_len + 2 ) >= VFS_PATH_MAX )
-		return -ENAMETOOLONG;  /* パス長が長すぎる */
-
-	strncpy(conv, sp, conv_len);
-	conv_len += 2; /* "/."分を追加する */
-	conv[conv_len - 2]=VFS_PATH_DELIM;
-	conv[conv_len - 1]='.';
-	conv[conv_len]='\0';
-
-	return 0;
-}
-
-/**
    パスを結合する
    @param[in]  path1  入力パス1
    @param[in]  path2  入力パス2
