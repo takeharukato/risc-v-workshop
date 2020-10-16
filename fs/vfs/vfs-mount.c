@@ -1341,68 +1341,6 @@ error_out:
 }
 
 /**
-   mntid, vnidをキーとしてv-nodeを検索し, 参照を解放する
-   @param[in] mntid マウントポイントID
-   @param[in] vnid  v-node ID
-   @retval  0       正常終了
-   @retval -EINVAL  不正なマウントポイントIDを指定した
-   @retval -ENOMEM  メモリ不足
-   @retval -ENOENT  ディスクI-node読み取りに失敗した
-   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
-   @retval -EBUSY   アンマウント中のボリュームだった
-   @retval -EAGAIN  最終参照者ではなかった
- */
-int
-vfs_vnode_put(vfs_mnt_id mntid, vfs_vnode_id vnid){
-	int             rc;
-	bool           res;
-	fs_mount      *mnt;
-	vnode           *v;
-
-	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
-	if ( rc != 0 ) {
-
-		rc = -EINVAL;  /* 不正なマウントポイントIDを指定した */
-		goto error_out;
-	}
-
-	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
-	if ( rc != 0 )
-		goto put_mount_out;
-
-	/*
-	 * 見つかったv-nodeの参照を解放する
-	 */
-	res = vfs_vnode_ref_inc(v);  /* 参照解放処理用に参照を獲得する */
-	if ( !res ) {
-
-		rc = 0; /* すでに削除中のv-nodeだった */
-		goto put_mount_out;
-	}
-
-	/* マウント情報からの参照を解放してv-nodeを参照するスレッドがいなくなった時点で
-	 * マウント情報内のv-nodeキャッシュから外せるようにする
-	 */
-	res = vfs_vnode_ref_dec(v);
-	kassert( !res );      /* 最終参照ではないはず  */
-
-	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
-
-	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
-
-	if ( res )
-		return 0;  /* 最終参照者だった       */
-
-	return -EAGAIN;    /* 最終参照者ではなかった */
-
-put_mount_out:
-	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
-
-error_out:
-	return rc;
-}
-
-/**
    v-nodeキャッシュからv-nodeを除去する
    @param[in] v     操作対象のv-node
    @retval  0       正常終了
@@ -1451,51 +1389,6 @@ vfs_vnode_ptr_put(vnode *v){
 
 put_mount_out:
 	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
-	return rc;
-}
-
-/**
-   mntid, vnidをキーとしてv-nodeを検索し削除フラグをセットする
-   @param[in] mntid マウントポイントID
-   @param[in] vnid  v-node ID
-   @retval  0       正常終了
-   @retval -EAGAIN  最終参照者ではなかった
-   @retval -EINVAL  不正なマウントポイントIDを指定した
-   @retval -ENOMEM  メモリ不足
-   @retval -ENOENT  ディスクI-node読み取りに失敗した
-   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
-   @retval -EBUSY   アンマウント中のボリュームだった
- */
-int
-vfs_vnode_remove(vfs_mnt_id mntid, vfs_vnode_id vnid){
-	int             rc;
-	bool           res;
-	fs_mount      *mnt;
-	vnode           *v;
-
-	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
-	if ( rc != 0 ) {
-
-		rc = -EINVAL;
-		goto error_out;
-	}
-
-	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
-	if ( rc != 0 )
-		goto put_mount_out;
-
-	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
-
-	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
-	if ( res )
-		return 0;  /* 最終参照者だった       */
-
-	return -EAGAIN;    /* 最終参照者ではなかった */
-
-put_mount_out:
-	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
-
-error_out:
 	return rc;
 }
 
