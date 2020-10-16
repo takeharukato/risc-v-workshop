@@ -214,6 +214,7 @@ alloc_new_ioctx(size_t table_size, vfs_ioctx **ioctxp) {
 	bitops_zero(&ioctx->ioc_bmap);      /* FD割り当てビットマップを初期化       */
 	ioctx->ioc_root = NULL;             /* ルートディレクトリを初期化             */
 	ioctx->ioc_cwd = NULL;              /* カレントディレクトリを初期化           */
+	ioctx->ioc_cwdstr = NULL;           /* カレントディレクトリ文字列を初期化     */
 
 	/*
 	 * I/Oコンテキストのファイルディスクリプタ配列を初期化する
@@ -249,11 +250,14 @@ free_ioctx(vfs_ioctx *ioctx) {
 
 	mutex_lock(&ioctx->ioc_mtx);  /* I/Oコンテキストをロック  */
 
-	kassert( ioctx->ioc_root != NULL );
-	vfs_vnode_ref_dec( ioctx->ioc_root );  /* ルートディレクトリの参照を返却  */
+	if ( ioctx->ioc_root != NULL )
+		vfs_vnode_ref_dec( ioctx->ioc_root );  /* ルートディレクトリの参照を返却  */
 
-	kassert( ioctx->ioc_cwd != NULL );
-	vfs_vnode_ref_dec( ioctx->ioc_cwd );  /* カレントディレクトリへの参照を返却  */
+	if ( ioctx->ioc_cwd != NULL )
+		vfs_vnode_ref_dec( ioctx->ioc_cwd ); /* カレントディレクトリへの参照を返却 */
+
+	if ( ioctx->ioc_cwdstr != NULL )
+		kfree( ioctx->ioc_cwdstr );  /* カレントディレクトリ文字列の解放  */
 
 	/*
 	 * ファイルディスクリプタへの参照を返却
@@ -647,6 +651,12 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxp){
 		 */
 		ioctx->ioc_cwd= parent_ioctx->ioc_cwd;
 		vfs_vnode_ref_inc(ioctx->ioc_cwd);
+		ioctx->ioc_cwdstr = strdup(parent_ioctx->ioc_cwdstr);
+		if ( ioctx->ioc_cwdstr == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto unlock_out;
+		}
 
 		/* I/Oコンテキスト中のclose-on-exec フラグがセットされていない
 		 * ファイルディスクリプタをコピーする
@@ -656,7 +666,7 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxp){
 			if ( (parent_ioctx->ioc_fds[i] != NULL ) &&
 			    ( !( parent_ioctx->ioc_fds[i]->f_flags & VFS_FDFLAGS_CLOEXEC ) ) ) {
 
-				ioctx->ioc_fds[i]= parent_ioctx->ioc_fds[i];
+				ioctx->ioc_fds[i] = parent_ioctx->ioc_fds[i];
 
 				/*
 				 * ファイルディスクリプタの参照カウンタを上げる
@@ -669,12 +679,22 @@ vfs_ioctx_alloc(vfs_ioctx *parent_ioctx, vfs_ioctx **ioctxp){
 		mutex_unlock(&parent_ioctx->ioc_mtx);
 	} else {
 
+		/* システムルートパス("/")の複製を得る */
+		ioctx->ioc_cwdstr = strdup(VFS_PATH_SYSTEM_ROOT);
+		if ( ioctx->ioc_cwdstr == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto free_ioctx_out;
+		}
+
 		/*
 		 * システムルートディレクトリv-nodeへの参照を得る
 		 */
 		rc = vfs_fs_mount_system_root_vnode_get(&root_vnode);
 		if ( rc != 0 ) {
 
+			kfree(ioctx->ioc_cwdstr);    /* パス名の複製を解放する */
+			ioctx->ioc_cwdstr = NULL;
 			rc = -ENODEV;  /* ルートディレクトリがマウントされていない */
 			goto free_ioctx_out;
 		}

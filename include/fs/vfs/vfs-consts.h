@@ -17,8 +17,11 @@
 /**  最大ファイルディスクリプタテーブルエントリ数  */
 #define VFS_MAX_FD_TABLE_SIZE   UINT64_C(2048)
 #define VFS_PATH_MAX            UINT64_C(1024)  /**< パス長 */
-#define VFS_PATH_DELIM          '/'                /**< パスデリミタ */
 
+/* ファイルパス
+ */
+#define VFS_PATH_DELIM          '/'                /**< パスデリミタ */
+#define VFS_PATH_SYSTEM_ROOT    "/"                /**< システムルートパス */
 
 /**  デフォルトファイルディスクリプタテーブルエントリ数 */
 #define VFS_DEFAULT_FD_TABLE_SIZE UINT64_C(128)
