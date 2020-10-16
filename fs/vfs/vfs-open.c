@@ -38,7 +38,6 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 	int                    fd;
 	vnode                  *v;
 	vfs_open_flags dir_oflags;
-	vfs_file_stat          st;
 
 	/*
 	 * 指定されたファイルパスのvnodeの参照を取得
@@ -50,11 +49,7 @@ vfs_opendir(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, int *fdp) {
 		goto out;
 	}
 
-	/* ディレクトリであることを確認
-	 */
-	vfs_init_attr_helper(&st);
-	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
-	if ( !S_ISDIR(st.st_mode) ) {
+	if ( !S_ISDIR(v->v_mode) ) {
 
 		rc = -ENOTDIR;  /* ディレクトリではないファイルを開こうとした */
 		goto unref_vnode_out;
@@ -150,6 +145,7 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 
 				goto error_out;  /* ファイル生成に失敗した */
 			}
+
 			/* 作成したファイルに対するvnodeの参照を取得
 			 */
 			rc = vfs_path_to_vnode(ioctx, path, &v);
@@ -158,14 +154,7 @@ vfs_open(vfs_ioctx *ioctx, char *path, vfs_open_flags oflags, vfs_fs_mode omode,
 		}
 	}
 
-	/* ディレクトリでないことを確認
-	 */
-	vfs_init_attr_helper(&st);
-	rc = vfs_getattr(v, VFS_VSTAT_MASK_GETATTR, &st);
-	if ( rc != 0 )
-		goto unref_vnode_out;  /* ファイル属性獲得失敗 */
-
-	if ( S_ISDIR(st.st_mode) ) {
+	if ( S_ISDIR(v->v_mode) ) {
 
 		rc = -EISDIR;  /* ディレクトリを開こうとした */
 		goto unref_vnode_out;

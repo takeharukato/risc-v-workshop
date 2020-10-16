@@ -29,7 +29,6 @@ int
 vfs_unlink(vfs_ioctx *ioctx, char *path){
 	int                   rc;
 	vnode            *file_v;
-	vfs_file_stat         st;
 	vnode             *dir_v;
 	char           *filename;
 	size_t          name_len;
@@ -40,14 +39,7 @@ vfs_unlink(vfs_ioctx *ioctx, char *path){
 	if ( rc != 0 )
 		goto error_out;
 
-	/*  操作対象ファイルの属性情報を得る
-	 */
-	vfs_init_attr_helper(&st);  /* 属性情報初期化 */
-	rc = vfs_getattr(file_v, VFS_VSTAT_MASK_MODE_FMT, &st);  /* ファイル属性取得 */
-	if ( rc != 0 )
-		goto filev_put_out;
-
-	if ( S_ISDIR(st.st_mode) ) {
+	if ( S_ISDIR(file_v->v_mode) ) {
 
 		rc = -EISDIR;  /* ディレクトリを削除しようとした */
 		goto filev_put_out;

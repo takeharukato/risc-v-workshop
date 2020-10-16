@@ -32,23 +32,13 @@ vfs_rmdir(vfs_ioctx *ioctx, char *path){
 	vnode          *dir_v;
 	char        *filename;
 	size_t       name_len;
-	vfs_file_stat      st;
 
 	/* 削除対象ディレクトリのv-nodeを取得 */
 	rc = vfs_path_to_vnode(ioctx, path, &rmdir_v);
 	if ( rc != 0 )
 		goto error_out;  /* ディレクトリが見つからなかった */
 
-	/* ファイル種別を確認
-	 */
-	rc = vfs_getattr(rmdir_v, VFS_VSTAT_MASK_MODE_FMT, &st);
-	if ( rc != 0 ) {
-
-		rc = -ENOENT;   /* 対象ディレクトリの属性情報が獲得できなかった */
-		goto put_target_dir_vnode;
-	}
-
-	if ( !S_ISDIR(st.st_mode) ) {
+	if ( !S_ISDIR(rmdir_v->v_mode) ) {
 
 		rc = -ENOTDIR;  /*  ディレクトリ以外を削除しようとした */
 		goto put_target_dir_vnode;
