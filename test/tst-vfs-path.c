@@ -177,7 +177,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	/*
 	 * パス結合
 	 */
-	rc = vfs_cat_paths(path1, path2, NULL);
+	rc = vfs_paths_cat(path1, path2, NULL);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -187,7 +187,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path2, 0, VFS_PATH_MAX+1);
 	strcpy(path1, "/usr/bin//");
 	strcpy(path2, "/home/user/");
-	rc = vfs_cat_paths(path1, path2, &path3);
+	rc = vfs_paths_cat(path1, path2, &path3);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -200,7 +200,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	strcpy(path2, "/home/user/");
-	rc = vfs_cat_paths(NULL, path2, &path3);
+	rc = vfs_paths_cat(NULL, path2, &path3);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -214,7 +214,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	strcpy(path1, "/usr/bin//");
-	rc = vfs_cat_paths(path1, NULL, &path3);
+	rc = vfs_paths_cat(path1, NULL, &path3);
 	if ( rc == 0 )
 		ktest_pass( sp );
 	else
@@ -227,7 +227,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	 */
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
-	rc = vfs_cat_paths(NULL, NULL, &path3);
+	rc = vfs_paths_cat(NULL, NULL, &path3);
 	if ( rc == -ENOENT )
 		ktest_pass( sp );
 	else
@@ -242,7 +242,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path2, 0, VFS_PATH_MAX+1);
 	memset(path1, 'a', VFS_PATH_MAX);
 	memset(path2, 'b', VFS_PATH_MAX);
-	rc = vfs_cat_paths(path1, path2, &path3);
+	rc = vfs_paths_cat(path1, path2, &path3);
 	if ( rc == -ENAMETOOLONG )
 		ktest_pass( sp );
 	else
@@ -253,7 +253,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	memset(path1, 'a', VFS_PATH_MAX);
-	rc = vfs_cat_paths(path1, path2, &path3);
+	rc = vfs_paths_cat(path1, path2, &path3);
 	if ( rc == -ENAMETOOLONG )
 		ktest_pass( sp );
 	else
@@ -264,7 +264,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path1, 0, VFS_PATH_MAX+1);
 	memset(path2, 0, VFS_PATH_MAX+1);
 	memset(path2, 'b', VFS_PATH_MAX);
-	rc = vfs_cat_paths(path1, path2, &path3);
+	rc = vfs_paths_cat(path1, path2, &path3);
 	if ( rc == -ENAMETOOLONG )
 		ktest_pass( sp );
 	else
@@ -276,7 +276,7 @@ vfs_path1(struct _ktest_stats *sp, void __unused *arg){
 	memset(path2, 0, VFS_PATH_MAX+1);
 	memset(path1, 'a', VFS_PATH_MAX/2-1);
 	memset(path2, 'b', VFS_PATH_MAX/2-1);
-	rc = vfs_cat_paths(path1, path2, &path3);
+	rc = vfs_paths_cat(path1, path2, &path3);
 	if ( rc == -ENAMETOOLONG )
 		ktest_pass( sp );
 	else

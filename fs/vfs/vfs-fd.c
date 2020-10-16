@@ -746,6 +746,91 @@ vfs_ioctx_free(vfs_ioctx *ioctx){
 }
 
 /**
+   カレントディレクトリを変更する
+   @param[in] ioctx I/Oコンテキスト
+   @param[in] path  移動先ディレクトリのファイルパス
+   @retval  0       正常終了
+   @retval -EINTR   非同期イベントを受信した
+   @retval -ENODEV  I/Oコンテキストが破棄された
+   @retval -ENOENT  指定されたディレクトリが見つからなかった
+   @retval -ENOTDIR 指定されたパスがディレクトリではなかった
+   @retval -ENOMEM メモリ不足
+   @retval -EIO    I/Oエラー
+ */
+int
+vfs_chdir(vfs_ioctx *ioctx, char *path){
+	int                rc;
+	bool              res;
+	vnode              *v;
+	char         *dirname;
+
+	kassert( path != NULL );  /* パスがNULLでないことを確認 */
+
+	if ( path[0] == VFS_PATH_DELIM ) {
+
+		/* 絶対パス指定("/"で始まるディレクトリ)の場合は、パス名の複製を得る
+		 */
+		dirname = strdup(path);
+		if ( dirname == NULL ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto error_out;
+		}
+	} else {
+
+		/* 現在のカレントディレクトリと移動後のディレクトリのパスを結合
+		 */
+		rc = vfs_paths_cat(ioctx->ioc_cwdstr, path, &dirname);
+		if ( rc != 0 ) {
+
+			rc = -ENOMEM;  /* メモリ不足 */
+			goto error_out;
+		}
+	}
+
+	/* パスのv-nodeを検索し参照を獲得する
+	 */
+	rc = vfs_path_to_vnode(ioctx, dirname, &v);
+	if ( rc != 0 )
+		goto free_dirname_out; /* パス名の複製を解放してエラー復帰 */
+
+	if ( !S_ISDIR(v->v_mode) ) {
+
+		rc = -ENOTDIR; /* ディレクトリでないv-nodeを指定した */
+		goto put_vnode_out; /* v-nodeの参照/パス名の複製を解放してエラー復帰 */
+	}
+
+	rc = mutex_lock(&ioctx->ioc_mtx);  /* I/Oコンテキストをロック  */
+	if ( rc != 0 )
+		goto put_vnode_out; /* v-nodeの参照/パス名の複製を解放してエラー復帰 */
+
+	vfs_vnode_ref_dec(ioctx->ioc_cwd); /* 現在のカレントディレクトリのv-nodeの参照を減算 */
+	kfree(ioctx->ioc_cwdstr); /* 現在のカレントディレクトリの文字列を解放 */
+
+	ioctx->ioc_cwd = v; /* カレントディレクトリのv-nodeを更新 */
+	ioctx->ioc_cwdstr = dirname;  /* カレントディレクトリの文字列を更新 */
+
+	res = vfs_vnode_ref_inc(ioctx->ioc_cwd); /* 獲得したv-nodeの参照を加算 */
+	kassert( res ); /* 参照加算に失敗しないことを確認 */
+
+	mutex_unlock(&ioctx->ioc_mtx);  /* I/Oコンテキストをアンロック  */
+
+	/* 正常復帰 */
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+	return 0;
+
+put_vnode_out:
+	vfs_vnode_ptr_put(v);  /*  パス検索時に取得したvnodeへの参照を解放  */
+
+free_dirname_out:
+	kfree(dirname);  /* ディレクトリ名の複製を解放 */
+
+error_out:
+	return rc;
+}
+
+/**
    I/Oコンテキストの初期化
  */
 void

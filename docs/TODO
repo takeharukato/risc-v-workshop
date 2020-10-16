@@ -1,3 +1,4 @@
+* ディレクトリかどうかの判定はvnode->v_modeを使用して実施
 * vfsにchdir/get_cwd/chrootを追加。
 
 * v-nodeロックをシステムコール実処理部に移動

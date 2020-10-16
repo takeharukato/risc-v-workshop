@@ -510,7 +510,7 @@ vfs_new_path(const char *path, char *conv){
    @retval -ENAMETOOLONG  パス名が長すぎる
  */
 int
-vfs_cat_paths(char *path1, char *path2, char **convp){
+vfs_paths_cat(char *path1, char *path2, char **convp){
 	int           rc;
 	size_t      len1;
 	size_t      len2;
