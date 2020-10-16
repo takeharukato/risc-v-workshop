@@ -392,10 +392,13 @@ vfs_path_resolve_dotdirs(char *cur_abspath, char **new_pathp){
 		 */
 		if ( ( *( outp - 1 ) == VFS_PATH_DELIM )
 		    && ( inch == '.' ) && ( *inp == '.' )
-		    && ( *(inp + 1) == VFS_PATH_DELIM ) ) {
+		     && ( ( *(inp + 1) == VFS_PATH_DELIM ) ||
+			  ( *(inp + 1) == '\0' ) ) ) {
 
-			inp += 2;  /* "../"の"./"を読み飛ばす */
-
+			if ( *(inp + 1) == VFS_PATH_DELIM )
+				inp += 2;  /* "../"の"./"を読み飛ばす */
+			else
+				inp += 1;  /* ".."の2文字目の"."を読み飛ばす */
 			/* ルートディレクトリを指していなければ
 			 * 出力先を一つ上のディレクトリ位置まで戻す
 			 */
@@ -565,7 +568,8 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	if ( len1 > 0 ) {
 
 		ep = &path1_str[len1 - 1];
-		while( *ep == VFS_PATH_DELIM ) {
+		/* 先頭のパスデリミタは残して後続のパスデリミタを取り除く */
+		while( ( len1 > 1 ) && ( *ep == VFS_PATH_DELIM ) ) {
 
 			*ep-- = '\0';
 			--len1;
@@ -588,7 +592,8 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	/*
 	 * 文字列間にパスデリミタを付与して結合する
 	 */
-	if ( ( len1 == 0 ) || ( len2 == 0 ) )
+	if ( ( ( len1 > 0 ) && ( path1_str[len1 - 1] == VFS_PATH_DELIM ) )
+		|| ( ( len1 == 0 ) || ( len2 == 0 ) ) )
 		len = len1 + len2 + 1; /* 文字列長の合計にヌル文字分を追加 */
 	else
 		len = len1 + len2 + 2; /* 文字列長の合計にヌル文字とパスデリミタ分を追加 */
@@ -619,7 +624,10 @@ vfs_paths_cat(char *path1, char *path2, char **convp){
 	}
 
 	/* パスをデリミタで接続 */
-	ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
+	if ( ( len1 > 0 ) && ( path1_str[len1 - 1] == VFS_PATH_DELIM ) )
+		ksnprintf(conv, VFS_PATH_MAX, "%s%s", path1, sp);
+	else
+		ksnprintf(conv, VFS_PATH_MAX, "%s%c%s", path1, VFS_PATH_DELIM, sp);
 
 duplicate_conv:
 	kassert( convp != NULL );

@@ -763,6 +763,7 @@ vfs_chdir(vfs_ioctx *ioctx, char *path){
 	bool              res;
 	vnode              *v;
 	char         *dirname;
+	char         *tmpname;
 
 	kassert( path != NULL );  /* パスがNULLでないことを確認 */
 
@@ -781,11 +782,14 @@ vfs_chdir(vfs_ioctx *ioctx, char *path){
 		/* 現在のカレントディレクトリと移動後のディレクトリのパスを結合
 		 */
 		rc = vfs_paths_cat(ioctx->ioc_cwdstr, path, &dirname);
-		if ( rc != 0 ) {
+		if ( rc != 0 )
+			goto error_out;  /* パス名が不正 */
 
-			rc = -ENOMEM;  /* メモリ不足 */
-			goto error_out;
-		}
+		rc = vfs_path_resolve_dotdirs(dirname, &tmpname);
+		if ( rc != 0 )
+			goto free_dirname_out; /* パス名の複製を解放してエラー復帰 */
+		kfree(dirname);  /* パス名の複製を解放 */
+		dirname = tmpname;  /* ./, ../を解決した文字列に置き換え */
 	}
 
 	/* パスのv-nodeを検索し参照を獲得する

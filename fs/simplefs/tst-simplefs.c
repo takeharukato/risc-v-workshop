@@ -1033,6 +1033,36 @@ simplefs2(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("ls .\n");
+	show_ls(tst_ioctx.cur, ".");
+
+	/* ディレクトリ移動
+	 */
+	rc = vfs_chdir(tst_ioctx.cur, "tmp");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("After cd tmp cwd:%s\n", tst_ioctx.cur->ioc_cwdstr);
+
+	/* ディレクトリエントリ情報取得
+	 */
+	kprintf("search relative path ls .\n");
+	show_ls(tst_ioctx.cur, ".");
+
+	/* ディレクトリ移動
+	 */
+	rc = vfs_chdir(tst_ioctx.cur, "..");
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	kprintf("after cd .. cwd:%s\n", tst_ioctx.cur->ioc_cwdstr);
+
 	/* ディレクトリ間での名前の変更
 	 */
 	rc = vfs_rename(tst_ioctx.cur, "/file2", "/tmp/file2");
