@@ -314,12 +314,21 @@ rv64_sbi_init(void){
 	cpu_id            cpu;
 	uint64_t        state;
 
+	/* 初期値を設定
+	 */
+	implid = 0;
+	state = 0;
+
+	/* Supervisor Binary Interfaceの仕様版数獲得
+	 */
 	rv = rv64_sbi_get_spec_version(&major, &minor);
 	if ( rv.error == RV64_SBI_SUCCESS )
 		kprintf("SBI spec version: %u.%u\n", major, minor);
 	else
 		kprintf("SBI spec version: unknown. rc=%d\n", rv.error);
 
+	/* Supervisor Binary Interfaceの実装ID獲得
+	 */
 	rv = rv64_sbi_get_impl_id(&implid);
 	if ( ( rv.error == RV64_SBI_SUCCESS ) && ( RV64_SBI_IMPLTBL_LEN > implid ) )
 		kprintf("SBI implementation: %s (id=%d)\n",
@@ -328,50 +337,79 @@ rv64_sbi_init(void){
 		kprintf("SBI implementation: unknown (rc=%d, id=%d)\n",
 		    rv.error, implid);
 
+	/* Supervisor Binary Interfaceの実装版数獲得
+	 */
 	rv = rv64_sbi_get_impl_version(&major, &minor);
 	if ( rv.error == RV64_SBI_SUCCESS )
 		kprintf("SBI implementation version: %u.%u\n", major, minor);
 	else
 		kprintf("SBI implementation version: unknown\n");
 
+	/*
+	 * Supervisor Binary Interfaceのサポート機能を調査
+	 */
+
+	/* Supervisor Binary Interfaceのタイマ機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_SET_TIMER);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_set_timer() (rc=%d).\n");
 
+	/* Supervisor Binary Interfaceのデバッグコンソール出力機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_CONSOLE_PUTCHAR);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_console_putchar() (rc=%d).\n");
 
+	/* Supervisor Binary Interfaceのデバッグコンソール入力機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_CONSOLE_GETCHAR);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_console_getchar() (rc=%d).\n",
 		    rv.error);
 
+	/* Supervisor Binary InterfaceのInter Processor Interrupt (IPI) クリア機能
+	 * サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_CLEAR_IPI);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_clear_ipi() (rc=%d).\n",
 		    rv.error);
 
+	/* Supervisor Binary InterfaceのInter Processor Interrupt (IPI)送信機能
+	 * サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_SEND_IPI);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_send_ipi() (rc=%d).\n",
 		    rv.error);
 
+	/* Supervisor Binary Interfaceの他プロセッサ命令キャッシュフラッシュ機能
+	 * サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_FENCE_I);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_fence_i() (rc=%d).\n",
 		    rv.error);
 
+	/* Supervisor Binary Interfaceの他プロセッサTranslation Look-aside Buffer (TLB)
+	 * フラッシュ機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_SFENCE_VMA);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_sfence_vma() (rc=%d).\n",
 		    rv.error);
 
+	/* Supervisor Binary Interfaceの他プロセッサアドレス空間ID(ASID)付き
+	 * Translation Look-aside Buffer (TLB) フラッシュ機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_REMOTE_SFENCE_VMA_ASID);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_remote_sfence_vma_asid()"
 		    " (rc=%d).\n", rv.error);
 
+	/* Supervisor Binary Interfaceのシャットダウン機能サポート有無を確認
+	 */
 	rv = rv64_sbi_probe_extension(RV64_SBI_SHUTDOWN);
 	if ( rv.error != RV64_SBI_SUCCESS )
 		kprintf(KERN_PNC "SBI doesn't implement sbi_shutdown()"
