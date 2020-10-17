@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/spinlock.h>
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 #include <kern/vfs-if.h>
 
 #include <fs/minixfs/minixfs.h>
@@ -378,4 +378,3 @@ minix_getdents(minix_super_block *sbp, minix_inode *dirip, void *buf,
 
 	return 0;
 }
-

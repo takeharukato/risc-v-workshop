@@ -26,7 +26,7 @@
 #include <kern/kern-types.h>
 #include <kern/page-macros.h>
 
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 
 #include <fs/minixfs/minixfs.h>
 

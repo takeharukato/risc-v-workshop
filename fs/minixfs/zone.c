@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/spinlock.h>
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 
 #include <fs/minixfs/minixfs.h>
 

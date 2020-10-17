@@ -6,8 +6,8 @@
 /*  Page Cache definition                                             */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_DEV_PCACHE_H)
-#define  _KERN_DEV_PCACHE_H
+#if !defined(_KERN_DEV_OLD_PCACHE_H)
+#define  _KERN_DEV_OLD_PCACHE_H
 
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
@@ -116,4 +116,4 @@ int pagecache_read(dev_id dev, off_t offset, struct _page_cache **pcp);
 void pagecache_write(struct _page_cache *_pc);
 void pagecache_shrink_pages(obj_cnt_type _max, bool wbonly, obj_cnt_type *_free_nrp);
 void pagecache_init(void);
-#endif  /*  _KERN_DEV_PCACHE_H  */
+#endif  /*  _KERN_DEV_OLD_PCACHE_H  */

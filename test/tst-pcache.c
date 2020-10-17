@@ -11,7 +11,7 @@
 #include <kern/kern-common.h>
 #include <kern/page-if.h>
 #include <kern/fs-fsimg.h>
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 
 #include <kern/ktest.h>
 
@@ -75,4 +75,3 @@ tst_pcache(void){
 	ktest_def_test(&tstat_pcache, "pcache1", pcache1, NULL);
 	ktest_run(&tstat_pcache);
 }
-

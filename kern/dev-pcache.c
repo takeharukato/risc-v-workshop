@@ -14,7 +14,7 @@
 #include <kern/wqueue.h>
 #include <kern/mutex.h>
 #include <kern/page-if.h>
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 #include <kern/fs-fsimg.h>
 
 static kmem_cache pcache_cache;  /* ページキャッシュのSLABキャッシュ */

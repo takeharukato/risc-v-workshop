@@ -30,7 +30,7 @@
 
 #include <minixfs-tools.h>
 
-#include <kern/dev-pcache.h>
+#include <kern/dev-old-pcache.h>
 
 #include <utils.h>
 
@@ -207,4 +207,3 @@ fsimg_create(char *filename, int version, int nr_inodes, size_t imgsiz, fs_image
 
 	return 0;
 }
-
