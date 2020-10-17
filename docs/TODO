@@ -1,13 +1,12 @@
-* vfsにchdir/get_cwd/chrootを追加。
-
 * v-nodeロックをシステムコール実処理部に移動
+* getcwdシステムコールを追加
 
 * mutex_lockでエラーチェックをしていないものがある
-* v-nodeにページキャッシュ機構を追加し, prepare_write(ページをブロックにマッピング),
-write(ページ更新), commit_write(ページを2次記憶に書き出し), readオペレーションをvfsオペレーションに追加)
-  - ページキャッシュ機構を再設計
+* ページキャッシュ機構を再設計
+* v-nodeにページキャッシュ機構を追加
+* prepare_write(ページをブロックにマッピング),write(ページ更新), commit_write(ページを2次記憶に書き出し), readオペレーションをvfsオペレーションに追加
+
 * vfsオペレーションにアクセス権チェックを追加
-* 未使用IFであるvfs_vnode_put/vfs_vnode_removeのテストまたは削除
 
 * 可変長のIDビットマップ機構を導入し, VFSの上限制限を撤廃
 * ツールにchdir/mkdir/mknodを追加
@@ -31,9 +30,12 @@ write(ページ更新), commit_write(ページを2次記憶に書き出し), rea
   vm_map_stack
   vm_map_growstack
 
-* フィードバックスケジューラ(4.4BSDスケジューラ機能)を実装
 * mutexに優先度継承機能を追加
+* フィードバックスケジューラ(4.4BSDスケジューラ機能)を実装
 
+* uid/gidをクレデンシャル構造体に移動[済み]
+* 未使用IFであるvfs_vnode_put/vfs_vnode_removeのテストまたは削除[削除済み]
+* vfsにchdir/chrootを追加[済み]
 * ディレクトリかどうかの判定はvnode->v_modeを使用して実施[済み]
 * ファイル・ディレクトリのread/writeを伴うオペレーションでvnode lockをとるように修正[済み]
   - vnodeロックをとっていないところに理由を記載する[済み]

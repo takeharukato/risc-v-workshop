@@ -21,6 +21,8 @@
 #include <kern/vm-if.h>
 #include <hal/hal-memlayout.h>
 
+#include <kern/proc-ucred.h>
+
 struct    _thread;
 struct _vfs_ioctx;
 /**
@@ -52,6 +54,7 @@ typedef struct _proc{
 	vm_pgtbl                       pgt; /**< ページテーブル           */
 	struct _refcounter            refs; /**< 参照カウンタ             */
 	struct _queue               thrque; /**< スレッドキュー           */
+	struct _ucred               p_cred; /**< ユーザクレデンシャル     */
 	struct _thread             *master; /**< マスタースレッド         */
 	pid                             id; /**< プロセスID               */
 	proc_segment segments[PROC_SEG_NR]; /**< セグメント               */

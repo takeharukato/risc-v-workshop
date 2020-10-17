@@ -15,6 +15,7 @@
 #include <kern/sched-if.h>
 #include <kern/proc-if.h>
 #include <kern/thr-if.h>
+#include <kern/vfs-if.h>
 
 static kmem_cache proc_cache; /**< プロセス管理情報のSLABキャッシュ */
 static proc_db g_procdb = __PROCDB_INITIALIZER(&g_procdb); /**< プロセス管理ツリー */
@@ -71,6 +72,18 @@ allocate_process_common(proc **procp){
 	/* 参照カウンタを初期化(マスタースレッドからの参照分) */
 	refcnt_init(&new_proc->refs);
 	queue_init(&new_proc->thrque);  /* スレッドキューの初期化      */
+
+	memset(&new_proc->p_cred, 0, sizeof(ucred)); /* ユーザクレデンシャル初期化 */
+
+	spinlock_init(&new_proc->p_cred.cr_lock); /* クレデンシャル情報のロックを初期化  */
+	refcnt_init(&new_proc->p_cred.cr_refs); /* クレデンシャル情報の参照カウンタ初期化 */
+	new_proc->p_cred.cr_uid
+		= new_proc->p_cred.cr_ruid
+		= VFS_VSTAT_UID_ROOT;  /* ユーザIDをrootユーザに初期化 */
+	new_proc->p_cred.cr_gid
+		= new_proc->p_cred.cr_rgid
+		= VFS_VSTAT_UID_ROOT;  /* グループIDをrootグループに初期化 */
+
 	new_proc->id = PROC_KERN_PID;   /* PIDをカーネル空間IDに設定   */
 
 	/** セグメントの初期化
