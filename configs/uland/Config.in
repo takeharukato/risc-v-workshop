@@ -23,7 +23,7 @@ config CONFIG_HAL_MEMORY_SIZE_MB
 
 config CONFIG_HAL_CFLAGS
        string
-       default "-mgeneral-regs-only"
+       default "-ffreestanding -fno-common -fno-omit-frame-pointer -fno-stack-protector -mgeneral-regs-only"
 choice
     prompt "Timer Interval"
     default CONFIG_TIMER_INTERVAL_MS_10MS
