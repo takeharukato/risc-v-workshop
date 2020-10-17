@@ -25,7 +25,7 @@
 #include <fs/simplefs/simplefs.h>
 
 #if !defined(CONFIG_HAL)
-#include <stdlib.h>
+void exit(int _status);
 #endif  /*  !CONFIG_HAL  */
 /**
     カーネルのアーキ共通テスト

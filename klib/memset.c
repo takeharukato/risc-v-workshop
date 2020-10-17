@@ -79,9 +79,10 @@ retry32:
 	}
 
 	/* バイト単位でフィルする */
-	while ( len-- > 0 ) {
+	while ( len > 0 ) {
 
 		*cp8++ = (uint8_t)(c & 0xff);
+		--len;
 
 		if ( ( ( (uintptr_t)cp8 & ( sizeof(uint64_t) - 1) ) == 0 )
 		    && ( len >= sizeof(uint64_t) ) )

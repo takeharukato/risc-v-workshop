@@ -57,7 +57,8 @@ show_page_map(vm_pgtbl __unused pgt, vm_vaddr __unused vaddr, vm_size __unused s
 	 */
 	vaddr_sta = vaddr;
 	vaddr_end = vaddr + size;
-	for( cur_vaddr = vaddr_sta; vaddr_end > cur_vaddr; cur_vaddr += pgsize) {
+	for( cur_vaddr = vaddr_sta, pgsize = PAGE_SIZE;
+	     vaddr_end > cur_vaddr; cur_vaddr += pgsize) {
 
 		rc = hal_pgtbl_extract(pgt, cur_vaddr, &cur_paddr,
 		    &prot, &flags, &pgsize);
@@ -869,4 +870,3 @@ tst_rv64pgtbl(void){
 	ktest_def_test(&tstat_rv64pgtbl, "rv64pgtbl1", rv64pgtbl1, NULL);
 	ktest_run(&tstat_rv64pgtbl);
 }
-

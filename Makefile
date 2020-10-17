@@ -73,14 +73,14 @@ include/kern/autoconf.h: .config
 	tools/kconfig/conf-header.sh .config > $@
 
 .config: configs/Config.in
-	@echo "Type make menuconfig beforehand" 
+	@echo "Type make menuconfig beforehand"
 	@exit 1
 
 menuconfig: configs/Config.in ${mconf}
 	${RM} include/kern/autoconf.h
 	${mconf} $< || :
 
-${mconf}: 
+${mconf}:
 	${MAKE} -C tools kconfig/mconf
 
 configs/Config.in: configs/hal/Config.in
@@ -104,9 +104,11 @@ run: build
 run-debug: hal kernel.elf
 	${MAKE} -C hal/hal $@ ;\
 
-doxygen: 
+doxygen:
 	${MAKE} -C doxygen
 
+valgrind: build
+	${VALGRIND} ${VALGRIND_OPTS} ${top}/kernel-dbg.elf
 hal:
 	${MAKE} -C include hal
 	${MAKE} -C hal hal
@@ -124,7 +126,7 @@ distclean:clean
 	done
 	${RM} ${DIST_CLEAN_FILES} include/kern/autoconf.h
 
-dist: 
+dist:
 	${RM} ${ARCHIVE_NAME}.tar.gz
 	${GIT} archive HEAD --format=tar.gz > ${ARCHIVE_NAME}.tar.gz
 
@@ -151,7 +153,7 @@ gen-lcov: run-cov-tests
 	${RM} ${LCOV_CLEAN_FILES}
 	${RM} -fr ${LCOV_DIR}
 else
-run-cov-tests: 
+run-cov-tests:
 gen-lcov:
 endif
 
@@ -174,4 +176,3 @@ help:
 	@echo "show-loc      Show line of codes with cloc."
 	@echo "run           Run kernel with the system emulator."
 	@echo "run-debug     Run kernel with the system emulator in the debug mode."
-

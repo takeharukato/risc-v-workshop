@@ -22,7 +22,7 @@ OBJCOPY=${CROSS_COMPILE}objcopy
 OBJDUMP=${CROSS_COMPILE}objdump
 NM=${CROSS_COMPILE}nm
 VALGRIND=valgrind
-VALGRIND_OPTS=--leak-check=yes --leak-check=full --track-origins=yes 
+VALGRIND_OPTS=--leak-check=yes --leak-check=full --track-origins=yes
 CLOC=cloc
 GCOV=gcov
 GCOV_OPTS=-l
@@ -40,9 +40,9 @@ GENHTML=genhtml
 TAR=gtar
 INC_FLAGS = -I${top}/include
 WARN_FLAGS=-Wall -Werror
-OPT_FLAGS=-O0 -ggdb3
+OPT_FLAGS=-O3 -ggdb3 -fno-omit-frame-pointer
 ifeq ($(CONFIG_PROFILE),y)
-PROF_OPT_FLAGS=-fprofile-arcs -ftest-coverage -coverage 
+PROF_OPT_FLAGS=-fprofile-arcs -ftest-coverage -coverage
 else
 PROF_OPT_FLAGS=
 endif
@@ -90,11 +90,8 @@ DOXYGEN_ARCHIVE_NAME=$(addprefix $(basename $(notdir $(realpath ${top})))-, $(sh
 .S.o:
 	${CC} ${CFLAGS} -c -o $@ $<
 
-.c.d: 
-	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $< 
+.c.d:
+	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.c,%.d, $<)" $<
 
-.S.d: 
-	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.S,%.d, $<)" $< 
-
-
-
+.S.d:
+	${CC} -E ${CFLAGS} -MM -MF"$(patsubst %.S,%.d, $<)" $<
