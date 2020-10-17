@@ -1,0 +1,11 @@
+config CONFIG_GENERIC_OPT_FLAGS
+       string "Generic optimization flags"
+       default "-O0"
+
+config CONFIG_GENERIC_DBG_FLAGS
+       string "Generic debug flags"
+       default "-ggdb3"
+
+config CONFIG_GENERIC_WARN_FLAGS
+       string "Generic Warning flags"
+       default "-Wall -Werror"

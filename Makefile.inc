@@ -39,8 +39,8 @@ LCOV=lcov
 GENHTML=genhtml
 TAR=gtar
 INC_FLAGS = -I${top}/include
-WARN_FLAGS=-Wall -Werror
-OPT_FLAGS=-O3 -ggdb3 -fno-omit-frame-pointer
+WARN_FLAGS=-Wall
+OPT_FLAGS=-O0
 ifeq ($(CONFIG_PROFILE),y)
 PROF_OPT_FLAGS=-fprofile-arcs -ftest-coverage -coverage
 else
@@ -53,7 +53,8 @@ endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 PIC_OPT_FLAGS=-fno-pie -nopie -fno-PIC
 endif
-HOST_CFLAGS=${OPT_FLAGS} ${WARN_FLAGS} ${PROF_OPT_FLAGS} ${INC_FLAGS}
+GENERIC_FLAGS=${OPT_FLAGS} ${WARN_FLAGS} $(shell echo ${CONFIG_GENERIC_OPT_FLAGS}) $(shell echo ${CONFIG_GENERIC_DBG_FLAGS}) $(shell echo ${CONFIG_GENERIC_WARN_FLAGS})
+HOST_CFLAGS=${GENERIC_FLAGS} ${PROF_OPT_FLAGS} ${INC_FLAGS}
 HOST_LDFLAGS=
 CFLAGS=${HOST_CFLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS})
 # CFLAGS for asm-offset.c

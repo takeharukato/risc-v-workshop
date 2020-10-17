@@ -19,6 +19,7 @@ config CONFIG_PREEMPT
 	  If you wish to build the preemptive kernel, then answer Y here.
 
 source "configs/hal/Config.in"
+source "configs/compile/Config.in"
 
 config CONFIG_CPUS_NR
     int "Max cpus"
@@ -81,4 +82,3 @@ config CONFIG_FORCE_UPDATE_GTAGS
     default n
     help
      Update gtag index forcefully
-
