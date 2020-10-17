@@ -9,3 +9,7 @@ config CONFIG_GENERIC_DBG_FLAGS
 config CONFIG_GENERIC_WARN_FLAGS
        string "Generic Warning flags"
        default "-Wall -Werror"
+
+config CONFIG_GENERIC_INLINE_FLAGS
+       string "Generic inline function flags"
+       default ""

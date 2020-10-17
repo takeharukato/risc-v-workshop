@@ -108,7 +108,7 @@ doxygen:
 	${MAKE} -C doxygen
 
 valgrind: build
-	${VALGRIND} ${VALGRIND_OPTS} ${top}/kernel-dbg.elf
+	${VALGRIND} ${VALGRIND_OPTS} ${top}/kernel-dbg.elf|&egrep '==[1-9][0-9]+=='|&tee valgrind.log
 hal:
 	${MAKE} -C include hal
 	${MAKE} -C hal hal
@@ -176,3 +176,4 @@ help:
 	@echo "show-loc      Show line of codes with cloc."
 	@echo "run           Run kernel with the system emulator."
 	@echo "run-debug     Run kernel with the system emulator in the debug mode."
+	@echo "valgrind      Check the validation of memory accesses with valgrind"
