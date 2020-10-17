@@ -11,7 +11,7 @@ config CONFIG_HAL
 config CONFIG_HAL_SMP
        bool
        default y
-       
+
 config CONFIG_NR_IRQS
        int
        default 64
@@ -35,7 +35,7 @@ config CONFIG_HAL_STRAIGHT_PAGE_SIZE
        default 0x200000
 
 config CONFIG_HAL_KERN_VMA_BASE
-       int     
+       int
        default 0xFFFFFFE000000000 if CONFIG_UPPERHALF_KERNEL
        default 0x0000000000000000 if !CONFIG_UPPERHALF_KERNEL
 
@@ -75,7 +75,7 @@ endchoice
 config CONFIG_HAL_CFLAGS
        prompt "CFLAGS for Hardware Abstraction Layer"
        string
-       default "-ffreestanding -fno-common -mno-relax -mcmodel=medany -fno-omit-frame-pointer -fno-stack-protector" 
+       default "-ffreestanding -fno-common -mno-relax -mcmodel=medany -fno-stack-protector"
        depends on CONFIG_HAL
 
 config CONFIG_HAL_LDFLAGS
@@ -85,6 +85,6 @@ config CONFIG_HAL_LDFLAGS
 
 config CONFIG_HAL_OPT_FLAGS
        prompt "Additional optimize flags for HAL"
-       string 
-       default ""
+       string
+       default "-fno-omit-frame-pointer"
        depends on CONFIG_HAL
