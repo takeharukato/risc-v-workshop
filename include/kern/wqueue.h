@@ -58,6 +58,7 @@ typedef struct _wque_waitqueue{
  */
 typedef struct _wque_entry{
 	struct _list    link;   /*< ウエイトキューへのリンク    */
+	struct _list prilink;   /*< 優先度順キューへのリンク    */
 	struct _thread  *thr;   /*< 休眠しているスレッド        */
 	wque_reason   reason;   /*< 起床要因                    */
 }wque_entry;

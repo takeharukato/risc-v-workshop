@@ -80,6 +80,7 @@ wque_init_wque_entry(wque_entry *ent){
 	kassert( res );                 /* 自スレッドは終了していないはず */
 
 	list_init(&ent->link);               /* キューへのリンクを初期化する           */
+	list_init(&ent->prilink);            /* 優先度順キューへのリンクを初期化する   */
 	ent->reason = WQUE_WAIT;             /* 待ち中に初期化する                     */
 	ent->thr = ti_get_current_thread();  /* 自スレッドを休眠させるように初期化する */
 	ent->thr->state = THR_TSTATE_WAIT;   /* 状態を更新                             */
