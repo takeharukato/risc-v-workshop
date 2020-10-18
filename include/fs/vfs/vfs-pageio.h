@@ -32,6 +32,15 @@
 #define	PCACHE_CLEAN             (0x2)    /**< ディスクとキャッシュの内容が一致している */
 #define	PCACHE_DIRTY             (0x4)    /**< ページキャッシュの方がディスクより新しい */
 
+/*
+ * ページキャッシュプールの状態
+ */
+#define	PCPOOL_DORMANT           (0x0)    /**< 無効なページキャッシュプール             */
+#define	PCPOOL_CREATED           (0x1)    /**< 有効なページキャッシュプール             */
+#define	PCPOOL_DELETE            (0x2)    /**< 削除予約されている                       */
+
+typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
+
 /**
    ページキャッシュ
  */
@@ -42,8 +51,10 @@ typedef struct _vfs_page_cache{
 	struct _mutex                     pc_mtx;
 	/** 参照カウンタ                         */
 	refcounter                       pc_refs;
+	/** ページキャッシュプールへのリンク     */
+	struct _page_cache_pool      *pc_pcplink;
 	/** バッファの状態                       */
-	vfs_pcache_state                pc_state;
+	pcache_state                    pc_state;
 	/** パディング                           */
 	uint32_t                            pad1;
 	/** ページバッファ待ちキュー             */
@@ -54,12 +65,10 @@ typedef struct _vfs_page_cache{
 	SPLAY_ENTRY(_vfs_page_cache) pc_file_ent;
 	/** LRUリストのエントリ                  */
 	struct _list                 pc_lru_link;
-	/** ページキャッシュプールへのリンク     */
-	struct _page_cache_pool      *pc_pcplink;
-	/** ブロックデバイス中でのオフセットアドレス (単位:バイト)                          */
-	off_t                     pc_bdev_offset;
 	/** ファイル中でのオフセットアドレス (単位:バイト)                                  */
 	off_t                     pc_file_offset;
+	/** ブロックデバイス中でのオフセットアドレス (単位:バイト)                          */
+	off_t                     pc_bdev_offset;
 	/** ページフレーム情報                   */
 	struct _page_frame                *pc_pf;
 	/** ページキャッシュデータへのポインタ   */
@@ -74,8 +83,10 @@ typedef struct _vfs_page_cache_pool{
 	struct _mutex                                    pcp_mtx;
 	/** 参照カウンタ               */
 	refcounter                                      pcp_refs;
+	/** ページキャッシュプールの状態 */
+        vfs_pcache_pool_state                          pcp_state;
 	/** 二次記憶デバイスID         */
-	dev_id                                         pc_bdevid;
+	dev_id                                         pcp_bdevid;
 	/**  ページサイズ              */
 	size_t                                         pcp_pgsiz;
 	/**  ブロックデバイスページキャッシュツリー    */
@@ -92,8 +103,9 @@ typedef struct _vfs_page_cache_pool{
    ページキャッシュプールDB
  */
 typedef struct _vfs_page_cache_pool_db{
-	spinlock                         lock;  /**< ページフレームDBキューのロック */
-	/**   ページキャッシュプールDB       */
+	/** ページキャッシュプールDBのロック */
+	spinlock                         lock;
+	/** ページキャッシュプールDB         */
 	RB_HEAD(_page_cache_pool_tree, _page_cache_pool) head;
 }vfs_page_cache_pool_db;
 
@@ -105,7 +117,6 @@ typedef struct _vfs_page_cache_pool_db{
 	.lock = __SPINLOCK_INITIALIZER,		                            \
 	.head  = RB_INITIALIZER(&((_pcpdb)->head)),		            \
 	}
-
 
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PAGEIO_H  */
