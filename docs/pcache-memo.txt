@@ -1,0 +1,120 @@
+[1] データ構造
+
+/*
+ * ページキャッシュの状態
+ */
+#define	PCACHE_INVALID           (0x0)    /**< 無効なキャッシュ                         */
+#define	PCACHE_BUSY              (0x1)    /**< ページキャッシュがロックされている       */
+#define	PCACHE_CLEAN             (0x2)    /**< ディスクとキャッシュの内容が一致している */
+#define	PCACHE_DIRTY             (0x4)    /**< ページキャッシュの方がディスクより新しい */
+
+typedef uint32_t          pcache_state;   /**< ページキャッシュの状態                   */
+
+/**
+   ページキャッシュ
+ */
+typedef struct _vfs_page_cache{
+	/** ページキャッシュデータ構造更新ロック */
+	spinlock                        pc_lock;
+	/** 排他用ロック(状態/ページ更新用)      */
+	struct _mutex                    pc_mtx;
+	/** バッファの状態                       */
+	pcache_state                   pc_state;
+	/** パディング                           */
+	uint32_t                           pad1;
+	/** ページバッファ待ちキュー             */
+	struct _wque_waitqueue       pc_waiters;
+	/** ブロックデバイス中オフセットをキーとした検索用SPLAY木エントリ                   */
+	SPLAY_ENTRY(_vfs_page_cache) pc_dev_ent;
+	/** ファイル中オフセットをキーとした検索用SPLAY木エントリ                           */
+	SPLAY_ENTRY(_vfs_page_cache) pc_dev_ent;
+	/** LRUリストのエントリ                  */
+	struct _list                pc_lru_link;
+	/** 参照カウンタ                         */
+	refcounter                      pc_refs;
+	/** ページキャッシュプールへのリンク     */
+	struct _page_cache_pool     *pc_pcplink;
+	/** ファイル中でのオフセットアドレス (単位:バイト)                                  */
+	off_t                    pc_file_offset;
+	/** ブロックデバイス中でのオフセットアドレス (単位:バイト)                          */
+	off_t                    pc_bdev_offset;
+	/** ページフレーム情報                   */
+	struct _page_frame               *pc_pf;
+	/** ページキャッシュデータへのポインタ   */
+	void                           *pc_data;
+}vfs_page_cache;
+
+/**
+   ページキャッシュプール
+ */
+typedef struct _vfs_page_cache_pool{
+	/** 排他用ロック(キュー更新用) */
+	struct _mutex                                    pcp_mtx;
+	/** 参照カウンタ               */
+	refcounter                                      pcp_refs;
+	/** 二次記憶デバイスID         */
+	dev_id                                         pc_bdevid;
+	/**  ページサイズ              */
+	size_t                                         pcp_pgsiz;
+	/**  ブロックデバイスページキャッシュツリー    */
+	SPLAY_HEAD(_pcache_bdev_tree, _page_cache)  pcp_dev_head;
+	/**  ファイルページキャッシュツリー    */
+	SPLAY_HEAD(_pcache_file_tree, _page_cache) pcp_file_head;
+	/**  LRUキャッシュ (二次記憶との一貫性がとれているページ)     */
+	struct _queue                              pcp_clean_lru;
+	/**  LRUキャッシュ (二次記憶よりキャッシュの方が新しいページ) */
+	struct _queue                              pcp_dirty_lru;
+}vfs_page_cache_pool;
+
+/**
+   ページキャッシュプールDB
+ */
+typedef struct _vfs_page_cache_pool_db{
+	spinlock                         lock;  /**< ページフレームDBキューのロック */
+	/**   ページキャッシュプールDB       */
+	RB_HEAD(_page_cache_pool_tree, _page_cache_pool) head;
+}vfs_page_cache_pool_db;
+
+/**
+   ページキャッシュプールDB初期化子
+   @param[in] _pcpdb ページキャッシュプールDBのアドレス
+ */
+#define __PCPDB_INITIALIZER(_pcpdb) {		                            \
+	.lock = __SPINLOCK_INITIALIZER,		                            \
+	.head  = RB_INITIALIZER(&((_pcpdb)->head)),		            \
+	}
+
+[2] インターフェース
+
+2.. ページキャッシュ割り当て・初期化 (内部関数)
+
+2.. ページキャッシュ解放 (内部関数)
+
+2.. ページキャッシュ参照加算 (vfs内部関数)
+
+2.. ページキャッシュ参照減算 (vfs内部関数)
+
+2.. ページキャッシュの状態をclean(二次記憶との一貫性がとれた状態)に設定する (内部関数)
+
+2.. ページキャッシュの状態をdirty(二次記憶よりキャッシュの方が新しい状態)に設定する(内部関数)
+
+2.. ブロックデバイスキャッシュの登録
+2.. ブロックデバイスキャッシュの登録抹消
+
+2.. ブロックデバイスキャッシュへのページキャッシュ登録
+2.. ブロックデバイスキャッシュからのページキャッシュ登録抹消
+2.. ブロックデバイスキャッシュからのページキャッシュ検索
+
+2.. ブロックデバイスキャッシュからのページキャッシュの二次記憶からの読みだし
+2.. ブロックデバイスキャッシュ中のページキャッシュを二次記憶へ書き出し
+
+2.. v-nodeのページキャッシュツリーへの登録
+2.. v-nodeのページキャッシュツリーからの登録抹消
+2.. v-nodeのページキャッシュツリーからの検索
+
+2.. v-node初期化時のページキャッシュツリーの初期化
+2.. v-node解放処理のページキャッシュ書き出し
+
+
+2.. ページリード
+2.. ページライト

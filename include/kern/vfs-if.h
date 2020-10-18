@@ -20,6 +20,7 @@
 #include <fs/vfs/vfs-attr.h>
 #include <fs/vfs/vfs-fd.h>
 #include <fs/vfs/vfs-fsops.h>
+#include <fs/vfs/vfs-pageio.h>
 
 void vfs_init(void);
 #endif  /* _KERN_VFS_IF_H */
