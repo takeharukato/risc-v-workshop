@@ -47,6 +47,8 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 
 	p = copypath;
 
+	mutex_lock(&ioctx->ioc_mtx);
+
 	if ( *p == VFS_PATH_DELIM ) { /* 絶対パス指定  */
 
 		for( p += 1 ; *p == VFS_PATH_DELIM; ++p);  /*  連続した'/'を飛ばす  */
@@ -59,16 +61,15 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		kassert( res );
 	} else { /* 相対パス指定  */
 
-		mutex_lock(&ioctx->ioc_mtx);
-
 		curr_v = ioctx->ioc_cwd;    /*  現在のディレクトリから検索を開始  */
 		kassert( curr_v != NULL );
 
 		res = vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
 		/* 自スレッドがchdirするまでカレントディレクトリの参照は0にはならない */
 		kassert( res );
-		mutex_unlock(&ioctx->ioc_mtx);
 	}
+
+	mutex_unlock(&ioctx->ioc_mtx);
 
 	/*
 	 * パスの探索
