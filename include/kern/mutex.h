@@ -28,7 +28,6 @@ typedef uint32_t mutex_counter;  /* ミューテックスカウンタ */
  */
 typedef struct _mutex{
 	struct _spinlock       lock; /**< カウンタのロック           */
-	struct _thread       *owner; /**< ミューテックス獲得スレッド */
 	struct _wque_waitqueue wque; /**< ウエイトキュー             */
 	mutex_counter     resources; /**< 利用可能資源数 (単位:個)   */
 }mutex;
@@ -39,7 +38,6 @@ typedef struct _mutex{
  */
 #define __MUTEX_INITIALIZER(_mtx) {		               \
 	.lock = __SPINLOCK_INITIALIZER,		               \
-	.owner  = NULL,	                                       \
 	.wque = __WQUE_WAITQUEUE_INITIALIZER(&((_mtx)->wque)), \
 	.resources = MUTEX_INITIAL_VALUE,                      \
 }

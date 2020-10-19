@@ -45,6 +45,7 @@ wque_init_wait_queue(wque_waitqueue *wque){
 	queue_init(&wque->que);             /* キューの初期化             */
 	queue_init(&wque->prio_que);        /* 優先度継承キューの初期化   */
 	wque->wqflag = WQUE_WAKEFLAG_ALL;   /* 起床方法の初期化           */
+	wque->owner = NULL;                 /* 資源獲得スレッドの初期化   */
 }
 
 /**
@@ -210,6 +211,72 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 
 		if ( wque->wqflag == WQUE_WAKEFLAG_ONE )
 			break;  /* 先頭のスレッドだけを起こして抜ける */
+	}
+
+	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
+}
+
+/**
+   資源獲得スレッドを取得する
+   @param[in] wque   操作対象のウエイトキュー
+   @return 資源獲得スレッドのアドレス
+   @note   資源獲得スレッドへの参照を加算するので, 獲得元で参照を解放する
+ */
+thread *
+wque_owner_get(wque_waitqueue *wque){
+	bool         res;
+	thread       *rp;
+	intrflags iflags;
+
+	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
+
+	rp = wque->owner;  /* 資源獲得スレッドのアドレスを得る */
+
+	if ( wque->owner != NULL ) {
+
+		res = thr_ref_inc(wque->owner);  /* 呼び出し元スレッドからの参照を加算 */
+		if ( !res )
+			rp = NULL;  /* 開放中のスレッドだった */
+	}
+	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
+
+	return rp;
+}
+/**
+   資源獲得スレッドを設定する
+   @param[in] wque   操作対象のウエイトキュー
+   @param[in] owner  資源獲得スレッド
+ */
+void
+wque_owner_set(wque_waitqueue *wque, thread *owner){
+	bool         res;
+	intrflags iflags;
+
+	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
+
+	res = thr_ref_inc(owner);  /* ウエイトキューからの参照を加算 */
+	kassert( res );
+
+	wque->owner = owner;  /* 資源獲得スレッドを設定する */
+
+	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
+}
+
+/**
+   資源獲得スレッドを解除する
+   @param[in] wque   操作対象のウエイトキュー
+   @param[in] owner  資源獲得スレッド
+ */
+void
+wque_owner_unset(wque_waitqueue *wque){
+	intrflags iflags;
+
+	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
+
+	if ( wque->owner != NULL ) {
+
+		thr_ref_dec(wque->owner);   /* ウエイトキューからの参照を減算   */
+		wque->owner = NULL;	    /* 資源獲得スレッドの設定を解除する */
 	}
 
 	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */

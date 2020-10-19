@@ -37,8 +37,8 @@ lock_mutex_common(mutex *mtx){
 	 */
 
 	--mtx->resources;  /* 利用可能資源数をデクリメントする */
-
-	mtx->owner = ti_get_current_thread();  /* 自スレッドをミューテックスオーナに設定 */
+	/* 自スレッドをミューテックスオーナに設定 */
+	wque_owner_set(&mtx->wque, ti_get_current_thread());
 
 	return 0;
 
@@ -55,7 +55,6 @@ mutex_init(mutex *mtx){
 
 	spinlock_init(&mtx->lock);            /* ロックの初期化                     */
 	mtx->resources = MUTEX_INITIAL_VALUE; /* 利用可能資源数の初期化             */
-	mtx->owner = NULL;                    /* ミューテックス獲得スレッドの初期化 */
 	wque_init_wait_queue( &mtx->wque );   /* ウエイトキューの初期化             */
 }
 
@@ -71,8 +70,7 @@ mutex_destroy(mutex *mtx){
 
 	wque_wakeup( &mtx->wque, WQUE_DESTROYED); /* オブジェクト破棄に伴う起床 */
 	mtx->resources = 0;
-	mtx->owner = NULL;
-
+	wque_owner_unset(&mtx->wque);  /* オーナスレッドをクリアする */
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
 }
 /**
@@ -85,11 +83,16 @@ bool
 mutex_locked_by_self(mutex *mtx){
 	bool          rc;
 	intrflags iflags;
-
+	thread    *owner;
 	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
 
+	owner = wque_owner_get(&mtx->wque);  /* オーナスレッドを得る */
+
 	/*  自スレッドがミューテックスオーナであることを確認  */
-	rc = ( ( mtx->resources == 0 ) && ( mtx->owner == ti_get_current_thread() ) );
+	rc = ( ( mtx->resources == 0 ) && ( owner == ti_get_current_thread() ) );
+
+	if ( owner != NULL )
+		thr_ref_dec(owner);  /* オーナスレッドへの参照を減算 */
 
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */
 
@@ -176,8 +179,7 @@ mutex_unlock(mutex *mtx){
 	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
 
 	++mtx->resources;  /* 利用可能資源数をインクリメントする */
-	mtx->owner = NULL; /* オーナー情報をクリアする           */
-
+	wque_owner_unset(&mtx->wque); /* オーナースレッドをクリアする           */
 	wque_wakeup(&mtx->wque, WQUE_RELEASED); /* 資源解放を通知し待ちスレッドを起床する */
 
 	spinlock_unlock_restore_intr(&mtx->lock, &iflags); /* ミューテックスをアンロック */

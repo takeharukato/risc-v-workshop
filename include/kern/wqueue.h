@@ -21,27 +21,28 @@ struct  _mutex;
 /** スレッド起床方針
  */
 typedef enum _wque_wakeflag{
-	WQUE_WAKEFLAG_ALL = 0,  /*<  待機中の全スレッドを起こす        */
-	WQUE_WAKEFLAG_ONE = 1,  /*<  キューの先頭スレッドだけを起こす  */
+	WQUE_WAKEFLAG_ALL = 0,  /**<  待機中の全スレッドを起こす        */
+	WQUE_WAKEFLAG_ONE = 1,  /**<  キューの先頭スレッドだけを起こす  */
 }wque_wakeflag;
 
 /** 起床要因
  */
 typedef enum _wque_reason{
-	WQUE_WAIT = 0,       /*<  待ち状態                       */
-	WQUE_RELEASED = 1,   /*<  待ち状態が解除された           */
-	WQUE_DESTROYED = 2,  /*<  対象オブジェクトが破棄された   */
-	WQUE_TIMEOUT = 3,    /*<  タイムアウト                   */
-	WQUE_DELIVEV = 4,    /*<  イベント受信                   */
+	WQUE_WAIT = 0,       /**<  待ち状態                       */
+	WQUE_RELEASED = 1,   /**<  待ち状態が解除された           */
+	WQUE_DESTROYED = 2,  /**<  対象オブジェクトが破棄された   */
+	WQUE_TIMEOUT = 3,    /**<  タイムアウト                   */
+	WQUE_DELIVEV = 4,    /**<  イベント受信                   */
 }wque_reason;
 
 /** ウエイトキュー
  */
 typedef struct _wque_waitqueue{
-	struct _spinlock      lock; /*< スピンロック         */
-	struct _queue          que; /*< ウエイトキュー       */
-	struct _queue     prio_que; /*< 優先度継承管理キュー */
-	wque_wakeflag       wqflag; /*< 起床方法             */
+	struct _spinlock      lock; /**< スピンロック         */
+	struct _queue          que; /**< ウエイトキュー       */
+	struct _queue     prio_que; /**< 優先度継承管理キュー */
+	struct _thread      *owner; /**< 資源獲得スレッド */
+	wque_wakeflag       wqflag; /**< 起床方法             */
 }wque_waitqueue;
 
 /** ウエイトキュー初期化子
@@ -73,5 +74,7 @@ wque_reason wque_wait_on_queue_with_spinlock(struct _wque_waitqueue *_wque,
 wque_reason wque_wait_on_event_with_mutex(struct _wque_waitqueue *_wque, struct _mutex *_mtx);
 
 void wque_wakeup(struct _wque_waitqueue *_wque, wque_reason _reason);
-
+struct _thread *wque_owner_get(struct _wque_waitqueue *_wque);
+void wque_owner_set(struct _wque_waitqueue *_wque, struct _thread *_owner);
+void wque_owner_unset(struct _wque_waitqueue *_wque);
 #endif  /*  _KERN_WQUEUE_H   */
