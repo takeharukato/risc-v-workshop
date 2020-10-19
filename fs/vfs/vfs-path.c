@@ -110,13 +110,16 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 
 				/*  マウントポイントであれば, マウント元のFSの
 				 *  vnodeに切り替え
+				 *  @note システムルートディレクトリ以外のルート
+				 *  ディレクトリのv-nodeはNULLにならない
+				 *  ( fs/vfs/vfs-mount.c vfs_mount_with_fsname関数参照 )
 				 */
 				next_v = curr_v->v_mount->m_mount_point;
 				res = vfs_vnode_ref_inc(next_v);
 				if ( !res ) { /* マウントポイント削除中 */
 
 					rc = -ENOENT; /* パスが見つからなかった */
-					vfs_vnode_ref_dec(curr_v);
+					vfs_vnode_ref_dec(curr_v);   /*  vnodeの参照を開放  */
 					goto free_copypath_out;
 				}
 				vfs_vnode_ref_dec(curr_v);
@@ -188,10 +191,10 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			if ( !res ) { /* マウントポイント削除中 */
 
 				rc = -ENOENT; /* パスが見つからなかった */
-				vfs_vnode_ref_dec(curr_v);
+				vfs_vnode_ref_dec(curr_v);   /*  vnodeの参照を開放  */
 				goto free_copypath_out;
 			}
-			vfs_vnode_ref_dec(curr_v);
+			vfs_vnode_ref_dec(curr_v);   /*  vnodeの参照を開放  */
 			curr_v = next_v;
 		}
 	}
