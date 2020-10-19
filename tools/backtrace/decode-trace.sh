@@ -1,11 +1,12 @@
 #!/bin/sh
-
+# -*- coding:utf-8 mode:bash -*-
+#
 decode_trace(){
     local dbgfile
     local line
     local info
     local addr
-    
+
     line=$1
     dbgfile=$2
     addr=`echo ${line}|awk -F ' ' '{print $2;}'`
@@ -19,12 +20,12 @@ show_log(){
     local file
     local line
     local in_trace
-    
+
     file=$1
     dbgfile=$2
 
     in_trace="no"
-    
+
     cat ${file}|while read line
     do
 	if [ "x${in_trace}" != "xno" ]; then
@@ -42,7 +43,7 @@ show_log(){
 main(){
     local logfile
     local elffile
-    
+
     if [ $# -ne 2 ]; then
 	echo "Usage: decode-trace.sh exception-log.txt kernel-dbg.elf"
 	exit 1
@@ -54,4 +55,3 @@ main(){
 }
 
 main $@
-

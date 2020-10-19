@@ -1,3 +1,5 @@
+# -*- coding:utf-8 mode: gdb-script -*-
+#
 add-auto-load-safe-path ~/
 define riscv64-setup
 target remote localhost:1234
