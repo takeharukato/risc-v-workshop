@@ -201,7 +201,7 @@ wque_wakeup(wque_waitqueue *wque, wque_reason reason){
 			continue;  /* 終了中のスレッドを無視する */
 
 		spinlock_lock(&ent->thr->lock); /* スレッドをロックする */
-		ent->thr->state = THR_TSTATE_RUNABLE;  /* 状態を更新 */
+		ent->thr->state = THR_TSTATE_RUNNABLE;  /* 状態を更新 */
 		spinlock_unlock(&ent->thr->lock); /* スレッドをアンロックする */
 
 		sched_thread_add(ent->thr); /* スレッドをレディーキューに追加 */

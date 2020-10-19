@@ -53,7 +53,7 @@ struct _proc;
 typedef enum _thr_state{
 	THR_TSTATE_DORMANT = 0,   /**<  生成済み   */
 	THR_TSTATE_RUN  = 1,      /**<  実行中     */
-	THR_TSTATE_RUNABLE  = 2,  /**<  実行可能   */
+	THR_TSTATE_RUNNABLE  = 2,  /**<  実行可能   */
 	THR_TSTATE_WAIT = 3,      /**<  待ち合せ中 */
 	THR_TSTATE_EXIT = 4,      /**<  終了処理中 */
 	THR_TSTATE_DEAD = 5,      /**<  回収待ち中 */

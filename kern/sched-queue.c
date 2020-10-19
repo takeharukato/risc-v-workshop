@@ -35,7 +35,7 @@ sched_thread_add_nosched(thread *thr){
 
 	/* スレッドがどこにもリンクされていないことを確認する */
 	kassert(list_not_linked(&thr->link));
-	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
+	kassert( thr->state == THR_TSTATE_RUNNABLE ); /* 実行可能スレッドである事を確認する */
 
 	/* レディキューをロック */
 	spinlock_lock_disable_intr(&ready_queue.lock, &iflags);
@@ -88,7 +88,7 @@ get_next_thread(void){
 	thr = container_of(queue_get_top(&ready_queue.que[idx]), thread, link);
 	if ( queue_is_empty(&ready_queue.que[idx]) )   /*  キューが空になった  */
 		bitops_clr(idx, &ready_queue.bitmap);  /* ビットマップ中のビットをクリア */
-	kassert( thr->state == THR_TSTATE_RUNABLE ); /* 実行可能スレッドである事を確認する */
+	kassert( thr->state == THR_TSTATE_RUNNABLE ); /* 実行可能スレッドである事を確認する */
 
 	 /* レディキューをアンロック */
 	spinlock_unlock_restore_intr(&ready_queue.lock, &iflags);
@@ -169,7 +169,7 @@ sched_schedule(void) {
 			 *  それ以外の場合は回収処理キューに接続されているか, 待ちキューから
 			 *  参照されている状態にあるので, キュー操作を行わずスイッチする
 			 */
-			prev->state = THR_TSTATE_RUNABLE; /* 実行中の場合は実行可能に遷移 */
+			prev->state = THR_TSTATE_RUNNABLE; /* 実行中の場合は実行可能に遷移 */
 			sched_thread_add_nosched(prev);   /* レディキューに戻す           */
 		}
 

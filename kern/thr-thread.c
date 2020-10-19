@@ -277,7 +277,7 @@ create_thread_common(tid id, entry_addr entry, thread_args *args,
 	 */
 	hal_setup_thread_context(entry, args, usp, thr->flags, &thr->ksp);
 
-	thr->state = THR_TSTATE_RUNABLE;   /* スレッドを実行可能状態に遷移  */
+	thr->state = THR_TSTATE_RUNNABLE;   /* スレッドを実行可能状態に遷移  */
 
 	/* スレッドIDの割当て, スレッド管理ツリーへの登録
 	 */
@@ -431,7 +431,7 @@ handle_waiter_thread(thread *thr){
 			res = thr_ref_inc(child);          /*  子スレッドの参照を取得  */
 			kassert( res );
 
-			child->state = THR_TSTATE_RUNABLE; /* 実行可能状態に遷移       */
+			child->state = THR_TSTATE_RUNNABLE; /* 実行可能状態に遷移       */
 			sched_thread_add(child);           /* スレッドを実行可能にする */
 
 			res = thr_ref_dec(child);          /*  子スレッドの参照を取得  */
