@@ -50,15 +50,26 @@ unlock_out:
 }
 
 /**
+   ミューテックスを初期化する (共通処理)
+   @param[in] mtx 操作対象のミューテックス
+ */
+static void
+init_mutex(mutex *mtx){
+
+	spinlock_init(&mtx->lock);            /* ロックの初期化                     */
+	mtx->resources = MUTEX_INITIAL_VALUE; /* 利用可能資源数の初期化             */
+	mtx->flags = MUTEX_FLAGS_NONE;        /* 属性なし                           */
+	wque_init_wait_queue( &mtx->wque );   /* ウエイトキューの初期化             */
+}
+
+/**
    ミューテックスを初期化する
    @param[in] mtx 操作対象のミューテックス
  */
 void
 mutex_init(mutex *mtx){
 
-	spinlock_init(&mtx->lock);            /* ロックの初期化                     */
-	mtx->resources = MUTEX_INITIAL_VALUE; /* 利用可能資源数の初期化             */
-	wque_init_wait_queue( &mtx->wque );   /* ウエイトキューの初期化             */
+	init_mutex(mtx);  /* デフォルトの属性で初期化する */
 }
 
 /**

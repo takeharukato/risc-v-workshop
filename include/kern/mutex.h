@@ -17,7 +17,11 @@
 #include <klib/queue.h>
 #include <klib/list.h>
 
-#define MUTEX_INITIAL_VALUE      (1)  /* カウンタの初期値  */
+#define MUTEX_INITIAL_VALUE      (1)  /**< カウンタの初期値     */
+/*
+ * ミューテクスの属性
+ */
+#define MUTEX_FLAGS_NONE       (0x0)  /**< ミューテクス属性なし */
 
 struct _thread;
 
@@ -29,6 +33,7 @@ typedef uint32_t mutex_counter;  /* ミューテックスカウンタ */
 typedef struct _mutex{
 	struct _spinlock       lock; /**< カウンタのロック           */
 	struct _wque_waitqueue wque; /**< ウエイトキュー             */
+	mutex_flags           flags; /**< ミューテクスの属性         */
 	mutex_counter     resources; /**< 利用可能資源数 (単位:個)   */
 }mutex;
 
