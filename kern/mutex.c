@@ -23,6 +23,7 @@
 static int
 lock_mutex_common(mutex *mtx){
 	int           rc;
+	bool         res;
 
 	kassert( spinlock_locked_by_self(&mtx->lock) );
 
@@ -37,8 +38,10 @@ lock_mutex_common(mutex *mtx){
 	 */
 
 	--mtx->resources;  /* 利用可能資源数をデクリメントする */
+
 	/* 自スレッドをミューテックスオーナに設定 */
-	wque_owner_set(&mtx->wque, ti_get_current_thread());
+	res = wque_owner_set(&mtx->wque, ti_get_current_thread());
+	kassert( res );  /* 自スレッドからの獲得であるため終了中スレッドではない */
 
 	return 0;
 

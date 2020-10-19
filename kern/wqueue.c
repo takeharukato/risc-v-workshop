@@ -246,8 +246,10 @@ wque_owner_get(wque_waitqueue *wque){
    資源獲得スレッドを設定する
    @param[in] wque   操作対象のウエイトキュー
    @param[in] owner  資源獲得スレッド
+   @retval 真 オーナのセットに成功した
+   @retval 偽 オーナのセットに失敗した(削除中のスレッドにオーナをセットしようとした)
  */
-void
+bool
 wque_owner_set(wque_waitqueue *wque, thread *owner){
 	bool         res;
 	intrflags iflags;
@@ -255,11 +257,14 @@ wque_owner_set(wque_waitqueue *wque, thread *owner){
 	spinlock_lock_disable_intr(&wque->lock, &iflags);   /* ウエイトキューをロック     */
 
 	res = thr_ref_inc(owner);  /* ウエイトキューからの参照を加算 */
-	kassert( res );
+	if ( !res )
+		goto unlock_out;  /* 削除中のスレッドにオーナを設定しようとした */
 
 	wque->owner = owner;  /* 資源獲得スレッドを設定する */
 
+unlock_out:
 	spinlock_unlock_restore_intr(&wque->lock, &iflags); /* ウエイトキューをアンロック */
+	return res;
 }
 
 /**

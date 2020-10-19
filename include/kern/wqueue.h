@@ -75,6 +75,6 @@ wque_reason wque_wait_on_event_with_mutex(struct _wque_waitqueue *_wque, struct 
 
 void wque_wakeup(struct _wque_waitqueue *_wque, wque_reason _reason);
 struct _thread *wque_owner_get(struct _wque_waitqueue *_wque);
-void wque_owner_set(struct _wque_waitqueue *_wque, struct _thread *_owner);
+bool wque_owner_set(struct _wque_waitqueue *_wque, struct _thread *_owner);
 void wque_owner_unset(struct _wque_waitqueue *_wque);
 #endif  /*  _KERN_WQUEUE_H   */
