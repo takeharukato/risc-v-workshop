@@ -1,0 +1,114 @@
+diff --git a/hal/uland/x64-thread.c b/hal/uland/x64-thread.c
+index e455034..6ebe4aa 100644
+--- a/hal/uland/x64-thread.c
++++ b/hal/uland/x64-thread.c
+@@ -42,9 +42,10 @@ hal_setup_thread_context(entry_addr entry, thread_args *args, void *thr_sp,
+ 	/* スレッドスイッチ後の復帰先アドレスに例外出口処理ルーチンを設定 */
+ 	thrctx->rip = (reg_type)x64_return_from_trap;
+ 	thrctx->rflags = X64_RFLAGS_RESVBITS;  /* 予約ビットを立てる */
+-
++	thrctx->rflags |= X64_RFLAGS_IF;  /* 割り込み許可ビットを立てる */
+ 	trap->rip = entry; /* 例外復帰後のアドレスにスレッドのエントリアドレスを設定 */
+ 	trap->rflags = X64_RFLAGS_RESVBITS;  /* 予約ビットを立てる */
++	trap->rflags |= X64_RFLAGS_IF;  /* 割り込み許可ビットを立てる */
+ 
+ 	/*
+ 	 * 引数情報設定
+diff --git a/include/kern/kern-cpuinfo.h b/include/kern/kern-cpuinfo.h
+index 59cceca..4ab087e 100644
+--- a/include/kern/kern-cpuinfo.h
++++ b/include/kern/kern-cpuinfo.h
+@@ -81,7 +81,7 @@ typedef struct _cpu_map{
+ #define FOREACH_MAXIMUM_CPUS(_cpu_num)					\
+ 	for( (_cpu_num) = 0; KC_CPUS_NR > (_cpu_num); ++(_cpu_num))	\
+ 
+-void krn_cpuinfo_update(void);
++void krn_cpuinfo_update(struct _thread_info *_next_ti);
+ int krn_cpuinfo_online(cpu_id _cpu_num);
+ bool krn_cpuinfo_cpu_is_online(cpu_id _cpu_num);
+ cpu_id krn_current_cpu_get(void);
+diff --git a/include/kern/thr-preempt.h b/include/kern/thr-preempt.h
+index 8272668..47bcb82 100644
+--- a/include/kern/thr-preempt.h
++++ b/include/kern/thr-preempt.h
+@@ -63,7 +63,7 @@ void ti_show_thread_info(struct _thread_info *_ti);
+ struct _thread *ti_get_current_thread(void);
+ struct _thread_info *ti_get_current_thread_info(void);
+ cpu_id ti_current_cpu_get(void);
+-void ti_update_current_cpu(void);
++void ti_update_current_cpu(struct _thread_info *_ti)
+ void ti_thread_info_init(struct _thread_info *_ti, struct _thread *_thr);
+ 
+ bool ti_dispatch_disabled(void);
+diff --git a/kern/cpuinfo.c b/kern/cpuinfo.c
+index 6081851..6e90b2d 100644
+--- a/kern/cpuinfo.c
++++ b/kern/cpuinfo.c
+@@ -80,19 +80,18 @@ krn_get_cpu_dcache_size(void){
+ 
+ /**
+    自プロセッサのCPU情報を更新する
++   @param[in] next_ti 次スレッドのスレッド情報
+  */
+ void
+-krn_cpuinfo_update(void){
++krn_cpuinfo_update(thread_info *next_ti){
+ 	cpu_info  *cinf;
+ 	cpu_id      cpu;
+-	thread_info *ti;
+ 
+ 	cpu  = krn_current_cpu_get();  /* 論理CPUID       */
+ 	cinf = krn_cpuinfo_get(cpu);   /* 自CPU情報を参照 */
+-	ti = ti_get_current_thread_info(); /* スレッド情報参照 */
+ 
+-	kassert( ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */
+-	cinf->cur_ti = ti;          /* スレッド情報を設定                       */
++	kassert( next_ti->thr != NULL ); /* スレッドとスレッド情報とのリンク設定済み */
++	cinf->cur_ti = next_ti;          /* スレッド情報を設定                       */
+ }
+ 
+ /**
+diff --git a/kern/thr-preempt.c b/kern/thr-preempt.c
+index 2e17922..51acf21 100644
+--- a/kern/thr-preempt.c
++++ b/kern/thr-preempt.c
+@@ -116,8 +116,7 @@ ti_current_cpu_get(void){
+    スレッド情報の論理CPUIDを更新する
+  */
+ void
+-ti_update_current_cpu(void) {
+-	thread_info *ti;
++ti_update_current_cpu(thread_info *ti) {
+ 
+ 	ti = ti_get_current_thread_info();  /* カレントスタックからスレッド情報を得る */
+ 	/* カレントCPUの論理CPUIDを得てCPUIDを更新する */
+diff --git a/kern/thr-thread.c b/kern/thr-thread.c
+index b3013c8..91e5bad 100644
+--- a/kern/thr-thread.c
++++ b/kern/thr-thread.c
+@@ -762,20 +762,16 @@ error_out:
+  */
+ void
+ thr_thread_switch(thread *prev, thread *next){
+-	thread *cur;
+ 
+-	/* ページテーブルを不活性化 */
+-	hal_pgtbl_deactivate(prev->p->pgt);
++	hal_pgtbl_deactivate(prev->p->pgt); /* ページテーブルを不活性化 */
+ 
+-	hal_thread_switch(&prev->ksp, &next->ksp);
++	krn_cpuinfo_update(next->tinfo);     /* CPU情報を更新 */
+ 
+-	krn_cpuinfo_update();     /* CPU情報を更新      */
+-	ti_update_current_cpu();  /* スレッド情報を更新 */
++	ti_update_current_cpu(next->tinfo);  /* スレッド情報を更新 */
+ 
+-	cur = 	ti_get_current_thread();
++	hal_pgtbl_activate(next->p->pgt); /* ページテーブルを活性化 */
+ 
+-	/* ページテーブルを活性化 */
+-	hal_pgtbl_activate(cur->p->pgt);
++	hal_thread_switch(&prev->ksp, &next->ksp);
+ }
+ 
+ /**
