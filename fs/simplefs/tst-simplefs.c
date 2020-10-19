@@ -176,6 +176,9 @@ simplefs7(struct _ktest_stats *sp, void __unused *arg){
 	else
 		ktest_fail( sp );
 
+	kprintf("after chroot /mnt3 ls .\n");
+	show_ls(chroot_ioctx, ".");
+
 	kprintf("after chroot /mnt3 ls /\n");
 	show_ls(chroot_ioctx, "/");
 
