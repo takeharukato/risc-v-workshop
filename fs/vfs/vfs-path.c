@@ -27,13 +27,14 @@
  */
 static int
 path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
+	int             rc;
+	bool           res;
 	char            *p;
 	char       *next_p;
 	vnode      *curr_v;
 	vnode      *next_v;
 	char     *copypath;
 	vfs_vnode_id  vnid;
-	int             rc;
 
 	kassert( ioctx->ioc_root != NULL );
 
@@ -53,7 +54,9 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		curr_v = ioctx->ioc_root;  /*  現在のルートディレクトリから検索を開始  */
 		kassert( curr_v != NULL );
 
-		vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
+		res = vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
+		/* 自スレッドがchrootするまでルートディレクトリの参照は0にはならない */
+		kassert( res );
 	} else { /* 相対パス指定  */
 
 		mutex_lock(&ioctx->ioc_mtx);
@@ -61,7 +64,9 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 		curr_v = ioctx->ioc_cwd;    /*  現在のディレクトリから検索を開始  */
 		kassert( curr_v != NULL );
 
-		vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
+		res = vfs_vnode_ref_inc(curr_v);  /* 現在のv-nodeへの参照を加算 */
+		/* 自スレッドがchdirするまでカレントディレクトリの参照は0にはならない */
+		kassert( res );
 		mutex_unlock(&ioctx->ioc_mtx);
 	}
 
@@ -106,7 +111,13 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 				 *  vnodeに切り替え
 				 */
 				next_v = curr_v->v_mount->m_mount_point;
-				vfs_vnode_ref_inc(next_v);
+				res = vfs_vnode_ref_inc(next_v);
+				if ( !res ) { /* マウントポイント削除中 */
+
+					rc = -ENOENT; /* パスが見つからなかった */
+					vfs_vnode_ref_dec(curr_v);
+					goto free_copypath_out;
+				}
 				vfs_vnode_ref_dec(curr_v);
 				curr_v = next_v;
 			}
@@ -172,7 +183,13 @@ path_to_vnode(vfs_ioctx *ioctx, char *path, vnode **outv){
 			 * root v-nodeを参照
 			 */
 			next_v = curr_v->v_mount_on->m_root;
-			vfs_vnode_ref_inc(next_v);
+			res = vfs_vnode_ref_inc(next_v);
+			if ( !res ) { /* マウントポイント削除中 */
+
+				rc = -ENOENT; /* パスが見つからなかった */
+				vfs_vnode_ref_dec(curr_v);
+				goto free_copypath_out;
+			}
 			vfs_vnode_ref_dec(curr_v);
 			curr_v = next_v;
 		}
