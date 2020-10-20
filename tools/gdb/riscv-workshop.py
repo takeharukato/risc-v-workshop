@@ -73,6 +73,23 @@ class RBTreeParser:
                 elm = self._rbtree_parent(elm, ent)
 
         return elm
+    def _rbtree_prev(self, node_ptr, ent):
+        if self.verbose:
+            print("_rbtree_prev args :%s %s" % (node_ptr, ent))
+        elm = node_ptr
+        if self._rbtree_left(elm, ent) != 0:
+            elm = self._rbtree_left(elm, ent)
+            while self._rbtree_right(elm, ent) != 0:
+                elm = self._rbtree_right(elm, ent)
+        else:
+            if self._rbtree_parent(elm, ent) != 0 and elm == self._rbtree_right(self._rbtree_parent(elm, ent), ent):
+                elm = self._rbtree_parent(elm, ent)
+            else:
+                while self._rbtree_parent(elm, ent) != 0 and elm == self._rbtree_left(self._rbtree_parent(elm, ent), ent):
+                    elm = self._rbtree_parent(elm, ent)
+                elm = self._rbtree_parent(elm, ent)
+
+        return elm
 
 
 class ThreadPoolDumpCmd(gdb.Command):
@@ -117,8 +134,8 @@ class ThreadPoolDumpCmd(gdb.Command):
             print("Thread pool is empty.")
             return "" #木が空
         min_node = self.parser._rbtree_min(head_ptr, ent)
+        max_node = self.parser._rbtree_max(head_ptr, ent)
         if self.verbose:
-            max_node = self.parser._rbtree_max(head_ptr, ent)
             print("min-node:%s max-node:%s" % (min_node, max_node))
         cur_node = min_node
         while cur_node != 0:

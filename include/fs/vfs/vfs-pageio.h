@@ -16,7 +16,7 @@
 
 #include <klib/refcount.h>
 #include <klib/list.h>
-#include <klib/splay.h>
+#include <klib/rbtree.h>
 
 #include <kern/wqueue.h>
 #include <kern/spinlock.h>
@@ -59,10 +59,10 @@ typedef struct _vfs_page_cache{
 	uint32_t                            pad1;
 	/** ページバッファ待ちキュー             */
 	struct _wque_waitqueue        pc_waiters;
-	/** ブロックデバイス中オフセットをキーとした検索用SPLAY木エントリ                   */
-	SPLAY_ENTRY(_vfs_page_cache)  pc_dev_ent;
-	/** ファイル中オフセットをキーとした検索用SPLAY木エントリ                           */
-	SPLAY_ENTRY(_vfs_page_cache) pc_file_ent;
+	/** ブロックデバイス中オフセットをキーとした検索用RB木エントリ                   */
+	RB_ENTRY(_vfs_page_cache)  pc_dev_ent;
+	/** ファイル中オフセットをキーとした検索用RB木エントリ                           */
+	RB_ENTRY(_vfs_page_cache) pc_file_ent;
 	/** LRUリストのエントリ                  */
 	struct _list                 pc_lru_link;
 	/** ファイル中でのオフセットアドレス (単位:バイト)                                  */
@@ -90,9 +90,9 @@ typedef struct _vfs_page_cache_pool{
 	/**  ページサイズ              */
 	size_t                                         pcp_pgsiz;
 	/**  ブロックデバイスページキャッシュツリー    */
-	SPLAY_HEAD(_pcache_bdev_tree, _page_cache)  pcp_dev_head;
+	RB_HEAD(_pcache_bdev_tree, _page_cache)  pcp_dev_head;
 	/**  ファイルページキャッシュツリー    */
-	SPLAY_HEAD(_pcache_file_tree, _page_cache) pcp_file_head;
+	RB_HEAD(_pcache_file_tree, _page_cache) pcp_file_head;
 	/**  LRUキャッシュ (二次記憶との一貫性がとれているページ)     */
 	struct _queue                              pcp_clean_lru;
 	/**  LRUキャッシュ (二次記憶よりキャッシュの方が新しいページ) */
