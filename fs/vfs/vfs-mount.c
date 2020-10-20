@@ -813,7 +813,7 @@ trylock_vnode(vnode *v) {
    @retval -EBUSY    アンマウント中のボリュームだった
    @note LO: マウントポイントロック, v-nodeロックの順にロックを獲得する
    @note 本関数で確保したv-nodeはマウント情報からの参照(参照カウント1)がついた状態で
-   初期化されるので, 呼び出し元でマウント情報に登録すること
+   初期化される
  */
 static int
 find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
@@ -1259,8 +1259,7 @@ remove_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid){
 		rc = -EINVAL;
 		goto error_out;
 	}
-
-	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
+	rc = get_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
 	if ( rc != 0 )
 		goto put_mount_out;
 
@@ -1416,9 +1415,6 @@ vfs_vnode_ptr_put(vnode *v){
 
 	kassert( v->v_mount != NULL );
 
-	res = vfs_fs_mount_ref_inc(v->v_mount);  /* マウントテーブル操作用に参照を加算 */
-	kassert( res );
-
 	/*
 	 * v-nodeの参照を解放する
 	 */
@@ -1429,24 +1425,26 @@ vfs_vnode_ptr_put(vnode *v){
 		goto put_mount_out;
 	}
 
+	res = vfs_fs_mount_ref_inc(v->v_mount);  /* マウントテーブル操作用に参照を加算 */
+	kassert( res );
+
+
 	/* マウント情報からの参照を解放してv-nodeを参照するスレッドがいなくなった時点で
 	 * マウント情報内のv-nodeキャッシュから外せるようにする
 	 */
 	res = vfs_vnode_ref_dec(v);
 	kassert( !res );      /* 最終参照ではないはず  */
 
+
+	vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイント操作用の参照解放 */
+
 	res = vfs_vnode_ref_dec(v);  /* 参照解放処理用の参照を解放する */
 
 	/* @note 削除予約済みv-nodeの場合, 削除予約フラグを設定した時点で
-	 * マウントテーブルへの参照を減算しており, かつ,
-	 * 上記のv-node参照解放処理の延長でマウントテーブル操作用の参照を
-	 * 解放済みであるため, 本関数でマウントテーブル操作用の参照を解放する必要はない。
+	 * マウントテーブルへの登録と参照を解放している.
 	 */
-	if ( !res ) {
-
-		vfs_fs_mount_ref_dec(v->v_mount);  /* マウントポイントの参照解放 */
+	if ( !res )
 		return -EAGAIN;    /* 最終参照者ではなかった */
-	}
 
 	return 0;  /* 最終参照者だった       */
 
