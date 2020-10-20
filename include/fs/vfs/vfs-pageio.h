@@ -42,7 +42,7 @@
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
 /**
-   ページキャッシュ
+   ページキャッシュ情報
  */
 typedef struct _vfs_page_cache{
 	/** ページキャッシュデータ構造更新ロック */
@@ -53,16 +53,16 @@ typedef struct _vfs_page_cache{
 	refcounter                       pc_refs;
 	/** ページキャッシュプールへのリンク     */
 	struct _page_cache_pool      *pc_pcplink;
-	/** バッファの状態                       */
+	/** ページキャッシュの状態               */
 	pcache_state                    pc_state;
 	/** パディング                           */
 	uint32_t                            pad1;
 	/** ページバッファ待ちキュー             */
 	struct _wque_waitqueue        pc_waiters;
 	/** ブロックデバイス中オフセットをキーとした検索用RB木エントリ                   */
-	RB_ENTRY(_vfs_page_cache)  pc_dev_ent;
+	RB_ENTRY(_vfs_page_cache)     pc_dev_ent;
 	/** ファイル中オフセットをキーとした検索用RB木エントリ                           */
-	RB_ENTRY(_vfs_page_cache) pc_file_ent;
+	RB_ENTRY(_vfs_page_cache)    pc_file_ent;
 	/** LRUリストのエントリ                  */
 	struct _list                 pc_lru_link;
 	/** ファイル中でのオフセットアドレス (単位:バイト)                                  */
@@ -86,13 +86,13 @@ typedef struct _vfs_page_cache_pool{
 	/** ページキャッシュプールの状態 */
         vfs_pcache_pool_state                          pcp_state;
 	/** 二次記憶デバイスID         */
-	dev_id                                         pcp_bdevid;
+	dev_id                                        pcp_bdevid;
+	/** ファイルのv-node           */
+	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ              */
 	size_t                                         pcp_pgsiz;
-	/**  ブロックデバイスページキャッシュツリー    */
-	RB_HEAD(_pcache_bdev_tree, _page_cache)  pcp_dev_head;
-	/**  ファイルページキャッシュツリー    */
-	RB_HEAD(_pcache_file_tree, _page_cache) pcp_file_head;
+	/**  ページキャッシュツリー    */
+	RB_HEAD(_pcache_bdev_tree, _vfs_page_cache)     pcp_head;
 	/**  LRUキャッシュ (二次記憶との一貫性がとれているページ)     */
 	struct _queue                              pcp_clean_lru;
 	/**  LRUキャッシュ (二次記憶よりキャッシュの方が新しいページ) */

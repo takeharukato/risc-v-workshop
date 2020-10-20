@@ -91,15 +91,8 @@ class RBTreeParser:
 
         return elm
 
-
-class ThreadPoolDumpCmd(gdb.Command):
-    """Prints the Thread Pool"""
-
-    def __init__(self):
-        self.parser = RBTreeParser()
-        self.verbose = False
-        super(ThreadPoolDumpCmd, self).__init__("thread_dump", gdb.COMMAND_USER)
-
+class ThreadPrettyPrinter(object):
+    """Print struct _thread """
     def _thread_state_string(self, state):
         if state == 0:
             return "DORMANT"
@@ -115,9 +108,35 @@ class ThreadPoolDumpCmd(gdb.Command):
             return "DEAD"
         return "UNKNOWN"
 
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        res = "thread-id: %d state: %s(%d) thread-info: 0x%x ksp: 0x%x proc:0x%x" % (self.val["id"], self._thread_state_string(self.val["state"]), self.val["state"], self.val["tinfo"], self.val["ksp"], self.val["p"])
+        return res
+
+class ProcPrettyPrinter(object):
+    """Print struct _proc """
+
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        res = "proc-id: %d pgt: 0x%x name:%s master:0x%x" % (self.val["id"], self.val["pgt"], self.val["name"], self.val["master"])
+        return res
+
+class ThreadPoolDumpCmd(gdb.Command):
+    """Prints the Thread Pool"""
+
+    def __init__(self):
+        self.parser = RBTreeParser()
+        self.verbose = False
+        super(ThreadPoolDumpCmd, self).__init__("thread_dump", gdb.COMMAND_USER)
+
     def _value_to_string(self, val):
+        res = ""
         if str(val.type) == "struct _thread *" or str(val.type) == "thread *":
-            res = "thread: 0x%x thread-id: %d state: %s(%d) thread-info: 0x%x ksp: 0x%x proc:0x%x" % (val , val["id"], self._thread_state_string(val["state"]), val["state"], val["tinfo"], val["ksp"], val["p"])
+            res = ("Thread: 0x%x " % val) + ThreadPrettyPrinter(val.dereference()).to_string()
         return res
     def _thread_pool_to_array(self, val, type, ent):
         """Walk through the rbtree.
@@ -163,5 +182,83 @@ class ThreadPoolDumpCmd(gdb.Command):
         for res in self._thread_pool_to_array(node_ptr_val, "_thrdb_tree", "ent"):
             print("%s" % res)
 
+class ProcPoolDumpCmd(gdb.Command):
+    """Prints the Process Pool"""
 
+    def __init__(self):
+        self.parser = RBTreeParser()
+        self.verbose = False
+        super(ProcPoolDumpCmd, self).__init__("proc_dump", gdb.COMMAND_USER)
+
+    def _value_to_string(self, val):
+        res = ""
+        if str(val.type) == "struct _proc *" or str(val.type) == "proc *":
+            res =  ("Proc: 0x%x " % val) + ProcPrettyPrinter(val.dereference()).to_string()
+        return res
+    def _proc_pool_to_array(self, val, type, ent):
+        """Walk through the rbtree.
+        """
+        if self.verbose:
+            print("arg=%s %s %s" % (val, type, ent))
+        idx = 0
+        head_ptr = val
+        result = []
+        node_ptr = self.parser._rbtree_root(head_ptr)
+        if self.verbose:
+            print("root-node:%s" % node_ptr)
+        if node_ptr == 0:
+            print("Proc pool is empty.")
+            return "" #木が空
+        min_node = self.parser._rbtree_min(head_ptr, ent)
+        max_node = self.parser._rbtree_max(head_ptr, ent)
+        if self.verbose:
+            print("min-node:%s max-node:%s" % (min_node, max_node))
+        cur_node = min_node
+        while cur_node != 0:
+            if self.verbose:
+                print("cur:%s" % cur_node)
+            result.append(self._value_to_string(cur_node))
+            cur_node = self.parser._rbtree_next(cur_node, ent)
+        return result
+
+    def complete(self, text, word):
+        # We expect the argument passed to be a symbol so fallback to the
+        # internal tab-completion handler for symbols
+        return gdb.COMPLETE_SYMBOL
+
+    def invoke(self, args, from_tty):
+        # We can pass args here and use Python CLI utilities like argparse
+        # to do argument parsing
+        if self.verbose:
+            print("Args Passed: %s" % args)
+        node_ptr_val = gdb.parse_and_eval("&g_procdb.head")
+        if str(node_ptr_val.type) != "struct _procdb_tree *"  and str(node_ptr_val.type) != "procdb_tree *":
+            print("Expected pointer argument of type (struct _procdb_tree *)")
+            print("node: %s" % str(node_ptr_val.type))
+            return
+        for res in self._proc_pool_to_array(node_ptr_val, "_procdb_tree", "ent"):
+            print("%s" % res)
+
+class CustomPrettyPrinterLocator(PrettyPrinter):
+        """Given a gdb.Value, search for a custom pretty printer"""
+
+        def __init__(self):
+            super(CustomPrettyPrinterLocator, self).__init__(
+                "my_pretty_printers", []
+            )
+
+        def __call__(self, val):
+            """Return the custom formatter if the type can be handled"""
+
+            typename = gdb.types.get_basic_type(val.type).tag
+            #print("Typename:%s" % typename)
+            if typename is None:
+                typename = val.type.name
+
+#            if typename == "_thread":
+#                return ThreadPrettyPrinter(val)
+
+
+register_pretty_printer(None, CustomPrettyPrinterLocator(), replace=True)
 ThreadPoolDumpCmd()
+ProcPoolDumpCmd()
