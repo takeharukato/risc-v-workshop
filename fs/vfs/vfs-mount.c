@@ -335,27 +335,6 @@ check_vnode_locked_by_self_nolock(vnode *v) {
 }
 
 /**
-   v-nodeの削除を予約する (内部関数)
-   @param[in] v  操作対象のv-node
-   @retval    真 v-nodeの最終参照者だった
-   @retval    偽 v-nodeの参照が残っている
- */
-static bool
-mark_vnode_delete_common(vnode *v){
-	bool deleted;
-	bool     res;
-
-	/* ディスクI-nodeの削除予約をかける */
-	deleted = mark_vnode_flag(v, VFS_VFLAGS_DELETE);
-	if ( !deleted )
-		return false;
-
-	res = vfs_vnode_ref_dec(v);  /* マウント情報からの参照を解放する */
-
-	return res;
-}
-
-/**
    マウント情報の初期化 (内部関数)
    @param[in] mount 初期化するマウント情報
    @param[in] path  マウントポイントパス
@@ -663,6 +642,44 @@ get_fs_mount_nolock(vfs_mnt_id mntid, fs_mount **mountp) {
 }
 
 /**
+   v-nodeの削除を予約する (内部関数)
+   @param[in] v  操作対象のv-node
+   @retval    真 v-nodeの最終参照者だった
+   @retval    偽 v-nodeの参照が残っている
+ */
+static bool
+mark_vnode_delete_common(vnode *v){
+	bool     res;
+
+	res = vfs_vnode_ref_inc(v);  /* フラグ操作用に参照を獲得する */
+	if ( !res )
+		return true; /* すでに削除中のv-nodeだった */
+
+	mutex_lock(&v->v_mount->m_mtx);    /*  マウントポイントロックを獲得     */
+	mutex_lock(&v->v_mtx);  /* v-nodeのロックを獲得 */
+
+	/* 未削除v-nodeの場合は, マウントポイントから外す */
+	if ( !check_vnode_flags_nolock(v, VFS_VFLAGS_DELETE) ) {
+
+		del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
+		res = vfs_vnode_ref_dec(v);  /* マウント情報からの参照を解放する */
+		kassert( !res );
+
+		/* ディスクI-nodeの削除予約をかける */
+		mark_vnode_flag_nolock(v, VFS_VFLAGS_DELETE);
+		if ( !wque_is_empty(&v->v_waiters) )   /*  v-nodeを待っているスレッドを起床 */
+			wque_wakeup(&v->v_waiters, WQUE_RELEASED);
+	}
+
+	mutex_unlock(&v->v_mtx);  /* v-nodeのロックを解放 */
+	mutex_unlock(&v->v_mount->m_mtx);    /*  マウントポイントロックを解放     */
+
+	res = vfs_vnode_ref_dec(v);  /* 削除操作用の参照を解放する */
+
+	return res;
+}
+
+/**
    v-nodeの初期化
    @param[in] v 初期化対象のv-node
    @note alloc_new_vnode内部のv-node初期化処理部分をメンテナンスの観点から分離した関数.
@@ -750,9 +767,10 @@ release_vnode(vnode *v){
 		v->v_mount->m_fs->c_calls->fs_putvnode(v->v_mount->m_fs_super,
 		    v->v_id, v->v_fs_vnode);
 
-	del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
-	v->v_mount = NULL;
+	if ( !check_vnode_flags_nolock(v, VFS_VFLAGS_DELETE) )
+		del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
 
+	v->v_mount = NULL;
 	/*
 	 *  v-nodeを解放する
 	 */
@@ -1216,6 +1234,51 @@ error_out:
 	return rc;
 }
 
+/**
+   mntid, vnidをキーとしてv-nodeを検索し削除フラグをセットする (内部関数)
+   @param[in] mntid マウントポイントID
+   @param[in] vnid  v-node ID
+   @retval  0       正常終了
+   @retval -EAGAIN  最終参照者ではなかった
+   @retval -EINVAL  不正なマウントポイントIDを指定した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ディスクI-node読み取りに失敗した
+   @retval -EINTR   v-node待ち合わせ中にイベントを受信した
+   @retval -EBUSY   アンマウント中のボリュームだった
+ */
+static int
+remove_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid){
+	int             rc;
+	bool           res;
+	fs_mount      *mnt;
+	vnode           *v;
+
+	rc = vfs_fs_mount_get(mntid, &mnt); /* マウントポイントの参照獲得 */
+	if ( rc != 0 ) {
+
+		rc = -EINVAL;
+		goto error_out;
+	}
+
+	rc = find_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
+	if ( rc != 0 )
+		goto put_mount_out;
+
+	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
+
+	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
+	if ( res )
+		return 0;  /* 最終参照者だった       */
+
+	return -EAGAIN;    /* 最終参照者ではなかった */
+
+put_mount_out:
+	vfs_fs_mount_put(mnt);  /* マウントポイントの参照解放 */
+
+error_out:
+	return rc;
+}
+
 /*
  * 外部IF
  */
@@ -1414,7 +1477,8 @@ vfs_vnode_ptr_remove(vnode *v){
 		goto error_out;
 	}
 
-	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
+	/* v-nodeの削除予約をかける */
+	rc = remove_vnode(v->v_mount->m_id, v->v_id);
 
 	vfs_vnode_ref_dec(v);  /* 削除予約処理用の参照を解放する */
 
