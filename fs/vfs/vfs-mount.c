@@ -1193,16 +1193,19 @@ unmount_common(vnode *root_vnode){
 		goto unref_mount_in_lock_out;  /*  アンマウント不能  */
 
 	/*
+	 * root v-node以外のv-nodeを解放
+	 */
+	free_vnodes_in_fs_mount(mount);
+
+	/*
 	 * ファイルシステム固有なアンマウント処理を実施
 	 */
 	if ( mount->m_fs->c_calls->fs_unmount != NULL ) {
 
-		mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
+		rc = mount->m_fs->c_calls->fs_unmount(mount->m_fs_super);
+		if ( rc != 0 )
+			goto unref_mount_in_lock_out;  /*  アンマウント不能  */
 	}
-	/*
-	 * root v-node以外のv-nodeを解放
-	 */
-	free_vnodes_in_fs_mount(mount);
 
 	vfs_vnode_ref_dec( mount->m_root ); /*  root v-nodeの参照を解放する */
 	if ( mount->m_mount_point != NULL ) {
