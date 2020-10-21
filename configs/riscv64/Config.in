@@ -86,5 +86,5 @@ config CONFIG_HAL_LDFLAGS
 config CONFIG_HAL_OPT_FLAGS
        prompt "Additional optimize flags for HAL"
        string
-       default "-fno-omit-frame-pointer"
+       default "-Wno-implicit-float -fno-omit-frame-pointer"
        depends on CONFIG_HAL
