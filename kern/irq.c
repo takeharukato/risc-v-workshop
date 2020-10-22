@@ -94,10 +94,10 @@ irq_ctrlr_cmp(irq_ctrlr *key, irq_ctrlr *ent) {
 static int
 irq_handler_cmp(irq_handler_ent *key, irq_handler_ent *ent) {
 
-	if ( key->handler < ent->handler )
+	if ( (uintptr_t)key->handler < (uintptr_t)ent->handler )
 		return -1;
 
-	if ( key->handler > ent->handler )
+	if ( (uintptr_t)key->handler > (uintptr_t)ent->handler )
 		return 1;
 
 	return 0;

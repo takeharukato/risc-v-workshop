@@ -301,7 +301,7 @@ minix_bitmap_alloc_freebit(minix_super_block *sbp, obj_cnt_type cur_page, int ma
 			     end_ptr > (void *)v12ptr;
 			     ++v12ptr) {
 
-				if ( *v12ptr == ~((minixv12_bitchunk)0) )
+				if ( *v12ptr == (minixv12_bitchunk)(~((minixv12_bitchunk)0)) )
 					continue;  /*  空きビットがない  */
 
 				if ( sbp->swap_needed )

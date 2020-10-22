@@ -7,7 +7,7 @@
 /*                                                                    */
 /**********************************************************************/
 #if !defined(_KLIB_ASM_MACROS_H)
-#define  _KLIB__ASM_MACROS_H
+#define _KLIB_ASM_MACROS_H
 
 #if defined(ASM_FILE)
 /**

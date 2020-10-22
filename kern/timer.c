@@ -78,6 +78,8 @@ unlock_out:
 	/*  時刻情報のロックを解放  */
 	spinlock_unlock_restore_intr(&g_systime.lock, &iflags);
 
+	rc = 0;
+
 	return rc;
 }
 /**

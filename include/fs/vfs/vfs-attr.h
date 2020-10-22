@@ -6,7 +6,7 @@
 /*  Virtual file system file attribute                                */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_FS_VFS_VFS_FD_H)
+#if !defined(_FS_VFS_VFS_ATTR_H)
 #define  _FS_VFS_VFS_ATTR_H
 
 #if !defined(ASM_FILE)

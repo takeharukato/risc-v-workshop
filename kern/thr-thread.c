@@ -559,8 +559,7 @@ thr_thread_wait(thr_wait_res *resp){
 
 	cur = ti_get_current_thread();  /* 自スレッドの管理情報を取得 */
 	res = thr_ref_inc(cur);         /* 自スレッドの参照を取得     */
-	if ( !res )
-		goto error_out;         /* 終了処理中 */
+	kassert( res );
 
 	/* 自スレッドをロック */
 	spinlock_lock_disable_intr(&cur->lock, &iflags);
@@ -610,7 +609,6 @@ unlock_out:
 
 	thr_ref_dec(cur);         /*  自スレッドの参照を解放    */
 
-error_out:
 	return rc;
 }
 

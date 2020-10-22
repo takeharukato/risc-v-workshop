@@ -53,11 +53,18 @@ endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 PIC_OPT_FLAGS=-fno-pie -nopie -fno-PIC
 endif
+# No floating instructions
+ifneq ($(shell env LANG=C $(CC) -mno-implicit-float 2>&1 | grep -e 'unrecognized'),)
+NO_FLOAT_OPT_FLAGS=-mgeneral-regs-only
+else
+NO_FLOAT_OPT_FLAGS=-mno-implicit-float
+endif
+
 INLINE_FUNC_OPT_FLAGS=-finline-functions
 GENERIC_FLAGS=${OPT_FLAGS} ${WARN_FLAGS} $(shell echo ${CONFIG_GENERIC_OPT_FLAGS}) $(shell echo ${CONFIG_GENERIC_DBG_FLAGS}) $(shell echo ${CONFIG_GENERIC_WARN_FLAGS}) ${INLINE_FUNC_OPT_FLAGS} $(shell echo ${CONFIG_GENERIC_INLINE_FLAGS})
 HOST_CFLAGS=${GENERIC_FLAGS} ${PROF_OPT_FLAGS} ${INC_FLAGS}
 HOST_LDFLAGS=
-CFLAGS=${HOST_CFLAGS} ${PIC_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS})
+CFLAGS=${HOST_CFLAGS} ${PIC_OPT_FLAGS} ${NO_FLOAT_OPT_FLAGS} $(shell echo ${CONFIG_HAL_CFLAGS}) $(shell echo ${CONFIG_HAL_OPT_FLAGS})
 # CFLAGS for asm-offset.c
 ASM_OFFSET_CFLAGS=$(shell echo ${CFLAGS}|sed -e 's@-ggdb[0-9]*@@g')
 LDFLAGS=
