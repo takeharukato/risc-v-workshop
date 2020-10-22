@@ -1,0 +1,2 @@
+clangで構築する場合は以下を設定する
+make HOST_CC=clang CC="/usr/local/llvm/bin/clang --target=riscv64-unknown-elf "|&tee build.log

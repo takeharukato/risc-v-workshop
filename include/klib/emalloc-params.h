@@ -4,6 +4,8 @@
 #include <hal/hal-page.h>  /*  HAL_PAGE_SIZE  */
 
 #include <klib/early-kheap.h>  /*  ekheap_sbrk  */
+#include <klib/string.h>       /* memset/memcpy */
+#include <klib/errno.h>        /* errno         */
 
 #define MSPACES         (0)
 #define ONLY_MSPACES    (0)
@@ -24,6 +26,11 @@
 #define NO_MALLOC_STATS (1)  /* Avoid using printf family */
 #define LACKS_TIME_H    (1)  /* Avoid using time(3) */
 #define LACKS_STDLIB_H     (1)  /* Avoid using SSE */
+#define LACKS_SYS_TYPES_H  (1)  /* sys/types.h */
+#define LACKS_ERRNO_H      (1)
+#define LACKS_STRING_H     (1)
+#define LACKS_STRINGS_H    (1)
+#define LACKS_UNISTD_H     (1)
 #define USE_EMALLOC_PREFIX (1)
 
 #if defined (USE_EMALLOC_PREFIX)
