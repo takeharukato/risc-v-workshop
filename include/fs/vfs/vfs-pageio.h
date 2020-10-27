@@ -42,7 +42,7 @@
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
 /**
-   ページキャッシュ情報
+   ページキャッシュ
  */
 typedef struct _vfs_page_cache{
 	/** ページキャッシュデータ構造更新ロック */
@@ -53,22 +53,20 @@ typedef struct _vfs_page_cache{
 	refcounter                       pc_refs;
 	/** ページキャッシュプールへのリンク     */
 	struct _page_cache_pool      *pc_pcplink;
-	/** ページキャッシュの状態               */
+	/** バッファの状態                       */
 	pcache_state                    pc_state;
 	/** パディング                           */
 	uint32_t                            pad1;
+	/** ブロックデバイス上のブロック         */
+	struct _queue                  pc_blkque;
 	/** ページバッファ待ちキュー             */
 	struct _wque_waitqueue        pc_waiters;
-	/** ブロックデバイス中オフセットをキーとした検索用RB木エントリ                   */
-	RB_ENTRY(_vfs_page_cache)     pc_dev_ent;
-	/** ファイル中オフセットをキーとした検索用RB木エントリ                           */
-	RB_ENTRY(_vfs_page_cache)    pc_file_ent;
+	/** ファイル/ブロックデバイス中のオフセットをキーとした検索用RB木エントリ        */
+	RB_ENTRY(_vfs_page_cache)         pc_ent;
+	/** オフセットアドレス (単位:バイト)     */
+	off_t                          pc_offset;
 	/** LRUリストのエントリ                  */
 	struct _list                 pc_lru_link;
-	/** ファイル中でのオフセットアドレス (単位:バイト)                                  */
-	off_t                     pc_file_offset;
-	/** ブロックデバイス中でのオフセットアドレス (単位:バイト)                          */
-	off_t                     pc_bdev_offset;
 	/** ページフレーム情報                   */
 	struct _page_frame                *pc_pf;
 	/** ページキャッシュデータへのポインタ   */
@@ -87,6 +85,8 @@ typedef struct _vfs_page_cache_pool{
         vfs_pcache_pool_state                          pcp_state;
 	/** 二次記憶デバイスID         */
 	dev_id                                        pcp_bdevid;
+	/** ファイルシステムのブロックサイズ   */
+	size_t                                      pcp_fs_bsize;
 	/** ファイルのv-node           */
 	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ              */
@@ -117,6 +117,7 @@ typedef struct _vfs_page_cache_pool_db{
 	.lock = __SPINLOCK_INITIALIZER,		                            \
 	.head  = RB_INITIALIZER(&((_pcpdb)->head)),		            \
 	}
+
 
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PAGEIO_H  */

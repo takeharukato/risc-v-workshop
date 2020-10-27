@@ -103,6 +103,7 @@ typedef int64_t            off_t;   /*<  オフセット位置(単位:バイト)
  */
 typedef uint32_t        fs_dev_id;  /*<  FSデバイスID (メジャー/マイナー番号) */
 typedef uint64_t           dev_id;  /*<  デバイスID (統合デバイス番号)        */
+typedef obj_cnt_type    fs_blk_no;  /*<  ブロック番号                         */
 
 /*
  * CPU管理/プラットフォーム管理
