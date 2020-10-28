@@ -2,14 +2,11 @@
 # OS kernel sample
 # Copyright 2019 Takeharu KATO
 #
-top=../..
+top=..
 include ${top}/Makefile.inc
-subdirs=
+subdirs=bdev
 
-objects=vfs-init.o vfs-path.o vfs-fstbl.o vfs-mount.o vfs-fd.o vfs-open.o vfs-close.o \
-	vfs-pageio.o vfs-read.o vfs-write.o vfs-create.o vfs-unlink.o vfs-getdents.o \
-	vfs-attrhelper.o vfs-setattr.o vfs-getattr.o vfs-lseek.o vfs-mkdir.o \
-	vfs-rmdir.o vfs-rename.o vfs-ioctl.o vfs-fsync.o vfs-fscalls.o
+objects=
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
@@ -17,9 +14,9 @@ endif
 
 depends = $(patsubst %.o,%.d,${objects})
 
-lib=libvfs.a
+lib=
 
-all: ${depends} ${lib}
+all: ${depends} ${lib} subsystem
 
 ${lib}: ${objects}
 	${AR} ${ARFLAGS} $@ $^
@@ -33,6 +30,10 @@ ifeq ($(CONFIG_PROFILE),y)
 	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
 
+subsystem:
+	for dir in ${subdirs} ; do \
+	${MAKE} -C $${dir} ;\
+	done
 
 clean:
 	${RM} ${CLEAN_FILES} ${lib} ${FSIMG}  fsimg.S

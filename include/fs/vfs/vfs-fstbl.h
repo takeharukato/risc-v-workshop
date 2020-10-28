@@ -20,7 +20,7 @@
 
 struct _vfs_file_stat;
 struct _fs_calls;
-
+struct _bio_request_entry;
 /**
    ファイルシステム情報
  */
@@ -74,6 +74,7 @@ typedef struct _fs_calls {
 	    off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
+	int (*fs_strategy)(struct _bio_request_entry *_ent);
 	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_create)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,
@@ -118,6 +119,8 @@ typedef struct _fs_calls {
 
 int vfs_fs_get(const char *_fs_name, struct _fs_container **_containerp);
 void vfs_fs_put(struct _fs_container *_fs);
+void vfs_fs_calls_init(struct _fs_calls *_calls);
+void vfs_fs_calls_copy(struct _fs_calls *_dest, struct _fs_calls *_src);
 int vfs_mount(struct _vfs_ioctx *_ioctxp, char *_path, dev_id _dev, void *_args);
 int vfs_register_filesystem(const char *_name, vfs_fstype_flags _fstype, struct _fs_calls *_calls);
 int vfs_unregister_filesystem(const char *_name);

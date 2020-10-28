@@ -41,6 +41,7 @@
 
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
+struct _bdev_entry;
 /**
    ページキャッシュ
  */
@@ -52,13 +53,11 @@ typedef struct _vfs_page_cache{
 	/** 参照カウンタ                         */
 	refcounter                       pc_refs;
 	/** ページキャッシュプールへのリンク     */
-	struct _page_cache_pool      *pc_pcplink;
+	struct _vfs_page_cache_pool  *pc_pcplink;
 	/** バッファの状態                       */
 	pcache_state                    pc_state;
 	/** パディング                           */
 	uint32_t                            pad1;
-	/** ブロックデバイス上のブロック         */
-	struct _queue                  pc_blkque;
 	/** ページバッファ待ちキュー             */
 	struct _wque_waitqueue        pc_waiters;
 	/** ファイル/ブロックデバイス中のオフセットをキーとした検索用RB木エントリ        */
@@ -83,10 +82,8 @@ typedef struct _vfs_page_cache_pool{
 	refcounter                                      pcp_refs;
 	/** ページキャッシュプールの状態 */
         vfs_pcache_pool_state                          pcp_state;
-	/** 二次記憶デバイスID         */
-	dev_id                                        pcp_bdevid;
-	/** ファイルシステムのブロックサイズ   */
-	size_t                                      pcp_fs_bsize;
+	/** ブロックデバイス         */
+	struct _bdev_entry                             *pcp_bdev;
 	/** ファイルのv-node           */
 	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ              */
@@ -118,6 +115,12 @@ typedef struct _vfs_page_cache_pool_db{
 	.head  = RB_INITIALIZER(&((_pcpdb)->head)),		            \
 	}
 
-
+bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
+bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
+bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
+bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
+int vfs_dev_page_cache_alloc(struct _bdev_entry *_bdev);
+void vfs_init_pageio(void);
+void vfs_finalize_pageio(void);
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PAGEIO_H  */

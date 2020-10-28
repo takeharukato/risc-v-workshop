@@ -8,13 +8,14 @@ targets=kernel.elf kernel-dbg.elf kernel.asm kernel.map
 fsimg_obj=$(patsubst %.img,%.o, ${FSIMG_FILE})
 fsimg_objfile=${top}/fs/${fsimg_obj}
 kern_subdirs=kern klib fs hal test
-subdirs=kern klib fs hal test
+subdirs=kern klib fs dev hal test
 tool_dirs=tools
 supdirs=${tool_dirs} doxygen
 cleandirs=include ${subdirs} ${supdirs}
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a \
-	fs/vfs/libvfs.a fs/minixfs/libminixfs.a fs/simplefs/libsimplefs.a
+	fs/vfs/libvfs.a fs/minixfs/libminixfs.a fs/simplefs/libsimplefs.a \
+	dev/bdev/libbdev.a
 
 mconf=tools/kconfig/mconf
 

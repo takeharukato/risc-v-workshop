@@ -247,6 +247,7 @@ vfs_mount(vfs_ioctx *ioctxp, char *path, dev_id dev, void *args){
 error_out:
 	return rc;
 }
+
 /**
    ファイルシステムの登録
    @param[in] name   ファイルシステム名を表す文字列

@@ -18,6 +18,7 @@
 typedef uint32_t      vfs_pcache_state;   /**< ページキャッシュの状態                   */
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
+struct _bdev_entry;
 /**
    ページキャッシュ
  */
@@ -29,7 +30,7 @@ typedef struct _vfs_page_cache{
 	/** 参照カウンタ                         */
 	refcounter                       pc_refs;
 	/** ページキャッシュプールへのリンク     */
-	struct _page_cache_pool      *pc_pcplink;
+	struct _vfs_page_cache_pool  *pc_pcplink;
 	/** バッファの状態                       */
 	pcache_state                    pc_state;
 	/** パディング                           */
@@ -58,8 +59,8 @@ typedef struct _vfs_page_cache_pool{
 	refcounter                                      pcp_refs;
 	/** ページキャッシュプールの状態 */
         vfs_pcache_pool_state                          pcp_state;
-	/** 二次記憶デバイスID         */
-	dev_id                                        pcp_bdevid;
+	/** ブロックデバイス         */
+	struct _bdev_entry                             *pcp_bdev;
 	/** ファイルのv-node           */
 	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ              */
