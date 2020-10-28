@@ -103,6 +103,9 @@ typedef struct _bdev_db{
 	.bdev_head  = RB_INITIALIZER(&((_bdevdbp)->bdev_head)),		            \
 	}
 int bdev_page_cache_pool_set(struct _bdev_entry *_bdev, struct _vfs_page_cache_pool *_pool);
+int bdev_device_register(dev_id _devid, size_t _blksiz, struct _fs_calls *_ops,
+    bdev_private _private);
+void bdev_device_unregister(dev_id _devid);
 void bdev_init(void);
 void bdev_finalize(void);
 #endif  /*  !ASM_FILE  */

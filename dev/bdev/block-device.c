@@ -21,7 +21,7 @@
 /**
    ブロックデバイスデータベース
  */
-static bdev_db __unused g_bdevdb = __BDEVDB_INITIALIZER(&g_bdevdb);
+static bdev_db g_bdevdb = __BDEVDB_INITIALIZER(&g_bdevdb);
 
 static kmem_cache bio_req_ent_cache;  /**< BIOリクエストエントリのSLABキャッシュ    */
 static kmem_cache bio_req_cache;      /**< BIOリクエストのSLABキャッシュ            */
@@ -105,7 +105,7 @@ init_bio_request(bio_request *req){
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
  */
-static int __unused
+static int
 alloc_bdev_entry(bdev_entry **entp){
 	int          rc;
 	bdev_entry *ent;
@@ -256,6 +256,138 @@ error_out:
 	return rc;
 }
 
+/**
+   ブロックデバイスエントリへの参照を加算する
+   @param[in] ent ブロックデバイスエントリ
+   @retval    真  ブロックデバイスエントリの参照を獲得できた
+   @retval    偽  ブロックデバイスエントリの参照を獲得できなかった
+ */
+bool
+bdev_bdev_ent_ref_inc(bdev_entry *ent){
+
+	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを加算
+	 */
+	return ( refcnt_inc_if_valid(&ent->bdent_refs) != 0 );
+}
+
+/**
+   ブロックデバイスエントリへの参照を減算する
+   @param[in] ent ブロックデバイスエントリ
+   @retval    真 ブロックデバイスエントリの最終参照者だった
+   @retval    偽 ブロックデバイスエントリの最終参照者でない
+ */
+bool
+bdev_bdev_ent_ref_dec(bdev_entry *ent){
+	bool res;
+
+	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを減算
+	 */
+	res = refcnt_dec_and_test(&ent->bdent_refs);
+	if ( res )  /* 最終参照者だった場合 */
+		free_bdev_entry(ent);
+
+	return res;
+}
+
+/**
+   ブロックデバイスドライバを登録する
+   @param[in] devid   デバイスID
+   @param[in] blksiz  ブロックサイズ(単位:バイト)
+   @param[in] ops     ファイルシステムコール
+   @param[in] private ドライバ固有情報のアドレス
+   @retval  0 正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -EBUSY  同一デバイスIDのドライバが登録されている
+ */
+int
+bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private private){
+	int           rc;
+	bdev_entry  *ent;
+	bdev_entry  *res;
+	intrflags iflags;
+
+	kassert( ops != NULL );
+
+	if ( devid == VFS_VSTAT_INVALID_DEVID )
+		return -EINVAL;
+
+	rc = alloc_bdev_entry(&ent);
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = vfs_dev_page_cache_pool_alloc(ent); /* ページキャッシュプールを設定する */
+	if ( rc != 0 )
+		goto put_bdev_ent_out;  /* 参照を減算してブロックデバイスエントリを解放 */
+
+	kassert( ent->bdent_pool != NULL );
+
+	ent->bdent_devid = devid;      /* デバイスIDを設定 */
+	ent->bdent_blksiz = blksiz;    /* ブロックサイズを設定 */
+	vfs_fs_calls_copy(&ent->bdent_calls, ops); /* fs_callをコピーする */
+	ent->bdent_private = private;  /* ドライバ固有情報へのポインタを設定 */
+
+	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	/* デバイスドライバを登録 */
+	res = RB_INSERT(_bdev_tree, &g_bdevdb.bdev_head,  ent);
+
+	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	if ( res != NULL ) {
+
+		/* ページキャッシュプールへの参照を解放 */
+		vfs_page_cache_pool_ref_dec(ent->bdent_pool);
+		ent->bdent_pool = NULL;
+		rc = -EBUSY;
+		goto put_bdev_ent_out;
+	}
+
+	return 0;
+
+put_bdev_ent_out:
+	bdev_bdev_ent_ref_dec(ent);
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックデバイスドライバの登録を抹消する
+   @param[in] devid   デバイスID
+ */
+void
+bdev_device_unregister(dev_id devid){
+	bdev_entry   key;
+	bdev_entry  *ent;
+	bdev_entry  *res;
+	intrflags iflags;
+
+	if ( devid == VFS_VSTAT_INVALID_DEVID )
+		return ;
+
+	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	key.bdent_devid = devid;
+	ent = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
+	if ( ent == NULL ) {
+
+		spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+		return;  /* 対象のデバイスが削除済み */
+	}
+
+	res = RB_REMOVE(_bdev_tree, &g_bdevdb.bdev_head, ent);
+	kassert( res != NULL );
+
+	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	/* ページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(ent->bdent_pool);
+	ent->bdent_pool = NULL;
+
+	bdev_bdev_ent_ref_dec(ent);
+
+	return ;
+}
 /**
    ブロックデバイス機構の初期化
  */

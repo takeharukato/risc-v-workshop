@@ -211,7 +211,7 @@ free_page_cache(vfs_page_cache *pc){
    ページキャッシュを使用中に設定する (内部関数)
    @param[in] pc 操作対象のページキャッシュ
    @retval    0       正常終了
-   @retval   -ENOENT  開放中のページキャッシュだった
+   @retval   -ENOENT  ページキャッシュが解放中だった
  */
 static int
 mark_page_cache_busy(vfs_page_cache *pc){
@@ -223,7 +223,7 @@ mark_page_cache_busy(vfs_page_cache *pc){
 	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
 	if ( !res ) {
 
-		rc = -ENOENT;  /* 開放中のページキャッシュだった */
+		rc = -ENOENT;  /* 解放中のページキャッシュだった */
 		goto error_out;
 	}
 
@@ -309,17 +309,20 @@ error_out:
 /**
    ページキャッシュを未使用に設定する (内部関数)
    @param[in] pc 操作対象のページキャッシュ
+   @retval   -ENOENT  ページキャッシュが解放中だった
  */
-static int __unused
+static int
 unmark_page_cache_busy(vfs_page_cache *pc){
 	int              rc;
 	bool            res;
 	thread       *owner;
 
 	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
-	if ( !res )
-		goto error_out;
+	if ( !res ) {
 
+		rc = -ENOENT;
+		goto error_out;
+	}
 	/*
 	 * ページキャッシュを未使用中にする
 	 */
@@ -477,7 +480,11 @@ error_out:
    @param[in] pool ページキャッシュプール
    @param[in] offset オフセットアドレス(単位:バイト)
    @param[out] pcp   ページキャッシュを指し示すポインタのアドレス
-   @retval 0 正常終了
+   @retval  0 正常終了
+   @retval -ENODEV  ミューテックスが破棄された
+   @retval -EINTR   非同期イベントを受信した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  ページキャッシュが解放中だった
  */
 int
 vfs_page_cache_get(vfs_page_cache_pool *pool, off_t offset, vfs_page_cache **pcp){
@@ -543,6 +550,37 @@ put_pool_ref_out:
 error_out:
 	return rc;
 }
+/**
+   ページキャッシュを返却する
+   @param[in] pc ページキャッシュ
+   @retval  0 正常終了
+   @retval -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_put(vfs_page_cache *pc){
+	int              rc;
+	bool            res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	rc = unmark_page_cache_busy(pc);  /* ページキャッシュを未使用状態に遷移する */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
+
+	if ( rc != 0 )
+		goto error_out;
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
 /**
    ページI/O機構を初期化する
  */
