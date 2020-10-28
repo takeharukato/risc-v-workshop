@@ -888,7 +888,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 		}
 
 		/*  v-nodeの更新完了を待ち合わせる */
-		reason = wque_wait_on_event_with_mutex(&v->v_waiters, &mnt->m_mtx);
+		reason = wque_wait_on_queue_with_mutex(&v->v_waiters, &mnt->m_mtx);
 		if ( reason == WQUE_DELIVEV ) {
 
 			rc = -EINTR;   /* イベントを受信した */
@@ -1572,7 +1572,7 @@ vfs_vnode_lock(vnode *v) {
 			/*  他のスレッドがv-nodeを使用中の場合は
 			 *  v-nodeの開放を待ち合わせる
 			 */
-			reason = wque_wait_on_event_with_mutex(&v->v_waiters,
+			reason = wque_wait_on_queue_with_mutex(&v->v_waiters,
 			    &v->v_mount->m_mtx);
 			if ( reason == WQUE_DELIVEV ) {
 

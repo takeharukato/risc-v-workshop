@@ -27,10 +27,10 @@
 /*
  * ページキャッシュの状態
  */
-#define	PCACHE_INVALID           (0x0)    /**< 無効なキャッシュ                         */
-#define	PCACHE_BUSY              (0x1)    /**< ページキャッシュがロックされている       */
-#define	PCACHE_CLEAN             (0x2)    /**< ディスクとキャッシュの内容が一致している */
-#define	PCACHE_DIRTY             (0x4)    /**< ページキャッシュの方がディスクより新しい */
+#define	VFS_PCACHE_INVALID           (0x0)    /**< 無効なキャッシュ                         */
+#define	VFS_PCACHE_BUSY              (0x1)    /**< ページキャッシュがロックされている       */
+#define	VFS_PCACHE_CLEAN             (0x2)    /**< ディスクとキャッシュの内容が一致している */
+#define	VFS_PCACHE_DIRTY             (0x4)    /**< ページキャッシュの方がディスクより新しい */
 
 /*
  * ページキャッシュプールの状態
@@ -62,7 +62,7 @@ typedef struct _vfs_page_cache{
 	struct _wque_waitqueue        pc_waiters;
 	/** ファイル/ブロックデバイス中のオフセットをキーとした検索用RB木エントリ        */
 	RB_ENTRY(_vfs_page_cache)         pc_ent;
-	/** オフセットアドレス (単位:バイト)     */
+	/** オフセットアドレス (単位:バイト, ページアライン)     */
 	off_t                          pc_offset;
 	/** LRUリストのエントリ                  */
 	struct _list                 pc_lru_link;
@@ -89,7 +89,7 @@ typedef struct _vfs_page_cache_pool{
 	/**  ページサイズ              */
 	size_t                                         pcp_pgsiz;
 	/**  ページキャッシュツリー    */
-	RB_HEAD(_pcache_bdev_tree, _vfs_page_cache)     pcp_head;
+	RB_HEAD(_vfs_pcache_tree, _vfs_page_cache)     pcp_head;
 	/**  LRUキャッシュ (二次記憶との一貫性がとれているページ)     */
 	struct _queue                              pcp_clean_lru;
 	/**  LRUキャッシュ (二次記憶よりキャッシュの方が新しいページ) */
@@ -103,23 +103,48 @@ typedef struct _vfs_page_cache_pool_db{
 	/** ページキャッシュプールDBのロック */
 	spinlock                         lock;
 	/** ページキャッシュプールDB         */
-	RB_HEAD(_page_cache_pool_tree, _page_cache_pool) head;
+	RB_HEAD(_vfs_page_cache_pool_tree, _vfs_page_cache_pool) head;
 }vfs_page_cache_pool_db;
 
 /**
-   ページキャッシュプールDB初期化子
-   @param[in] _pcpdb ページキャッシュプールDBのアドレス
+   ページキャッシュが利用中であることを確認する
+   @param[in] _pcache ページキャッシュ
  */
-#define __PCPDB_INITIALIZER(_pcpdb) {		                            \
-	.lock = __SPINLOCK_INITIALIZER,		                            \
-	.head  = RB_INITIALIZER(&((_pcpdb)->head)),		            \
-	}
+#define VFS_PCACHE_IS_BUSY(_pcache) \
+	( (_pcache)->pc_state & VFS_PCACHE_BUSY )
+
+/**
+   ページキャッシュと2時記憶の状態が一致していることを確認する
+   @param[in] _pcache ページキャッシュ
+ */
+#define VFS_PCACHE_IS_CLEAN(_pcache) \
+	( (_pcache)->pc_state & VFS_PCACHE_CLEAN )
+
+/**
+   ページキャッシュの方が2時記憶より新しいことを確認する
+   @param[in] _pcache ページキャッシュ
+ */
+#define VFS_PCACHE_IS_DIRTY(_pcache) \
+	( (_pcache)->pc_state & VFS_PCACHE_DIRTY )
+
+/**
+   ページキャッシュが有効であることを確認する
+   ページキャッシュと2次記憶の内容が一致しているか,
+   キャッシュのほうが新しい場合のいずれかの状態にある場合に
+   有効とする
+   @param[in] _pcache ページキャッシュ
+ */
+#define VFS_PCACHE_IS_VALID(_pcache)					\
+	( ( (_pcache)->pc_state & ( VFS_PCACHE_CLEAN | VFS_PCACHE_DIRTY ) ) \
+	    && ( ( (_pcache)->pc_state & \
+		    ( VFS_PCACHE_CLEAN | VFS_PCACHE_DIRTY ) ) != \
+		( VFS_PCACHE_CLEAN | VFS_PCACHE_DIRTY ) ) )
 
 bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
-int vfs_dev_page_cache_alloc(struct _bdev_entry *_bdev);
+int vfs_dev_page_cache_pool_alloc(struct _bdev_entry *_bdev);
 void vfs_init_pageio(void);
 void vfs_finalize_pageio(void);
 #endif  /* !ASM_FILE */

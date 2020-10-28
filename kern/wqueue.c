@@ -160,7 +160,7 @@ wque_wait_on_queue_with_spinlock(wque_waitqueue *wque, spinlock *lock){
    @retval 起床要因
  */
 wque_reason
-wque_wait_on_event_with_mutex(wque_waitqueue *wque, mutex *mtx){
+wque_wait_on_queue_with_mutex(wque_waitqueue *wque, mutex *mtx){
 	wque_entry   ent;
 
 	wque_init_wque_entry(&ent);   /* ウエイトキューエントリを初期化する */

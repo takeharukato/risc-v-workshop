@@ -71,7 +71,7 @@ void wque_init_wque_entry(struct _wque_entry *_ent);
 wque_reason wque_wait_for_curthr(struct _wque_waitqueue *_wque);
 wque_reason wque_wait_on_queue_with_spinlock(struct _wque_waitqueue *_wque,
     struct _spinlock *_lock);
-wque_reason wque_wait_on_event_with_mutex(struct _wque_waitqueue *_wque, struct _mutex *_mtx);
+wque_reason wque_wait_on_queue_with_mutex(struct _wque_waitqueue *_wque, struct _mutex *_mtx);
 
 void wque_wakeup(struct _wque_waitqueue *_wque, wque_reason _reason);
 struct _thread *wque_owner_get(struct _wque_waitqueue *_wque);

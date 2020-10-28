@@ -98,6 +98,7 @@ mutex_locked_by_self(mutex *mtx){
 	bool          rc;
 	intrflags iflags;
 	thread    *owner;
+
 	spinlock_lock_disable_intr(&mtx->lock, &iflags); /* ミューテックスをロック */
 
 	owner = wque_owner_get(&mtx->wque);  /* オーナスレッドを得る */
