@@ -109,6 +109,90 @@ free_bdev_entry(bdev_entry *ent){
 }
 
 /**
+   ブロックデバイスエントリへの参照を加算する (内部関数)
+   @param[in] ent ブロックデバイスエントリ
+   @retval    真  ブロックデバイスエントリの参照を獲得できた
+   @retval    偽  ブロックデバイスエントリの参照を獲得できなかった
+ */
+static bool
+inc_bdev_ent_ref(bdev_entry *ent){
+
+	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを加算
+	 */
+	return ( refcnt_inc_if_valid(&ent->bdent_refs) != 0 );
+}
+
+/**
+   ブロックデバイスエントリへの参照を減算する (内部関数)
+   @param[in] ent ブロックデバイスエントリ
+   @retval    真 ブロックデバイスエントリの最終参照者だった
+   @retval    偽 ブロックデバイスエントリの最終参照者でない
+ */
+static bool
+dec_bdev_ent_ref(bdev_entry *ent){
+	bool res;
+
+	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを減算
+	 */
+	res = refcnt_dec_and_test(&ent->bdent_refs);
+	if ( res )  /* 最終参照者だった場合 */
+		free_bdev_entry(ent);
+
+	return res;
+}
+
+/**
+   ブロックデバイスエントリの参照を獲得する (内部関数)
+   @param[in] devid  ブロックデバイスのデバイスID
+   @param[out] bdevp ブロックデバイスエントリを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENODEV ブロックデバイスエントリが見つからなかった
+ */
+static int
+get_bdev_entry(dev_id devid, bdev_entry **bdevp){
+	int                 rc;
+	bool               res;
+	bdev_entry       *bdev;
+	bdev_entry         key;
+	intrflags       iflags;
+
+	key.bdent_devid = devid;  /* デバイスIDを設定 */
+
+	/* ブロックデバイスDBのロックを獲得 */
+	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	/*
+	 * ブロックデバイスを検索する
+	 */
+	bdev = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
+	if ( bdev == NULL ) {
+
+		rc = -ENODEV;  /* デバイスが見つからなかった */
+		goto unlock_out;
+	}
+
+	res = inc_bdev_ent_ref(bdev);  /* 参照を加算 */
+	kassert( res );  /* ブロックデバイスDBからの参照が残っている */
+
+	/* ブロックデバイスDBのロックを解放 */
+	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	if ( bdevp != NULL )
+		*bdevp = bdev;  /* ブロックデバイスエントリを返却 */
+
+	return 0;
+
+unlock_out:
+	/* ブロックデバイスDBのロックを解放 */
+	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+	return rc;
+}
+
+/*
+ * IF関数
+ */
+
+/**
    ブロックデバイスエントリにページキャッシュプールを設定する
    @param[in] bdev ブロックデバイスエントリ
    @param[in] pool ページキャッシュプール
@@ -141,79 +225,34 @@ error_out:
 }
 
 /**
-   ブロックデバイスエントリへの参照を加算する
-   @param[in] ent ブロックデバイスエントリ
-   @retval    真  ブロックデバイスエントリの参照を獲得できた
-   @retval    偽  ブロックデバイスエントリの参照を獲得できなかった
- */
-bool
-bdev_bdev_ent_ref_inc(bdev_entry *ent){
-
-	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを加算
-	 */
-	return ( refcnt_inc_if_valid(&ent->bdent_refs) != 0 );
-}
-
-/**
-   ブロックデバイスエントリへの参照を減算する
-   @param[in] ent ブロックデバイスエントリ
-   @retval    真 ブロックデバイスエントリの最終参照者だった
-   @retval    偽 ブロックデバイスエントリの最終参照者でない
- */
-bool
-bdev_bdev_ent_ref_dec(bdev_entry *ent){
-	bool res;
-
-	/* ブロックデバイスエントリ解放中でなければ, 参照カウンタを減算
-	 */
-	res = refcnt_dec_and_test(&ent->bdent_refs);
-	if ( res )  /* 最終参照者だった場合 */
-		free_bdev_entry(ent);
-
-	return res;
-}
-
-
-/**
    ブロックI/Oリクエストを処理する
  */
 int
 bdev_bio_request_submit(dev_id devid, bio_request *req){
 	int                 rc;
-	bool               res;
 	list          *lp, *np;
 	bdev_entry       *bdev;
 	bio_request_entry *ent;
-	bdev_entry         key;
 	intrflags       iflags;
 
 	if ( req == NULL )
 		return -EINVAL;
-	/*
-	 * ブロックデバイスを検索する
-	 */
-	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
 
-	key.bdent_devid = devid;
-	bdev = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
-	if ( bdev == NULL ) {
+	rc = get_bdev_entry(devid, &bdev);  /* ブロックデバイスエントリの参照を獲得する */
+	if ( rc != 0 )
+		return rc;  /* ブロックデバイスが見つからなかった */
 
-		spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
-		return -ENODEV;  /* 対象のデバイスが削除済み */
-	}
+	/* リクエストのロックを獲得する */
+	spinlock_lock_disable_intr(&req->br_lock, &iflags);
 
-	res = bdev_bdev_ent_ref_inc(bdev);  /* 参照を加算 */
-	kassert( res );
-
-	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
-
-	/* TODO: リクエストのロックを獲得する */
-	/* キュー内のリクエストを処理する
+	/* リクエストキュー内のリクエストを処理する
 	 */
 	queue_for_each_safe(lp, &req->br_req, np){
 
+		/* 先頭のリクエストを取り出す */
 		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
-		if ( bdev->bdent_calls.fs_strategy == NULL ) {
+
+		if ( bdev->bdent_calls.fs_strategy == NULL ) { /* ストラテジ関数が未定義 */
 
 			bio_request_entry_free(ent); /* リクエストエントリを解放 */
 			continue;  /* 次のリクエストを処理する */
@@ -222,13 +261,19 @@ bdev_bio_request_submit(dev_id devid, bio_request *req){
 		rc = bdev->bdent_calls.fs_strategy(ent);  /* リクエストエントリを処理する */
 		if ( rc != 0 ) {
 
-			/* TODO: 非同期I/Oの場合は, リクエストエントリを解放する */
-			queue_add((&req->br_err_req), &ent->bre_ent); /* エラーキューに追加 */
+			/* 非同期I/Oの場合は, リクエストエントリを解放し,
+			 * 同期I/Oの場合は, エラーキューにエラーリクエストを追加する
+			 */
+			if ( req->br_flags & BIO_BREQ_FLAG_ASYNC )
+				bio_request_entry_free(ent);
+			else
+				queue_add((&req->br_err_req), &ent->bre_ent);
 		}
 	}
-	/* TODO: リクエストのロックを解放する */
+	/* リクエストのロックを解放する */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
 
-	bdev_bdev_ent_ref_dec(bdev);  /* 参照を減算 */
+	dec_bdev_ent_ref(bdev);  /* 参照を減算 */
 
 	return 0;
 }
@@ -288,7 +333,7 @@ bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private pr
 	return 0;
 
 put_bdev_ent_out:
-	bdev_bdev_ent_ref_dec(ent);
+	dec_bdev_ent_ref(ent);
 
 error_out:
 	return rc;
@@ -327,7 +372,7 @@ bdev_device_unregister(dev_id devid){
 	vfs_page_cache_pool_ref_dec(ent->bdent_pool);
 	ent->bdent_pool = NULL;
 
-	bdev_bdev_ent_ref_dec(ent);
+	dec_bdev_ent_ref(ent);
 
 	return ;
 }

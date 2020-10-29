@@ -47,6 +47,7 @@ init_bio_request(bio_request *req){
 	spinlock_init(&req->br_lock);        /*  ロックの初期化                      */
 	list_init(&req->br_ent);             /* リストエントリの初期化               */
 	wque_init_wait_queue(&req->br_wque); /* ウエイトキューの初期化               */
+	req->br_flags = BIO_BREQ_FLAG_NONE;  /* リクエストフラグを初期化             */
 	req->br_direction = BIO_DIR_READ;    /* 読み取りに設定                       */
 	queue_init(&req->br_req);            /* リクエストキューの初期化             */
 	queue_init(&req->br_err_req);        /* エラーリクエストキューの初期化       */
