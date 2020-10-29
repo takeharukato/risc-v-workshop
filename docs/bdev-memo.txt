@@ -23,11 +23,13 @@ struct _bdev_entry;
 */
 typedef struct _bio_request_entry{
 	struct _list             bre_ent; /**< リストエントリ                 */
-	off_t                  bre_start; /**< ブロックデバイス内ページ番号   */
+	off_t                bre_page_nr; /**< ブロックデバイス内ページ番号   */
+	off_t                 bre_offset; /**< ページ内オフセット             */
+	size_t                  bre_size; /**< ページ内転送サイズ             */
 	bio_dir            bre_direction; /**< 転送方向                       */
 	bio_state             bre_status; /**< データ転送状態                 */
 	bio_error              bre_error; /**< エラーコード                   */
-	struct _bio_request   *bre_breqp; /**< BIOリクエストへのポインタ   */
+	struct _bio_request   *bre_breqp; /**< BIOリクエストへのポインタ      */
 	struct _vfs_page_cache *bre_page; /**< ページキャッシュ               */
 }bio_request_entry;
 

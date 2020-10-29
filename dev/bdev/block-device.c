@@ -77,7 +77,7 @@ static void __unused
 init_bio_request_entry(bio_request_entry *ent){
 
 	list_init(&ent->bre_ent);           /* リストエントリの初期化 */
-	ent->bre_start = 0;                 /* 転送開始ページ位置の初期化 */
+	ent->bre_page_nr = 0;               /* 転送開始ページ位置の初期化 */
 	ent->bre_direction = BIO_DIR_READ;  /* 読み取りに設定 */
 	ent->bre_status = BIO_STATE_NONE;   /* 初期状態に設定 */
 	ent->bre_error = 0;                 /* エラーなし */
@@ -96,6 +96,7 @@ init_bio_request(bio_request *req){
 	list_init(&req->br_ent);             /* リストエントリの初期化 */
 	wque_init_wait_queue(&req->br_wque); /* ウエイトキューの初期化 */
 	queue_init(&req->br_req);            /* リクエストキューの初期化 */
+	queue_init(&req->br_err_req);        /* エラーリクエストキューの初期化 */
 	req->br_bdevp = NULL;                /* ブロックデバイスへのポインタを初期化 */
 }
 
@@ -159,7 +160,7 @@ error_out:
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
  */
-static int __unused
+static int
 alloc_bio_request(bio_request **entp){
 	int           rc;
 	bio_request *ent;
@@ -197,7 +198,7 @@ free_bdev_entry(bdev_entry *ent){
    ブロックI/Oリクエストエントリを解放する (内部関数)
    @param[in] ent   ブロックI/Oリクエストエントリ
  */
-static void __unused
+static void
 free_bio_request_entry(bio_request_entry *ent){
 
 	kassert(list_not_linked(&ent->bre_ent));  /* リクエストにつながっていないことを確認 */
@@ -210,7 +211,7 @@ free_bio_request_entry(bio_request_entry *ent){
    ブロックI/Oリクエストを解放する (内部関数)
    @param[in] ent  ブロックI/Oリクエスト
  */
-static void __unused
+static void
 free_bio_request(bio_request *ent){
 
 	/* ブロックデバイスのリクエストキューにつながっていないことを確認 */
@@ -218,6 +219,8 @@ free_bio_request(bio_request *ent){
 
 	/* リクエストが空であることを確認 */
 	kassert( queue_is_empty(&ent->br_req) );
+	/* エラーリクエストキューが空であることを確認 */
+	kassert( queue_is_empty(&ent->br_err_req));
 
 	wque_wakeup(&ent->br_wque, WQUE_DESTROYED);  /* 待ちスレッドを起床 */
 
@@ -289,6 +292,132 @@ bdev_bdev_ent_ref_dec(bdev_entry *ent){
 	return res;
 }
 
+/**
+   ブロックI/Oリクエストを割当てる
+   @param[out] reqp ブロックI/Oリクエストを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -EINVAL reqpがNULL
+   @retval -ENOMEM  メモリ不足
+ */
+int
+bdev_bio_request_alloc(bio_request **reqp){
+	int           rc;
+	bio_request *req;
+
+	if ( reqp == NULL )
+		return -EINVAL;
+
+	rc = alloc_bio_request(&req);
+	if ( rc != 0 )
+		goto error_out;
+
+	*reqp = req;  /* 割当てたリクエストを返却 */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックI/Oリクエストを解放する
+   @param[in] req  ブロックI/Oリクエストを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -EINVAL reqがNULL
+   @retval -ENOMEM メモリ不足
+ */
+int
+bdev_bio_request_free(bio_request *req){
+	int                 rc;
+	list          *lp, *np;
+	bio_request_entry *ent;
+
+	if ( req == NULL )
+		return -EINVAL;
+
+	/* キューに残ったリクエストを解放する
+	 */
+	queue_for_each_safe(lp, &req->br_req, np){
+
+		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
+		free_bio_request_entry(ent);
+	}
+
+	/* エラーキューに残ったリクエストを解放する
+	 */
+	queue_for_each_safe(lp, &req->br_err_req, np){
+
+		ent = container_of(queue_get_top(&req->br_err_req), bio_request_entry, bre_ent);
+		free_bio_request_entry(ent);
+	}
+
+	rc = free_bio_request(req);  /* リクエストを解放する */
+	if ( rc != 0 )
+		goto error_out;
+
+	return 0;
+
+error_out:
+	return rc;
+}
+/**
+   ブロックI/Oリクエストを処理する
+ */
+int
+bdev_bio_request_submit(dev_id devid, bio_request *req){
+	int                 rc;
+	bool               res;
+	list          *lp, *np;
+	bdev_entry       *bdev;
+	bio_request_entry *ent;
+	bdev_entry         key;
+	intrflags       iflags;
+
+	if ( req == NULL )
+		return -EINVAL;
+	/*
+	 * ブロックデバイスを検索する
+	 */
+	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	key.bdent_devid = devid;
+	bdev = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
+	if ( ent == NULL ) {
+
+		spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+		return -ENODEV;  /* 対象のデバイスが削除済み */
+	}
+
+	res = bdev_bdev_ent_ref_inc(bdev);  /* 参照を加算 */
+	kassert( res );
+
+	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
+
+	/* TODO: リクエストのロックを獲得する */
+	/* キュー内のリクエストを処理する
+	 */
+	queue_for_each_safe(lp, &req->br_req, np){
+
+		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
+		if ( bdev->bdent_calls.fs_strategy == NULL ) {
+
+			free_bio_request_entry(ent); /* リクエストエントリを解放 */
+			continue;  /* 次のリクエストを処理する */
+		}
+
+		rc = bdev->bdent_calls.fs_strategy(ent);  /* リクエストエントリを処理する */
+		if ( rc != 0 ) {
+
+			/* TODO: 非同期I/Oの場合は, リクエストエントリを解放する */
+			queue_add((&req->br_err_req), &ent->bre_ent); /* エラーキューに追加 */
+		}
+	}
+	/* TODO: リクエストのロックを解放する */
+
+	bdev_bdev_ent_ref_dec(bdev);  /* 参照を減算 */
+
+	return 0;
+}
 /**
    ブロックデバイスドライバを登録する
    @param[in] devid   デバイスID
