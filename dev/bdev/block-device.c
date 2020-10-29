@@ -23,8 +23,6 @@
  */
 static bdev_db g_bdevdb = __BDEVDB_INITIALIZER(&g_bdevdb);
 
-static kmem_cache bio_req_ent_cache;  /**< BIOリクエストエントリのSLABキャッシュ    */
-static kmem_cache bio_req_cache;      /**< BIOリクエストのSLABキャッシュ            */
 static kmem_cache bdev_ent_cache;     /**< ブロックデバイスエントリのSLABキャッシュ */
 
 /**
@@ -70,37 +68,6 @@ init_bdev_entry(bdev_entry *ent){
 }
 
 /**
-   ブロックI/Oリクエストエントリを初期化する (内部関数)
-   @param[in] ent ブロックI/Oリクエストエントリ
- */
-static void __unused
-init_bio_request_entry(bio_request_entry *ent){
-
-	list_init(&ent->bre_ent);           /* リストエントリの初期化 */
-	ent->bre_page_nr = 0;               /* 転送開始ページ位置の初期化 */
-	ent->bre_direction = BIO_DIR_READ;  /* 読み取りに設定 */
-	ent->bre_status = BIO_STATE_NONE;   /* 初期状態に設定 */
-	ent->bre_error = 0;                 /* エラーなし */
-	ent->bre_breqp = NULL;              /* BIOリクエストを初期化 */
-	ent->bre_page =  NULL;              /* ページキャッシュを初期化 */
-}
-
-/**
-   ブロックI/Oリクエストを初期化する (内部関数)
-   @param[in] req ブロックI/Oリクエスト
- */
-static void __unused
-init_bio_request(bio_request *req){
-
-	spinlock_init(&req->br_lock);        /*  ロックの初期化  */
-	list_init(&req->br_ent);             /* リストエントリの初期化 */
-	wque_init_wait_queue(&req->br_wque); /* ウエイトキューの初期化 */
-	queue_init(&req->br_req);            /* リクエストキューの初期化 */
-	queue_init(&req->br_err_req);        /* エラーリクエストキューの初期化 */
-	req->br_bdevp = NULL;                /* ブロックデバイスへのポインタを初期化 */
-}
-
-/**
    ブロックデバイスエントリを割り当てる (内部関数)
    @param[in] entp ブロックデバイスエントリを指し示すポインタのアドレス
    @retval  0       正常終了
@@ -128,60 +95,6 @@ error_out:
 }
 
 /**
-   ブロックI/Oリクエストエントリを割り当てる (内部関数)
-   @param[in] entp  ブロックI/Oリクエストエントリを指し示すポインタのアドレス
-   @retval  0       正常終了
-   @retval -ENOMEM  メモリ不足
- */
-static int __unused
-alloc_bio_request_entry(bio_request_entry **entp){
-	int                 rc;
-	bio_request_entry *ent;
-
-	/* BIOリクエストエントリを確保する */
-	rc = slab_kmem_cache_alloc(&bio_req_ent_cache, KMALLOC_NORMAL, (void **)&ent);
-	if ( rc != 0 )
-		goto error_out;
-
-	init_bio_request_entry(ent);  /* 確保したエントリを初期化する */
-
-	if ( entp != NULL )
-		*entp = ent;  /* 確保したエントリを返却する */
-
-	return 0;
-
-error_out:
-	return rc;
-}
-
-/**
-   ブロックI/Oリクエストを割り当てる (内部関数)
-   @param[in] entp  ブロックI/Oリクエストを指し示すポインタのアドレス
-   @retval  0       正常終了
-   @retval -ENOMEM  メモリ不足
- */
-static int
-alloc_bio_request(bio_request **entp){
-	int           rc;
-	bio_request *ent;
-
-	/* BIOリクエストを確保する */
-	rc = slab_kmem_cache_alloc(&bio_req_cache, KMALLOC_NORMAL, (void **)&ent);
-	if ( rc != 0 )
-		goto error_out;
-
-	init_bio_request(ent);  /* 確保したリクエストを初期化する */
-
-	if ( entp != NULL )
-		*entp = ent;  /* 確保したリクエストを返却する */
-
-	return 0;
-
-error_out:
-	return rc;
-}
-
-/**
    ブロックデバイスエントリを解放する (内部関数)
    @param[in] ent   ブロックデバイスエントリ
  */
@@ -193,38 +106,6 @@ free_bdev_entry(bdev_entry *ent){
 	slab_kmem_cache_free((void *)ent); /* ブロックデバイスエントリを解放する */
 
 	return ;
-}
-/**
-   ブロックI/Oリクエストエントリを解放する (内部関数)
-   @param[in] ent   ブロックI/Oリクエストエントリ
- */
-static void
-free_bio_request_entry(bio_request_entry *ent){
-
-	kassert(list_not_linked(&ent->bre_ent));  /* リクエストにつながっていないことを確認 */
-
-	vfs_page_cache_ref_dec(ent->bre_page); /* ページキャッシュの参照を解放 */
-	slab_kmem_cache_free((void *)ent); /* BIOリクエストエントリを解放する */
-}
-
-/**
-   ブロックI/Oリクエストを解放する (内部関数)
-   @param[in] ent  ブロックI/Oリクエスト
- */
-static void
-free_bio_request(bio_request *ent){
-
-	/* ブロックデバイスのリクエストキューにつながっていないことを確認 */
-	kassert(list_not_linked(&ent->br_ent));
-
-	/* リクエストが空であることを確認 */
-	kassert( queue_is_empty(&ent->br_req) );
-	/* エラーリクエストキューが空であることを確認 */
-	kassert( queue_is_empty(&ent->br_err_req));
-
-	wque_wakeup(&ent->br_wque, WQUE_DESTROYED);  /* 待ちスレッドを起床 */
-
-	slab_kmem_cache_free((void *)ent); /* BIOリクエストを解放する */
 }
 
 /**
@@ -292,74 +173,7 @@ bdev_bdev_ent_ref_dec(bdev_entry *ent){
 	return res;
 }
 
-/**
-   ブロックI/Oリクエストを割当てる
-   @param[out] reqp ブロックI/Oリクエストを指し示すポインタのアドレス
-   @retval  0      正常終了
-   @retval -EINVAL reqpがNULL
-   @retval -ENOMEM  メモリ不足
- */
-int
-bdev_bio_request_alloc(bio_request **reqp){
-	int           rc;
-	bio_request *req;
 
-	if ( reqp == NULL )
-		return -EINVAL;
-
-	rc = alloc_bio_request(&req);
-	if ( rc != 0 )
-		goto error_out;
-
-	*reqp = req;  /* 割当てたリクエストを返却 */
-
-	return 0;
-
-error_out:
-	return rc;
-}
-
-/**
-   ブロックI/Oリクエストを解放する
-   @param[in] req  ブロックI/Oリクエストを指し示すポインタのアドレス
-   @retval  0      正常終了
-   @retval -EINVAL reqがNULL
-   @retval -ENOMEM メモリ不足
- */
-int
-bdev_bio_request_free(bio_request *req){
-	int                 rc;
-	list          *lp, *np;
-	bio_request_entry *ent;
-
-	if ( req == NULL )
-		return -EINVAL;
-
-	/* キューに残ったリクエストを解放する
-	 */
-	queue_for_each_safe(lp, &req->br_req, np){
-
-		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
-		free_bio_request_entry(ent);
-	}
-
-	/* エラーキューに残ったリクエストを解放する
-	 */
-	queue_for_each_safe(lp, &req->br_err_req, np){
-
-		ent = container_of(queue_get_top(&req->br_err_req), bio_request_entry, bre_ent);
-		free_bio_request_entry(ent);
-	}
-
-	rc = free_bio_request(req);  /* リクエストを解放する */
-	if ( rc != 0 )
-		goto error_out;
-
-	return 0;
-
-error_out:
-	return rc;
-}
 /**
    ブロックI/Oリクエストを処理する
  */
@@ -382,7 +196,7 @@ bdev_bio_request_submit(dev_id devid, bio_request *req){
 
 	key.bdent_devid = devid;
 	bdev = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
-	if ( ent == NULL ) {
+	if ( bdev == NULL ) {
 
 		spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
 		return -ENODEV;  /* 対象のデバイスが削除済み */
@@ -401,7 +215,7 @@ bdev_bio_request_submit(dev_id devid, bio_request *req){
 		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
 		if ( bdev->bdent_calls.fs_strategy == NULL ) {
 
-			free_bio_request_entry(ent); /* リクエストエントリを解放 */
+			bio_request_entry_free(ent); /* リクエストエントリを解放 */
 			continue;  /* 次のリクエストを処理する */
 		}
 
@@ -517,22 +331,13 @@ bdev_device_unregister(dev_id devid){
 
 	return ;
 }
+
 /**
    ブロックデバイス機構の初期化
  */
 void
 bdev_init(void){
 	int rc;
-
-	/* BIOリクエストエントリのキャッシュを初期化する */
-	rc = slab_kmem_cache_create(&bio_req_ent_cache, "BIO request entry cache",
-	    sizeof(bio_request_entry), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
-
-	/* BIOリクエストのキャッシュを初期化する */
-	rc = slab_kmem_cache_create(&bio_req_cache, "BIO request cache",
-	    sizeof(bio_request), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
 
 	/* ブロックデバイスエントリのキャッシュを初期化する */
 	rc = slab_kmem_cache_create(&bdev_ent_cache, "bdev entry cache",
@@ -546,10 +351,6 @@ bdev_init(void){
 void
 bdev_finalize(void){
 
-	/* BIOリクエストエントリキャッシュを解放 */
-	slab_kmem_cache_destroy(&bio_req_ent_cache);
-	/* BIOリクエストキャッシュを解放 */
-	slab_kmem_cache_destroy(&bio_req_cache);
 	 /* ブロックデバイスエントリキャッシュを解放 */
 	slab_kmem_cache_destroy(&bdev_ent_cache);
 }
