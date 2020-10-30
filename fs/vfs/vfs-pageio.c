@@ -79,6 +79,7 @@ init_page_cache(vfs_page_cache *pc){
 	pc->pc_state = VFS_PCACHE_INVALID; /* ページキャッシュの状態を初期化 */
 	pc->pc_offset = 0;  /* オフセットの初期化 */
 	list_init(&pc->pc_lru_link); /* LRUリストエントリの初期化 */
+	queue_init(&pc->pc_buf_que); /* ブロックバッファキューの初期化 */
 	pc->pc_pf = NULL;            /* ページフレーム情報をNULLに設定 */
 	pc->pc_data = NULL;          /* データページをNULLに設定 */
 }
@@ -188,7 +189,7 @@ free_page_cache(vfs_page_cache *pc){
 	kassert( refcnt_read(&pc->pc_refs) == 0 ); /* 参照者がいないことを確認 */
 	kassert( pc->pc_pcplink != NULL );  /* ページキャッシュプールへの参照が有効 */
 	list_not_linked(&pc->pc_lru_link);  /* LRUにつながっていない */
-
+	kassert( queue_is_empty( &pc->pc_buf_que ) ); /* ブロックバッファ解放済み */
 	wque_wakeup(&pc->pc_waiters, WQUE_DESTROYED);  /* 待ちスレッドを起床 */
 	pgif_free_page(pc->pc_data);                   /* ページを解放する */
 
@@ -273,14 +274,8 @@ mark_page_cache_busy(vfs_page_cache *pc){
 	if ( VFS_PCACHE_IS_VALID(pc) )
 		goto success;  /* ページキャッシュ読み込み済み */
 
-	if ( pc->pc_pcplink->pcp_bdev != NULL ) {
-
-		/* TODO: ブロックデバイスからページを読み込む */
-		do{}while(0);
-		if ( !res ) /* TODO: リードエラー */
-			goto unref_page_cache_pool_out;
-	} else
-		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 有効なページに設定 */
+	if ( pc->pc_pcplink->pcp_bdev == NULL )  /* ブロックデバイスのキャッシュでない場合 */
+		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 読み込み済みページに設定 */
 
 success:
 	/* ページキャッシュプールへの参照を解放 */
@@ -291,10 +286,6 @@ success:
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
 	return 0;
-
-unref_page_cache_pool_out:
-	/* ページキャッシュプールへの参照を解放 */
-	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
 
 unlock_out:
 	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのロックを解放する */
@@ -331,8 +322,6 @@ unmark_page_cache_busy(vfs_page_cache *pc){
 		goto unref_pc_out;
 
 	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用中になっているはず */
-	/* BUSYに遷移した時点でページキャッシュ読み込み済みのはず */
-	kassert( VFS_PCACHE_IS_VALID(pc) );
 
 	/* 自スレッドがオーナになっていることを確認する
 	 */
@@ -349,6 +338,10 @@ unmark_page_cache_busy(vfs_page_cache *pc){
 	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
 
 	pc->pc_state &= ~VFS_PCACHE_BUSY;  /* ページキャッシュの使用中フラグを落とす */
+
+	/* BUSY中に読み込みまたは書き込みを行っているはず */
+	kassert( VFS_PCACHE_IS_VALID(pc) );
+
 	/*
 	 * LRUの末尾に追加
 	 */
@@ -378,6 +371,61 @@ unref_pc_out:
 error_out:
 	return rc;
 }
+
+/**
+   ページキャッシュの状態を更新する (内部関数)
+   @param[in] pc        操作対象のページキャッシュ
+   @param[in] new_state 更新後のページキャッシュの状態
+   @retval    0         正常終了
+   @retval   -EINVAL    不正な状態を指定した
+   @retval   -ENOENT    ページキャッシュが解放中だった
+ */
+static int
+change_page_cache_state(vfs_page_cache *pc, pcache_state new_state){
+	int              rc;
+	bool            res;
+	pcache_state    new;
+
+	new = new_state & VFS_PCACHE_STATE_MASK;  /* 状態更新マスク */
+	if ( ( new != VFS_PCACHE_CLEAN ) && ( new != VFS_PCACHE_DIRTY ) )
+		return -EINVAL; /* 不正な状態 */
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	/*
+	 * ページキャッシュを読み込み済みにする
+	 */
+	rc = mutex_lock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを獲得する */
+	if ( rc != 0 )
+		goto unref_pc_out;
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用中になっているはず */
+
+	/* ページキャッシュの更新済みフラグ/ダーティフラグを落とす */
+	pc->pc_state &= ~VFS_PCACHE_STATE_MASK;
+	pc->pc_state |= new;  /* ページキャッシュの状態を更新 */
+
+	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを解放する */
+
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+	return 0;
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+error_out:
+	return rc;
+}
+
+/*
+ * IF関数
+ */
 
 /**
    ページキャッシュへの参照を加算する
@@ -443,6 +491,30 @@ vfs_page_cache_pool_ref_dec(vfs_page_cache_pool *pool){
 		free_page_cache_pool(pool);  /* ページキャッシュプールを解放する */
 
 	return res;
+}
+
+/**
+   ページキャッシュを読み込み済みに設定する
+   @param[in] pc 操作対象のページキャッシュ
+   @retval   -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_mark_clean(vfs_page_cache *pc){
+
+	/* ページキャッシュを読み込み済みに遷移する */
+	return change_page_cache_state(pc, VFS_PCACHE_CLEAN);
+}
+
+/**
+   ページキャッシュを更新済みに設定する
+   @param[in] pc 操作対象のページキャッシュ
+   @retval   -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_mark_dirty(vfs_page_cache *pc){
+
+	/* ページキャッシュを更新済みに遷移する */
+	return change_page_cache_state(pc, VFS_PCACHE_DIRTY);
 }
 
 /**
@@ -550,6 +622,7 @@ put_pool_ref_out:
 error_out:
 	return rc;
 }
+
 /**
    ページキャッシュを返却する
    @param[in] pc ページキャッシュ

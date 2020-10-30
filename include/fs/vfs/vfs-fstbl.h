@@ -20,7 +20,7 @@
 
 struct _vfs_file_stat;
 struct _fs_calls;
-struct _bio_request_entry;
+struct _vfs_page_cache;
 /**
    ファイルシステム情報
  */
@@ -40,7 +40,8 @@ typedef struct _fs_table{
 	RB_HEAD(_fstbl_tree, _fs_container) c_head; /**< ファイルシステムテーブルエントリ */
 }fs_table;
 
-/** ファイルシステムオペレーション
+/**
+   ファイルシステムオペレーション
  */
 typedef struct _fs_calls {
 	int (*fs_mount)(vfs_mnt_id _mntid, dev_id _dev,
@@ -74,7 +75,7 @@ typedef struct _fs_calls {
 	    off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
-	int (*fs_strategy)(struct _bio_request_entry *_ent);
+	int (*fs_strategy)(struct _vfs_page_cache *_pc);
 	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_create)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,

@@ -22,33 +22,43 @@ static kmem_cache bio_req_ent_cache;  /**< BIOリクエストエントリのSLAB
 static kmem_cache bio_req_cache;      /**< BIOリクエストのSLABキャッシュ            */
 
 /**
+   ブロックバッファを初期化する (内部関数)
+   @param[in] buf ブロックバッファ
+ */
+static void __unused
+init_block_buffer(block_buffer *buf){
+
+	buf->b_offset = 0;  /**< オフセットを初期化する */
+	buf->b_len = 0;     /**< ブロック長を初期化する */
+	buf->b_page = NULL; /**< ブロックデータのページキャッシュを初期化する */
+}
+
+/**
    ブロックI/Oリクエストエントリを初期化する (内部関数)
    @param[in] ent ブロックI/Oリクエストエントリ
  */
-static void __unused
+static void
 init_bio_request_entry(bio_request_entry *ent){
 
-	list_init(&ent->bre_ent);           /* リストエントリの初期化 */
-	ent->bre_status = BIO_STATE_NONE;   /* 初期状態に設定 */
-	ent->bre_error = 0;                 /* エラーなし */
-	ent->bre_breqp = NULL;              /* BIOリクエストを初期化 */
-	ent->bre_offset = 0;                /* ページ内オフセットを0に初期化 */
-	ent->bre_len = BIO_DEFAULT_SECLEN;  /* 転送サイズをデフォルトセクタ長に初期化 */
-	ent->bre_page =  NULL;              /* ページキャッシュのポインタを初期化 */
+	list_init(&ent->bre_ent);           /* リストエントリの初期化                 */
+	ent->bre_status = BIO_STATE_NONE;   /* 初期状態に設定                         */
+	ent->bre_error = 0;                 /* エラーなし                             */
+	ent->bre_breqp = NULL;              /* BIOリクエストを初期化                  */
+	ent->bre_direction = BIO_DIR_READ;  /* 読み取りに設定                         */
+	ent->bre_page =  NULL;              /* ページキャッシュのポインタを初期化     */
 }
 
 /**
    ブロックI/Oリクエストを初期化する (内部関数)
    @param[in] req ブロックI/Oリクエスト
  */
-static void __unused
+static void
 init_bio_request(bio_request *req){
 
 	spinlock_init(&req->br_lock);        /*  ロックの初期化                      */
 	list_init(&req->br_ent);             /* リストエントリの初期化               */
 	wque_init_wait_queue(&req->br_wque); /* ウエイトキューの初期化               */
 	req->br_flags = BIO_BREQ_FLAG_NONE;  /* リクエストフラグを初期化             */
-	req->br_direction = BIO_DIR_READ;    /* 読み取りに設定                       */
 	queue_init(&req->br_req);            /* リクエストキューの初期化             */
 	queue_init(&req->br_err_req);        /* エラーリクエストキューの初期化       */
 	req->br_bdevp = NULL;                /* ブロックデバイスへのポインタを初期化 */
@@ -164,7 +174,7 @@ bio_request_alloc(bio_request **reqp){
 	if ( reqp == NULL )
 		return -EINVAL;
 
-	rc = alloc_bio_request(&req);
+	rc = alloc_bio_request(&req);  /* BIOリクエストを割り当てる */
 	if ( rc != 0 )
 		goto error_out;
 
@@ -195,16 +205,19 @@ bio_request_free(bio_request *req){
 	 */
 	queue_for_each_safe(lp, &req->br_req, np){
 
+		/* キューの先頭リクエストを取り出す */
 		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
-		free_bio_request_entry(ent);
+		free_bio_request_entry(ent);  /* リクエストを解放する */
 	}
 
 	/* エラーキューに残ったリクエストを解放する
 	 */
 	queue_for_each_safe(lp, &req->br_err_req, np){
 
-		ent = container_of(queue_get_top(&req->br_err_req), bio_request_entry, bre_ent);
-		free_bio_request_entry(ent);
+		/* エラーキューの先頭リクエストを取り出す */
+		ent = container_of(queue_get_top(&req->br_err_req),
+		    bio_request_entry, bre_ent);
+		free_bio_request_entry(ent);  /* リクエストを解放する */
 	}
 
 	free_bio_request(req);  /* リクエストを解放する */
@@ -219,7 +232,7 @@ bio_request_free(bio_request *req){
 void
 bio_request_entry_free(bio_request_entry *ent){
 
-	free_bio_request_entry(ent);
+	free_bio_request_entry(ent); /* リクエストエントリを解放する */
 }
 
 /**
