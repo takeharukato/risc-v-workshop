@@ -23,6 +23,7 @@
 #include <kern/mutex.h>
 
 #include <fs/vfs/vfs-types.h>
+#include <fs/vfs/vfs-attr.h>
 
 /*
  * ページキャッシュの状態
@@ -134,6 +135,14 @@ typedef struct _vfs_page_cache_pool_db{
 	( (_pcache)->pc_state & VFS_PCACHE_DIRTY )
 
 /**
+   ブロックデバイスページキャッシュであることを確認
+   @param[in] _pcache ページキャッシュ
+ */
+#define VFS_PCACHE_IS_DEVICE_PAGE(_pcache) \
+	( ( (_pcache)->pc_pcplink != NULL ) \
+	    && ( (_pcache)->pc_pcplink->pcp_bdevid != VFS_VSTAT_INVALID_DEVID ) )
+
+/**
    ページキャッシュが有効であることを確認する
    ページキャッシュと2次記憶の内容が一致しているか,
    キャッシュのほうが新しい場合のいずれかの状態にある場合に
@@ -150,6 +159,7 @@ bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
 int vfs_page_cache_mark_clean(struct _vfs_page_cache *_pc);
 int vfs_page_cache_mark_dirty(struct _vfs_page_cache *_pc);
+int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
 int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
 int vfs_page_cache_enqueue_block_buffer(struct _vfs_page_cache *_pc,
     struct _block_buffer *_buf);
@@ -163,7 +173,7 @@ bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
 int vfs_page_cache_put(struct _vfs_page_cache *_pc);
-
+int vfs_page_cache_rw(vfs_page_cache *_pc);
 void vfs_init_pageio(void);
 void vfs_finalize_pageio(void);
 #endif  /* !ASM_FILE */

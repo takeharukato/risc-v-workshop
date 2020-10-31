@@ -365,6 +365,44 @@ error_out:
 }
 
 /**
+   ブロックデバイス上のページキャッシュを書き戻す
+   @param[in] pc ページキャッシュ
+   @retval  0 正常終了
+   @retval -ENOENT  ページキャッシュが解放中だった
+ */
+int
+bdev_page_cache_write(vfs_page_cache *pc){
+	int              rc;
+	bool            res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認
+	 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert(VFS_PCACHE_IS_BUSY(pc));  /* ページキャッシュが使用権を得ている */
+
+	rc = vfs_page_cache_rw(pc);  /* ページの読み込み/書き込みを行う */
+	if ( rc != 0 )
+		goto unref_pc_out;
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
+
+	return 0;
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
+
+error_out:
+	return rc;
+}
+
+/**
    ブロックデバイスドライバを登録する
    @param[in] devid   デバイスID
    @param[in] blksiz  ブロックサイズ(単位:バイト)

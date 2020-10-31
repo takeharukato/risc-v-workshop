@@ -426,6 +426,7 @@ error_out:
 	return rc;
 }
 
+
 /*
  * IF関数
  */
@@ -546,6 +547,48 @@ vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
 		vfs_page_cache_pool_ref_dec(pool); /* 参照を解放し, プールを解放する */
 
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュのデバイスIDを得る
+   @param[in]  pc     ページキャッシュ
+   @param[out] devidp ページサイズを返却する領域
+   @retval  0      正常終了
+   @retval -ENODEV ブロックデバイス上のページキャッシュではない
+   @retval -ENOENT ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_devid_get(vfs_page_cache *pc, dev_id *devidp){
+	int       rc;
+	bool     res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	kassert( pc->pc_pcplink != NULL ); /* ページキャッシュプールにつながっている */
+
+	if ( !VFS_PCACHE_IS_DEVICE_PAGE(pc) ) {
+
+		rc = -ENODEV; /* ブロックデバイス上のページキャッシュではない */
+		goto unref_pc_out;
+	}
+
+	if ( devidp != NULL )
+		*devidp = pc->pc_pcplink->pcp_bdevid; /* デバイスIDを返却する */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 error_out:
 	return rc;
@@ -710,8 +753,7 @@ vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer
 
 	/* ブロックデバイスのページキャッシュであることを確認
 	 */
-	kassert( pc->pc_pcplink != NULL );
-	kassert( pc->pc_pcplink->pcp_bdevid != VFS_VSTAT_INVALID_DEVID );
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
 
 	/* ブロックサイズを取得する */
 	rc = bdev_block_size_get(pc->pc_pcplink->pcp_bdevid, &blksiz);
@@ -859,6 +901,68 @@ vfs_page_cache_put(vfs_page_cache *pc){
 		goto error_out;
 
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックデバイス上のページキャッシュの読み込み/書き込みを行う
+   @param[in] pc ページキャッシュ
+   @retval  0 正常終了
+   @retval -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_rw(vfs_page_cache *pc){
+	int              rc;
+	bool            res;
+	dev_id        devid;
+	bdev_entry    *bdev;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認
+	 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用権があることを確認 */
+
+	/* 二次記憶との一貫性が保たれている場合はI/Oをスキップする */
+	if ( !VFS_PCACHE_IS_VALID(pc) && !VFS_PCACHE_IS_DIRTY(pc) )
+		goto io_no_need;
+
+	/* ページの読み書きを行う
+	 */
+	rc = vfs_page_cache_devid_get(pc, &devid);  /* デバイスIDを取得 */
+	kassert( rc == 0 );
+
+	/* ブロックデバイスエントリへの参照を獲得 */
+	rc = bdev_bdev_entry_get(devid, &bdev);
+	if ( rc != 0 )
+		goto unref_pc_out;
+
+	rc = bdev->bdent_calls.fs_strategy(pc); /* ページの内容を読み書きする */
+	if ( rc != 0 )
+		goto put_bdev_out;
+
+	vfs_page_cache_mark_clean(pc);  /* I/O成功に伴ってページの状態をCLEANに遷移する */
+
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+io_no_need:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
+
+	return 0;
+
+put_bdev_out:
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
 
 error_out:
 	return rc;

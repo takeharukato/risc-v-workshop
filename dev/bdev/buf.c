@@ -215,6 +215,7 @@ put_bdev_out:
 error_out:
 	return rc;
 }
+
 /**
    ブロックバッファを含むページキャッシュの使用権を解放する
    @param[in] buf  ブロックバッファ
