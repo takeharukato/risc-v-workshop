@@ -57,11 +57,7 @@ endif
 ifneq ($(shell env LANG=C $(CC) -c /dev/null -mno-implicit-float 2>&1 | grep -e 'unrecognized'),)
 NO_FLOAT_OPT_FLAGS=-mgeneral-regs-only
 else
-ifneq ($(shell env LANG=C $(CC) -c /dev/null -mno-implicit-float 2>&1 | grep -e 'argument unused'),)
-NO_FLOAT_OPT_FLAGS=
-else
 NO_FLOAT_OPT_FLAGS=-mno-implicit-float
-endif
 endif
 
 INLINE_FUNC_OPT_FLAGS=-finline-functions
