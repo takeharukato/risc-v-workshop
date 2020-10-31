@@ -216,7 +216,9 @@ bdev_bdev_entry_put(bdev_entry *bdev){
    @param[in] bdev ブロックデバイスエントリ
    @param[in] pool ページキャッシュプール
    @retval  0      正常終了
-   @retval -EBUSY  ページキャッシュプールが既に割り当てられている
+   @retval -EBUSY  ブロックデバイスエントリにページキャッシュプールが既に割り当てられているか
+   ページキャッシュプールにブロックデバイスが割り当てられている
+   @retval -EINVAL ブロックデバイスのデバイスIDが不正
  */
 int
 bdev_page_cache_pool_set(bdev_entry *bdev, vfs_page_cache_pool *pool){
@@ -229,17 +231,32 @@ bdev_page_cache_pool_set(bdev_entry *bdev, vfs_page_cache_pool *pool){
 	if ( bdev->bdent_pool != NULL ) {
 
 		rc = -EBUSY;  /* ページキャッシュプール設定済み */
-		goto error_out;
+		goto unlock_out;
+	}
+
+	if ( pool->pcp_bdevid != VFS_VSTAT_INVALID_DEVID ) {
+
+		rc = -EBUSY;  /* ページキャッシュプール設定済み */
+		goto unlock_out;
+	}
+
+	if ( bdev->bdent_devid == VFS_VSTAT_INVALID_DEVID ){
+
+		rc = -EINVAL;  /* 不正ブロックデバイスID */
+		goto unlock_out;
 	}
 
 	bdev->bdent_pool = pool;  /* ページキャッシュプールを設定する  */
+	pool->pcp_bdevid = bdev->bdent_devid; /* ブロックデバイスのデバイスIDを設定 */
 
 	/* ブロックデバイスエントリをアンロック */
 	spinlock_unlock_restore_intr(&bdev->bdent_lock, &iflags);
 
 	return 0;
 
-error_out:
+unlock_out:
+	/* ブロックデバイスエントリをアンロック */
+	spinlock_unlock_restore_intr(&bdev->bdent_lock, &iflags);
 	return rc;
 }
 

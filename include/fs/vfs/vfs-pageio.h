@@ -88,8 +88,8 @@ typedef struct _vfs_page_cache_pool{
 	refcounter                                      pcp_refs;
 	/** ページキャッシュプールの状態 */
         vfs_pcache_pool_state                          pcp_state;
-	/** ブロックデバイス           */
-	struct _bdev_entry                             *pcp_bdev;
+	/** ブロックデバイスのデバイスID */
+	dev_id                                        pcp_bdevid;
 	/** ファイルのv-node           */
 	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ(単位:バイト) */
@@ -154,6 +154,8 @@ int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
 int vfs_page_cache_enqueue_block_buffer(struct _vfs_page_cache *_pc,
     struct _block_buffer *_buf);
 int vfs_page_cache_dequeue_block_buffer(struct _vfs_page_cache *_pc,
+    struct _block_buffer **_bufp);
+int vfs_page_cache_block_buffer_find(struct _vfs_page_cache *_pc, size_t _offset,
     struct _block_buffer **_bufp);
 bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);

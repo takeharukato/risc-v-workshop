@@ -57,7 +57,7 @@ init_page_cache_pool(vfs_page_cache_pool *pool){
 	mutex_init(&pool->pcp_mtx);  /* ミューテクスの初期化 */
 	refcnt_init(&pool->pcp_refs); /* 参照カウンタの初期化 */
 	pool->pcp_state = PCPOOL_DORMANT; /* プールの状態初期化 */
-	pool->pcp_bdev = NULL;  /* ブロックデバイスポインタの初期化 */
+	pool->pcp_bdevid = VFS_VSTAT_INVALID_DEVID;  /* ブロックデバイスIDの初期化 */
 	pool->pcp_vnode = NULL; /* v-nodeポインタの初期化 */
 	pool->pcp_pgsiz = PAGE_SIZE; /* ページサイズの設定 */
 	RB_INIT(&pool->pcp_head);  /* ページキャッシュツリーの初期化 */
@@ -119,7 +119,8 @@ static void
 free_page_cache_pool(vfs_page_cache_pool *pool){
 
 	kassert( refcnt_read(&pool->pcp_refs) == 0 ); /* 参照者がいないことを確認 */
-	kassert( pool->pcp_bdev == NULL );  /* ブロックデバイス参照がないことを確認 */
+	/* ブロックデバイスが設定されていないことを確認 */
+	kassert( pool->pcp_bdevid == VFS_VSTAT_INVALID_DEVID );
 	kassert( pool->pcp_vnode == NULL ); /* v-node参照がないことを確認 */
 	kassert( RB_EMPTY(&pool->pcp_head) );  /* プールが空であることを確認 */
 
@@ -274,7 +275,9 @@ mark_page_cache_busy(vfs_page_cache *pc){
 	if ( VFS_PCACHE_IS_VALID(pc) )
 		goto success;  /* ページキャッシュ読み込み済み */
 
-	if ( pc->pc_pcplink->pcp_bdev == NULL )  /* ブロックデバイスのキャッシュでない場合 */
+	/* ブロックデバイスのキャッシュでない場合状態を読み込み済みに設定する
+	 */
+	if ( pc->pc_pcplink->pcp_bdevid == VFS_VSTAT_INVALID_DEVID )
 		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 読み込み済みページに設定 */
 
 success:
@@ -579,6 +582,7 @@ vfs_page_cache_pagesize_get(vfs_page_cache *pc, size_t *sizep){
 error_out:
 	return rc;
 }
+
 /**
    ページキャッシュにブロックバッファを追加する
    @param[in]  pc   ページキャッシュ
@@ -588,17 +592,22 @@ error_out:
  */
 int
 vfs_page_cache_enqueue_block_buffer(vfs_page_cache *pc, block_buffer *buf){
-	int   rc;
-	bool res;
+	int           rc;
+	bool         res;
+	intrflags iflags;
 
-	res = vfs_page_cache_ref_inc(pc);
+	res = vfs_page_cache_ref_inc(pc); /* ページキャッシュへの参照を得る */
 	if ( !res ) {
 
 		rc = -ENOENT;  /* ページキャッシュが解放中だった */
 		goto error_out;
 	}
 
+	spinlock_lock_disable_intr(&pc->pc_lock, &iflags);
+	kassert( buf->b_page == NULL );  /* ページキャッシュ未設定 */
 	queue_add(&pc->pc_buf_que, &buf->b_ent); /* ページキャッシュに追加 */
+	buf->b_page = pc;
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
@@ -621,6 +630,7 @@ vfs_page_cache_dequeue_block_buffer(vfs_page_cache *pc, block_buffer **bufp){
 	int            rc;
 	bool          res;
 	block_buffer *buf;
+	intrflags  iflags;
 
 	kassert( bufp != NULL );
 
@@ -631,28 +641,122 @@ vfs_page_cache_dequeue_block_buffer(vfs_page_cache *pc, block_buffer **bufp){
 		goto error_out;
 	}
 
+	spinlock_lock_disable_intr(&pc->pc_lock, &iflags);
+
 	if ( queue_is_empty(&pc->pc_buf_que) ) {  /* キューが空の場合 */
 
 		rc = -EAGAIN; /* ブロックバッファが登録されていない */
-		goto put_page_cache_out;
+		goto unlock_out;
 	}
 
 	/* 先頭のブロックバッファを取り出す */
 	buf = container_of(queue_get_top(&pc->pc_buf_que), block_buffer, b_ent);
 
+	kassert( buf->b_page == pc );
+	buf->b_page = NULL;  /* ページキャッシュへの参照を解除 */
+
 	*bufp = buf;  /* ブロックバッファを返却する */
+
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 	return 0;
 
-put_page_cache_out:
+unlock_out:
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
+
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 error_out:
 	return rc;
 }
 
+/**
+   ページキャッシュ中のブロックバッファを検索する
+   @param[in]   pc     ページキャッシュ
+   @param[in]   offset ページ内オフセットアドレス
+   @param[out]  bufp  ブロックバッファを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -EINVAL オフセットがページサイズを超えている
+   @retval -ENOENT ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer **bufp){
+	int            rc;
+	bool          res;
+	list         *cur;
+	block_buffer *buf;
+	size_t     blksiz;
+	size_t blk_offset;
+	size_t      pgsiz;
+	intrflags  iflags;
+
+	res = vfs_page_cache_ref_inc(pc);
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) ); /* ページキャッシュの使用権を得ていることを確認 */
+
+	pgsiz = pc->pc_pcplink->pcp_pgsiz; /* ページサイズを獲得する */
+	if ( offset >= pgsiz ) {
+
+		rc = -EINVAL;  /* オフセットがページサイズを超えている */
+		goto unref_pc_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認
+	 */
+	kassert( pc->pc_pcplink != NULL );
+	kassert( pc->pc_pcplink->pcp_bdevid != VFS_VSTAT_INVALID_DEVID );
+
+	/* ブロックサイズを取得する */
+	rc = bdev_block_size_get(pc->pc_pcplink->pcp_bdevid, &blksiz);
+	if ( rc != 0 )
+		goto unref_pc_out;
+
+	kassert( pgsiz >= blksiz );  /* ブロックサイズがページサイズ以下であることを確認 */
+
+	/* ページキャッシュ内でのブロックバッファの先頭アドレスを算出 */
+	blk_offset = truncate_align(offset, blksiz);
+
+	spinlock_lock_disable_intr(&pc->pc_lock, &iflags); /* ページキャッシュロックを獲得 */
+
+	/* ページキャッシュ中のブロックバッファを検索する
+	 */
+	queue_for_each(cur, &pc->pc_buf_que){
+
+		buf = container_of(cur, block_buffer, b_ent); /* ブロックバッファを参照 */
+		if ( buf->b_offset == blk_offset )
+			goto found;  /* ブロックキャッシュを見つけた */
+	}
+
+	rc = -ENOENT;  /* ブロックバッファが見つからなかった */
+	goto unlock_out;
+
+found:
+	if ( bufp != NULL )
+		*bufp = buf;  /* バッファキャッシュを返却 */
+
+	/* ページキャッシュロックを解放 */
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+unlock_out:
+	/* ページキャッシュロックを解放 */
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+error_out:
+	return rc;
+}
 /**
    ページキャッシュプールからページキャッシュを検索し参照を得る
    @param[in] pool ページキャッシュプール

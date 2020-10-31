@@ -11,7 +11,6 @@
 #include <kern/kern-common.h>
 
 #include <kern/spinlock.h>
-#include <klib/refcount.h>
 
 #include <kern/page-if.h>
 
@@ -111,8 +110,6 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 
 		buf->b_offset = blk_off;  /* ページ内オフセットを設定 */
 		buf->b_len = bdev->bdent_blksiz; /* ブロックサイズを設定 */
-		buf->b_page = pc; /* ページキャッシュを設定 */
-
 		/* ブロックバッファを登録する */
 		rc = vfs_page_cache_enqueue_block_buffer(pc, buf);
 		kassert( rc == 0 );
@@ -151,13 +148,84 @@ block_buffer_unmap_from_page_cache(vfs_page_cache *pc){
 		free_blkbuf(cur_buf);  /* バッファを解放する */
 		/* 先頭のバッファを取り出す */
 		rc = vfs_page_cache_dequeue_block_buffer(pc, &cur_buf);
-		if ( rc != 0 )
-			break;  /* キューからバッファを取り出せなかった */
+		if ( rc == -EAGAIN )
+			break;  /* キューにバッファがない */
+		kassert( rc == 0 );
 	}
 
 	return ;
 }
 
+/**
+   ブロックバッファを獲得し, バッファを含むページキャッシュの使用権を得る
+   @param[in]  devid デバイスID
+   @param[in]  blkno ブロック番号
+   @param[out] bufp  ブロックバッファを指し示すポインタのアドレス
+   @retval 0 正常終了
+ */
+int
+block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp){
+	int                  rc;
+	bdev_entry        *bdev;
+	off_t            offset;
+	off_t       page_offset;
+	size_t           blksiz;
+	size_t            pgsiz;
+	vfs_page_cache      *pc;
+	block_buffer       *buf;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = bdev_block_size_get(devid, &blksiz); /* ブロックサイズを取得する */
+	if ( rc != 0 )
+		goto put_bdev_out;
+
+	offset = blkno * blksiz;  /* ブロックデバイス内でのオフセットアドレスを算出 */
+
+	rc = bdev_page_cache_get(devid, offset, &pc); /* ページキャッシュを獲得する */
+	if ( rc != 0 )
+		goto put_bdev_out;
+
+	rc = vfs_page_cache_pagesize_get(pc, &pgsiz); /* ページサイズを獲得する */
+
+	page_offset = offset % pgsiz;  /* ページ内のオフセットアドレスを得る */
+
+	/* バッファキャッシュを得る */
+	rc = vfs_page_cache_block_buffer_find(pc, page_offset, &buf);
+	if ( rc != 0 )
+		goto put_page_cache_out;
+
+	if ( bufp != NULL )
+		*bufp = buf;  /* ページキャッシュの使用権とバッファを返却 */
+	 else
+		vfs_page_cache_put(pc);  /* ページキャッシュの使用権を解放する */
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+
+put_page_cache_out:
+	vfs_page_cache_put(pc);  /* ページキャッシュの使用権を解放する */
+
+put_bdev_out:
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+error_out:
+	return rc;
+}
+/**
+   ブロックバッファを含むページキャッシュの使用権を解放する
+   @param[in] buf  ブロックバッファ
+ */
+void
+block_buffer_put(block_buffer *buf){
+	int rc;
+
+	rc = vfs_page_cache_put(buf->b_page);  /* ページキャッシュの使用権を解放する */
+	kassert( rc == 0 );
+}
 /**
    ブロックバッファ機構の初期化
  */
