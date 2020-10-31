@@ -702,7 +702,7 @@ vfs_page_cache_get(vfs_page_cache_pool *pool, off_t offset, vfs_page_cache **pcp
 
 found:
 	ref = vfs_page_cache_ref_inc(pc);  /* スレッドからの参照を加算 */
-	kassert( res );  /* プール内に登録されているので参照を獲得可能 */
+	kassert( ref );  /* プール内に登録されているので参照を獲得可能 */
 
 	mutex_unlock(&pool->pcp_mtx);   /* ページキャッシュプールのロックを解放する */
 
