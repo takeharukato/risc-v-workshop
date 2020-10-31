@@ -504,8 +504,8 @@ error_out:
  */
 static int
 tst_vfs_tstfs_new_node_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
-			       const char *name, vfs_fs_mode mode, fs_dev_id major,
-				 fs_dev_id minor, tst_vfs_tstfs_ino  *new_inop,
+			       const char *name, vfs_fs_mode mode, dev_fsid major,
+				 dev_fsid minor, tst_vfs_tstfs_ino  *new_inop,
 			       tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
 	tst_vfs_tstfs_inode  *new_inode;
@@ -567,7 +567,7 @@ error_out:
  */
 static int __unused
 tst_vfs_tstfs_new_devfile_nolock(tst_vfs_tstfs_super *super, tst_vfs_tstfs_inode *dv,
-    const char *name, vfs_fs_mode mode, fs_dev_id major, fs_dev_id minor,
+    const char *name, vfs_fs_mode mode, dev_fsid major, dev_fsid minor,
     tst_vfs_tstfs_ino  *new_inop, tst_vfs_tstfs_inode **new_inodep){
 	int                          rc;
 

@@ -113,7 +113,7 @@ typedef struct _vfs_file_stat {
    @return デバイスのメジャー番号
 */
 #define VFS_VSTAT_GET_MAJOR(_dev)					\
-	((fs_dev_id)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MAJOR_SHIFT ) & \
+	((dev_fsid)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MAJOR_SHIFT ) & \
 	    VFS_VSTAT_DEV_MAJOR_MASK) )
 /**
    デバイスのマイナー番号を得る
@@ -121,7 +121,7 @@ typedef struct _vfs_file_stat {
    @return デバイスのマイナー番号
   */
 #define VFS_VSTAT_GET_MINOR(_dev)					\
-	((fs_dev_id)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MINOR_SHIFT ) & \
+	((dev_fsid)( ( ((dev_id)(_dev)) >> VFS_VSTAT_DEV_MINOR_SHIFT ) & \
 	    VFS_VSTAT_DEV_MINOR_MASK) )
 /**
    デバイス番号を得る

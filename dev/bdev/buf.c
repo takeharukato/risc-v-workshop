@@ -65,6 +65,7 @@ free_blkbuf(block_buffer *buf){
 /*
  * IF関数
  */
+
 /**
    ページキャッシュにブロックバッファを割り当てる
    @param[in]  devid    ブロックデバイスのデバイスID

@@ -101,16 +101,14 @@ typedef int64_t            off_t;   /*<  オフセット位置(単位:バイト)
 /*
  * デバイス管理
  */
-typedef uint32_t        fs_dev_id;  /*<  FSデバイスID (メジャー/マイナー番号) */
 typedef uint64_t           dev_id;  /*<  デバイスID (統合デバイス番号)        */
-typedef obj_cnt_type    fs_blk_no;  /*<  ブロック番号                         */
+typedef uint32_t         dev_fsid;  /*<  ファイルシステムで使用するメジャー/マイナー番号 */
+typedef obj_cnt_type    dev_blkno;  /*<  ブロック番号                         */
 
 /*
  * CPU管理/プラットフォーム管理
  */
 typedef uint64_t            cpu_id;  /*< CPU ID                        */
-
-
 
 /*
  * アーキテクチャ依存定義
