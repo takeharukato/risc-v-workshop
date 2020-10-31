@@ -10,5 +10,7 @@
 #define  _KERN_DEV_IF_H
 
 #include <dev/block-device.h>
+#include <dev/buf.h>
+#include <dev/bio.h>
 
 #endif  /* _KERN_DEV_IF_H */

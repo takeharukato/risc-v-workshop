@@ -5,7 +5,7 @@
 top=../..
 include ${top}/Makefile.inc
 
-objects=block-device.o bio.o
+objects=block-device.o bio.o buf.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=

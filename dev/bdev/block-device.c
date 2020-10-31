@@ -18,13 +18,14 @@
 #include <kern/dev-if.h>
 #include <kern/vfs-if.h>
 
+#include <fs/vfs/vfs-internal.h>
+
 /**
    ブロックデバイスデータベース
  */
 static bdev_db g_bdevdb = __BDEVDB_INITIALIZER(&g_bdevdb);
 
 static kmem_cache bdev_ent_cache; /**< ブロックデバイスエントリのSLABキャッシュ */
-static kmem_cache blkbuf_cache;   /**< ブロックバッファのSLABキャッシュ */
 
 /**
     ブロックデバイスデータベース赤黒木
@@ -110,48 +111,6 @@ free_bdev_entry(bdev_entry *ent){
 }
 
 /**
-   ブロックバッファを割り当てる (内部関数)
-   @param[in] bufp  ブロックバッファを指し示すポインタのアドレス
-   @retval  0       正常終了
-   @retval -ENOMEM  メモリ不足
- */
-static int
-alloc_blkbuf(block_buffer **bufp){
-	int            rc;
-	block_buffer *buf;
-
-	kassert( bufp != NULL );
-
-	/* ブロックバッファを確保する */
-	rc = slab_kmem_cache_alloc(&blkbuf_cache, KMALLOC_NORMAL, (void **)&buf);
-	if ( rc != 0 )
-		goto error_out;
-
-	list_init(&buf->b_ent); /* リストエントリの初期化 */
-	buf->b_offset = 0;  /* バッファオフセットを初期化する */
-	buf->b_len = 0;     /* バッファ長を初期化する */
-	buf->b_page = NULL; /* ページキャッシュポインタを初期化する */
-
-	*bufp = buf;  /* 確保したバッファを返却する */
-
-	return 0;
-
-error_out:
-	return rc;
-}
-
-/**
-   ブロックバッファを解放する (内部関数)
-   @param[in] buf   ブロックバッファ
- */
-static void
-free_blkbuf(block_buffer *buf){
-
-	slab_kmem_cache_free((void *)buf);  /* ブロックバッファを解放する */
-	return ;
-}
-
-/**
    ブロックデバイスエントリへの参照を加算する (内部関数)
    @param[in] ent ブロックデバイスエントリ
    @retval    真  ブロックデバイスエントリの参照を獲得できた
@@ -184,15 +143,18 @@ dec_bdev_ent_ref(bdev_entry *ent){
 	return res;
 }
 
+/*
+ * IF関数
+ */
 /**
-   ブロックデバイスエントリの参照を獲得する (内部関数)
+   ブロックデバイスエントリの参照を獲得する
    @param[in] devid  ブロックデバイスのデバイスID
    @param[out] bdevp ブロックデバイスエントリを指し示すポインタのアドレス
    @retval  0      正常終了
    @retval -ENODEV ブロックデバイスエントリが見つからなかった
  */
-static int
-get_bdev_entry(dev_id devid, bdev_entry **bdevp){
+int
+bdev_bdev_entry_get(dev_id devid, bdev_entry **bdevp){
 	int                 rc;
 	bool               res;
 	bdev_entry       *bdev;
@@ -232,14 +194,14 @@ unlock_out:
 }
 
 /**
-   ブロックデバイスエントリの参照を解放する (内部関数)
+   ブロックデバイスエントリの参照を解放する
    @param[in] devid  ブロックデバイスのデバイスID
    @param[out] bdevp ブロックデバイスエントリを指し示すポインタのアドレス
    @retval  0      ブロックデバイスの最終参照者だった
    @retval -EBUSY  ブロックデバイスの最終参照者ではなかった
  */
-static int
-put_bdev_entry(bdev_entry *bdev){
+int
+bdev_bdev_entry_put(bdev_entry *bdev){
 	bool res;
 
 	res = dec_bdev_ent_ref(bdev); /* ブロックデバイスエントリへの参照を解放する */
@@ -248,87 +210,6 @@ put_bdev_entry(bdev_entry *bdev){
 
 	return 0; /* ブロックデバイスの最終参照者だった */
 }
-
-/**
-   ページキャッシュに割り当てられたブロックバッファを解放する (内部関数)
-   @param[in]  pcache   ページキャッシュ
- */
-static void
-unmap_page_cache_blocks(vfs_page_cache *pc){
-	block_buffer *cur_buf;
-	list        *cur, *np;
-
-	/* ブロックバッファを解放する
-	 */
-	queue_for_each_safe(cur, &pc->pc_buf_que, np) {
-
-		/* 先頭のバッファを取り出す */
-		cur_buf = container_of(queue_get_top(&pc->pc_buf_que), block_buffer, b_ent);
-		free_blkbuf(cur_buf);  /* バッファを解放する */
-	}
-
-	return ;
-}
-
-/**
-   ページキャッシュにブロックバッファを割り当てる (内部関数)
-   @param[in]  bdev     ブロックデバイスエントリ
-   @param[in]  pcache   ページキャッシュ
-   @retval  0 正常終了
- */
-static int
-map_page_cache_blocks(bdev_entry *bdev, vfs_page_cache *pc){
-	int                rc;
-	bool              res;
-	block_buffer     *buf;
-	off_t         blk_off;
-	obj_cnt_type        i;
-	obj_cnt_type  nr_bufs;
-
-	res = inc_bdev_ent_ref(bdev);  /* 参照を加算 */
-	kassert( res );  /* ブロックデバイスDBからの参照が残っている */
-
-	kassert( pc->pc_pcplink != NULL );
-	kassert( pc->pc_pcplink->pcp_pgsiz >= bdev->bdent_blksiz );
-	kassert( !addr_not_aligned(pc->pc_pcplink->pcp_pgsiz, bdev->bdent_blksiz) );
-
-	/* ページ内に割り当てるブロック数を算出する */
-	nr_bufs = pc->pc_pcplink->pcp_pgsiz / bdev->bdent_blksiz;
-
-	/* ページキャッシュにブロックを割り当てる
-	 */
-	for( i = 0, blk_off = 0; nr_bufs > i; ++i ) {
-
-		rc = alloc_blkbuf(&buf);
-		if ( rc != 0 )
-			goto free_blocks_out;
-
-		buf->b_offset = blk_off;  /* ページ内オフセットを設定 */
-		buf->b_len = bdev->bdent_blksiz; /* ブロックサイズを設定 */
-		buf->b_page = pc; /* ページキャッシュを設定 */
-		queue_add(&pc->pc_buf_que, &buf->b_ent); /* ページキャッシュに追加 */
-
-		blk_off += bdev->bdent_blksiz; /* ページ内オフセットを更新 */
-	}
-
-	res = dec_bdev_ent_ref(bdev); /* ブロックデバイスエントリへの参照を解放する */
-	kassert( !res );
-
-	return 0;
-
-free_blocks_out:
-
-	unmap_page_cache_blocks(pc); /* ブロックバッファを解放する */
-
-	res = dec_bdev_ent_ref(bdev); /* ブロックデバイスエントリへの参照を解放する */
-	kassert( !res );
-
-	return rc;
-}
-
-/*
- * IF関数
- */
 
 /**
    ブロックデバイスエントリにページキャッシュプールを設定する
@@ -363,6 +244,52 @@ error_out:
 }
 
 /**
+   ブロックデバイスのブロックサイズを設定する
+   @param[in]  devid    デバイスID
+   @param[in]  blksiz   デバイスのブロックサイズ(単位:バイト)
+   @retval  0 正常終了
+   @retval -ENOENT デバイスIDが不正
+ */
+int
+bdev_block_size_set(dev_id devid, size_t blksiz){
+	int             rc;
+	bdev_entry   *bdev;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		return rc;
+
+	bdev->bdent_blksiz = blksiz;  /* ブロックサイズを設定する */
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+}
+
+/**
+   ブロックデバイスのブロックサイズを取得する
+   @param[in]   devid     デバイスID
+   @param[out]  blksizp   デバイスのブロックサイズを返却する領域
+   @retval  0 正常終了
+   @retval -ENOENT デバイスIDが不正
+ */
+int
+bdev_block_size_get(dev_id devid, size_t *blksizp){
+	int             rc;
+	bdev_entry   *bdev;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		return rc;
+
+	if ( blksizp != NULL )
+		*blksizp = bdev->bdent_blksiz;  /* ブロックサイズを返却する */
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+}
+/**
    ブロックデバイス上のページキャッシュを獲得する
    @param[in]  devid    デバイスID
    @param[in]  offset   デバイス先頭からのオフセットアドレス(単位:バイト)
@@ -376,7 +303,7 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 	bdev_entry   *bdev;
 	vfs_page_cache *pc;
 
-	rc = get_bdev_entry(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
 	if ( rc != 0 )
 		goto error_out;
 
@@ -388,8 +315,10 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 	if ( rc != 0 )
 		goto put_bdev_out;
 
-	if ( queue_is_empty(&pc->pc_buf_que) )
-		map_page_cache_blocks(bdev, pc);  /* ページキャッシュにブロックを割り当てる */
+	/* ページキャッシュにブロックを割り当てる
+	 */
+	if ( queue_is_empty(&pc->pc_buf_que) )  /* ブロックバッファ未割当の場合 */
+		block_buffer_map_to_page_cache(devid, pc);
 
 	if ( !VFS_PCACHE_IS_VALID(pc) ) {  /* 未読み込みのページの場合 */
 
@@ -400,18 +329,19 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 
 	vfs_page_cache_put(pc);  /* ページキャッシュの参照を解放する */
 
-	put_bdev_entry(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
 
 	return 0;
 
 unmap_blocks_out:
+	/* ページキャッシュ中のブロックを解放 */
 	if ( !queue_is_empty(&pc->pc_buf_que) )
-		unmap_page_cache_blocks(pc); /* ページキャッシュのブロックを解放 */
+		block_buffer_unmap_from_page_cache(pc);
 
 	vfs_page_cache_put(pc);  /* ページキャッシュの参照を解放する */
 
 put_bdev_out:
-	put_bdev_entry(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
 
 error_out:
 	return rc;
@@ -437,9 +367,9 @@ bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private pr
 	kassert( ops != NULL );
 
 	if ( devid == VFS_VSTAT_INVALID_DEVID )
-		return -EINVAL;
+		return -EINVAL;  /* 不正デバイスID */
 
-	rc = alloc_bdev_entry(&ent);
+	rc = alloc_bdev_entry(&ent);  /* ブロックデバイスエントリを割り当てる */
 	if ( rc != 0 )
 		goto error_out;
 
@@ -473,7 +403,7 @@ bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private pr
 	return 0;
 
 put_bdev_ent_out:
-	dec_bdev_ent_ref(ent);
+	dec_bdev_ent_ref(ent);  /* ブロックデバイスエントリへの参照を解放 */
 
 error_out:
 	return rc;
@@ -485,36 +415,39 @@ error_out:
  */
 void
 bdev_device_unregister(dev_id devid){
-	bdev_entry   key;
-	bdev_entry  *ent;
+	int           rc;
+	bdev_entry *bdev;
 	bdev_entry  *res;
 	intrflags iflags;
 
 	if ( devid == VFS_VSTAT_INVALID_DEVID )
 		return ;
 
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		return;
+
+	/* ブロックデバイスDBのロックを獲得する */
 	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);
 
-	key.bdent_devid = devid;
-	ent = RB_FIND(_bdev_tree, &g_bdevdb.bdev_head, &key);
-	if ( ent == NULL ) {
-
-		spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
-		return;  /* 対象のデバイスが削除済み */
-	}
-
-	res = RB_REMOVE(_bdev_tree, &g_bdevdb.bdev_head, ent);
+	/* ブロックデバイスエントリをブロックデバイスDBから除去する */
+	res = RB_REMOVE(_bdev_tree, &g_bdevdb.bdev_head, bdev);
 	kassert( res != NULL );
 
+	/* ブロックデバイスDBのロックを解放する */
 	spinlock_unlock_restore_intr(&g_bdevdb.bdev_lock, &iflags);
 
-	/* ページキャッシュプールへの参照を解放 */
-	vfs_page_cache_pool_ref_dec(ent->bdent_pool);
-	ent->bdent_pool = NULL;
+	/* ページキャッシュプールへの参照を解放
+	 */
+	vfs_page_cache_pool_ref_dec(bdev->bdent_pool);
+	bdev->bdent_pool = NULL;
 
-	dec_bdev_ent_ref(ent);
+	/* ページキャッシュプールからブロックデバイスエントリへの参照を解放 */
+	dec_bdev_ent_ref(bdev);
 
-	return ;
+	dec_bdev_ent_ref(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return;
 }
 
 /**
@@ -528,11 +461,6 @@ bdev_init(void){
 	rc = slab_kmem_cache_create(&bdev_ent_cache, "bdev entry cache",
 	    sizeof(bdev_entry), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
 	kassert( rc == 0 );
-
-	/* ブロックバッファのキャッシュを初期化する */
-	rc = slab_kmem_cache_create(&blkbuf_cache, "block buffer cache",
-	    sizeof(block_buffer), SLAB_ALIGN_NONE,  0, KMALLOC_NORMAL, NULL, NULL);
-	kassert( rc == 0 );
 }
 
 /**
@@ -543,6 +471,4 @@ bdev_finalize(void){
 
 	 /* ブロックデバイスエントリキャッシュを解放 */
 	slab_kmem_cache_destroy(&bdev_ent_cache);
-	 /* ブロックバッファを解放 */
-	slab_kmem_cache_destroy(&blkbuf_cache);
 }

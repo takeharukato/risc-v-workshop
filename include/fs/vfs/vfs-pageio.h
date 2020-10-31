@@ -44,6 +44,8 @@
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
 struct _bdev_entry;
+struct _block_buffer;
+
 /**
    ページキャッシュ
  */
@@ -146,12 +148,15 @@ typedef struct _vfs_page_cache_pool_db{
 
 bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
-int vfs_page_cache_mark_clean(struct _vfs_page_cache *pc);
-int vfs_page_cache_mark_dirty(struct _vfs_page_cache *pc);
-
+int vfs_page_cache_mark_clean(struct _vfs_page_cache *_pc);
+int vfs_page_cache_mark_dirty(struct _vfs_page_cache *_pc);
+int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
+int vfs_page_cache_enqueue_block_buffer(struct _vfs_page_cache *_pc,
+    struct _block_buffer *_buf);
+int vfs_page_cache_dequeue_block_buffer(struct _vfs_page_cache *_pc,
+    struct _block_buffer **_bufp);
 bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
-int vfs_dev_page_cache_pool_alloc(struct _bdev_entry *_bdev);
 
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);

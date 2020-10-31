@@ -523,6 +523,7 @@ vfs_page_cache_mark_dirty(vfs_page_cache *pc){
    @retval  0      正常終了
    @retval -EBUSY  ページキャッシュプールが既に割り当てられている
    @retval -ENOMEM メモリ不足
+   @note ブロックデバイス登録処理から呼び出されるページキャッシュ機構の内部のIF関数
  */
 int
 vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
@@ -542,6 +543,111 @@ vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
 		vfs_page_cache_pool_ref_dec(pool); /* 参照を解放し, プールを解放する */
 
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュのページサイズを得る
+   @param[in]  pc    ページキャッシュ
+   @param[out] sizep ページサイズを返却する領域
+   @retval  0      正常終了
+   @retval -ENOENT ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_pagesize_get(vfs_page_cache *pc, size_t *sizep){
+	int       rc;
+	bool     res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	kassert( pc->pc_pcplink != NULL ); /* ページキャッシュプールにつながっている */
+
+	if ( sizep != NULL )
+		*sizep = pc->pc_pcplink->pcp_pgsiz; /* ページサイズを返却する */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+/**
+   ページキャッシュにブロックバッファを追加する
+   @param[in]  pc   ページキャッシュ
+   @param[in]  buf  ブロックバッファ
+   @retval  0      正常終了
+   @retval -ENOENT ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_enqueue_block_buffer(vfs_page_cache *pc, block_buffer *buf){
+	int   rc;
+	bool res;
+
+	res = vfs_page_cache_ref_inc(pc);
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	queue_add(&pc->pc_buf_que, &buf->b_ent); /* ページキャッシュに追加 */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュからブロックバッファを取り出す
+   @param[in]   pc    ページキャッシュ
+   @param[out]  bufp  ブロックバッファを指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOENT ページキャッシュが解放中だった
+   @retval -EAGAIN ブロックバッファが登録されていない
+ */
+int
+vfs_page_cache_dequeue_block_buffer(vfs_page_cache *pc, block_buffer **bufp){
+	int            rc;
+	bool          res;
+	block_buffer *buf;
+
+	kassert( bufp != NULL );
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
+	if ( !res ) {
+
+		rc = -ENOENT;  /*  ページキャッシュが解放中だった  */
+		goto error_out;
+	}
+
+	if ( queue_is_empty(&pc->pc_buf_que) ) {  /* キューが空の場合 */
+
+		rc = -EAGAIN; /* ブロックバッファが登録されていない */
+		goto put_page_cache_out;
+	}
+
+	/* 先頭のブロックバッファを取り出す */
+	buf = container_of(queue_get_top(&pc->pc_buf_que), block_buffer, b_ent);
+
+	*bufp = buf;  /* ブロックバッファを返却する */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+put_page_cache_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 error_out:
 	return rc;

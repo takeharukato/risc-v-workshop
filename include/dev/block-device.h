@@ -37,64 +37,13 @@
 
 #include <kern/vfs-if.h>
 
-#define BIO_DEFAULT_SECLEN   (512)  /**< デフォルトセクタ長(512バイト) */
-
-typedef uint32_t        bio_state;  /**< ステータス             */
-typedef uint32_t        bio_error;  /**< エラーコード           */
-typedef uint32_t          bio_dir;  /**< デバイス読み書き種別   */
 typedef void *       bdev_private;  /**< デバイス固有情報       */
-typedef uint32_t       breq_flags;  /**< ブロックI/Oリクエストフラグ */
 
-/*
- * ブロックリクエストエントリ
- */
-#define BIO_BREQ_FLAG_NONE      (0)   /**< 属性なし         */
-#define BIO_BREQ_FLAG_ASYNC   (0x1)   /**< 非同期リクエスト */
-
-struct _bio_request;
-struct _vfs_page_cache;
 struct _vfs_page_cache_pool;
 struct _bdev_entry;
 
 /**
-   ブロックバッファ
- */
-typedef struct _block_buffer{
-	struct _list             b_ent; /**< リストエントリ                             */
-	off_t                 b_offset; /**< ページキャッシュ内オフセット(単位: バイト) */
-	size_t                   b_len; /**< バッファ長(単位: バイト)                   */
-	struct _vfs_page_cache *b_page; /**< ページキャッシュ                           */
-}block_buffer;
-
-/**
-   ブロックI/Oリクエストエントリ
-*/
-typedef struct _bio_request_entry{
-	struct _list                    bre_ent; /**< リストエントリ                 */
-	/** ブロックバッファツリーのエントリ  */
-	RB_ENTRY(_bio_request_entry) bre_bufent;
-	bio_state                    bre_status; /**< データ転送状態                 */
-	bio_error                     bre_error; /**< エラーコード                   */
-	struct _bio_request          *bre_breqp; /**< BIOリクエストへのポインタ      */
-	bio_dir                   bre_direction; /**< 転送方向                       */
-	struct _vfs_page_cache        *bre_page; /**< ページキャッシュ               */
-}bio_request_entry;
-
-/**
-   ブロックI/Oリクエスト
-*/
-typedef struct _bio_request{
-	spinlock               br_lock;  /**< ロック                   */
-	struct _list            br_ent;  /**< リストエントリ           */
-	struct _wque_waitqueue br_wque;  /**< リクエスト完了待ちキュー */
-	breq_flags            br_flags;  /**< リクエストフラグ         */
-	struct _queue           br_req;  /**< リクエストキュー         */
-	struct _queue       br_err_req;  /**< エラーリクエストキュー   */
-	struct _bdev_entry   *br_bdevp;  /**< ブロックデバイスエントリのポインタ */
-}bio_request;
-
-/**
-   ブロックデバイスエントリ構造体
+   ブロックデバイスエントリ
 */
 typedef struct _bdev_entry{
 	spinlock                                bdent_lock; /**< ロック                    */
@@ -126,13 +75,18 @@ typedef struct _bdev_db{
 	.bdev_head  = RB_INITIALIZER(&((_bdevdbp)->bdev_head)),		            \
 	}
 int bdev_page_cache_pool_set(struct _bdev_entry *_bdev, struct _vfs_page_cache_pool *_pool);
-int bio_request_alloc(struct _bio_request **_reqp);
-int bio_request_free(struct _bio_request *_req);
-void bio_request_entry_free(struct _bio_request_entry *_ent);
+
+int bdev_block_size_set(dev_id _devid, size_t _blksiz);
+int bdev_block_size_get(dev_id _devid, size_t *_blksizp);
+int bdev_page_cache_get(dev_id _devid, off_t _offset, struct _vfs_page_cache **_pcachep);
+
+int bdev_bdev_entry_get(dev_id _devid, struct _bdev_entry **_bdevp);
+int bdev_bdev_entry_put(struct _bdev_entry *_bdev);
 
 int bdev_device_register(dev_id _devid, size_t _blksiz, struct _fs_calls *_ops,
     bdev_private _private);
 void bdev_device_unregister(dev_id _devid);
+
 void bdev_init(void);
 void bdev_finalize(void);
 #endif  /*  !ASM_FILE  */

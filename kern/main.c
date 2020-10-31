@@ -20,6 +20,8 @@
 #include <kern/irq-if.h>
 #include <kern/timer.h>
 #include <kern/vfs-if.h>
+#include <kern/dev-if.h>
+
 #include <klib/asm-offset.h>
 
 #include <fs/simplefs/simplefs.h>
@@ -94,6 +96,7 @@ kern_init(void) {
 	 * カーネルデータ構造の初期化
 	 */
 	vfs_init();   /* 仮想ファイルシステムを初期化する */
+	bdev_init();  /* ブロックデバイスの初期化 */
 	pagecache_init();  /* ページキャッシュ機構を初期化する */
 	proc_init();  /* プロセス管理情報を初期化する */
 	thr_init();   /* スレッド管理機構を初期化する */
