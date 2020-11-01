@@ -227,6 +227,138 @@ block_buffer_put(block_buffer *buf){
 	rc = vfs_page_cache_put(buf->b_page);  /* ページキャッシュの使用権を解放する */
 	kassert( rc == 0 );
 }
+
+/**
+   二次記憶の内容をブロックバッファに読み込む
+   @param[in] buf  ブロックバッファ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+block_buffer_read(block_buffer *buf){
+	int                  rc;
+	bool                res;
+
+	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
+
+	if ( !VFS_PCACHE_IS_VALID(buf->b_page) )  /* キャッシュが無効な場合 */
+		vfs_page_cache_rw(buf->b_page);  /* ページにブロックの内容を読み込む */
+
+	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックバッファを二次記憶に書き込む
+   @param[in] buf  ブロックバッファ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+block_buffer_write(block_buffer *buf){
+	int                  rc;
+	bool                res;
+
+	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(buf->b_page) );
+	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
+
+	if ( VFS_PCACHE_IS_DIRTY(buf->b_page) )  /* キャッシュの方が新しい場合 */
+		vfs_page_cache_rw(buf->b_page);  /* ページの内容を書き込む */
+
+	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックバッファのデータ領域を参照する
+   @param[in]  buf   ブロックバッファ
+   @param[out] datap データ領域を指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+block_buffer_refer_data(block_buffer *buf, void **datap){
+	int                  rc;
+	bool                res;
+	void          *buf_data;
+
+	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(buf->b_page) );
+	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
+	kassert( buf->b_page->pc_data != NULL );
+
+	buf_data = buf->b_page->pc_data + buf->b_offset; /* バッファデータの先頭を参照 */
+
+	if ( datap != NULL )
+		*datap = buf_data; /* データ領域を返却する */
+
+	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックバッファを書き込み済みに設定する
+   @param[in] buf   ブロックバッファ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+block_buffer_mark_dirty(block_buffer *buf){
+	int                  rc;
+	bool                res;
+
+	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	/* バッファを含むページキャッシュを書き込み済みに設定 */
+	vfs_page_cache_mark_dirty(buf->b_page);
+
+	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
 /**
    ブロックバッファ機構の初期化
  */

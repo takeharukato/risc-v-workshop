@@ -28,8 +28,14 @@ typedef struct _block_buffer{
 
 int block_buffer_map_to_page_cache(dev_id _devid, struct _vfs_page_cache *_pc);
 void block_buffer_unmap_from_page_cache(struct _vfs_page_cache *_pc);
+
 int block_buffer_get(dev_id _devid, dev_blkno _blkno, struct _block_buffer **_bufp);
 void block_buffer_put(struct _block_buffer *_buf);
+
+int block_buffer_refer_data(struct _block_buffer *_buf, void **_datap);
+int block_buffer_mark_dirty(struct _block_buffer *_buf);
+int block_buffer_read(struct _block_buffer *_buf);
+int block_buffer_write(struct _block_buffer *_buf);
 void block_buffer_init(void);
 void block_buffer_finalize(void);
 
