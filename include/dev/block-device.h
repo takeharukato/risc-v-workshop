@@ -39,6 +39,8 @@ typedef struct _bdev_entry{
 	dev_id                                 bdent_devid; /**< デバイスID                */
 	/** デバイスのブロック長(単位:バイト) */
 	size_t                                bdent_blksiz;
+	/** デバイスの容量(単位:バイト) */
+	size_t                              bdent_capacity;
 	struct _queue                           bdent_rque; /**< リクエストキュー          */
 	struct _fs_calls                       bdent_calls; /**< ファイル操作IF            */
 	struct _vfs_page_cache_pool            *bdent_pool; /**< ページキャッシュプール    */
@@ -65,6 +67,8 @@ int bdev_page_cache_pool_set(struct _bdev_entry *_bdev, struct _vfs_page_cache_p
 
 int bdev_block_size_set(dev_id _devid, size_t _blksiz);
 int bdev_block_size_get(dev_id _devid, size_t *_blksizp);
+int bdev_capacity_set(dev_id _devid, size_t _capacity);
+int bdev_capacity_get(dev_id _devid, size_t *_capacityp);
 int bdev_page_cache_get(dev_id _devid, off_t _offset, struct _vfs_page_cache **_pcachep);
 
 int bdev_bdev_entry_get(dev_id _devid, struct _bdev_entry **_bdevp);

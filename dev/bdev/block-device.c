@@ -57,13 +57,14 @@ _bdev_ent_cmp(struct _bdev_entry *key, struct _bdev_entry *ent){
    ブロックデバイスエントリを初期化する (内部関数)
    @param[in] ent ブロックデバイスエントリ
  */
-static void __unused
+static void
 init_bdev_entry(bdev_entry *ent){
 
 	spinlock_init(&ent->bdent_lock);               /*  ロックの初期化  */
 	refcnt_init(&ent->bdent_refs);            /* 参照カウンタの初期化  */
 	ent->bdent_devid = VFS_VSTAT_INVALID_DEVID;  /* デバイスIDの初期化 */
 	ent->bdent_blksiz = 0;                   /* ブロックサイズの初期化 */
+	ent->bdent_capacity = 0;                 /* 容量の初期化           */
 	queue_init(&ent->bdent_rque);          /* リクエストキューの初期化 */
 	vfs_fs_calls_init(&ent->bdent_calls);   /*  ファイル操作IFの初期化 */
 	ent->bdent_private = NULL;             /* プライベート情報の初期化 */
@@ -100,7 +101,7 @@ error_out:
    ブロックデバイスエントリを解放する (内部関数)
    @param[in] ent   ブロックデバイスエントリ
  */
-static void __unused
+static void
 free_bdev_entry(bdev_entry *ent){
 
 	kassert( refcnt_read(&ent->bdent_refs) == 0 ); /* 参照者がいないことを確認 */
@@ -195,8 +196,7 @@ unlock_out:
 
 /**
    ブロックデバイスエントリの参照を解放する
-   @param[in] devid  ブロックデバイスのデバイスID
-   @param[out] bdevp ブロックデバイスエントリを指し示すポインタのアドレス
+   @param[in] bdev ブロックデバイスエントリ
    @retval  0      ブロックデバイスの最終参照者だった
    @retval -EBUSY  ブロックデバイスの最終参照者ではなかった
  */
@@ -306,6 +306,54 @@ bdev_block_size_get(dev_id devid, size_t *blksizp){
 
 	return 0;
 }
+
+/**
+   ブロックデバイスの容量を設定する
+   @param[in]  devid    デバイスID
+   @param[in]  capacity デバイスの容量(単位:バイト)
+   @retval  0 正常終了
+   @retval -ENOENT デバイスIDが不正
+ */
+int
+bdev_capacity_set(dev_id devid, size_t capacity){
+	int             rc;
+	bdev_entry   *bdev;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		return rc;
+
+	bdev->bdent_capacity = capacity;  /* デバイスの容量を設定する */
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+}
+
+/**
+   ブロックデバイスの容量を取得する
+   @param[in]   devid    デバイスID
+   @param[out]  capacityp デバイスの容量を返却する領域
+   @retval  0 正常終了
+   @retval -ENOENT デバイスIDが不正
+ */
+int
+bdev_capacity_get(dev_id devid, size_t *capacityp){
+	int             rc;
+	bdev_entry   *bdev;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		return rc;
+
+	if ( capacityp != NULL )
+		*capacityp = bdev->bdent_capacity;  /* 容量を返却する */
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+}
+
 /**
    ブロックデバイス上のページキャッシュを獲得する
    @param[in]  devid    デバイスID

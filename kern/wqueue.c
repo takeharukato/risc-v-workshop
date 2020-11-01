@@ -268,9 +268,8 @@ unlock_out:
 }
 
 /**
-   資源獲得スレッドを解除する
+   資源獲得スレッドの設定を解除する
    @param[in] wque   操作対象のウエイトキュー
-   @param[in] owner  資源獲得スレッド
  */
 void
 wque_owner_unset(wque_waitqueue *wque){
