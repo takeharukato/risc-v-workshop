@@ -10,12 +10,10 @@
 #include <klib/freestanding.h>
 #include <kern/kern-common.h>
 
-#include <kern/spinlock.h>
-
 #include <kern/page-if.h>
 
-#include <kern/dev-if.h>
 #include <kern/vfs-if.h>
+#include <kern/dev-if.h>
 
 static kmem_cache blkbuf_cache;   /**< ブロックバッファのSLABキャッシュ */
 
@@ -76,7 +74,7 @@ free_blkbuf(block_buffer *buf){
 int
 block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 	int                   rc;
-	struct _bdev_entry *bdev;
+	bdev_entry         *bdev;
 	block_buffer        *buf;
 	size_t             pgsiz;
 	off_t            blk_off;
@@ -236,27 +234,8 @@ block_buffer_put(block_buffer *buf){
  */
 int
 block_buffer_read(block_buffer *buf){
-	int                  rc;
-	bool                res;
 
-	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 開放中のページキャッシュ */
-		goto error_out;
-	}
-
-	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
-
-	if ( !VFS_PCACHE_IS_VALID(buf->b_page) )  /* キャッシュが無効な場合 */
-		vfs_page_cache_rw(buf->b_page);  /* ページにブロックの内容を読み込む */
-
-	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
-
-	return 0;
-
-error_out:
-	return rc;
+	return bio_page_read(buf->b_page); /* バッファを含むページキャッシュに読み込む */
 }
 
 /**
@@ -267,29 +246,8 @@ error_out:
  */
 int
 block_buffer_write(block_buffer *buf){
-	int                  rc;
-	bool                res;
 
-	res = vfs_page_cache_ref_inc(buf->b_page);  /* ページキャッシュへの参照を獲得する */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 開放中のページキャッシュ */
-		goto error_out;
-	}
-
-	/* ブロックデバイスのページキャッシュであることを確認 */
-	kassert( VFS_PCACHE_IS_DEVICE_PAGE(buf->b_page) );
-	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
-
-	if ( VFS_PCACHE_IS_DIRTY(buf->b_page) )  /* キャッシュの方が新しい場合 */
-		vfs_page_cache_rw(buf->b_page);  /* ページの内容を書き込む */
-
-	vfs_page_cache_ref_dec(buf->b_page);  /* ページキャッシュへの参照を解放する */
-
-	return 0;
-
-error_out:
-	return rc;
+	return bio_page_write(buf->b_page); /* バッファを含むページキャッシュを書き込む */
 }
 
 /**

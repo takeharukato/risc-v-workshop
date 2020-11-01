@@ -932,7 +932,7 @@ vfs_page_cache_rw(vfs_page_cache *pc){
 	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用権があることを確認 */
 
 	/* 二次記憶との一貫性が保たれている場合はI/Oをスキップする */
-	if ( !VFS_PCACHE_IS_VALID(pc) && !VFS_PCACHE_IS_DIRTY(pc) )
+	if ( VFS_PCACHE_IS_VALID(pc) && !VFS_PCACHE_IS_DIRTY(pc) )
 		goto io_no_need;
 
 	/* ページの読み書きを行う

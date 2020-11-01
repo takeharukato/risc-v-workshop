@@ -9,20 +9,6 @@
 #if !defined(_DEV_BLOCK_DEVICE_H)
 #define _DEV_BLOCK_DEVICE_H
 
-/*
- * I/Oの向き
- */
-#define BIO_DIR_READ       (0)  /**< デバイスからの読み込み */
-#define BIO_DIR_WRITE      (1)  /**< デバイスへの書き込み   */
-
-/*
- * I/Oリクエストの状態
- */
-#define BIO_STATE_NONE     (0)  /**< 初期状態  */
-#define BIO_STATE_BUSY     (1)  /**< I/O処理中 */
-#define BIO_STATE_FINISHED (2)  /**< I/O完了   */
-#define BIO_STATE_ERROR    (4)  /**< エラー    */
-
 #if !defined(ASM_FILE)
 
 #include <klib/freestanding.h>
@@ -39,6 +25,7 @@
 
 typedef void *       bdev_private;  /**< デバイス固有情報       */
 
+struct _bio_request;
 struct _vfs_page_cache_pool;
 struct _bdev_entry;
 
@@ -82,7 +69,7 @@ int bdev_page_cache_get(dev_id _devid, off_t _offset, struct _vfs_page_cache **_
 
 int bdev_bdev_entry_get(dev_id _devid, struct _bdev_entry **_bdevp);
 int bdev_bdev_entry_put(struct _bdev_entry *_bdev);
-
+int bdev_add_request(dev_id _devid, struct _bio_request *_req);
 int bdev_device_register(dev_id _devid, size_t _blksiz, struct _fs_calls *_ops,
     bdev_private _private);
 void bdev_device_unregister(dev_id _devid);

@@ -403,6 +403,42 @@ error_out:
 }
 
 /**
+   ブロックデバイスにリクエストを追加する
+   @param[in] devid デバイスID
+   @param[in] req   リクエスト
+   @retval  0      正常終了
+   @retval -ENODEV ブロックデバイスエントリが見つからなかった
+ */
+int
+bdev_add_request(dev_id devid, bio_request *req){
+	int                 rc;
+	bdev_entry       *bdev;
+	intrflags       iflags;
+
+	kassert( list_not_linked(&req->br_ent) ); /* 未接続のリクエスト */
+
+	/* ブロックデバイスエントリへの参照を獲得 */
+	rc = bdev_bdev_entry_get(req->br_bdevid, &bdev);
+	if ( rc != 0 )
+		goto error_out;
+
+	/* リクエストキューのロックを獲得 */
+	spinlock_lock_disable_intr(&bdev->bdent_lock, &iflags);
+
+	queue_add(&bdev->bdent_rque, &req->br_ent); /* キューに追加 */
+
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&bdev->bdent_lock, &iflags);
+
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
    ブロックデバイスドライバを登録する
    @param[in] devid   デバイスID
    @param[in] blksiz  ブロックサイズ(単位:バイト)

@@ -22,18 +22,6 @@ static kmem_cache bio_req_ent_cache;  /**< BIOリクエストエントリのSLAB
 static kmem_cache bio_req_cache;      /**< BIOリクエストのSLABキャッシュ            */
 
 /**
-   ブロックバッファを初期化する (内部関数)
-   @param[in] buf ブロックバッファ
- */
-static void __unused
-init_block_buffer(block_buffer *buf){
-
-	buf->b_offset = 0;  /**< オフセットを初期化する */
-	buf->b_len = 0;     /**< ブロック長を初期化する */
-	buf->b_page = NULL; /**< ブロックデータのページキャッシュを初期化する */
-}
-
-/**
    ブロックI/Oリクエストエントリを初期化する (内部関数)
    @param[in] ent ブロックI/Oリクエストエントリ
  */
@@ -41,11 +29,11 @@ static void
 init_bio_request_entry(bio_request_entry *ent){
 
 	list_init(&ent->bre_ent);           /* リストエントリの初期化                 */
-	ent->bre_status = BIO_STATE_NONE;   /* 初期状態に設定                         */
+	ent->bre_state = BIO_STATE_NONE;    /* 初期状態に設定                         */
+	ent->bre_direction = BIO_DIR_READ;  /* 読み取りに設定                         */
 	ent->bre_error = 0;                 /* エラーなし                             */
 	ent->bre_breqp = NULL;              /* BIOリクエストを初期化                  */
-	ent->bre_direction = BIO_DIR_READ;  /* 読み取りに設定                         */
-	ent->bre_page =  NULL;              /* ページキャッシュのポインタを初期化     */
+	ent->bre_offset =  0;               /* オフセット位置を初期化                 */
 }
 
 /**
@@ -61,7 +49,7 @@ init_bio_request(bio_request *req){
 	req->br_flags = BIO_BREQ_FLAG_NONE;  /* リクエストフラグを初期化             */
 	queue_init(&req->br_req);            /* リクエストキューの初期化             */
 	queue_init(&req->br_err_req);        /* エラーリクエストキューの初期化       */
-	req->br_bdevp = NULL;                /* ブロックデバイスへのポインタを初期化 */
+	req->br_bdevid = VFS_VSTAT_INVALID_DEVID; /* ブロックデバイスIDの初期化      */
 }
 
 /**
@@ -76,10 +64,8 @@ init_bio_request(bio_request *req){
    blkgetは, ブロック番号とブロックサイズを元にブロックデバイスのページキャッシュを
    検索し, ブロックデバイスのページキャッシュ内のブロックバッファを取り出し,
    BUSY状態に遷移させて返却する
-   bre_pageは, ブロックバッファに書き込んだ際に対象のページキャッシュをDIRTYに遷移させる
-   際に使用する逆リンクである
  */
-static int __unused
+static int
 alloc_bio_request_entry(bio_request_entry **entp){
 	int                 rc;
 	bio_request_entry *ent;
@@ -141,35 +127,39 @@ free_bio_request_entry(bio_request_entry *ent){
 
 /**
    ブロックI/Oリクエストを解放する (内部関数)
-   @param[in] ent  ブロックI/Oリクエスト
+   @param[in] req  ブロックI/Oリクエスト
  */
 static void
-free_bio_request(bio_request *ent){
+free_bio_request(bio_request *req){
 
 	/* ブロックデバイスのリクエストキューにつながっていないことを確認 */
-	kassert(list_not_linked(&ent->br_ent));
+	kassert(list_not_linked(&req->br_ent));
 
 	/* リクエストが空であることを確認 */
-	kassert( queue_is_empty(&ent->br_req) );
+	kassert( queue_is_empty(&req->br_req) );
 	/* エラーリクエストキューが空であることを確認 */
-	kassert( queue_is_empty(&ent->br_err_req));
+	kassert( queue_is_empty(&req->br_err_req));
 
-	wque_wakeup(&ent->br_wque, WQUE_DESTROYED);  /* 待ちスレッドを起床 */
+	wque_wakeup(&req->br_wque, WQUE_DESTROYED);  /* 待ちスレッドを起床 */
 
-	slab_kmem_cache_free((void *)ent); /* BIOリクエストを解放する */
+	slab_kmem_cache_free((void *)req); /* BIOリクエストを解放する */
 }
 
 /**
    ブロックI/Oリクエストを割当てる
-   @param[out] reqp ブロックI/Oリクエストを指し示すポインタのアドレス
+   @param[in]  devid ブロックデバイスのデバイスID
+   @param[out] reqp  ブロックI/Oリクエストを指し示すポインタのアドレス
    @retval  0      正常終了
-   @retval -EINVAL reqpがNULL
-   @retval -ENOMEM  メモリ不足
+   @retval -EINVAL devidが不正, または, reqpがNULL
+   @retval -ENOMEM メモリ不足
  */
 int
-bio_request_alloc(bio_request **reqp){
+bio_request_alloc(dev_id devid, bio_request **reqp){
 	int           rc;
 	bio_request *req;
+
+	if ( devid == VFS_VSTAT_INVALID_DEVID )
+		return -EINVAL;
 
 	if ( reqp == NULL )
 		return -EINVAL;
@@ -177,6 +167,8 @@ bio_request_alloc(bio_request **reqp){
 	rc = alloc_bio_request(&req);  /* BIOリクエストを割り当てる */
 	if ( rc != 0 )
 		goto error_out;
+
+	req->br_bdevid = devid; /* デバイスIDを設定 */
 
 	*reqp = req;  /* 割当てたリクエストを返却 */
 
@@ -226,6 +218,173 @@ bio_request_free(bio_request *req){
 }
 
 /**
+   二次記憶の内容をブロックデバイスのページキャッシュに読み込む
+   @param[in] pc   ページキャッシュ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+bio_page_read(vfs_page_cache *pc){
+	int    rc;
+	bool  res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
+
+	if ( !VFS_PCACHE_IS_VALID(pc) )  /* キャッシュが無効な場合 */
+		vfs_page_cache_rw(pc);  /* ページにブロックの内容を読み込む */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュの内容を二次記憶に書き込む
+   @param[in] pc   ページキャッシュ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+int
+bio_page_write(vfs_page_cache *pc){
+	int   rc;
+	bool res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
+
+	if ( VFS_PCACHE_IS_DIRTY(pc) )  /* キャッシュの方が新しい場合 */
+		vfs_page_cache_rw(pc);  /* ページの内容を書き込む */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+/**
+   BIOリクエストを処理する
+   @param[in] req BIOリクエスト
+   @retval    0   正常終了
+   @retval   -ENODEV ブロックデバイスエントリが見つからなかった, または,
+   ブロックデバイス上のページキャッシュではない
+   @retval   -ENOENT デバイスIDが不正, または, ページキャッシュが解放中だった
+ */
+int
+bio_request_handle_one(bio_request *req){
+	int                 rc;
+	intrflags       iflags;
+	list          *lp, *np;
+	bdev_entry       *bdev;
+	bio_request_entry *ent;
+	vfs_page_cache     *pc;
+
+	kassert( req != NULL );
+	/* ブロックデバイスエントリから外されている */
+	kassert( list_not_linked( &req->br_ent ) );
+	/* ブロックデバイスのデバイスIDを設定済み */
+	kassert( req->br_bdevid != VFS_VSTAT_INVALID_DEVID );
+
+	/* ブロックデバイスエントリへの参照を獲得 */
+	rc = bdev_bdev_entry_get(req->br_bdevid, &bdev);
+	if ( rc != 0 )
+		goto error_out;
+
+	/* リクエストキューのロックを獲得 */
+	spinlock_lock_disable_intr(&req->br_lock, &iflags);
+	/* キュー内のリクエストを処理する
+	 */
+	queue_for_each_safe(lp, &req->br_req, np){
+
+		/* キューの先頭リクエストを取り出す */
+		ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
+		/* ページキャッシュを獲得する */
+		rc = bdev_page_cache_get(req->br_bdevid, ent->bre_offset, &pc);
+		if ( rc != 0 )
+			goto request_completion; /* 処理完了 */
+
+		/*
+		 * デバイスへのI/Oリクエスト発行
+		 */
+		ent->bre_state = BIO_STATE_RUN;
+		if ( ( ent->bre_direction == BIO_DIR_READ ) ||
+		    ( ent->bre_direction == BIO_DIR_WRITE ) ) {
+
+			ent->bre_state = BIO_STATE_WAIT;  /* デバイス応答待ち */
+			if ( ent->bre_direction == BIO_DIR_READ )
+				rc = bio_page_read(pc);  /* ページキャッシュ読み取り */
+			else
+				rc = bio_page_write(pc); /* ページキャッシュ書き込み */
+
+			if ( rc != 0 )
+				rc = -EIO; /* I/Oエラー */
+		}
+
+		vfs_page_cache_put(pc);  /* ページキャッシュの使用権を解放する */
+
+	request_completion:
+		/*
+		 * リクエストエントリの完了処理
+		 */
+		ent->bre_state = BIO_STATE_COMPLETED; /* 処理完了 */
+		/* 非同期リクエストの場合はリクエストエントリを解放,
+		 * 同期リクエストでエラーの場合は, エラーキューにリクエストエントリを接続
+		 */
+		if ( ( rc == 0 ) || ( req->br_flags & BIO_BREQ_FLAG_ASYNC ) )
+			free_bio_request_entry(ent);  /* リクエストを解放する */
+		else {
+
+			/* 処理完了 */
+			ent->bre_state |= BIO_STATE_ERROR;
+			ent->bre_error =  rc; /* エラーコードを設定 */
+			queue_add(&req->br_err_req, &ent->bre_ent); /* エラーキューに追加 */
+		}
+	}
+
+	/* 同期リクエストの場合はI/Oを待ち合わせているスレッドを起床
+	 */
+	if ( !( req->br_flags & BIO_BREQ_FLAG_ASYNC ) )
+		wque_wakeup(&req->br_wque, WQUE_RELEASED); /* 待ちスレッドを起床 */
+
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
+
+	if ( req->br_flags & BIO_BREQ_FLAG_ASYNC ) {
+
+		/* 非同期リクエストの場合リクエストを解放
+		 */
+		kassert( queue_is_empty(&req->br_req) ); /* リクエストキューが空 */
+		kassert( queue_is_empty(&req->br_err_req) ); /* エラーリクエストキューが空 */
+		free_bio_request(req);  /* リクエストを解放 */
+	}
+
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
    ブロックI/Oリクエストエントリを解放する
    @param[in] ent   ブロックI/Oリクエストエントリ
  */
@@ -233,6 +392,76 @@ void
 bio_request_entry_free(bio_request_entry *ent){
 
 	free_bio_request_entry(ent); /* リクエストエントリを解放する */
+}
+
+/**
+   ブロックI/Oリクエストを追加する
+   @param[in] req    ブロックI/Oリクエスト
+   @param[in] dir    転送方向
+   @param[in] offset ブロックデバイス中のオフセット位置(単位:バイト)
+   @retval  0       正常終了
+   @retval -EINVAL  I/O方向が不正, または, リクエストとページキャッシュのデバイスIDが不一致
+   @retval -ENOMEM  メモリ不足
+ */
+int
+bio_request_add(bio_request *req, bio_dir dir, off_t offset){
+	int                 rc;
+	bdev_entry       *bdev;
+	bio_request_entry *ent;
+	intrflags       iflags;
+
+	kassert( list_not_linked(&req->br_ent) ); /* 未接続のリクエスト */
+
+	if ( ( dir != BIO_DIR_READ ) && ( dir != BIO_DIR_WRITE ) )
+		return -EINVAL;
+
+	/* ブロックデバイスエントリへの参照を獲得 */
+	rc = bdev_bdev_entry_get(req->br_bdevid, &bdev);
+	if ( rc != 0 )
+		goto error_out;
+
+	/* リクエストエントリを割り当てる */
+	rc = alloc_bio_request_entry(&ent);
+	if ( rc != 0 )
+		goto put_bdev_out;
+
+	ent->bre_breqp = req;     /* キューイング先リクエストキューを設定 */
+	ent->bre_state = BIO_STATE_QUEUED;  /* キューイング済みに設定 */
+	ent->bre_direction = dir; /* I/Oの方向を設定 */
+	ent->bre_offset = offset; /* ページキャッシュを設定 */
+
+	/* リクエストキューのロックを獲得 */
+	spinlock_lock_disable_intr(&req->br_lock, &iflags);
+
+	queue_add(&req->br_req, &ent->bre_ent); /* キューに追加 */
+
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
+
+	return 0;
+
+put_bdev_out:
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+error_out:
+	return rc;
+}
+
+/**
+   BIOリクエストをブロックデバイスに登録する
+   @param[in] req   BIOリクエスト
+   @param[in] flags BIOリクエストのフラグ
+   @retval    0     正常終了
+   @retval -ENODEV ブロックデバイスエントリが見つからなかった
+ */
+int
+bio_request_submit(bio_request *req, breq_flags flags){
+
+	kassert( list_not_linked(&req->br_ent) ); /* 未接続のリクエスト */
+
+	req->br_flags |= (flags & BIO_BREQ_FLAG_MASK); /* リクエストフラグを設定する */
+
+	return bdev_add_request(req->br_bdevid, req); /* ブロックデバイスにリクエストを登録 */
 }
 
 /**
