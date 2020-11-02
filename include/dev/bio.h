@@ -19,8 +19,6 @@
 #define BIO_BREQ_FLAG_MASK				\
 	( BIO_BREQ_FLAG_ASYNC )
 
-#define BIO_DEFAULT_SECTOR_SIZ (512)   /**< デフォルトセクタ長(512バイト) */
-
 /*
  * I/Oの向き
  */

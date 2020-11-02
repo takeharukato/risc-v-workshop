@@ -69,7 +69,9 @@ free_blkbuf(block_buffer *buf){
    @param[in]  pc       ページキャッシュ
    @retval  0      正常終了
    @retval -EINVAL デバイスIDが不正
-   @retval -ENOENT 対象のブロックデバイスが見つからなかった
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -ENOENT ページキャッシュが解放中だった
+   @retval -ENOMEM メモリ不足
  */
 int
 block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
@@ -100,7 +102,7 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 
 	/* ページキャッシュにブロックを割り当てる
 	 */
-	for( i = 0, blk_off = 0; nr_bufs > i; ++i ) {
+	for( i = 0, blk_off = 0; nr_bufs > i; ++i, blk_off += bdev->bdent_blksiz ) {
 
 		rc = alloc_blkbuf(&buf);
 		if ( rc != 0 )
@@ -111,8 +113,6 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 		/* ブロックバッファを登録する */
 		rc = vfs_page_cache_enqueue_block_buffer(pc, buf);
 		kassert( rc == 0 );
-
-		blk_off += bdev->bdent_blksiz; /* ページ内オフセットを更新 */
 	}
 
 	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
@@ -160,6 +160,9 @@ block_buffer_unmap_from_page_cache(vfs_page_cache *pc){
    @param[in]  blkno ブロック番号
    @param[out] bufp  ブロックバッファを指し示すポインタのアドレス
    @retval 0 正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -ENOENT ページキャッシュが解放中だった
  */
 int
 block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp){
@@ -176,7 +179,7 @@ block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp){
 	if ( rc != 0 )
 		goto error_out;
 
-	rc = bdev_block_size_get(devid, &blksiz); /* ブロックサイズを取得する */
+	rc = bdev_blocksize_get(devid, &blksiz); /* ブロックサイズを取得する */
 	if ( rc != 0 )
 		goto put_bdev_out;
 
@@ -187,6 +190,8 @@ block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp){
 		goto put_bdev_out;
 
 	rc = vfs_page_cache_pagesize_get(pc, &pgsiz); /* ページサイズを獲得する */
+	if ( rc != 0 )
+		goto put_page_cache_out;
 
 	page_offset = offset % pgsiz;  /* ページ内のオフセットアドレスを得る */
 

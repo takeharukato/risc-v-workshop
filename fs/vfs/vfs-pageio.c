@@ -523,18 +523,20 @@ vfs_page_cache_mark_dirty(vfs_page_cache *pc){
 
 /**
    ブロックデバイスのページキャッシュプールを割り当てる
-   @param[in] bdev ブロックデバイスエントリ
-   @retval  0      正常終了
+   @param[in] bdev  ブロックデバイスエントリ
+   @retval  0       正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
    @retval -EBUSY  ページキャッシュプールが既に割り当てられている
    @retval -ENOMEM メモリ不足
-   @note ブロックデバイス登録処理から呼び出されるページキャッシュ機構の内部のIF関数
+   @note ブロックデバイス登録処理から呼び出されるページキャッシュ機構の内部のIF関数であるため,
+   登録前のブロックデバイスエントリを引数にとる
  */
 int
 vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
 	int                    rc;
+	bool                  res;
 	vfs_page_cache_pool *pool;
-
-	kassert( bdev != NULL );
 
 	/* ページキャッシュプールを割り当てる */
 	rc = alloc_page_cache_pool(&pool);
@@ -543,8 +545,11 @@ vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
 
 	/* ページキャッシュプールをセットする */
 	rc = bdev_page_cache_pool_set(bdev, pool);
-	if ( rc != 0 )
-		vfs_page_cache_pool_ref_dec(pool); /* 参照を解放し, プールを解放する */
+	if ( rc != 0 ) {
+
+		res = vfs_page_cache_pool_ref_dec(pool); /* 参照を解放し, プールを解放する */
+		kassert( res );  /* 最終参照者であるはず */
+	}
 
 	return 0;
 
@@ -730,8 +735,6 @@ vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer
 	bool          res;
 	list         *cur;
 	block_buffer *buf;
-	size_t     blksiz;
-	size_t blk_offset;
 	size_t      pgsiz;
 	intrflags  iflags;
 
@@ -755,16 +758,6 @@ vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer
 	 */
 	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
 
-	/* ブロックサイズを取得する */
-	rc = bdev_block_size_get(pc->pc_pcplink->pcp_bdevid, &blksiz);
-	if ( rc != 0 )
-		goto unref_pc_out;
-
-	kassert( pgsiz >= blksiz );  /* ブロックサイズがページサイズ以下であることを確認 */
-
-	/* ページキャッシュ内でのブロックバッファの先頭アドレスを算出 */
-	blk_offset = truncate_align(offset, blksiz);
-
 	spinlock_lock_disable_intr(&pc->pc_lock, &iflags); /* ページキャッシュロックを獲得 */
 
 	/* ページキャッシュ中のブロックバッファを検索する
@@ -772,7 +765,12 @@ vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer
 	queue_for_each(cur, &pc->pc_buf_que){
 
 		buf = container_of(cur, block_buffer, b_ent); /* ブロックバッファを参照 */
-		if ( buf->b_offset == blk_offset )
+
+		/* ブロックバッファサイズが正しいことを確認 */
+		kassert( VFS_PCACHE_BUFSIZE_VALID(buf->b_len, pgsiz) );
+
+		if ( ( buf->b_offset <= offset )
+		    && ( offset < ( buf->b_offset + buf->b_len ) ) )
 			goto found;  /* ブロックキャッシュを見つけた */
 	}
 
@@ -799,6 +797,44 @@ unref_pc_out:
 error_out:
 	return rc;
 }
+
+/**
+   ページキャッシュにブロックバッファが含まれていないことを確認する
+   @param[in] pc ページキャッシュ
+   @retval    真 ページキャッシュにブロックバッファが含まれていない
+   @retval    偽 ページキャッシュにブロックバッファが含まれている
+   @note ブロックデバイス処理から呼ばれるvfs<->ブロックデバイス間IF
+ */
+bool
+vfs_page_cache_is_block_buffer_empty(vfs_page_cache *pc){
+	int   rc;
+	bool res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		res = true;  /* 解放中のページキャッシュだった */
+		goto error_out;
+	}
+
+	rc = mutex_lock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを獲得する */
+	if ( rc != 0 ) {
+
+		res = false;
+		goto unref_pc_out;
+	}
+
+	res = queue_is_empty(&pc->pc_buf_que); /* キューが空であることを確認 */
+
+	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを解放する */
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
+
+error_out:
+	return res;
+}
+
 /**
    ページキャッシュプールからページキャッシュを検索し参照を得る
    @param[in] pool ページキャッシュプール
@@ -910,6 +946,8 @@ error_out:
    ブロックデバイス上のページキャッシュの読み込み/書き込みを行う
    @param[in] pc ページキャッシュ
    @retval  0 正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
    @retval -ENOENT  ページキャッシュが解放中だった
  */
 int

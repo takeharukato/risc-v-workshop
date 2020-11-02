@@ -284,9 +284,10 @@ error_out:
    BIOリクエストを処理する
    @param[in] req BIOリクエスト
    @retval    0   正常終了
-   @retval   -ENODEV ブロックデバイスエントリが見つからなかった, または,
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
    ブロックデバイス上のページキャッシュではない
-   @retval   -ENOENT デバイスIDが不正, または, ページキャッシュが解放中だった
+   @retval -ENOENT ページキャッシュが解放中だった
  */
 int
 bio_request_handle_one(bio_request *req){
@@ -400,7 +401,8 @@ bio_request_entry_free(bio_request_entry *ent){
    @param[in] dir    転送方向
    @param[in] offset ブロックデバイス中のオフセット位置(単位:バイト)
    @retval  0       正常終了
-   @retval -EINVAL  I/O方向が不正, または, リクエストとページキャッシュのデバイスIDが不一致
+   @retval -EINVAL  デバイスIDが不正, または, 転送方向が不正
+   @retval -ENODEV  指定されたデバイスが見つからなかった
    @retval -ENOMEM  メモリ不足
  */
 int

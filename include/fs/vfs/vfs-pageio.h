@@ -44,7 +44,6 @@
 
 typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
 
-struct _bdev_entry;
 struct _block_buffer;
 
 /**
@@ -154,6 +153,17 @@ typedef struct _vfs_page_cache_pool_db{
 	    && ( ( (_pcache)->pc_state & \
 		    ( VFS_PCACHE_CLEAN | VFS_PCACHE_DIRTY ) ) != \
 		( VFS_PCACHE_CLEAN | VFS_PCACHE_DIRTY ) ) )
+
+/**
+   ページサイズがブロックバッファサイズより大きく, ブロックバッファサイズの等倍であることを
+   確認
+   @param[in] _bufsiz ブロックバッファサイズ
+   @param[in] _pgsiz  ページサイズ
+   @retval    真 ページサイズがブロックサイズより大きく, ブロックサイズの等倍であることを確認
+   @retval    偽 ページサイズがブロックサイズより小さいか, ブロックサイズの等倍でない
+ */
+#define VFS_PCACHE_BUFSIZE_VALID(_bufsiz, _pgsiz)			\
+	( ( !addr_not_aligned((_pgsiz), (_bufsiz)) ) && ( (_pgsiz) >= (_bufsiz) ) )
 
 bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
