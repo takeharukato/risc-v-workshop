@@ -468,6 +468,8 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 	if ( rc != 0 )
 		goto put_bdev_out;
 
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
 	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
 
 	/* ページキャッシュにブロックを割り当てる

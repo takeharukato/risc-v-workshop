@@ -18,8 +18,21 @@
 static kmem_cache blkbuf_cache;   /**< ブロックバッファのSLABキャッシュ */
 
 /**
+   ブロックバッファを初期化する (内部関数)
+   @param[in] buf  ブロックバッファ
+ */
+static void
+init_blkbuf(block_buffer *buf){
+
+	list_init(&buf->b_ent); /* リストエントリの初期化 */
+	buf->b_offset = 0;  /* バッファオフセットを初期化する */
+	buf->b_len = 0;     /* バッファ長を初期化する */
+	buf->b_page = NULL; /* ページキャッシュポインタを初期化する */
+}
+
+/**
    ブロックバッファを割り当てる (内部関数)
-   @param[in] bufp  ブロックバッファを指し示すポインタのアドレス
+   @param[out] bufp  ブロックバッファを指し示すポインタのアドレス
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
  */
@@ -35,10 +48,7 @@ alloc_blkbuf(block_buffer **bufp){
 	if ( rc != 0 )
 		goto error_out;
 
-	list_init(&buf->b_ent); /* リストエントリの初期化 */
-	buf->b_offset = 0;  /* バッファオフセットを初期化する */
-	buf->b_len = 0;     /* バッファ長を初期化する */
-	buf->b_page = NULL; /* ページキャッシュポインタを初期化する */
+	init_blkbuf(buf);  /* ブロックバッファを初期化 */
 
 	*bufp = buf;  /* 確保したバッファを返却する */
 
@@ -83,6 +93,10 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 	obj_cnt_type           i;
 	obj_cnt_type     nr_bufs;
 
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの参照と使用権を獲得済み */
+
 	if ( devid == VFS_VSTAT_INVALID_DEVID )
 		return -EINVAL;
 
@@ -91,8 +105,8 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 		goto error_out;
 
 	rc = vfs_page_cache_pagesize_get(pc, &pgsiz);
-		if ( rc != 0 )
-			goto put_bdev_ent_out;
+	if ( rc != 0 )
+		goto put_bdev_ent_out;
 
 	kassert( pgsiz >= bdev->bdent_blksiz );
 	kassert( !addr_not_aligned(pgsiz, bdev->bdent_blksiz) );
@@ -137,6 +151,10 @@ void
 block_buffer_unmap_from_page_cache(vfs_page_cache *pc){
 	int                rc;
 	block_buffer *cur_buf;
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの参照と使用権を獲得済み */
 
 	/* ブロックバッファを解放する
 	 */
@@ -192,6 +210,8 @@ block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp){
 	rc = vfs_page_cache_pagesize_get(pc, &pgsiz); /* ページサイズを獲得する */
 	if ( rc != 0 )
 		goto put_page_cache_out;
+
+	kassert( VFS_PCACHE_BUFSIZE_VALID(blksiz ,pgsiz) ); /* ブロックサイズの正当性確認 */
 
 	page_offset = offset % pgsiz;  /* ページ内のオフセットアドレスを得る */
 
@@ -278,7 +298,6 @@ block_buffer_refer_data(block_buffer *buf, void **datap){
 	/* ブロックデバイスのページキャッシュであることを確認 */
 	kassert( VFS_PCACHE_IS_DEVICE_PAGE(buf->b_page) );
 	kassert( VFS_PCACHE_IS_BUSY(buf->b_page) );  /* バッファ使用権を獲得済み */
-	kassert( buf->b_page->pc_data != NULL );
 
 	buf_data = buf->b_page->pc_data + buf->b_offset; /* バッファデータの先頭を参照 */
 

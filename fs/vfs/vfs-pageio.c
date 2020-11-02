@@ -947,6 +947,8 @@ vfs_page_cache_put(vfs_page_cache *pc){
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
 
+	vfs_page_cache_ref_dec(pc);  /* 操作用のページキャッシュの参照を解放 */
+
 	if ( rc != 0 )
 		goto error_out;
 
