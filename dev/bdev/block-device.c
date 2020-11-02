@@ -462,7 +462,6 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 		goto error_out;
 
 	kassert( bdev->bdent_pool != NULL ); /* ページキャッシュプール設定済み */
-	kassert( bdev->bdent_calls.fs_strategy != NULL ); /* I/Oハンドラが提供されている */
 
 	/* ページキャッシュを獲得する */
 	rc = vfs_page_cache_get(bdev->bdent_pool, offset, &pc);

@@ -4,9 +4,11 @@ vfs_page_cache_rw()
 
 vfs_page_cache_put()
 	ページキャッシュの使用権を得ていることを確認する
+	=>unmark_page_cache_busyで確認しているので不要
 
 vfs_page_cache_get()
 	ページキャッシュプールの参照獲得失敗時にエラーにする
+
 vfs_page_cache_block_buffer_find()
 	( buf->b_offset == blk_offset )で判定しているところを
 	( ( buf->b_offset <= blk_offset ) && ( blk_offset < ( buf->b_offset + buf->b_len ) ) )
@@ -22,13 +24,15 @@ vfs_page_cache_enqueue_block_buffer()
 	buf->b_page = pc; /* ページキャッシュへのリンクを設定 */
 
 vfs_dev_page_cache_pool_alloc()
-	bdev_entryの代わりにデバイスIDを引数にとる
 	参照解放時に最終参照者であることを確認する
 
-unmark_page_cache_busy()
-	ページキャッシュプールのロックをとっていない問題を修正
+mark_page_cache_busy()/unmark_page_cache_busy()
+	ページキャッシュの状態変更時は, ページキャッシュのmutexではなく,
+	ページキャッシュプールのロックを取らなければならない
+
 free_page_cache()
 	ページキャッシュプールの参照をとっていない問題を修正
+	=>生成時の参照があるので問題はない
 
 alloc_page_cache()
 	参照解放時に最終参照者であることを確認する

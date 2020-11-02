@@ -143,13 +143,14 @@ free_page_cache_pool(vfs_page_cache_pool *pool){
 static int
 alloc_page_cache(vfs_page_cache **pcp){
 	int             rc;
+	bool           res;
 	vfs_page_cache *pc;
 	page_frame     *pf;
 	void      *newpage;
 
 	kassert( pcp != NULL );
 
-	/* ページキャッシュプールを割り当てる */
+	/* ページキャッシュを割り当てる */
 	rc = slab_kmem_cache_alloc(&page_cache_cache, KMALLOC_NORMAL, (void **)&pc);
 	if ( rc != 0 )
 		goto error_out;
@@ -175,7 +176,8 @@ alloc_page_cache(vfs_page_cache **pcp){
 	return 0;
 
 unref_pgcache_out:
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を落として, 解放する */
+	res = vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を落として, 解放する */
+	kassert( res );  /* プールに登録する前なので, 最終参照者であるはず */
 
 error_out:
 	return rc;
@@ -229,21 +231,34 @@ mark_page_cache_busy(vfs_page_cache *pc){
 		goto error_out;
 	}
 
+	/* ページキャッシュプールへの参照を獲得 */
+	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
+	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
+
+	/* ページキャッシュプールのmutexロックを獲得する */
+	rc = mutex_lock(&pc->pc_pcplink->pcp_mtx);
+	if ( rc != 0 )
+		goto unref_pcp_out;
+
 	/*
 	 * ページキャッシュを使用中にする
 	 */
-	rc = mutex_lock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを獲得する */
-	if ( rc != 0 )
-		goto unref_pc_out;
-
 	while( VFS_PCACHE_IS_BUSY(pc) ) { /* 他のスレッドがページキャッシュを使用中 */
 
 		/* 他のスレッドがページキャッシュを使い終わるのを待ち合わせる */
-		reason = wque_wait_on_queue_with_mutex(&pc->pc_waiters, &pc->pc_mtx);
+		reason = wque_wait_on_queue_with_mutex(&pc->pc_waiters,
+		    &pc->pc_pcplink->pcp_mtx);
 		if ( reason == WQUE_DELIVEV ) {
 
 			rc = -EINTR;   /* イベントを受信した */
 			goto unlock_out;
+		}
+
+		if ( reason == WQUE_LOCK_FAIL ) {
+
+			/* mutex獲得に失敗したためページキャッシュ獲得を断念 */
+			rc = -EINTR;   /* イベントを受信した */
+			goto unref_pcp_out;
 		}
 	}
 
@@ -253,10 +268,6 @@ mark_page_cache_busy(vfs_page_cache *pc){
 	 */
 	owned = wque_owner_set(&pc->pc_waiters, ti_get_current_thread());
 	kassert( owned );
-
-	/* ページキャッシュプールへの参照を獲得 */
-	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
-	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
 
 	/* LRUにリンクされている場合 */
 	if ( !list_not_linked(&pc->pc_lru_link) ){
@@ -275,7 +286,7 @@ mark_page_cache_busy(vfs_page_cache *pc){
 	if ( VFS_PCACHE_IS_VALID(pc) )
 		goto success;  /* ページキャッシュ読み込み済み */
 
-	/* ブロックデバイスのキャッシュでない場合状態を読み込み済みに設定する
+	/* ブロックデバイスのキャッシュでない場合, 状態を読み込み済みに設定する
 	 */
 	if ( pc->pc_pcplink->pcp_bdevid == VFS_VSTAT_INVALID_DEVID )
 		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 読み込み済みページに設定 */
@@ -284,16 +295,21 @@ success:
 	/* ページキャッシュプールへの参照を解放 */
 	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
 
-	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを解放する */
+	/* ページキャッシュプールのロックを解放する */
+	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
 
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
 	return 0;
 
 unlock_out:
-	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのロックを解放する */
+	/* ページキャッシュプールのロックを解放する */
+	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
 
-unref_pc_out:
+unref_pcp_out:
+	/* ページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
 error_out:
@@ -317,12 +333,16 @@ unmark_page_cache_busy(vfs_page_cache *pc){
 		rc = -ENOENT;
 		goto error_out;
 	}
-	/*
-	 * ページキャッシュを未使用中にする
-	 */
-	rc = mutex_lock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを獲得する */
+
+	kassert( pc->pc_pcplink != NULL );
+	/* ページキャッシュプールの参照を得る */
+	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
+	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
+
+	/* ページキャッシュプールのmutexロックを獲得する */
+	rc = mutex_lock(&pc->pc_pcplink->pcp_mtx);
 	if ( rc != 0 )
-		goto unref_pc_out;
+		goto unref_pcp_out;
 
 	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用中になっているはず */
 
@@ -335,10 +355,6 @@ unmark_page_cache_busy(vfs_page_cache *pc){
 
 	/* LRUにリンクされていないはず */
 	kassert( list_not_linked(&pc->pc_lru_link) );
-
-	/* ページキャッシュプールへの参照を獲得 */
-	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
-	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
 
 	pc->pc_state &= ~VFS_PCACHE_BUSY;  /* ページキャッシュの使用中フラグを落とす */
 
@@ -359,16 +375,20 @@ unmark_page_cache_busy(vfs_page_cache *pc){
 
 	wque_wakeup(&pc->pc_waiters, WQUE_RELEASED); /* 待ち合わせ中のスレッドを起床 */
 
+	/* ページキャッシュプールのmutexロックを解放する */
+	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
+
 	/* ページキャッシュプールへの参照を解放 */
 	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
-
-	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを解放する */
 
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
 	return 0;
 
-unref_pc_out:
+unref_pcp_out:
+	/* ページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
 error_out:
@@ -654,7 +674,7 @@ vfs_page_cache_enqueue_block_buffer(vfs_page_cache *pc, block_buffer *buf){
 	spinlock_lock_disable_intr(&pc->pc_lock, &iflags);
 	kassert( buf->b_page == NULL );  /* ページキャッシュ未設定 */
 	queue_add(&pc->pc_buf_que, &buf->b_ent); /* ページキャッシュに追加 */
-	buf->b_page = pc;
+	buf->b_page = pc;  /* ページキャッシュへのリンクを設定 */
 	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
@@ -701,7 +721,7 @@ vfs_page_cache_dequeue_block_buffer(vfs_page_cache *pc, block_buffer **bufp){
 	buf = container_of(queue_get_top(&pc->pc_buf_que), block_buffer, b_ent);
 
 	kassert( buf->b_page == pc );
-	buf->b_page = NULL;  /* ページキャッシュへの参照を解除 */
+	buf->b_page = NULL;  /* ページキャッシュへのリンクを解除 */
 
 	*bufp = buf;  /* ブロックバッファを返却する */
 
@@ -807,8 +827,8 @@ error_out:
  */
 bool
 vfs_page_cache_is_block_buffer_empty(vfs_page_cache *pc){
-	int   rc;
-	bool res;
+	bool          res;
+	intrflags  iflags;
 
 	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
 	if ( !res ) {
@@ -817,19 +837,12 @@ vfs_page_cache_is_block_buffer_empty(vfs_page_cache *pc){
 		goto error_out;
 	}
 
-	rc = mutex_lock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを獲得する */
-	if ( rc != 0 ) {
-
-		res = false;
-		goto unref_pc_out;
-	}
+	spinlock_lock_disable_intr(&pc->pc_lock, &iflags); /* ページキャッシュロックを獲得 */
 
 	res = queue_is_empty(&pc->pc_buf_que); /* キューが空であることを確認 */
 
-	mutex_unlock(&pc->pc_mtx);  /* ページキャッシュのmutexロックを解放する */
-
-unref_pc_out:
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
+	/* ページキャッシュロックを解放 */
+	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
 
 error_out:
 	return res;
@@ -844,7 +857,7 @@ error_out:
    @retval -ENODEV  ミューテックスが破棄された
    @retval -EINTR   非同期イベントを受信した
    @retval -ENOMEM  メモリ不足
-   @retval -ENOENT  ページキャッシュが解放中だった
+   @retval -ENOENT  ページキャッシュプール/ページキャッシュが解放中だった
  */
 int
 vfs_page_cache_get(vfs_page_cache_pool *pool, off_t offset, vfs_page_cache **pcp){
@@ -857,7 +870,8 @@ vfs_page_cache_get(vfs_page_cache_pool *pool, off_t offset, vfs_page_cache **pcp
 	kassert( pcp != NULL );
 
 	ref = vfs_page_cache_pool_ref_inc(pool); /* ページキャッシュプールの参照を獲得する */
-	kassert( ref );
+	if ( !ref )
+		return -ENOENT;  /* 開放中のページキャッシュプール */
 
 	rc = mutex_lock(&pool->pcp_mtx);  /* ページキャッシュプールのロックを獲得する */
 	if ( rc != 0 )
@@ -971,7 +985,7 @@ vfs_page_cache_rw(vfs_page_cache *pc){
 
 	/* 二次記憶との一貫性が保たれている場合はI/Oをスキップする */
 	if ( VFS_PCACHE_IS_VALID(pc) && !VFS_PCACHE_IS_DIRTY(pc) )
-		goto io_no_need;
+		goto io_finished;
 
 	/* ページの読み書きを行う
 	 */
@@ -983,15 +997,19 @@ vfs_page_cache_rw(vfs_page_cache *pc){
 	if ( rc != 0 )
 		goto unref_pc_out;
 
+	if ( bdev->bdent_calls.fs_strategy == NULL )
+		goto no_real_device;  /* 実デバイスへの読み書き不要 */
+
 	rc = bdev->bdent_calls.fs_strategy(pc); /* ページの内容を読み書きする */
 	if ( rc != 0 )
 		goto put_bdev_out;
 
+no_real_device:
 	vfs_page_cache_mark_clean(pc);  /* I/O成功に伴ってページの状態をCLEANに遷移する */
 
 	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
 
-io_no_need:
+io_finished:
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
 
 	return 0;

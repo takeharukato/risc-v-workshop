@@ -50,9 +50,9 @@ struct _block_buffer;
    ページキャッシュ
  */
 typedef struct _vfs_page_cache{
-	/** ページキャッシュデータ構造更新ロック */
+	/** ページキャッシュデータ(検索木/ブロックバッファ)更新ロック */
 	spinlock                         pc_lock;
-	/** 排他用ロック(状態/ページ更新用)      */
+	/** 排他用ミューテックス(VFS_PCACHE_BUSY以外の状態更新用)     */
 	struct _mutex                     pc_mtx;
 	/** 参照カウンタ                         */
 	refcounter                       pc_refs;
@@ -62,9 +62,9 @@ typedef struct _vfs_page_cache{
 	pcache_state                    pc_state;
 	/** パディング                           */
 	uint32_t                            pad1;
-	/** ページバッファ待ちキュー             */
+	/** ページ使用権待ちキュー             */
 	struct _wque_waitqueue        pc_waiters;
-	/** ファイル/ブロックデバイス中のオフセットをキーとした検索用RB木エントリ        */
+	/** ファイル/ブロックデバイス中のオフセットをキーとした検索用RB木エントリ */
 	RB_ENTRY(_vfs_page_cache)         pc_ent;
 	/** オフセットアドレス (単位:バイト, ページアライン)     */
 	off_t                          pc_offset;
@@ -82,7 +82,7 @@ typedef struct _vfs_page_cache{
    ページキャッシュプール
  */
 typedef struct _vfs_page_cache_pool{
-	/** 排他用ロック(キュー更新用) */
+	/** 排他用ロック(ページキャッシュの使用権/キュー更新用) */
 	struct _mutex                                    pcp_mtx;
 	/** 参照カウンタ               */
 	refcounter                                      pcp_refs;
