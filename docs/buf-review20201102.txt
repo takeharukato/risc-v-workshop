@@ -1,0 +1,11 @@
+alloc_blkbuf()
+	初期化処理を別関数に移動
+block_buffer_map_to_page_cache()
+	ページキャッシュへの参照獲得が必要
+block_buffer_unmap_from_page_cache()
+	ページキャッシュへの参照獲得が必要
+block_buffer_get()
+	ページサイズがブロック長以上であることを確認
+	ページサイズがブロック長のアラインメントにそっていることを確認
+block_buffer_refer_data()
+	 buf->b_page->pc_data != NULL は誤り

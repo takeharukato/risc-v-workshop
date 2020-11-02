@@ -1,0 +1,21 @@
+bio_request_add()
+	ブロックデバイスエントリへの参照獲得は不要
+bio_page_write()
+	ページキャッシュの使用権を得ていることを確認(vfs-pageio.cの責務なので不要)
+	ページキャッシュをCLEANに設定する(vfs-pageio.cの責務なので不要)
+
+bio_page_read()
+	ページキャッシュの使用権を得ていることを確認(vfs-pageio.cの責務なので不要)
+	ページキャッシュをCLEANに設定する(vfs-pageio.cの責務なので不要)
+
+=>処理を共通化する
+bio_request_free()
+	ブロックデバイスにつながっていないことを確認
+	キューのロックを獲得・解放
+bio_request_alloc()
+	デバイスエントリの参照獲得・解放
+bio_request_add()
+	デバイスエントリの参照獲得・解放は不要
+	リクエストとページキャッシュのデバイスIDが不一致によるエラーは返さない
+alloc_bio_request_entry()
+	entpがNULLでないことを確認

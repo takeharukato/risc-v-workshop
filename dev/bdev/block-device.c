@@ -360,7 +360,11 @@ bdev_capacity_get(dev_id devid, size_t *capacityp){
    @param[in]  offset   デバイス先頭からのオフセットアドレス(単位:バイト)
    @param[out] pcachep  ページキャッシュを指し示すポインタのアドレス
    @retval  0 正常終了
-   @retval -ENOENT デバイスIDが不正
+   @retval -ENODEV  ミューテックスが破棄された
+   @retval -EINTR   非同期イベントを受信した
+   @retval -ENOMEM  メモリ不足
+   @retval -ENOENT  デバイスIDが不正/ページキャッシュが解放中だった
+   @retval -EIO     I/Oエラー
  */
 int
 bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
@@ -407,44 +411,6 @@ unmap_blocks_out:
 
 put_bdev_out:
 	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
-
-error_out:
-	return rc;
-}
-
-/**
-   ブロックデバイス上のページキャッシュを書き戻す
-   @param[in] pc ページキャッシュ
-   @retval  0 正常終了
-   @retval -ENOENT  ページキャッシュが解放中だった
- */
-int
-bdev_page_cache_write(vfs_page_cache *pc){
-	int              rc;
-	bool            res;
-
-	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
-	if ( !res ) {
-
-		rc = -ENOENT;
-		goto error_out;
-	}
-
-	/* ブロックデバイスのページキャッシュであることを確認
-	 */
-	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
-	kassert(VFS_PCACHE_IS_BUSY(pc));  /* ページキャッシュが使用権を得ている */
-
-	rc = vfs_page_cache_rw(pc);  /* ページの読み込み/書き込みを行う */
-	if ( rc != 0 )
-		goto unref_pc_out;
-
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
-
-	return 0;
-
-unref_pc_out:
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
 
 error_out:
 	return rc;

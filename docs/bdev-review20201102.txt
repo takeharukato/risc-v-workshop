@@ -1,22 +1,41 @@
+init_bdev_entry
+	キャパシティを無限大(~(INT64(0)))に設定する
+	セクタサイズを512バイトに設定する
+	ブロックサイズをページサイズに設定する
+
 bdev_device_register
-	キャパシティを設定する
 	スピンロックロック獲得開放コメントがない
+
 bdev_device_unregister
 	/* ブロックデバイスエントリへの参照を獲得 */
 	操作用にを追記
 	/* ブロックデバイスエントリへの参照を解放 */
 	操作用のを追記
+
 bdev_page_cache_write()
 	ページキャッシュがダーティな場合だけ読み書き処理を呼び出すように修正
+
 bdev_page_cache_get()
 	ページ読込み処理完了後,
 	strategy関数正常終了時は, ページキャッシュをクリーンにする
 	(vfs-pageio.cとの対称性の観点からその方が望ましい)
+	=>bio_page_readを用いる
 	vfs_page_cache_getにより使用権が設定されていることを確認
 	I/Oハンドラ(strategy関数)が提供されていることはアサート条件ではないのでは?
+
+bdev_sector_size_set()/bdev_sector_size_get()
+	新設する
+
 bdev_block_size_set()/bdev_block_size_get()
 	bdev_blocksize_set()/bdev_blocksize_get()に名称変更
 	dev/bdev/block-device.c:271:bdev_block_size_set(dev_id devid, size_t blksiz){
 	dev/bdev/block-device.c:294:bdev_block_size_get(dev_id devid, size_t *blksizp){
 	dev/bdev/buf.c:179:     rc = bdev_block_size_get(devid, &blksiz);
 	fs/vfs/vfs-pageio.c:759:        rc = bdev_block_size_get(
+
+	ページサイズがブロック長以上であることを確認
+	ページサイズがブロック長のアラインメントにそっていることを確認
+
+bdev_bdev_entry_get()
+	/* 参照を加算 */
+	/* スレッドからの参照を加算 */

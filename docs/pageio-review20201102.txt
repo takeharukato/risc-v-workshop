@@ -1,0 +1,36 @@
+vfs_page_cache_rw()
+	bdev->bdent_calls.fs_strategyがNULLの場合呼び出しをスキップする
+	io_no_needラベルをio_finishedに変更
+
+vfs_page_cache_put()
+	ページキャッシュの使用権を得ていることを確認する
+
+vfs_page_cache_get()
+	ページキャッシュプールの参照獲得失敗時にエラーにする
+vfs_page_cache_block_buffer_find()
+	( buf->b_offset == blk_offset )で判定しているところを
+	( ( buf->b_offset <= blk_offset ) && ( blk_offset < ( buf->b_offset + buf->b_len ) ) )
+	に変更する
+
+	ページキャッシュ内でのブロックバッファの先頭アドレス算出処理をループ中に入れて
+	buf->b_len内での先頭アドレスを算出する
+	( bdev_block_size_getでブロック長をとらず, バッファ生成時のブロック長で検索する)
+vfs_page_cache_dequeue_block_buffer()
+	 /* ページキャッシュへのリンクを解除 */
+
+vfs_page_cache_enqueue_block_buffer()
+	buf->b_page = pc; /* ページキャッシュへのリンクを設定 */
+
+vfs_dev_page_cache_pool_alloc()
+	参照解放時に最終参照者であることを確認する
+
+unmark_page_cache_busy()
+	ページキャッシュプールのロックをとっていない問題を修正
+free_page_cache()
+	ページキャッシュプールの参照をとっていない問題を修正
+
+alloc_page_cache()
+	参照解放時に最終参照者であることを確認する
+
+	/* ページキャッシュプールを割り当てる */
+	/* ページキャッシュを割り当てる */
