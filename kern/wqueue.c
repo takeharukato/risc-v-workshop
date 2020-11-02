@@ -161,6 +161,7 @@ wque_wait_on_queue_with_spinlock(wque_waitqueue *wque, spinlock *lock){
  */
 wque_reason
 wque_wait_on_queue_with_mutex(wque_waitqueue *wque, mutex *mtx){
+	int           rc;
 	wque_entry   ent;
 
 	wque_init_wque_entry(&ent);   /* ウエイトキューエントリを初期化する */
@@ -171,7 +172,9 @@ wque_wait_on_queue_with_mutex(wque_waitqueue *wque, mutex *mtx){
 
 	sched_schedule();   /* スレッド休眠に伴う再スケジュール */
 
-	mutex_lock(mtx);    /* ミューテックスを獲得する */
+	rc = mutex_lock(mtx);    /* ミューテックスを獲得する */
+	if ( rc != 0 )
+		ent.reason = WQUE_LOCK_FAIL;  /* ミューテックス獲得失敗 */
 
 	return ent.reason;  /* 起床要因を返却する */
 }

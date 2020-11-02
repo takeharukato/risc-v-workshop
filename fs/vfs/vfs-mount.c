@@ -895,6 +895,12 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 			goto unlock_out;
 		}
 
+		if ( reason == WQUE_LOCK_FAIL ) {
+
+			rc = -EINTR;   /* mutex獲得に失敗したためv-node獲得を断念 */
+			goto error_out;
+		}
+
 		mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
 	}
 
@@ -903,6 +909,7 @@ find_vnode(fs_mount *mnt, vfs_vnode_id vnid, vnode **outv){
 unlock_out:
 	mutex_unlock(&mnt->m_mtx);  /* マウントポイントのロックを解放 */
 
+error_out:
 	return rc;
 }
 
@@ -1579,6 +1586,11 @@ vfs_vnode_lock(vnode *v) {
 				rc = -EINTR;   /* イベントを受信した */
 				goto unlock_out;
 			}
+			if ( reason == WQUE_LOCK_FAIL ) {
+
+				rc = -EINTR;   /* mutex獲得に失敗したためv-node獲得を断念 */
+				goto dec_vnode_out;
+			}
 		}
 
 		mutex_unlock(&v->v_mount->m_mtx); /* マウントポイントのロックを解放 */
@@ -1590,6 +1602,8 @@ vfs_vnode_lock(vnode *v) {
 
 unlock_out:
 	mutex_unlock(&v->v_mount->m_mtx);  /* マウントポイントのロックを解放 */
+
+dec_vnode_out:
 	vfs_vnode_ref_dec(v);  /* 参照を解放する */
 
 	return rc;

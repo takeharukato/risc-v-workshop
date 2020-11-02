@@ -33,6 +33,7 @@ typedef enum _wque_reason{
 	WQUE_DESTROYED = 2,  /**<  対象オブジェクトが破棄された   */
 	WQUE_TIMEOUT = 3,    /**<  タイムアウト                   */
 	WQUE_DELIVEV = 4,    /**<  イベント受信                   */
+	WQUE_LOCK_FAIL = 5,  /**<  ミューテックス獲得失敗         */
 }wque_reason;
 
 /** ウエイトキュー
