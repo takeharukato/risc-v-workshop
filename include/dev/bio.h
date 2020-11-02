@@ -77,7 +77,7 @@ typedef struct _bio_request_entry{
 }bio_request_entry;
 
 int bio_request_alloc(dev_id _devid, struct _bio_request **_reqp);
-int bio_request_free(struct _bio_request *_req);
+int bio_request_release(struct _bio_request *_req);
 void bio_request_entry_free(struct _bio_request_entry *_ent);
 int bio_request_add(struct _bio_request *_req, bio_dir _dir, off_t _offset);
 int bio_page_read(struct _vfs_page_cache *_pc);

@@ -57,18 +57,13 @@ init_bio_request(bio_request *req){
    @param[in] entp  ブロックI/Oリクエストエントリを指し示すポインタのアドレス
    @retval  0       正常終了
    @retval -ENOMEM  メモリ不足
-   TODO: 呼び出し元でブロックデバイスのページキャッシュを割り当て,
-   bioリクエストエントリからページキャッシュ内のデータをポイントし,
-   ブロックデバイスのページキャッシュ中のブロックバッファ(bioリクエストエントリ)の
-   キューに追加する
-   blkgetは, ブロック番号とブロックサイズを元にブロックデバイスのページキャッシュを
-   検索し, ブロックデバイスのページキャッシュ内のブロックバッファを取り出し,
-   BUSY状態に遷移させて返却する
  */
 static int
 alloc_bio_request_entry(bio_request_entry **entp){
 	int                 rc;
 	bio_request_entry *ent;
+
+	kassert( entp != NULL );
 
 	/* BIOリクエストエントリを確保する */
 	rc = slab_kmem_cache_alloc(&bio_req_ent_cache, KMALLOC_NORMAL, (void **)&ent);
@@ -77,8 +72,7 @@ alloc_bio_request_entry(bio_request_entry **entp){
 
 	init_bio_request_entry(ent);  /* 確保したエントリを初期化する */
 
-	if ( entp != NULL )
-		*entp = ent;  /* 確保したエントリを返却する */
+	*entp = ent;  /* 確保したエントリを返却する */
 
 	return 0;
 
@@ -97,6 +91,8 @@ alloc_bio_request(bio_request **entp){
 	int           rc;
 	bio_request *ent;
 
+	kassert( entp != NULL );
+
 	/* BIOリクエストを確保する */
 	rc = slab_kmem_cache_alloc(&bio_req_cache, KMALLOC_NORMAL, (void **)&ent);
 	if ( rc != 0 )
@@ -104,8 +100,7 @@ alloc_bio_request(bio_request **entp){
 
 	init_bio_request(ent);  /* 確保したリクエストを初期化する */
 
-	if ( entp != NULL )
-		*entp = ent;  /* 確保したリクエストを返却する */
+	*entp = ent;  /* 確保したリクエストを返却する */
 
 	return 0;
 
@@ -144,6 +139,45 @@ free_bio_request(bio_request *req){
 
 	slab_kmem_cache_free((void *)req); /* BIOリクエストを解放する */
 }
+
+/**
+   二次記憶の内容とブロックデバイスのページキャッシュの内容を同期させる(内部関数)
+   @param[in] pc   ページキャッシュ
+   @retval  0      正常終了
+   @retval -ENOENT 解放中のページキャッシュだった
+ */
+static int
+sync_bio_page(vfs_page_cache *pc){
+	int    rc;
+	bool  res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を獲得する */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 開放中のページキャッシュ */
+		goto error_out;
+	}
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
+
+	/* ページキャッシュが無効, または, ページキャッシュの方が新しい場合 */
+	if ( ( !VFS_PCACHE_IS_VALID(pc) ) || ( VFS_PCACHE_IS_DIRTY(pc) ) )
+		vfs_page_cache_rw(pc);  /* ページとブロックの内容を同期させる */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
+
+	return 0;
+
+error_out:
+	return rc;
+
+}
+
+/*
+ * IF関数
+ */
 
 /**
    ブロックI/Oリクエストを割当てる
@@ -186,12 +220,16 @@ error_out:
    @retval -ENOMEM メモリ不足
  */
 int
-bio_request_free(bio_request *req){
+bio_request_release(bio_request *req){
 	list          *lp, *np;
 	bio_request_entry *ent;
+	intrflags       iflags;
 
 	if ( req == NULL )
 		return -EINVAL;
+
+	/* リクエストキューのロックを獲得 */
+	spinlock_lock_disable_intr(&req->br_lock, &iflags);
 
 	/* キューに残ったリクエストを解放する
 	 */
@@ -212,6 +250,9 @@ bio_request_free(bio_request *req){
 		free_bio_request_entry(ent);  /* リクエストを解放する */
 	}
 
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
+
 	free_bio_request(req);  /* リクエストを解放する */
 
 	return 0;
@@ -225,27 +266,8 @@ bio_request_free(bio_request *req){
  */
 int
 bio_page_read(vfs_page_cache *pc){
-	int    rc;
-	bool  res;
 
-	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を獲得する */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 開放中のページキャッシュ */
-		goto error_out;
-	}
-
-	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
-
-	if ( !VFS_PCACHE_IS_VALID(pc) )  /* キャッシュが無効な場合 */
-		vfs_page_cache_rw(pc);  /* ページにブロックの内容を読み込む */
-
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
-
-	return 0;
-
-error_out:
-	return rc;
+	return sync_bio_page(pc); /* ページキャッシュとデバイス上のブロックを同期 */
 }
 
 /**
@@ -256,30 +278,10 @@ error_out:
  */
 int
 bio_page_write(vfs_page_cache *pc){
-	int   rc;
-	bool res;
 
-	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を獲得する */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 開放中のページキャッシュ */
-		goto error_out;
-	}
-
-	/* ブロックデバイスのページキャッシュであることを確認 */
-	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
-	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
-
-	if ( VFS_PCACHE_IS_DIRTY(pc) )  /* キャッシュの方が新しい場合 */
-		vfs_page_cache_rw(pc);  /* ページの内容を書き込む */
-
-	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を解放する */
-
-	return 0;
-
-error_out:
-	return rc;
+	return sync_bio_page(pc); /* ページキャッシュとデバイス上のブロックを同期 */
 }
+
 /**
    BIOリクエストを処理する
    @param[in] req BIOリクエスト
@@ -320,7 +322,7 @@ bio_request_handle_one(bio_request *req){
 		/* ページキャッシュを獲得する */
 		rc = bdev_page_cache_get(req->br_bdevid, ent->bre_offset, &pc);
 		if ( rc != 0 )
-			goto request_completion; /* 処理完了 */
+			goto io_done; /* I/O処理完了 */
 
 		/*
 		 * デバイスへのI/Oリクエスト発行
@@ -330,18 +332,14 @@ bio_request_handle_one(bio_request *req){
 		    ( ent->bre_direction == BIO_DIR_WRITE ) ) {
 
 			ent->bre_state = BIO_STATE_WAIT;  /* デバイス応答待ち */
-			if ( ent->bre_direction == BIO_DIR_READ )
-				rc = bio_page_read(pc);  /* ページキャッシュ読み取り */
-			else
-				rc = bio_page_write(pc); /* ページキャッシュ書き込み */
-
+			rc = sync_bio_page(pc); /* ページキャッシュとブロックの内容を同期 */
 			if ( rc != 0 )
 				rc = -EIO; /* I/Oエラー */
 		}
 
 		vfs_page_cache_put(pc);  /* ページキャッシュの使用権を解放する */
 
-	request_completion:
+	io_done:
 		/*
 		 * リクエストエントリの完了処理
 		 */
@@ -408,7 +406,6 @@ bio_request_entry_free(bio_request_entry *ent){
 int
 bio_request_add(bio_request *req, bio_dir dir, off_t offset){
 	int                 rc;
-	bdev_entry       *bdev;
 	bio_request_entry *ent;
 	intrflags       iflags;
 
@@ -417,15 +414,10 @@ bio_request_add(bio_request *req, bio_dir dir, off_t offset){
 	if ( ( dir != BIO_DIR_READ ) && ( dir != BIO_DIR_WRITE ) )
 		return -EINVAL;
 
-	/* ブロックデバイスエントリへの参照を獲得 */
-	rc = bdev_bdev_entry_get(req->br_bdevid, &bdev);
-	if ( rc != 0 )
-		goto error_out;
-
 	/* リクエストエントリを割り当てる */
 	rc = alloc_bio_request_entry(&ent);
 	if ( rc != 0 )
-		goto put_bdev_out;
+		goto error_out;
 
 	ent->bre_breqp = req;     /* キューイング先リクエストキューを設定 */
 	ent->bre_state = BIO_STATE_QUEUED;  /* キューイング済みに設定 */
@@ -441,9 +433,6 @@ bio_request_add(bio_request *req, bio_dir dir, off_t offset){
 	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
 
 	return 0;
-
-put_bdev_out:
-	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
 
 error_out:
 	return rc;
