@@ -399,7 +399,7 @@ bio_request_entry_free(bio_request_entry *ent){
    @param[in] dir    転送方向
    @param[in] offset ブロックデバイス中のオフセット位置(単位:バイト)
    @retval  0       正常終了
-   @retval -EINVAL  デバイスIDが不正, または, 転送方向が不正
+   @retval -EINVAL  転送方向が不正
    @retval -ENODEV  指定されたデバイスが見つからなかった
    @retval -ENOMEM  メモリ不足
  */
@@ -435,6 +435,46 @@ bio_request_add(bio_request *req, bio_dir dir, off_t offset){
 	return 0;
 
 error_out:
+	return rc;
+}
+
+/**
+   ブロックI/Oリクエストを取り出す
+   @param[in] req    ブロックI/Oリクエスト
+   @param[in] entp   ブロックI/Oリクエストエントリを指し示すポインタのアドレス
+   @retval  0       正常終了
+   @retval -ENOENT  リクエストキューが空
+ */
+int
+bio_request_get(bio_request *req, bio_request_entry **entp){
+	int                 rc;
+	bio_request_entry *ent;
+	intrflags       iflags;
+
+	kassert( list_not_linked(&req->br_ent) ); /* 未接続のリクエスト */
+
+	/* リクエストキューのロックを獲得 */
+	spinlock_lock_disable_intr(&req->br_lock, &iflags);
+	if ( queue_is_empty(&req->br_req) ) {
+
+		rc = -ENOENT;  /* キューが空だった */
+		goto unlock_out;
+	}
+	/* キューの先頭リクエストを取り出す */
+	ent = container_of(queue_get_top(&req->br_req), bio_request_entry, bre_ent);
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
+	if ( entp != NULL )
+		*entp = ent;  /* リクエストエントリを返却 */
+	else
+		free_bio_request_entry(ent);  /* リクエストエントリを解放する */
+
+	return 0;
+
+unlock_out:
+	/* リクエストキューのロックを解放 */
+	spinlock_unlock_restore_intr(&req->br_lock, &iflags);
+
 	return rc;
 }
 

@@ -27,7 +27,6 @@ ifeq ($(CONFIG_PROFILE),y)
 	for dir in ${subdirs} ; do \
 	${MAKE} -C $${dir} $@;\
 	done
-	${GCOV} ${GCOV_OPTS} $(patsubst %.o,%.gcda,${objects})
 endif
 
 subsystem:
