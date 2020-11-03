@@ -253,6 +253,7 @@ bdev_page_cache_pool_set(bdev_entry *bdev, vfs_page_cache_pool *pool){
 
 	bdev->bdent_pool = pool;  /* ページキャッシュプールを設定する  */
 	pool->pcp_bdevid = bdev->bdent_devid; /* ブロックデバイスのデバイスIDを設定 */
+	pool->pcp_state = PCPOOL_CREATED; /* 有効化 */
 
 	/* ブロックデバイスエントリをアンロック */
 	spinlock_unlock_restore_intr(&bdev->bdent_lock, &iflags);
@@ -492,9 +493,12 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 			goto unmap_blocks_out;
 	}
 
-	vfs_page_cache_put(pc);  /* ページキャッシュの参照を解放する */
-
 	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+
+	if ( pcachep != NULL )
+		*pcachep = pc;  /* ページキャッシュを返却 */
+	else
+		vfs_page_cache_put(pc);  /* ページキャッシュの参照を解放する */
 
 	return 0;
 
@@ -601,16 +605,15 @@ error_out:
 
 /**
    ブロックデバイスドライバを登録する
-   @param[in] devid   デバイスID
-   @param[in] blksiz  ブロックサイズ(単位:バイト)
-   @param[in] ops     ファイルシステムコール
+   @param[in] devid    デバイスID
+   @param[in] ops      ファイルシステムコール
    @param[in] private ドライバ固有情報のアドレス
    @retval  0 正常終了
    @retval -EINVAL デバイスIDが不正
    @retval -EBUSY  同一デバイスIDのドライバが登録されている
  */
 int
-bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private private){
+bdev_device_register(dev_id devid, fs_calls *ops, bdev_private private){
 	int           rc;
 	bdev_entry  *ent;
 	bdev_entry  *res;
@@ -625,16 +628,15 @@ bdev_device_register(dev_id devid, size_t blksiz, fs_calls *ops, bdev_private pr
 	if ( rc != 0 )
 		goto error_out;
 
+	ent->bdent_devid = devid;      /* デバイスIDを設定 */
+	vfs_fs_calls_copy(&ent->bdent_calls, ops); /* fs_callをコピーする */
+	ent->bdent_private = private;  /* ドライバ固有情報へのポインタを設定 */
+
 	rc = vfs_dev_page_cache_pool_alloc(ent); /* ページキャッシュプールを設定する */
 	if ( rc != 0 )
 		goto put_bdev_ent_out;  /* 参照を減算してブロックデバイスエントリを解放 */
 
 	kassert( ent->bdent_pool != NULL );
-
-	ent->bdent_devid = devid;      /* デバイスIDを設定 */
-	ent->bdent_blksiz = blksiz;    /* ブロックサイズを設定 */
-	vfs_fs_calls_copy(&ent->bdent_calls, ops); /* fs_callをコピーする */
-	ent->bdent_private = private;  /* ドライバ固有情報へのポインタを設定 */
 
 	/* ブロックデバイスDBロックを獲得する */
 	spinlock_lock_disable_intr(&g_bdevdb.bdev_lock, &iflags);

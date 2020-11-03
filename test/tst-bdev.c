@@ -3,16 +3,28 @@
 /*  OS kernel sample                                                  */
 /*  Copyright 2019 Takeharu KATO                                      */
 /*                                                                    */
-/*  Device driver Interface                                           */
+/*  test routine                                                      */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_KERN_DEV_IF_H)
-#define  _KERN_DEV_IF_H
 
-#include <dev/bdev.h>
-#include <dev/buf.h>
-#include <dev/bio.h>
+#include <klib/freestanding.h>
+#include <kern/kern-common.h>
 
-#include <dev/md.h>
+#include <kern/vfs-if.h>
+#include <kern/dev-if.h>
 
-#endif  /* _KERN_DEV_IF_H */
+#include <kern/ktest.h>
+
+static ktest_stats tstat_bdev=KTEST_INITIALIZER;
+
+static void
+bdev1(struct _ktest_stats *sp, void __unused *arg){
+
+}
+
+void
+tst_bdev(void){
+
+	ktest_def_test(&tstat_bdev, "bdev1", bdev1, NULL);
+	ktest_run(&tstat_bdev);
+}

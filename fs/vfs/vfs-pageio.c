@@ -78,6 +78,7 @@ init_page_cache(vfs_page_cache *pc){
 	pc->pc_pcplink = NULL; /* ページキャッシュプールへのポインタの初期化 */
 	pc->pc_state = VFS_PCACHE_INVALID; /* ページキャッシュの状態を初期化 */
 	pc->pc_offset = 0;  /* オフセットの初期化 */
+	wque_init_wait_queue(&pc->pc_waiters);  /* 待ちキューの初期化 */
 	list_init(&pc->pc_lru_link); /* LRUリストエントリの初期化 */
 	queue_init(&pc->pc_buf_que); /* ブロックバッファキューの初期化 */
 	pc->pc_pf = NULL;            /* ページフレーム情報をNULLに設定 */
@@ -119,10 +120,12 @@ static void
 free_page_cache_pool(vfs_page_cache_pool *pool){
 
 	kassert( refcnt_read(&pool->pcp_refs) == 0 ); /* 参照者がいないことを確認 */
-	/* ブロックデバイスが設定されていないことを確認 */
-	kassert( pool->pcp_bdevid == VFS_VSTAT_INVALID_DEVID );
 	kassert( pool->pcp_vnode == NULL ); /* v-node参照がないことを確認 */
 	kassert( RB_EMPTY(&pool->pcp_head) );  /* プールが空であることを確認 */
+
+	/* ブロックデバイスの設定を解除 */
+	pool->pcp_bdevid = VFS_VSTAT_INVALID_DEVID;
+	pool->pcp_state = PCPOOL_DELETE; /* プール削除中 */
 
 	/* LRUが空であることを確認
 	 */
@@ -844,6 +847,7 @@ vfs_page_cache_is_block_buffer_empty(vfs_page_cache *pc){
 	/* ページキャッシュロックを解放 */
 	spinlock_unlock_restore_intr(&pc->pc_lock, &iflags);
 
+	vfs_page_cache_ref_dec(pc);
 error_out:
 	return res;
 }
@@ -1002,7 +1006,7 @@ vfs_page_cache_rw(vfs_page_cache *pc){
 	if ( bdev->bdent_calls.fs_strategy == NULL )
 		goto no_real_device;  /* 実デバイスへの読み書き不要 */
 
-	rc = bdev->bdent_calls.fs_strategy(pc); /* ページの内容を読み書きする */
+	rc = bdev->bdent_calls.fs_strategy(devid, pc); /* ページの内容を読み書きする */
 	if ( rc != 0 )
 		goto put_bdev_out;
 

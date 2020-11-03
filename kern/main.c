@@ -44,6 +44,7 @@ kern_common_tests(void){
 	tst_cpuinfo();
 	tst_vmmap();
 	tst_pcache();
+	tst_bdev();
 	tst_proc();
 #if defined(CONFIG_HAL)
 	tst_rv64cycle_regs();
@@ -63,6 +64,7 @@ kern_common_tests(void){
 	tst_vfs_fd();
 
 	tst_simplefs();
+
 	kprintf("end\n");
 #if !defined(CONFIG_HAL)
 	exit(0);
@@ -97,7 +99,10 @@ kern_init(void) {
 	 */
 	vfs_init();   /* 仮想ファイルシステムを初期化する */
 	bdev_init();  /* ブロックデバイスの初期化 */
+	bio_init();   /* ブロックバッファの初期化 */
+
 	pagecache_init();  /* ページキャッシュ機構を初期化する */
+
 	proc_init();  /* プロセス管理情報を初期化する */
 	thr_init();   /* スレッド管理機構を初期化する */
 	sched_init(); /* スケジューラを初期化する */
@@ -110,10 +115,17 @@ kern_init(void) {
 	sched_idlethread_add();  /* BSP用のアイドルスレッドを生成 */
 	thr_system_thread_create(); /* システムスレッドを生成 */
 
-	fsimg_load();      /* ファイルシステムイメージをページキャッシュに読み込む */
+	/*
+	 * デバイスの初期化
+	 */
+	md_init();    /* メモリブロックデバイスの初期化 */
+	fsimg_load(); /* ファイルシステムイメージをページキャッシュに読み込む */
 
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */
 
+	/*
+	 * ファイルシステムの初期化
+	 */
 	simplefs_init();  /* 単純なファイルシステムを初期化する  */
 
 	/**

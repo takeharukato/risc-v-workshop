@@ -5,7 +5,7 @@
 top=../..
 include ${top}/Makefile.inc
 
-objects=bdev.o bio.o buf.o
+objects=md.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=
@@ -13,7 +13,7 @@ endif
 
 depends = $(patsubst %.o,%.d,${objects})
 
-lib=libbdev.a
+lib=libmd.a
 
 all: ${depends} ${lib}
 

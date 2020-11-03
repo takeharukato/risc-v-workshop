@@ -4,7 +4,7 @@
 #
 top=..
 include ${top}/Makefile.inc
-subdirs=bdev
+subdirs=bdev md
 
 objects=
 

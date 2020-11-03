@@ -84,6 +84,8 @@ int bio_page_read(struct _vfs_page_cache *_pc);
 int bio_page_write(struct _vfs_page_cache *_pc);
 int bio_request_handle_one(struct _bio_request *_req);
 int bio_request_submit(struct _bio_request *_req, breq_flags _flags);
+void bio_init(void);
+void bio_finalize(void);
 #endif  /* !ASM_FILE */
 
 #endif  /* _DEV_BIO_H */

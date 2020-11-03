@@ -6,8 +6,8 @@
 /*  Block device definitions                                          */
 /*                                                                    */
 /**********************************************************************/
-#if !defined(_DEV_BLOCK_DEVICE_H)
-#define _DEV_BLOCK_DEVICE_H
+#if !defined(_DEV_BDEV_H)
+#define _DEV_BDEV_H
 
 #include <kern/page-macros.h>
 #include <klib/misc.h>
@@ -46,7 +46,7 @@ typedef struct _bdev_entry{
 	struct _refcounter                      bdent_refs; /**< 参照カウンタ              */
 	RB_ENTRY(_bdev_entry)                    bdent_ent; /**< ブロックデバイスエントリ  */
 	dev_id                                 bdent_devid; /**< デバイスID                */
-	/** デバイスのセクタ長長(単位:バイト) */
+	/** デバイスのセクタ長(単位:バイト) */
 	size_t                                bdent_secsiz;
 	/** デバイスのブロック長(単位:バイト) */
 	size_t                                bdent_blksiz;
@@ -112,11 +112,10 @@ int bdev_bdev_entry_put(struct _bdev_entry *_bdev);
 int bdev_add_request(dev_id _devid, struct _bio_request *_req);
 int bdev_handle_requests(dev_id _devid);
 
-int bdev_device_register(dev_id _devid, size_t _blksiz, struct _fs_calls *_ops,
-    bdev_private _private);
+int bdev_device_register(dev_id _devid, struct _fs_calls *_ops, bdev_private _private);
 void bdev_device_unregister(dev_id _devid);
 
 void bdev_init(void);
 void bdev_finalize(void);
 #endif  /*  !ASM_FILE  */
-#endif  /*  _DEV_BLOCK_DEVICE_H  */
+#endif  /*  _DEV_BDEV_H  */

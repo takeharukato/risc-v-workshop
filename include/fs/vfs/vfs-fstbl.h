@@ -75,7 +75,7 @@ typedef struct _fs_calls {
 	    off_t *_new_posp);
 	int (*fs_ioctl)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid, vfs_fs_vnode _fs_vnode,
 	    int _op, void *_buf, size_t _len, vfs_file_private _file_priv);
-	int (*fs_strategy)(struct _vfs_page_cache *_pc);
+	int (*fs_strategy)(dev_id _devid, struct _vfs_page_cache *_pc);
 	int (*fs_getdents)(vfs_fs_super _fs_super, vfs_fs_vnode _fs_dir_vnode, void *_buf,
 	    off_t _off, ssize_t _buflen, ssize_t *_rdlenp);
 	int (*fs_create)(vfs_fs_super _fs_super, vfs_vnode_id _fs_dir_vnid,

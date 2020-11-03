@@ -15,7 +15,7 @@ cleandirs=include ${subdirs} ${supdirs}
 distcleandirs=${cleandirs} configs
 kernlibs=klib/libklib.a kern/libkern.a fs/libfs.a test/libktest.a hal/hal/libhal.a \
 	fs/vfs/libvfs.a fs/minixfs/libminixfs.a fs/simplefs/libsimplefs.a \
-	dev/bdev/libbdev.a
+	dev/bdev/libbdev.a dev/md/libmd.a
 
 mconf=tools/kconfig/mconf
 
