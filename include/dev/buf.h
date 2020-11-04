@@ -34,8 +34,10 @@ void block_buffer_put(struct _block_buffer *_buf);
 
 int block_buffer_refer_data(struct _block_buffer *_buf, void **_datap);
 int block_buffer_mark_dirty(struct _block_buffer *_buf);
-int block_buffer_read(struct _block_buffer *_buf);
+
+int block_buffer_read(dev_id _devid, dev_blkno _blkno, struct _block_buffer **_bufp);
 int block_buffer_write(struct _block_buffer *_buf);
+
 void block_buffer_init(void);
 void block_buffer_finalize(void);
 

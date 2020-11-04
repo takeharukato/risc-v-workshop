@@ -252,15 +252,38 @@ block_buffer_put(block_buffer *buf){
 }
 
 /**
-   二次記憶の内容をブロックバッファに読み込む
+   二次記憶の内容をブロックバッファに読み込み, 使用権を返却する
    @param[in] buf  ブロックバッファ
    @retval  0      正常終了
-   @retval -ENOENT 解放中のページキャッシュだった
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -ENOENT ページキャッシュが解放中だった
+   @retval -EIO    I/Oエラー
  */
 int
-block_buffer_read(block_buffer *buf){
+block_buffer_read(dev_id devid, dev_blkno blkno, block_buffer **bufp){
+	int           rc;
+	block_buffer *buf;
 
-	return bio_page_read(buf->b_page); /* バッファを含むページキャッシュに読み込む */
+	/* ブロックバッファにブロックの内容を読込む */
+	rc = block_buffer_get(devid, blkno, &buf);
+	if ( rc != 0 )
+		goto error_out;
+
+	rc = bio_page_read(buf->b_page); /* バッファを含むページキャッシュに読み込む */
+	if ( rc != 0 )
+		goto put_buf_out;
+
+	if ( bufp != NULL )
+		*bufp = buf;
+
+	return 0;
+
+put_buf_out:
+	block_buffer_put(buf);  /* ブロックバッファを解放 */
+
+error_out:
+	return rc;
 }
 
 /**

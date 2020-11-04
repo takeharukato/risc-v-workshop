@@ -37,6 +37,105 @@ static fs_calls bdev_test_calls={
 };
 
 static void
+bdev_test_buf(struct _ktest_stats *sp, void __unused *arg){
+	int                   rc;
+	dev_id             devid;
+	bdev_entry         *bdev;
+	block_buffer        *buf;
+	size_t            blksiz;
+	void               *data;
+
+	devid = VFS_VSTAT_MAKEDEV(MD_DEV_MAJOR_NR, 0);
+
+	/*
+	 * バッファ単位でのI/O操作
+	 */
+	rc = bdev_bdev_entry_get(devid, &bdev);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	if ( rc != 0 )
+		goto skip_test;
+
+	/* バッファサイズ獲得 */
+	rc = bdev_blocksize_get(devid, &blksiz);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/* バッファ獲得 */
+	rc = block_buffer_get(devid, 1, &buf);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc != 0 )
+		goto put_bdev_out;
+
+	/*
+	 * バッファ書込み
+	 */
+	/* データ獲得 */
+	rc = block_buffer_refer_data(buf, &data);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( rc != 0 )
+		goto put_buf_out;
+
+	memset(data, 0xa, blksiz);  /* 書き込み */
+
+	rc = block_buffer_mark_dirty(buf); /* バッファ更新 */
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+	/*
+	 * バッファ書き戻し
+	 */
+	rc = block_buffer_write(buf);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	/*
+	 * 状態確認
+	 */
+	if ( VFS_PCACHE_IS_VALID(buf->b_page) && !VFS_PCACHE_IS_DIRTY(buf->b_page) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	block_buffer_put(buf);  /* バッファ返却 */
+
+	/*
+	 * バッファ読み出し
+	 */
+	rc = block_buffer_read(devid, 1, &buf);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
+put_buf_out:
+	/*
+	 * バッファ返却
+	 */
+	block_buffer_put(buf);
+
+put_bdev_out:
+	/* デバイスエントリ解放 */
+	bdev_bdev_entry_put(bdev);
+
+skip_test:
+	return;
+}
+
+static void
 bdev_test_with_md(struct _ktest_stats *sp, void __unused *arg){
 	int                   rc;
 	dev_id             devid;
@@ -192,6 +291,7 @@ bdev_test_with_md(struct _ktest_stats *sp, void __unused *arg){
 skip_req1:
 	return;
 }
+
 static void
 bdev_test1(struct _ktest_stats *sp, void __unused *arg){
 	int           rc;
@@ -239,7 +339,6 @@ bdev_test1(struct _ktest_stats *sp, void __unused *arg){
 	/*
 	 * デバイスエントリ獲得 (デバイス不在エラー)
 	 */
-
 	rc = bdev_bdev_entry_get(VFS_VSTAT_MAKEDEV(BDEV_TEST_MAJOR, BDEV_TEST_INVALID_MINOR),
 	    &bdev);
 	if ( rc == -ENODEV )
@@ -257,6 +356,7 @@ bdev1(struct _ktest_stats *sp, void __unused *arg){
 
 	bdev_test1(sp, arg);
 	bdev_test_with_md(sp, arg);
+	bdev_test_buf(sp, arg);
 }
 
 void
