@@ -42,7 +42,12 @@
 #define	PCPOOL_CREATED           (0x1)    /**< 有効なページキャッシュプール             */
 #define	PCPOOL_DELETE            (0x2)    /**< 削除予約されている                       */
 
-typedef uint32_t vfs_pcache_pool_state; /**< ページキャッシュプールの状態 */
+/*
+ * ページ回収指示
+ */
+#define PCPOOL_INVALIDATE_ALL    (-1)     /**< 全ページキャッシュを無効化する */
+
+typedef uint32_t vfs_pcache_pool_state;   /**< ページキャッシュプールの状態 */
 
 struct _block_buffer;
 
@@ -175,20 +180,20 @@ int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
 
 int vfs_page_cache_enqueue_block_buffer(struct _vfs_page_cache *_pc,
     struct _block_buffer *_buf);
-int vfs_page_cache_dequeue_block_buffer(struct _vfs_page_cache *_pc,
-    struct _block_buffer **_bufp);
+void vfs_page_cache_block_buffer_unmap(struct _vfs_page_cache *_pc);
 int vfs_page_cache_block_buffer_find(struct _vfs_page_cache *_pc, size_t _offset,
     struct _block_buffer **_bufp);
 
 bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
+int vfs_page_cache_pool_shrink(struct _vfs_page_cache_pool *_pool,
+    singned_cnt_type _reclaim_nr, singned_cnt_type *_reclaimedp);
 
 int vfs_page_cache_invalidate(struct _vfs_page_cache *_pc);
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
 int vfs_page_cache_put(struct _vfs_page_cache *_pc);
-int vfs_page_cache_rw(vfs_page_cache *_pc);
-void vfs_init_pageio(void);
-void vfs_finalize_pageio(void);
+int vfs_page_cache_rw(struct _vfs_page_cache *_pc);
+
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PAGEIO_H  */

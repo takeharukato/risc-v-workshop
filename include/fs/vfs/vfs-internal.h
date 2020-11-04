@@ -37,5 +37,6 @@ void vfs_init_filesystem_table(void);
 void vfs_init_mount_table(void);
 void vfs_init_ioctx(void);
 void vfs_init_pageio(void);
+void vfs_finalize_pageio(void);
 #endif  /*  !ASM_FILE  */
 #endif  /* _FS_VFS_VFS_INTERNAL_H   */

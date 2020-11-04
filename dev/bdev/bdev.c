@@ -273,6 +273,7 @@ unlock_out:
    @retval  0 正常終了
    @retval -EINVAL デバイスIDが不正, または, ブロックサイズが不正
    @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -EBUSY  ページキャッシュの無効化に失敗した
  */
 int
 bdev_blocksize_set(dev_id devid, size_t blksiz){
@@ -288,6 +289,13 @@ bdev_blocksize_set(dev_id devid, size_t blksiz){
 		rc = -EINVAL;  /* ブロックサイズが不正 */
 		goto put_bdev_out;
 	}
+	kassert( bdev->bdent_pool != NULL );
+
+	/* ブロックサイズ変更に伴うページキャッシュの無効化
+	 */
+	rc = vfs_page_cache_pool_shrink(bdev->bdent_pool, PCPOOL_INVALIDATE_ALL, NULL);
+	if ( rc != 0 )
+		goto put_bdev_out;  /* ページキャッシュの無効化に失敗した */
 
 	bdev->bdent_blksiz = blksiz;  /* ブロックサイズを設定する */
 
@@ -333,6 +341,7 @@ bdev_blocksize_get(dev_id devid, size_t *blksizp){
    @retval  0 正常終了
    @retval -EINVAL デバイスID/セクタサイズが不正
    @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -EBUSY  ページキャッシュの無効化に失敗した
  */
 int
 bdev_sectorsize_set(dev_id devid, size_t secsiz){
@@ -350,8 +359,17 @@ bdev_sectorsize_set(dev_id devid, size_t secsiz){
 	}
 
 	/* ブロックサイズよりセクタサイズの方が大きい場合, ブロックサイズを更新 */
-	if ( secsiz > bdev->bdent_blksiz )
-		bdev->bdent_blksiz = secsiz; /* セクタサイズをブロックサイズに設定 */
+	if ( secsiz > bdev->bdent_blksiz ) {
+
+		/* ブロックサイズ変更に伴うページキャッシュの無効化
+		 */
+		rc = vfs_page_cache_pool_shrink(bdev->bdent_pool,
+		    PCPOOL_INVALIDATE_ALL, NULL);
+		if ( rc != 0 )
+			goto put_bdev_out;
+
+		bdev->bdent_blksiz = secsiz; /* ブロックサイズをセクタサイズに設定 */
+	}
 
 	bdev->bdent_secsiz = secsiz;  /* セクタサイズを設定する */
 
@@ -397,6 +415,7 @@ bdev_sectorsize_get(dev_id devid, size_t *secsizp){
    @retval  0 正常終了
    @retval -EINVAL デバイスIDが不正
    @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -EBUSY  ページキャッシュの無効化に失敗した
  */
 int
 bdev_capacity_set(dev_id devid, size_t capacity){
@@ -407,11 +426,22 @@ bdev_capacity_set(dev_id devid, size_t capacity){
 	if ( rc != 0 )
 		return rc;
 
+	/* 容量変更に伴うページキャッシュの無効化
+	 */
+	rc = vfs_page_cache_pool_shrink(bdev->bdent_pool,
+	    PCPOOL_INVALIDATE_ALL, NULL);
+	if ( rc != 0 )
+		goto put_bdev_out;
+
 	bdev->bdent_capacity = capacity;  /* デバイスの容量を設定する */
 
 	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
 
 	return 0;
+
+put_bdev_out:
+	bdev_bdev_entry_put(bdev);  /* ブロックデバイスエントリへの参照を解放 */
+	return rc;
 }
 
 /**
@@ -505,7 +535,7 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 unmap_blocks_out:
 	/* ページキャッシュ中のブロックを解放 */
 	if ( !vfs_page_cache_is_block_buffer_empty(pc) )
-		block_buffer_unmap_from_page_cache(pc);
+		vfs_page_cache_block_buffer_unmap(pc); /* ブロックバッファを解放する */
 put_pc_out:
 	vfs_page_cache_put(pc);  /* ページキャッシュの参照を解放する */
 

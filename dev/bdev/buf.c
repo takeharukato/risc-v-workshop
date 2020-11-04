@@ -58,20 +58,20 @@ error_out:
 	return rc;
 }
 
-/**
-   ブロックバッファを解放する (内部関数)
-   @param[in] buf   ブロックバッファ
- */
-static void
-free_blkbuf(block_buffer *buf){
-
-	slab_kmem_cache_free((void *)buf);  /* ブロックバッファを解放する */
-	return ;
-}
 
 /*
  * IF関数
  */
+/**
+   ブロックバッファを解放する
+   @param[in] buf   ブロックバッファ
+ */
+void
+block_buffer_free(block_buffer *buf){
+
+	slab_kmem_cache_free((void *)buf);  /* ブロックバッファを解放する */
+	return ;
+}
 
 /**
    ページキャッシュにブロックバッファを割り当てる
@@ -134,42 +134,13 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 	return 0;
 
 free_blocks_out:
-	block_buffer_unmap_from_page_cache(pc);  /* ブロックバッファを解放する */
+	vfs_page_cache_block_buffer_unmap(pc); /* ブロックバッファを解放する */
 
 put_bdev_ent_out:
 	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
 
 error_out:
 	return rc;
-}
-
-/**
-   ページキャッシュに割り当てられたブロックバッファを解放する
-   @param[in]  pc  ページキャッシュ
- */
-void
-block_buffer_unmap_from_page_cache(vfs_page_cache *pc){
-	int                rc;
-	block_buffer *cur_buf;
-
-	/* ブロックデバイスのページキャッシュであることを確認 */
-	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
-	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの参照と使用権を獲得済み */
-
-	/* ブロックバッファを解放する
-	 */
-	rc = vfs_page_cache_dequeue_block_buffer(pc, &cur_buf);	/* 先頭のバッファを取り出す */
-	while( rc == 0 ) {
-
-		free_blkbuf(cur_buf);  /* バッファを解放する */
-		/* 先頭のバッファを取り出す */
-		rc = vfs_page_cache_dequeue_block_buffer(pc, &cur_buf);
-		if ( rc == -EAGAIN )
-			break;  /* キューにバッファがない */
-		kassert( rc == 0 );
-	}
-
-	return ;
 }
 
 /**

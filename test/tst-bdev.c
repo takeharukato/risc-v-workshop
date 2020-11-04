@@ -128,6 +128,14 @@ put_buf_out:
 	block_buffer_put(buf);
 
 put_bdev_out:
+
+	rc = vfs_page_cache_pool_shrink(bdev->bdent_pool,
+	    PCPOOL_INVALIDATE_ALL, NULL);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+
 	/* デバイスエントリ解放 */
 	bdev_bdev_entry_put(bdev);
 
