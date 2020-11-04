@@ -51,6 +51,21 @@ typedef struct _bdev_db{
 3.
 [5] モジュール間IF
 
+修正方針
+(1) v-nodeにはblock_bufferをキューイングする
+    bdevには, ブロックデバイスのページバッファをキューイングする
+(2) block_bufferの検索・獲得IFは, 変更不要
+    b_offsetはブロックデバイスの先頭からのページ内オフセットを入れる
+    これはブロックデバイスアクセスの場合に使用するオフセット
+
+    ブロックバッファをpageにマップする際にfileオフセットを指定する
+    ようにし, fileオフセットをページで割った剰余をブロックサイズアラインにすることで算出
+    したファイルマップページのページオフセットもあわせて入れられるようにする
+    (b_filepage_offsetとする. v-nodeからの参照の場合にのみ使用, v-nodeからのツリーエントリ
+    も必要)
+
+
+
 int
 block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp)
 は, bdev内でブロックバッファのツリーを管理するように修正する.
