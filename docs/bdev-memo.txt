@@ -50,3 +50,20 @@ typedef struct _bdev_db{
 2. ブロックデバイス管理機構の終了
 3.
 [5] モジュール間IF
+
+int
+block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp)
+は, bdev内でブロックバッファのツリーを管理するように修正する.
+ブロックバッファの数だけページキャシュの参照を加算
+invalidate_block_bufferで, ページキャシュの参照を減算し, バッファキャッシュの解放を行う
+
+int block_buffer_map_to_page_cache(dev_id _devid, struct _vfs_page_cache *_pc);
+のIFを修正し,
+int block_buffer_map_to_page_cache(dev_id _devid, dev_blkno blkno,
+    struct _vfs_page_cache *_pc);
+に変更, devidとblknoからブロックのデバイス中での絶対アドレスを算出, ページ内オフセット位置から
+ページキャッシュ中での連番を算出するまでは同じだが, ブロックバッファ内にブロックのデバイス中での絶対アドレスも格納しておき, bdev内でブロックバッファのツリーの索引として使用する
+
+int vfs_page_cache_block_buffer_find(struct _vfs_page_cache *_pc, size_t _offset,
+    struct _block_buffer **_bufp);
+を廃止し, block_buffer_getでバッファを得るようにする
