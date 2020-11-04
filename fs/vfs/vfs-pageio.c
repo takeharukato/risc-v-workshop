@@ -185,6 +185,7 @@ unref_pgcache_out:
 error_out:
 	return rc;
 }
+
 /**
    ページキャッシュを解放する (内部関数)
    @param[in] pc ページキャッシュ
@@ -212,6 +213,27 @@ free_page_cache(vfs_page_cache *pc){
 	slab_kmem_cache_free((void *)pc);
 
 	return ;
+}
+
+/**
+   ロックを取らずにページキャッシュを使用中に設定する (内部関数)
+   @param[in] pc 操作対象のページキャッシュ
+   @retval    0       正常終了
+   @retval   -ENOENT  ページキャッシュが解放中だった
+ */
+static int
+mark_page_cache_busy_nolock(vfs_page_cache *pc){
+	bool            res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュの参照を獲得 */
+	if ( !res )
+		return -ENOENT;  /* 解放中のページキャッシュだった */
+
+	pc->pc_state |= VFS_PCACHE_BUSY;  /* ページキャッシュを使用中にする */
+
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+	return 0;
 }
 
 /**
@@ -265,7 +287,7 @@ mark_page_cache_busy(vfs_page_cache *pc){
 		}
 	}
 
-	pc->pc_state |= VFS_PCACHE_BUSY;  /* ページキャッシュを使用中にする */
+	mark_page_cache_busy_nolock(pc);  /* ページキャッシュを使用中にする */
 
 	/* オーナをセットする
 	 */
@@ -295,11 +317,11 @@ mark_page_cache_busy(vfs_page_cache *pc){
 		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 読み込み済みページに設定 */
 
 success:
-	/* ページキャッシュプールへの参照を解放 */
-	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
-
 	/* ページキャッシュプールのロックを解放する */
 	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
+
+	/* ページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
 
 	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 
@@ -450,9 +472,117 @@ error_out:
 }
 
 
+/**
+   ページキャッシュを無効にする (内部関数)
+   @param[in] pc 操作対象のページキャッシュ
+   @retval    0       正常終了
+   @retval   -ENOENT  ページキャッシュが解放中だった
+ */
+static int
+invalidate_page_cache_common(vfs_page_cache *pc){
+	int                 rc;
+	bool               res;
+	dev_id           devid;
+	vfs_page_cache *pc_res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 解放中のページキャッシュだった */
+		goto error_out;
+	}
+
+	/* 操作用にページキャッシュプールへの参照を獲得 */
+	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
+	kassert( res ); /* ページキャッシュが空ではないので参照を獲得可能なはず */
+
+	devid = pc->pc_pcplink->pcp_bdevid;  /* デバイスIDを獲得 */
+
+	/* ページキャッシュプールのmutexロックを獲得する */
+	rc = mutex_lock(&pc->pc_pcplink->pcp_mtx);
+	if ( rc != 0 )
+		goto unref_pcp_out;
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) );
+	kassert( list_not_linked(&pc->pc_lru_link) );
+
+	/* ページキャッシュプールから取り外す
+	 * ページキャッシュの参照数が0になった時点でfree_page_cacheで
+	 * ページキャッシュからページキャッシュプールへの参照を減算するので
+	 * 本関数ではページキャッシュプールへの参照は減算しない
+	 */
+	pc_res = RB_REMOVE(_vfs_pcache_tree, &pc->pc_pcplink->pcp_head, pc);
+	kassert( pc_res != NULL );
+
+	/* ページキャッシュプールのロックを解放する */
+	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
+
+	/* 操作用に獲得したページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
+	/* ページキャッシュの方が新しければページキャッシュを書き戻す */
+	if ( VFS_PCACHE_IS_VALID(pc) && VFS_PCACHE_IS_DIRTY(pc) ) {
+
+		rc = vfs_page_cache_rw(pc);  /* 二次記憶と同期する */
+		if ( rc != 0 )
+			kprintf("Error vfs pageio: devid: 0x%qx page cache: %p I/O fail rc=%d\n",
+				devid, pc, rc);
+	}
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュプールからの参照を減算して解放する */
+
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+	return 0;
+
+unref_pcp_out:
+	/* ページキャッシュプールへの参照を解放 */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+error_out:
+	return rc;
+}
+
 /*
  * IF関数
  */
+
+/**
+   ページキャッシュを無効にする
+   @param[in] pc 操作対象のページキャッシュ
+   @retval    0       正常終了
+   @retval   -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_invalidate(vfs_page_cache *pc){
+	int   rc;
+	bool res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* 解放中のページキャッシュだった */
+		goto error_out;
+	}
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの使用権を得ていること */
+
+	rc = invalidate_page_cache_common(pc);  /* ページキャッシュを無効化する */
+	if ( rc != 0 )
+		goto unref_pc_out;
+
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+	return 0;
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+
+error_out:
+	return rc;
+}
 
 /**
    ページキャッシュへの参照を加算する
@@ -645,6 +775,35 @@ vfs_page_cache_pagesize_get(vfs_page_cache *pc, size_t *sizep){
 
 	if ( sizep != NULL )
 		*sizep = pc->pc_pcplink->pcp_pgsiz; /* ページサイズを返却する */
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
+
+	return 0;
+
+error_out:
+	return rc;
+}
+/**
+   ページキャッシュのデータ領域を得る
+   @param[in]  pc    ページキャッシュ
+   @param[out] datap データ領域を指し示すポインタのアドレス
+   @retval  0      正常終了
+   @retval -ENOENT ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_refer_data(vfs_page_cache *pc, void **datap){
+	int       rc;
+	bool     res;
+
+	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
+	if ( !res ) {
+
+		rc = -ENOENT;  /* ページキャッシュが解放中だった */
+		goto error_out;
+	}
+
+	if ( datap != NULL )
+		*datap = pc->pc_data; /* データ領域を返却する */
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 

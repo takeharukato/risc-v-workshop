@@ -171,15 +171,19 @@ int vfs_page_cache_mark_clean(struct _vfs_page_cache *_pc);
 int vfs_page_cache_mark_dirty(struct _vfs_page_cache *_pc);
 int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
 int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
+int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
+
 int vfs_page_cache_enqueue_block_buffer(struct _vfs_page_cache *_pc,
     struct _block_buffer *_buf);
 int vfs_page_cache_dequeue_block_buffer(struct _vfs_page_cache *_pc,
     struct _block_buffer **_bufp);
 int vfs_page_cache_block_buffer_find(struct _vfs_page_cache *_pc, size_t _offset,
     struct _block_buffer **_bufp);
+
 bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
 
+int vfs_page_cache_invalidate(struct _vfs_page_cache *_pc);
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
 int vfs_page_cache_put(struct _vfs_page_cache *_pc);
