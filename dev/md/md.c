@@ -31,8 +31,9 @@ static fs_calls md_calls={
 
 /**
    メモリデバイスのストラテジ関数
-   @param[in] pc ページキャッシュ
-   @retval  0      正常終了
+   @param[in] devid デバイスID
+   @param[in] pc    ページキャッシュ
+   @retval  0       正常終了
  */
 static int
 md_strategy(dev_id devid, vfs_page_cache *pc){

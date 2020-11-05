@@ -288,7 +288,9 @@ block_buffer_put(block_buffer *buf){
 
 /**
    二次記憶の内容をブロックバッファに読み込み, 使用権を返却する
-   @param[in] buf  ブロックバッファ
+   @param[in]  devid デバイス番号
+   @param[in]  blkno ブロック番号
+   @param[out] bufp  ブロックバッファ返却領域
    @retval  0      正常終了
    @retval -EINVAL デバイスIDが不正
    @retval -ENODEV 指定されたデバイスが見つからなかった
