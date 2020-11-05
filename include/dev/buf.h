@@ -28,7 +28,7 @@ typedef struct _block_buffer{
 }block_buffer;
 
 void block_buffer_free(struct _block_buffer *buf);
-int block_buffer_map_to_page_cache(dev_id _devid, off_t _page_offset, off_t _block_offset,
+int block_buffer_map_to_page_cache(off_t _page_offset, off_t _block_offset, size_t _blksiz,
     struct _vfs_page_cache *_pc);
 int block_buffer_device_page_setup(dev_id _devid, off_t _dev_page_offset,
     struct _vfs_page_cache *_pc);
