@@ -120,7 +120,18 @@ bdev_test_buf(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
-
+	/*
+	 * 内容確認
+	 */
+	rc = block_buffer_refer_data(buf, &data);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	if ( ( *(uint8_t *)data == 0xa ) && ( *(uint8_t *)(data + blksiz - 1 ) == 0xa ) )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
 put_buf_out:
 	/*
 	 * バッファ返却

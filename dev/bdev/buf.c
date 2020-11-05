@@ -25,7 +25,8 @@ static void
 init_blkbuf(block_buffer *buf){
 
 	list_init(&buf->b_ent); /* リストエントリの初期化 */
-	buf->b_offset = 0;  /* バッファオフセットを初期化する */
+	buf->b_offset = 0;      /* バッファのページ内オフセットを初期化する */
+	buf->b_dev_offset = 0;  /* バッファのデバイス内オフセットを初期化する */
 	buf->b_len = 0;     /* バッファ長を初期化する */
 	buf->b_page = NULL; /* ページキャッシュポインタを初期化する */
 }
@@ -75,7 +76,9 @@ block_buffer_free(block_buffer *buf){
 
 /**
    ページキャッシュにブロックバッファを割り当てる
-   @param[in]  devid    ブロックデバイスのデバイスID
+   @param[in]  devid        ブロックデバイスのデバイスID
+   @param[in]  page_offset  ページキャッシュ内でのオフセットアドレス
+   @param[in]  block_offset ブロックデバイス先頭からのオフセットアドレス
    @param[in]  pc       ページキャッシュ
    @retval  0      正常終了
    @retval -EINVAL デバイスIDが不正
@@ -84,12 +87,88 @@ block_buffer_free(block_buffer *buf){
    @retval -ENOMEM メモリ不足
  */
 int
-block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
+block_buffer_map_to_page_cache(dev_id devid, off_t page_offset, off_t block_offset,
+    vfs_page_cache *pc){
 	int                   rc;
 	bdev_entry         *bdev;
 	block_buffer        *buf;
 	size_t             pgsiz;
+	off_t             pg_off;
+	off_t            dev_off;
+
+	/* ブロックデバイスのページキャッシュであることを確認 */
+	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの参照と使用権を獲得済み */
+
+	if ( devid == VFS_VSTAT_INVALID_DEVID )
+		return -EINVAL;
+
+	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
+	if ( rc != 0 )
+		goto error_out;
+
+	/* ページサイズを得る */
+	rc = vfs_page_cache_pagesize_get(pc, &pgsiz);
+	if ( rc != 0 )
+		goto put_bdev_ent_out;
+
+	kassert( pgsiz >= bdev->bdent_blksiz );
+	kassert( !addr_not_aligned(pgsiz, bdev->bdent_blksiz) );
+
+	/* ページ内オフセット */
+	pg_off =  truncate_align( page_offset, bdev->bdent_blksiz );
+	/* デバイス内オフセット */
+	dev_off = truncate_align( block_offset, bdev->bdent_blksiz );
+
+	rc = alloc_blkbuf(&buf);
+	if ( rc != 0 )
+		goto put_bdev_ent_out;
+
+	/*
+	 * ブロックバッファのパラメタを設定する
+	 */
+	buf->b_offset = pg_off;          /* ページ内オフセットを設定 */
+	buf->b_dev_offset = dev_off;     /* ブロックデバイスオフセットを設定 */
+	buf->b_len = bdev->bdent_blksiz; /* ブロックサイズを設定 */
+
+	/* ブロックバッファをページに登録する */
+	rc = vfs_page_cache_enqueue_block_buffer(pc, buf);
+	if ( rc != 0 )
+		goto free_block_out;
+
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+	return 0;
+
+free_block_out:
+	block_buffer_free(buf); /* ブロックバッファを解放する */
+
+put_bdev_ent_out:
+	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */
+
+error_out:
+	return rc;
+}
+
+/**
+   ページキャッシュにブロックバッファを割り当てる
+   @param[in]  devid           ブロックデバイスのデバイスID
+   @param[in]  dev_page_offset ブロックデバイス先頭からのオフセットアドレス
+   @param[in]  pc       ページキャッシュ
+   @retval  0      正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -ENOENT ページキャッシュが解放中だった
+   @retval -ENOMEM メモリ不足
+ */
+int
+block_buffer_device_page_setup(dev_id devid, off_t dev_page_offset,
+    vfs_page_cache *pc){
+	int                   rc;
+	bdev_entry         *bdev;
+	size_t             pgsiz;
 	off_t            blk_off;
+	off_t            dev_off;
 	obj_cnt_type           i;
 	obj_cnt_type     nr_bufs;
 
@@ -104,6 +183,7 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 	if ( rc != 0 )
 		goto error_out;
 
+	/* ページサイズを得る */
 	rc = vfs_page_cache_pagesize_get(pc, &pgsiz);
 	if ( rc != 0 )
 		goto put_bdev_ent_out;
@@ -111,22 +191,18 @@ block_buffer_map_to_page_cache(dev_id devid, vfs_page_cache *pc){
 	kassert( pgsiz >= bdev->bdent_blksiz );
 	kassert( !addr_not_aligned(pgsiz, bdev->bdent_blksiz) );
 
-	/* ページ内に割り当てるブロック数を算出する */
-	nr_bufs = pgsiz / bdev->bdent_blksiz;
+	dev_off = truncate_align(dev_page_offset, pgsiz); /* デバイスオフセット */
+
+	nr_bufs = pgsiz / bdev->bdent_blksiz; /* ページ内に割り当てるブロック数 */
 
 	/* ページキャッシュにブロックを割り当てる
 	 */
 	for( i = 0, blk_off = 0; nr_bufs > i; ++i, blk_off += bdev->bdent_blksiz ) {
 
-		rc = alloc_blkbuf(&buf);
+		/* ページキャッシュとブロックバッファとを紐付ける */
+		rc = block_buffer_map_to_page_cache(devid, blk_off, dev_off + blk_off, pc);
 		if ( rc != 0 )
 			goto free_blocks_out;
-
-		buf->b_offset = blk_off;  /* ページ内オフセットを設定 */
-		buf->b_len = bdev->bdent_blksiz; /* ブロックサイズを設定 */
-		/* ブロックバッファを登録する */
-		rc = vfs_page_cache_enqueue_block_buffer(pc, buf);
-		kassert( rc == 0 );
 	}
 
 	bdev_bdev_entry_put(bdev); /* ブロックデバイスエントリへの参照を解放する */

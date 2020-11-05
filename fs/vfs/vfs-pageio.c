@@ -931,6 +931,43 @@ error_out:
 }
 
 /**
+   ページキャッシュプール内のページサイズを獲得する
+   @param[in]  pool      操作対象のページキャッシュプール
+   @param[out] pagesizep ページサイズ返却領域
+   @retval  0      正常終了
+ */
+int
+vfs_page_cache_pool_pagesize_get(vfs_page_cache_pool *pool, size_t *pagesizep){
+	int          rc;
+	bool        res;
+	size_t pagesize;
+
+	res = vfs_page_cache_pool_ref_inc(pool); /* ページキャッシュプールの参照を獲得する */
+	if ( !res )
+		return -ENOENT;  /* 解放中のページキャッシュプール */
+
+	rc = mutex_lock(&pool->pcp_mtx);  /* ページキャッシュプールのロックを獲得する */
+	if ( rc != 0 )
+		goto unref_pcp_out;
+
+	pagesize = pool->pcp_pgsiz; /* ページサイズ獲得 */
+
+	mutex_unlock(&pool->pcp_mtx);  /* ページキャッシュプールのロックを解放する */
+
+	vfs_page_cache_pool_ref_dec(pool); /* ページキャッシュプールの参照を減算する */
+
+	if ( pagesizep != NULL )
+		*pagesizep = pagesize; /* ページサイズを返却 */
+
+	return 0;
+
+unref_pcp_out:
+	vfs_page_cache_pool_ref_dec(pool); /* ページキャッシュプールの参照を減算する */
+
+	return rc;
+}
+
+/**
    ページキャッシュを読み込み済みに設定する
    @param[in] pc 操作対象のページキャッシュ
    @retval   -ENOENT  ページキャッシュが解放中だった
@@ -1041,8 +1078,9 @@ error_out:
  */
 int
 vfs_page_cache_pagesize_get(vfs_page_cache *pc, size_t *sizep){
-	int       rc;
-	bool     res;
+	int          rc;
+	bool        res;
+	size_t pagesize;
 
 	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
 	if ( !res ) {
@@ -1053,12 +1091,20 @@ vfs_page_cache_pagesize_get(vfs_page_cache *pc, size_t *sizep){
 
 	kassert( pc->pc_pcplink != NULL ); /* ページキャッシュプールにつながっている */
 
+	/* ページサイズ取得 */
+	rc = vfs_page_cache_pool_pagesize_get(pc->pc_pcplink, &pagesize);
+	if ( rc != 0 )
+		goto unref_pc_out;
+
 	if ( sizep != NULL )
-		*sizep = pc->pc_pcplink->pcp_pgsiz; /* ページサイズを返却する */
+		*sizep = pagesize; /* ページサイズを返却する */
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 	return 0;
+
+unref_pc_out:
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 error_out:
 	return rc;
@@ -1169,9 +1215,12 @@ vfs_page_cache_block_buffer_find(vfs_page_cache *pc, size_t offset, block_buffer
 		goto error_out;
 	}
 
+	rc = vfs_page_cache_pagesize_get(pc, &pgsiz); /* ページサイズを得る */
+	if ( rc != 0 )
+		goto unref_pc_out;
+
 	kassert( VFS_PCACHE_IS_BUSY(pc) ); /* ページキャッシュの使用権を得ていることを確認 */
 
-	pgsiz = pc->pc_pcplink->pcp_pgsiz; /* ページサイズを獲得する */
 	if ( offset >= pgsiz ) {
 
 		rc = -EINVAL;  /* オフセットがページサイズを超えている */

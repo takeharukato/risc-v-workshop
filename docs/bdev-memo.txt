@@ -55,30 +55,8 @@ typedef struct _bdev_db{
 (1) v-nodeにはblock_bufferをキューイングする
     bdevには, ブロックデバイスのページバッファをキューイングする
 (2) block_bufferの検索・獲得IFは, 変更不要
-    b_offsetはブロックデバイスの先頭からのページ内オフセットを入れる
+    ファイル内オフセット検索時はページキャッシュのpc_offsetを用いて検索する.
+    b_offsetはページキャッシュの先頭からのページ内オフセットを入れる.
+    b_dev_offsetはブロックデバイスの先頭からのページ内オフセットを入れる
     これはブロックデバイスアクセスの場合に使用するオフセット
-
-    ブロックバッファをpageにマップする際にfileオフセットを指定する
-    ようにし, fileオフセットをページで割った剰余をブロックサイズアラインにすることで算出
-    したファイルマップページのページオフセットもあわせて入れられるようにする
-    (b_filepage_offsetとする. v-nodeからの参照の場合にのみ使用, v-nodeからのツリーエントリ
-    も必要)
-
-
-
-int
-block_buffer_get(dev_id devid, dev_blkno blkno, block_buffer **bufp)
-は, bdev内でブロックバッファのツリーを管理するように修正する.
-ブロックバッファの数だけページキャシュの参照を加算
-invalidate_block_bufferで, ページキャシュの参照を減算し, バッファキャッシュの解放を行う
-
-int block_buffer_map_to_page_cache(dev_id _devid, struct _vfs_page_cache *_pc);
-のIFを修正し,
-int block_buffer_map_to_page_cache(dev_id _devid, dev_blkno blkno,
-    struct _vfs_page_cache *_pc);
-に変更, devidとblknoからブロックのデバイス中での絶対アドレスを算出, ページ内オフセット位置から
-ページキャッシュ中での連番を算出するまでは同じだが, ブロックバッファ内にブロックのデバイス中での絶対アドレスも格納しておき, bdev内でブロックバッファのツリーの索引として使用する
-
-int vfs_page_cache_block_buffer_find(struct _vfs_page_cache *_pc, size_t _offset,
-    struct _block_buffer **_bufp);
-を廃止し, block_buffer_getでバッファを得るようにする
+    (v-nodeからの参照の場合に, ページキャッシュの内容を読み込む際に使用)

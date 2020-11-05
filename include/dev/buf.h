@@ -22,12 +22,16 @@
 typedef struct _block_buffer{
 	struct _list             b_ent; /**< リストエントリ                             */
 	off_t                 b_offset; /**< ページキャッシュ内オフセット(単位: バイト) */
+	off_t             b_dev_offset; /**< ブロックデバイス内オフセット(単位: バイト) */
 	size_t                   b_len; /**< バッファ長(単位: バイト)                   */
 	struct _vfs_page_cache *b_page; /**< ページキャッシュ                           */
 }block_buffer;
 
 void block_buffer_free(struct _block_buffer *buf);
-int block_buffer_map_to_page_cache(dev_id _devid, struct _vfs_page_cache *_pc);
+int block_buffer_map_to_page_cache(dev_id _devid, off_t _page_offset, off_t _block_offset,
+    struct _vfs_page_cache *_pc);
+int block_buffer_device_page_setup(dev_id _devid, off_t _dev_page_offset,
+    struct _vfs_page_cache *_pc);
 
 int block_buffer_get(dev_id _devid, dev_blkno _blkno, struct _block_buffer **_bufp);
 void block_buffer_put(struct _block_buffer *_buf);

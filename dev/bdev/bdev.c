@@ -484,9 +484,9 @@ bdev_capacity_get(dev_id devid, size_t *capacityp){
  */
 int
 bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
-	int             rc;
-	bdev_entry   *bdev;
-	vfs_page_cache *pc;
+	int                rc;
+	bdev_entry      *bdev;
+	vfs_page_cache    *pc;
 
 	rc = bdev_bdev_entry_get(devid, &bdev);   /* ブロックデバイスエントリへの参照を獲得 */
 	if ( rc != 0 )
@@ -503,11 +503,11 @@ bdev_page_cache_get(dev_id devid, off_t offset, vfs_page_cache **pcachep){
 	kassert( VFS_PCACHE_IS_DEVICE_PAGE(pc) );
 	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* バッファ使用権を獲得済み */
 
-	/* ページキャッシュにブロックを割り当てる
-	 */
 	if ( vfs_page_cache_is_block_buffer_empty(pc) ) { /* ブロックバッファ未割当の場合 */
 
-		rc = block_buffer_map_to_page_cache(devid, pc);
+		/* ページキャッシュにブロックバッファを割り当てる
+		 */
+		rc = block_buffer_device_page_setup(devid, offset, pc);
 		if ( rc != 0 ) {
 
 			/* ブロックバッファが空になっているはず */
