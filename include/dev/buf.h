@@ -21,7 +21,6 @@
  */
 typedef struct _block_buffer{
 	struct _list             b_ent; /**< ページキャッシュ内キューへのリストエントリ */
-	blkbuf_state           b_state; /**< ブロックバッファの状態                     */
 	off_t                 b_offset; /**< ページキャッシュ内オフセット(単位: バイト) */
 	off_t             b_dev_offset; /**< ブロックデバイス内オフセット(単位: バイト) */
 	size_t                   b_len; /**< バッファ長(単位: バイト)                   */
