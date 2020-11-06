@@ -95,8 +95,6 @@ typedef struct _vfs_page_cache_pool{
         vfs_pcache_pool_state                          pcp_state;
 	/** ブロックデバイスのデバイスID */
 	dev_id                                        pcp_bdevid;
-	/** ファイルのv-node           */
-	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ(単位:バイト) */
 	size_t                                         pcp_pgsiz;
 	/**  ページキャッシュツリー    */
