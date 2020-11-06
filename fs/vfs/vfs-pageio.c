@@ -58,7 +58,6 @@ init_page_cache_pool(vfs_page_cache_pool *pool){
 	refcnt_init(&pool->pcp_refs); /* 参照カウンタの初期化 */
 	pool->pcp_state = PCPOOL_DORMANT; /* プールの状態初期化 */
 	pool->pcp_bdevid = VFS_VSTAT_INVALID_DEVID;  /* ブロックデバイスIDの初期化 */
-	pool->pcp_vnode = NULL; /* v-nodeポインタの初期化 */
 	pool->pcp_pgsiz = PAGE_SIZE; /* ページサイズの設定 */
 	RB_INIT(&pool->pcp_head);  /* ページキャッシュツリーの初期化 */
 	queue_init(&pool->pcp_clean_lru);  /* CLEAN LRUの初期化 */
@@ -120,7 +119,6 @@ static void
 free_page_cache_pool(vfs_page_cache_pool *pool){
 
 	kassert( refcnt_read(&pool->pcp_refs) == 0 ); /* 参照者がいないことを確認 */
-	kassert( pool->pcp_vnode == NULL ); /* v-node参照がないことを確認 */
 	kassert( RB_EMPTY(&pool->pcp_head) );  /* プールが空であることを確認 */
 
 	/* ブロックデバイスの設定を解除 */
