@@ -32,7 +32,7 @@
 
 #include <kern/vfs-if.h>
 
-typedef void *       bdev_private;  /**< デバイス固有情報       */
+typedef private_inf   bdev_private;  /**< デバイス固有情報       */
 
 struct _bio_request;
 struct _vfs_page_cache_pool;

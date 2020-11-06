@@ -50,7 +50,7 @@ struct _trap_context;
 /**
    割込みハンドラ定義
  */
-typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, void *_private);
+typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, private_inf _private);
 
 /**
    割込みハンドラエントリ
@@ -58,7 +58,7 @@ typedef int (*irq_handler)(irq_no _irq, struct _trap_context *_ctx, void *_priva
 typedef struct _irq_handler_ent{
 	struct _list    link; /**< 割込みハンドラキューのリストエントリ */
 	irq_handler  handler; /**< 割込みハンドラ                       */
-	void        *private; /**< ハンドラ固有情報へのポインタ         */
+	private_inf  private; /**< ハンドラ固有情報へのポインタ         */
 }irq_handler_ent;
 
 /*
@@ -94,7 +94,7 @@ typedef struct _irq_ctrlr{
 	irq_ctrl_eoi                        eoi; /**< 割込み処理完了通知                 */
 	irq_ctrl_initialize          initialize; /**< コントローラの初期化               */
 	irq_ctrl_finalize              finalize; /**< コントローラの終了                 */
-	void                           *private; /**< コントローラ固有情報へのポインタ   */
+	private_inf                     private; /**< コントローラ固有情報へのポインタ   */
 }irq_ctrlr;
 
 /**
@@ -147,7 +147,7 @@ typedef struct _irq_info{
 int irq_handle_irq(struct _trap_context *_ctx);
 
 int irq_register_handler(irq_no _irq, irq_attr _attr, irq_prio _prio, irq_handler _handler,
-    void *_private);
+			 private_inf _private);
 int irq_unregister_handler(irq_no _irq, irq_handler _handler);
 
 int irq_register_ctrlr(irq_ctrlr *_ctrlr);

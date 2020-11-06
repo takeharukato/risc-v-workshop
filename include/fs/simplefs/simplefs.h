@@ -46,9 +46,9 @@
 
 #define SIMPLEFS_IOCTL_CMD_GETINODE  (0x1)    /**< i-node取得 */
 
-typedef uint32_t          simplefs_ino;   /**< I-node番号    */
-typedef uint32_t        simplefs_blkno;   /**< ブロック番号  */
-typedef void *   simplefs_file_private;   /**< プライベート情報  */
+typedef uint32_t              simplefs_ino;   /**< I-node番号    */
+typedef uint32_t            simplefs_blkno;   /**< ブロック番号  */
+typedef private_inf  simplefs_file_private;   /**< プライベート情報  */
 
 /* ディレクトリエントリ中のファイル名までのオフセット (単位: バイト) */
 #define SIMPLEFS_D_DIRNAME_OFFSET             (sizeof(simplefs_ino))
@@ -97,7 +97,7 @@ typedef struct _simplefs_super_block{
 	struct _mutex                                      mtx;  /**< 排他用mutex    */
 	off_t                                         s_blksiz; /**< ブロック長           */
 	uint64_t                                       s_state; /**< スーパブロックの状態 */
-	void                                        *s_private; /**< プライベート情報     */
+	private_inf                                  s_private; /**< プライベート情報     */
 	BITMAP_TYPE(, uint64_t, SIMPLEFS_INODE_NR) s_inode_map; /**< I-nodeマップ         */
 	struct _simplefs_inode      s_inode[SIMPLEFS_INODE_NR]; /**< I-node               */
 }simplefs_super_block;

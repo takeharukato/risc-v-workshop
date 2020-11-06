@@ -370,7 +370,7 @@ error_out:
  */
 int
 irq_register_handler(irq_no irq, irq_attr attr, irq_prio prio, irq_handler handler,
-    void *private){
+		     private_inf private){
 	int                rc;
 	irq_info         *inf;
 	irq_ctrlr   ctrlr_key;

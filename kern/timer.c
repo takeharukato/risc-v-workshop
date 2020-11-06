@@ -92,7 +92,7 @@ unlock_out:
    @retval   -ENOMEM         メモリ不足
  */
 int
-tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, void *private,
+tim_callout_add(tim_tmout rel_expire_ms, tim_callout_type callout, private_inf private,
 		call_out_ent **entp){
 	int                     rc;
 	epoch_time             sec;

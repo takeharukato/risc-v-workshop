@@ -35,7 +35,7 @@ typedef struct _ktimespec{
    @param[in] _ctx     割込みコンテキスト
    @param[in] _private プライベート情報
  */
-typedef void (*tim_callout_type)(struct _trap_context *_ctx, void *_private);
+typedef void (*tim_callout_type)(struct _trap_context *_ctx, private_inf _private);
 
 /**
    コールアウトエントリ
@@ -44,7 +44,7 @@ typedef struct _call_out_ent{
 	struct _list               link;  /**< コールアウトキューへのリンク     */
 	struct _ktimespec        expire;  /**< コールアウト時間 (timespec単位)  */
 	tim_callout_type        callout;  /**< コールアウト関数 */
-	void                   *private;  /**< コールアウト関数プライベート情報 */
+	private_inf             private;  /**< コールアウト関数プライベート情報 */
 }call_out_ent;
 
 /**
@@ -85,7 +85,7 @@ typedef struct _call_out_ent{
 
 int tim_callout_ref(struct _ktimespec *_ts);
 void tim_walltime_get(struct _ktimespec *_ktsp);
-int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, void *_private,
+int tim_callout_add(tim_tmout _rel_expire_ms, tim_callout_type _callout, private_inf _private,
 		    struct _call_out_ent **_entp);
 int tim_callout_cancel(struct _call_out_ent *_ent);
 
