@@ -21,6 +21,7 @@
 #include <klib/rbtree.h>
 
 struct _thread;
+struct _vfs_page_cache_pool;
 
 /**
    V-node(仮想I-node)
@@ -41,6 +42,7 @@ typedef struct _vnode{
 	struct _thread      *v_locked_by;  /**< ロック獲得スレッド                */
 	vfs_fs_mode               v_mode;  /**< ファイル種別/アクセス フラグ      */
 	vfs_vnode_flags          v_flags;  /**< v-nodeのステータスフラグ          */
+	struct _vfs_page_cache_pool *v_pcp; /**< ページキャッシュプール           */
 }vnode;
 
 int vfs_vnode_get(vfs_mnt_id _mntid, vfs_vnode_id _vnid, struct _vnode **_outv);

@@ -990,6 +990,38 @@ vfs_page_cache_mark_dirty(vfs_page_cache *pc){
 }
 
 /**
+   ファイル(v-node)のページキャッシュプールを割り当てる
+   @param[in] bdev  ブロックデバイスエントリ
+   @retval  0       正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -EBUSY  ページキャッシュプールが既に割り当てられている
+   @retval -ENOMEM メモリ不足
+   @note ブロックデバイス登録処理から呼び出されるページキャッシュ機構の内部のIF関数であるため,
+   登録前のブロックデバイスエントリを引数にとる
+ */
+int
+vfs_vnode_page_cache_pool_alloc(vnode *v){
+	int                    rc;
+	vfs_page_cache_pool *pool;
+
+	/* ページキャッシュプールを割り当てる */
+	rc = alloc_page_cache_pool(&pool);
+	if ( rc != 0 )
+		goto error_out;
+
+	kassert( pool->pcp_bdevid == VFS_VSTAT_INVALID_DEVID );
+
+	/* ページキャッシュプールをセットする */
+	v->v_pcp = pool;
+
+	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
    ブロックデバイスのページキャッシュプールを割り当てる
    @param[in] bdev  ブロックデバイスエントリ
    @retval  0       正常終了

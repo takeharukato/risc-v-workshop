@@ -703,6 +703,8 @@ init_vnode(vnode *v){
 	v->v_locked_by = NULL;               /*  ロック獲得スレッドを初期化                 */
 	v->v_mode = VFS_VNODE_MODE_NONE;     /*  ファイルモードの初期化                     */
 	v->v_flags = VFS_VFLAGS_FREE;        /*  未使用v-nodeとして初期化                   */
+	v->v_pcp = NULL;                     /*  ページキャッシュプール未割当               */
+
 	mark_vnode_busy_nolock(v);           /*  使用中に設定する */
 	/*  ファイルシステム固有v-node未読み込み    */
 	unmark_vnode_flag_nolock(v, VFS_VFLAGS_VALID);
@@ -722,6 +724,7 @@ init_vnode(vnode *v){
 static vnode *
 alloc_new_vnode(fs_mount *mnt){
 	int           rc;
+	bool         res;
 	vnode *new_vnode;
 
 	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
@@ -731,9 +734,19 @@ alloc_new_vnode(fs_mount *mnt){
 
 	init_vnode(new_vnode);   /* v-nodeを初期化  */
 
+	/* ページキャッシュプールの割り当て
+	 */
+	rc = vfs_vnode_page_cache_pool_alloc(new_vnode);
+	if ( rc != 0 )
+		goto free_vnode_out;  /* ページキャッシュプール割り当て失敗 */
+
 	new_vnode->v_mount = mnt;  /* マウントポイント情報を設定 */
 
 	return new_vnode;  /* 獲得したv-nodeを返却 */
+
+free_vnode_out:
+	res = vfs_vnode_ref_dec(new_vnode);  /* v-nodeの参照を減算し, v-nodeを解放する */
+	kassert( res );
 
 error_out:
 	return NULL;
@@ -746,11 +759,10 @@ error_out:
 static void
 release_vnode(vnode *v){
 
-	/*
-	 * TODO:
-	 * vm_cache(v-nodeに関連付けられたデータページキャッシュキュー)機能実装時に
-	 * 本関数の最初でvm_cacheを開放すること
+	/* v-nodeに関連付けられたページキャッシュプールを開放
 	 */
+	vfs_page_cache_pool_ref_dec(v->v_pcp);
+	v->v_pcp = NULL;  /* ページキャッシュプールへのリンクを削除 */
 
 	/*
 	 * ファイルシステム固有のremove/putvnode操作を呼出し

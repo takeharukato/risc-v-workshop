@@ -98,7 +98,7 @@ typedef struct _vfs_page_cache_pool{
 	/**  ページサイズ(単位:バイト) */
 	size_t                                         pcp_pgsiz;
 	/**  ページキャッシュツリー    */
-	RB_HEAD(_vfs_pcache_tree, _vfs_page_cache)     pcp_head;
+	RB_HEAD(_vfs_pcache_tree, _vfs_page_cache)      pcp_head;
 	/**  LRUキャッシュ (二次記憶との一貫性がとれているページ)     */
 	struct _queue                              pcp_clean_lru;
 	/**  LRUキャッシュ (二次記憶よりキャッシュの方が新しいページ) */
