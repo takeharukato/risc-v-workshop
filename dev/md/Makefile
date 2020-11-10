@@ -5,7 +5,7 @@
 top=../..
 include ${top}/Makefile.inc
 
-objects=md.o
+objects= #md.o
 
 ifneq ($(CONFIG_HAL),y)
 objects +=

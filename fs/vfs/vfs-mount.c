@@ -724,8 +724,10 @@ init_vnode(vnode *v){
 static vnode *
 alloc_new_vnode(fs_mount *mnt){
 	int           rc;
-	bool         res;
 	vnode *new_vnode;
+#if 0 /* TODO: ページプール作成時に有効化 */
+	bool         res;
+#endif
 
 	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
 	    (void **)&new_vnode);
@@ -734,19 +736,23 @@ alloc_new_vnode(fs_mount *mnt){
 
 	init_vnode(new_vnode);   /* v-nodeを初期化  */
 
+#if 0 /* TODO: ページプール作成時に有効化 */
 	/* ページキャッシュプールの割り当て
 	 */
 	rc = vfs_vnode_page_cache_pool_alloc(new_vnode);
 	if ( rc != 0 )
 		goto free_vnode_out;  /* ページキャッシュプール割り当て失敗 */
+#endif
 
 	new_vnode->v_mount = mnt;  /* マウントポイント情報を設定 */
 
 	return new_vnode;  /* 獲得したv-nodeを返却 */
 
+#if 0 /* TODO: ページプール作成時に有効化 */
 free_vnode_out:
 	res = vfs_vnode_ref_dec(new_vnode);  /* v-nodeの参照を減算し, v-nodeを解放する */
 	kassert( res );
+#endif
 
 error_out:
 	return NULL;
@@ -761,9 +767,10 @@ release_vnode(vnode *v){
 
 	/* v-nodeに関連付けられたページキャッシュプールを開放
 	 */
+#if 0 /* TODO: ページプール作成時に有効化 */
 	vfs_page_cache_pool_ref_dec(v->v_pcp);
 	v->v_pcp = NULL;  /* ページキャッシュプールへのリンクを削除 */
-
+#endif
 	/*
 	 * ファイルシステム固有のremove/putvnode操作を呼出し
 	 *  実ファイルシステム上のv-node(disk I-node)を削除する場合

@@ -44,7 +44,9 @@ kern_common_tests(void){
 	tst_cpuinfo();
 	tst_vmmap();
 	tst_pcache();
+#if 0 /* TODO: ページプール作成時に有効化 */
 	tst_bdev();
+#endif
 	tst_proc();
 #if defined(CONFIG_HAL)
 	tst_rv64cycle_regs();
@@ -99,11 +101,11 @@ kern_init(void) {
 	 */
 	vfs_init();   /* 仮想ファイルシステムを初期化する */
 	pagecache_init();  /* ページキャッシュ機構を初期化する */
-
+#if 0 /* TODO: ページプール作成時に有効化 */
 	bdev_init();  /* ブロックデバイスの初期化 */
 	bio_init();   /* BIOリクエスト機構の初期化 */
 	block_buffer_init(); /* ブロックバッファ機構の初期化 */
-
+#endif
 	proc_init();  /* プロセス管理情報を初期化する */
 	thr_init();   /* スレッド管理機構を初期化する */
 	sched_init(); /* スケジューラを初期化する */
@@ -119,7 +121,10 @@ kern_init(void) {
 	/*
 	 * デバイスの初期化
 	 */
+
+#if 0 /* TODO: ページプール作成時に有効化 */
 	md_init();    /* メモリブロックデバイスの初期化 */
+#endif
 	fsimg_load(); /* ファイルシステムイメージをページキャッシュに読み込む */
 
 	hal_platform_init();  /* アーキ固有のプラットフォーム初期化処理 */

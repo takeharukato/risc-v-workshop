@@ -11,9 +11,13 @@
 
 #include <kern/page-macros.h>
 #include <klib/misc.h>
-#include <dev/bdev.h>
 
-#define MD_SECTOR_SIZE         BDEV_MIN_SECSIZ /**< 最小セクタ長(512バイト) */
+#if 0 /* TODO: ページプール作成時に有効化 */
+#define MD_SECTOR_SIZE         BDEV_MIN_SECSIZ    /**< 最小セクタ長(512バイト) */
+#else
+#define MD_SECTOR_SIZE         (512)           /**< 最小セクタ長(512バイト) */
+#endif
+
 #define MD_BLOCK_SIZE          PAGE_SIZE       /**< ページサイズ            */
 
 #define MD_DEV_MAJOR_NR        (2)             /**< メジャー番号            */
@@ -23,8 +27,8 @@
 #include <klib/freestanding.h>
 #include <kern/kern-types.h>
 
+#include <kern/spinlock.h>
 #include <kern/vfs-if.h>
-#include <kern/dev-if.h>
 
 /**
    メモリブロックデバイス固有情報
