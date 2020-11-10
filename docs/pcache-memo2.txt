@@ -98,7 +98,7 @@ typedef struct _vfs_page_cache_pool_db{
 
 1.2.2. ページキャッシュプール
 
-[2] インターフェース
+[2] ページキャッシュインターフェース
 
 2.1. bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
      ページキャッシュへの参照を得る
@@ -112,7 +112,8 @@ typedef struct _vfs_page_cache_pool_db{
      ページキャッシュのページサイズを獲得する
 2.6. int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
      ページキャッシュのデータ部のアドレスを得る
-int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
+
+
 
 int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
 
@@ -133,3 +134,6 @@ int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
 int vfs_page_cache_put(struct _vfs_page_cache *_pc);
 int vfs_page_cache_rw(struct _vfs_page_cache *_pc);
+
+
+2.7. int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
