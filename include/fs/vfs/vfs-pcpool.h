@@ -76,9 +76,11 @@ bool vfs_page_cache_pool_ref_inc(struct _vfs_page_cache_pool *_pool);
 bool vfs_page_cache_pool_ref_dec(struct _vfs_page_cache_pool *_pool);
 int vfs_page_cache_pool_shrink(struct _vfs_page_cache_pool *_pool,
     singned_cnt_type _reclaim_nr, singned_cnt_type *_reclaimedp);
+int vfs_page_cache_invalidate(struct _vfs_page_cache *_pc);
 int vfs_page_cache_pool_pagesize_get(struct _vfs_page_cache_pool *_pool, size_t *_pagesizep);
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
-
+void vfs_init_page_cache_pool(void);
+void vfs_finalize_page_cache_pool(void);
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PCPOOL_H  */

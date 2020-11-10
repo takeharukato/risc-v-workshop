@@ -127,8 +127,6 @@ int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
 int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
 int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
 
-int vfs_page_cache_invalidate(struct _vfs_page_cache *_pc);
-
 int vfs_page_cache_put(struct _vfs_page_cache *_pc);
 
 void vfs_init_pagecache(void);

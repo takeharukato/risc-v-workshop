@@ -3,7 +3,7 @@
 /*  Yet Another Teachable Operating System                            */
 /*  Copyright 2016 Takeharu KATO                                      */
 /*                                                                    */
-/*  page I/O (page cache) routines                                    */
+/*  page I/O cache (page cache) routines                              */
 /*                                                                    */
 /**********************************************************************/
 
@@ -403,71 +403,6 @@ error_out:
  */
 
 /**
-   ページキャッシュを無効にする
-   @param[in] pc 操作対象のページキャッシュ(使用権獲得済みのページキャッシュ)
-   @retval    0       正常終了
-   @retval   -ENOENT  ページキャッシュが解放中だった
- */
-int
-vfs_page_cache_invalidate(vfs_page_cache *pc){
-	int   rc;
-	bool res;
-
-	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 解放中のページキャッシュだった */
-		goto error_out;
-	}
-
-	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* ページキャッシュの使用権を得ていること */
-
-	/* ページキャッシュプールの参照を獲得する */
-	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
-	if ( !res ) {
-
-		rc = -ENOENT;  /* 解放中のページキャッシュプールだった */
-		goto unref_pc_out;
-	}
-
-#if 0   /* TODO: ページキャッシュプールのIFに置き換え */
-	/* ページキャッシュプールのmutexロックを獲得する */
-	rc = mutex_lock(&pc->pc_pcplink->pcp_mtx);
-	if ( rc != 0 )
-		goto unref_pcp_out;
-
-
-	rc = invalidate_page_cache_common(pc);  /* ページキャッシュを無効化する */
-	if ( rc != 0 )
-		goto unlock_pcp_out;
-
-	/* ページキャッシュプールのロックを解放する */
-	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
-#endif
-
-	/* ページキャッシュプールへの参照を解放 */
-	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
-
-	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
-
-	return 0;
-
-unlock_pcp_out:
-	/* ページキャッシュプールのロックを解放する */
-	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
-
-unref_pcp_out:
-	/* ページキャッシュプールへの参照を解放 */
-	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
-
-unref_pc_out:
-	vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
-
-error_out:
-	return rc;
-}
-
-/**
    ページキャッシュへの参照を加算する
    @param[in] pc ページキャッシュ
    @retval    真 ページキャッシュの参照を獲得できた
@@ -546,20 +481,27 @@ vfs_page_cache_devid_get(vfs_page_cache *pc, dev_id *devidp){
 
 	kassert( pc->pc_pcplink != NULL ); /* ページキャッシュプールにつながっている */
 
+	res = vfs_page_cache_pool_ref_inc(pool); /* ページキャッシュプールの参照を獲得する */
+	kassert(res);  /* ページキャッシュが空ではないので参照獲得可能 */
+
 	if ( !VFS_PCACHE_IS_DEVICE_PAGE(pc) ) {
 
 		rc = -ENODEV; /* ブロックデバイス上のページキャッシュではない */
-		goto unref_pc_out;
+		goto unref_pcp_out;
 	}
 
 	if ( devidp != NULL )
 		*devidp = pc->pc_pcplink->pcp_bdevid; /* デバイスIDを返却する */
 
+	vfs_page_cache_pool_ref_dec(pool); /* ページキャッシュプールの参照を減算する */
+
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 	return 0;
 
-unref_pc_out:
+unref_pcp_out:
+	vfs_page_cache_pool_ref_dec(pool); /* ページキャッシュプールの参照を減算する */
+
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 error_out:
