@@ -18,6 +18,7 @@
 
 struct _vfs_file_stat;
 struct _vfs_page_cache;
+struct _vfs_page_cache_pool;
 
 /**
    ファイルシステムオペレーション
@@ -74,6 +75,15 @@ typedef struct _fs_calls {
 	    vfs_vstat_mask _stat_mask, struct _vfs_file_stat *_statp);
 	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_vnode_id _fs_vnid,
 	    vfs_fs_vnode _fs_vnode, struct _vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
+	int (*fs_page_get)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+			   vfs_fs_vnode _fs_vnode, off_t _offset, struct _vfs_page_cache **_pc,
+			    vfs_file_private _file_priv);
+	int (*fs_page_prepare_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+			   vfs_fs_vnode _fs_vnode, off_t _offset,
+			     struct _vfs_page_cache *_pc, vfs_file_private _file_priv);
+	int (*fs_page_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+			   vfs_fs_vnode _fs_vnode, off_t _offset,
+			     struct _vfs_page_cache *_pc, vfs_file_private _file_priv);
 }fs_calls;
 
 /**
