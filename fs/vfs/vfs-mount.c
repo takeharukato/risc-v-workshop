@@ -725,9 +725,7 @@ static vnode *
 alloc_new_vnode(fs_mount *mnt){
 	int           rc;
 	vnode *new_vnode;
-#if 0 /* TODO: ページプール作成時に有効化 */
 	bool         res;
-#endif
 
 	rc = slab_kmem_cache_alloc(&vnode_cache, KMALLOC_NORMAL,
 	    (void **)&new_vnode);
@@ -736,23 +734,19 @@ alloc_new_vnode(fs_mount *mnt){
 
 	init_vnode(new_vnode);   /* v-nodeを初期化  */
 
-#if 0 /* TODO: ページプール作成時に有効化 */
 	/* ページキャッシュプールの割り当て
 	 */
 	rc = vfs_vnode_page_cache_pool_alloc(new_vnode);
 	if ( rc != 0 )
 		goto free_vnode_out;  /* ページキャッシュプール割り当て失敗 */
-#endif
 
 	new_vnode->v_mount = mnt;  /* マウントポイント情報を設定 */
 
 	return new_vnode;  /* 獲得したv-nodeを返却 */
 
-#if 0 /* TODO: ページプール作成時に有効化 */
 free_vnode_out:
 	res = vfs_vnode_ref_dec(new_vnode);  /* v-nodeの参照を減算し, v-nodeを解放する */
 	kassert( res );
-#endif
 
 error_out:
 	return NULL;
@@ -764,13 +758,23 @@ error_out:
  */
 static void
 release_vnode(vnode *v){
+	int   rc;
+	bool res;
 
-	/* v-nodeに関連付けられたページキャッシュプールを開放
+	/*
+	 * v-nodeに関連付けられたページキャッシュプールを開放
 	 */
-#if 0 /* TODO: ページプール作成時に有効化 */
-	vfs_page_cache_pool_ref_dec(v->v_pcp);
+	/* ページキャッシュを強制解放する */
+	rc = vfs_page_cache_pool_shrink(v->v_pcp, PCPOOL_INVALIDATE_ALL, NULL);
+	kassert( rc == 0 );
+
+	/* ページキャッシュプールを解放する */
+	res = vfs_page_cache_pool_ref_dec(v->v_pcp);
+	kassert( res ); /* v-node解放に伴って解放されなければならない */
+
 	v->v_pcp = NULL;  /* ページキャッシュプールへのリンクを削除 */
-#endif
+
+
 	/*
 	 * ファイルシステム固有のremove/putvnode操作を呼出し
 	 *  実ファイルシステム上のv-node(disk I-node)を削除する場合
@@ -790,6 +794,8 @@ release_vnode(vnode *v){
 		del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
 
 	v->v_mount = NULL;
+
+
 	/*
 	 *  v-nodeを解放する
 	 */
