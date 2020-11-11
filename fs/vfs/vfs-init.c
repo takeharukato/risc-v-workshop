@@ -30,8 +30,10 @@ vfs_init(void){
 	/* 初期化順序に制限はないが, ブロックデバイスのページキャッシュ中に
 	 * ブロックバッファを含むため,ブロックバッファの初期化を先に初期化する
 	 */
-	block_buffer_init();          /* ブロックバッファの初期化 */
-
-	vfs_init_pageio();            /* ページI/O機構の初期化            */
+	block_buffer_init();          /* ブロックバッファの初期化       */
+	vfs_init_pageio();            /* ページI/O機構の初期化          */
 #endif
+	vfs_pagecache_init();         /* ページキャッシュの初期化       */
+	vfs_page_cache_pool_init();   /* ページキャッシュプールの初期化 */
+
 }

@@ -80,7 +80,8 @@ int vfs_page_cache_invalidate(struct _vfs_page_cache *_pc);
 int vfs_page_cache_pool_pagesize_get(struct _vfs_page_cache_pool *_pool, size_t *_pagesizep);
 int vfs_page_cache_get(struct _vfs_page_cache_pool *_pool, off_t _offset,
     struct _vfs_page_cache **_pcp);
-void vfs_init_page_cache_pool(void);
-void vfs_finalize_page_cache_pool(void);
+int vfs_page_cache_put(struct _vfs_page_cache *_pc);
+void vfs_page_cache_pool_init(void);
+void vfs_page_cache_pool_finalize(void);
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PCPOOL_H  */

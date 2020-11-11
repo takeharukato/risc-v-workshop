@@ -119,6 +119,7 @@ typedef struct _vfs_page_cache{
 #define VFS_PCACHE_BUFSIZE_VALID(_bufsiz, _pgsiz)			\
 	( ( !addr_not_aligned((_pgsiz), (_bufsiz)) ) && ( (_pgsiz) >= (_bufsiz) ) )
 
+int vfs_page_cache_alloc(struct _vfs_page_cache **_pcp);
 bool vfs_page_cache_ref_inc(struct _vfs_page_cache *_pc);
 bool vfs_page_cache_ref_dec(struct _vfs_page_cache *_pc);
 int vfs_page_cache_mark_clean(struct _vfs_page_cache *_pc);
@@ -127,9 +128,7 @@ int vfs_page_cache_devid_get(struct _vfs_page_cache *_pc, dev_id *_devidp);
 int vfs_page_cache_pagesize_get(struct _vfs_page_cache *_pc, size_t *_sizep);
 int vfs_page_cache_refer_data(struct _vfs_page_cache *_pc, void **_datap);
 
-int vfs_page_cache_put(struct _vfs_page_cache *_pc);
-
-void vfs_init_pagecache(void);
-void vfs_finalize_pagecache(void);
+void vfs_pagecache_init(void);
+void vfs_pagecache_finalize(void);
 #endif  /* !ASM_FILE */
 #endif  /*  _FS_VFS_VFS_PCACHE_H  */
