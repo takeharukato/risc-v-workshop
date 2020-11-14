@@ -38,6 +38,7 @@
 
 typedef uint32_t vfs_pcache_pool_state;   /**< ページキャッシュプールの状態 */
 
+struct _vnode;
 struct _vfs_page_cache;
 
 /**
@@ -50,8 +51,8 @@ typedef struct _vfs_page_cache_pool{
 	refcounter                                      pcp_refs;
 	/** ページキャッシュプールの状態 */
         vfs_pcache_pool_state                          pcp_state;
-	/** ブロックデバイスのデバイスID */
-	dev_id                                        pcp_bdevid;
+	/** ページキャッシュプールに対応するv-node */
+	struct _vnode                                 *pcp_vnode;
 	/**  ページサイズ(単位:バイト) */
 	size_t                                         pcp_pgsiz;
 	/**  ページキャッシュツリー    */

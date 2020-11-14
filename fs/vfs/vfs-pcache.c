@@ -245,8 +245,9 @@ vfs_page_cache_mark_dirty(vfs_page_cache *pc){
  */
 int
 vfs_page_cache_devid_get(vfs_page_cache *pc, dev_id *devidp){
-	int       rc;
-	bool     res;
+	int           rc;
+	bool         res;
+	vfs_file_stat st;
 
 	res = vfs_page_cache_ref_inc(pc);  /* ページキャッシュへの参照を得る */
 	if ( !res ) {
@@ -267,14 +268,36 @@ vfs_page_cache_devid_get(vfs_page_cache *pc, dev_id *devidp){
 		goto unref_pcp_out;
 	}
 
-	if ( devidp != NULL )
-		*devidp = pc->pc_pcplink->pcp_bdevid; /* デバイスIDを返却する */
+	if ( devidp != NULL ) { /* ブロックデバイスのデバイスIDを返却する */
 
-	vfs_page_cache_pool_ref_dec(pc->pc_pcplink); /* ページキャッシュプールの参照を減算する */
+		kassert( pc->pc_pcplink->pcp_vnode != NULL );
+		res = vfs_vnode_ref_inc(pc->pc_pcplink->pcp_vnode);
+		kassert(res);  /* ページキャッシュプールが存在するので参照獲得可能 */
+
+		rc = vfs_getattr(pc->pc_pcplink->pcp_vnode, VFS_VSTAT_MASK_RDEV, &st);
+		if ( rc != 0 )
+			goto unref_vnode_out;
+
+		if ( st.st_rdev == VFS_VSTAT_INVALID_DEVID ) {
+
+			rc = -ENODEV; /* デバイスのページプールではない */
+			goto unref_vnode_out;
+		}
+
+		*devidp = st.st_rdev; /* デバイスIDを返却する */
+
+		vfs_vnode_ref_dec(pc->pc_pcplink->pcp_vnode);  /* v-nodeへの参照を解放する */
+	}
+
+	/* ページキャッシュプールの参照を減算する */
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
 
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 	return 0;
+
+unref_vnode_out:
+	vfs_vnode_ref_dec(pc->pc_pcplink->pcp_vnode); /* v-nodeへの参照を解放する */
 
 unref_pcp_out:
 	vfs_page_cache_pool_ref_dec(pc->pc_pcplink); /* ページキャッシュプールの参照を減算する */
@@ -350,6 +373,119 @@ vfs_page_cache_refer_data(vfs_page_cache *pc, void **datap){
 	vfs_page_cache_ref_dec(pc);  /* ページキャッシュへの参照を返却する */
 
 	return 0;
+
+error_out:
+	return rc;
+}
+
+/**
+   ブロックデバイス上のページキャッシュの読み込み/書き込みを行う
+   @param[in] pc ページキャッシュ
+   @retval  0 正常終了
+   @retval -EINVAL デバイスIDが不正
+   @retval -ENODEV 指定されたデバイスが見つからなかった
+   @retval -ENOENT  ページキャッシュが解放中だった
+ */
+int
+vfs_page_cache_sync(vfs_page_cache *pc){
+	int              rc;
+	bool            res;
+	size_t        pgsiz;
+	vnode           *vn;
+
+	res = vfs_page_cache_ref_inc(pc);  /* 操作用にページキャッシュの参照を獲得 */
+	if ( !res ) {
+
+		rc = -ENOENT;
+		goto error_out;
+	}
+
+	kassert( VFS_PCACHE_IS_BUSY(pc) );  /* 使用権があることを確認 */
+
+	/* 二次記憶との一貫性が保たれている場合はI/Oをスキップする */
+	if ( VFS_PCACHE_IS_VALID(pc) && !VFS_PCACHE_IS_DIRTY(pc) )
+		goto io_finished;
+
+	kassert( pc->pc_pcplink != NULL );
+	res = vfs_page_cache_pool_ref_inc(pc->pc_pcplink);
+	kassert(res);  /* ページキャッシュが空ではないので参照獲得可能 */
+
+	rc = vfs_page_cache_pool_pagesize_get(pc->pc_pcplink, &pgsiz);
+	kassert( rc == 0 );  /* ページサイズ獲得可能 */
+
+	kassert( pc->pc_pcplink->pcp_vnode != NULL );
+	res = vfs_vnode_ref_inc(pc->pc_pcplink->pcp_vnode);
+	kassert(res);  /* ページキャッシュプールが存在するので参照獲得可能 */
+
+	vn = pc->pc_pcplink->pcp_vnode; /* ページプールのv-node */
+
+	kassert( vn->v_mount != NULL );
+	kassert( vn->v_mount->m_fs != NULL );
+
+	/*
+	 * ページの読み書きを実施
+	 */
+	if ( VFS_PCACHE_IS_DIRTY(pc) ) {
+
+		/*
+		 * ページキャッシュを書き戻す
+		 */
+
+		/* 必要に応じて書き戻すための前処理を実行
+		 */
+		if ( vn->v_mount->m_fs->c_calls->fs_page_write != NULL ){
+
+			rc = vn->v_mount->m_fs->c_calls->fs_page_prepare_write(
+			vn->v_mount->m_fs_super,
+			vn->v_id,
+			vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
+			if ( rc != 0 )
+				goto unref_vnode_out;
+
+		}
+
+		if ( vn->v_mount->m_fs->c_calls->fs_page_write == NULL )
+			goto io_finished;
+
+		/* ページを書き戻す
+		 */
+		rc = vn->v_mount->m_fs->c_calls->fs_page_write(vn->v_mount->m_fs_super,
+		    vn->v_id, vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
+		if ( rc != 0 )
+			goto unref_vnode_out;
+
+	} else if ( !VFS_PCACHE_IS_VALID(pc) ) {
+
+		if ( vn->v_mount->m_fs->c_calls->fs_page_read == NULL )
+			goto io_finished;
+
+		/* ページを読み込む
+		 */
+		rc = vn->v_mount->m_fs->c_calls->fs_page_read(vn->v_mount->m_fs_super,
+		    vn->v_id, vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
+		if ( rc != 0 )
+			goto unref_vnode_out;
+
+	}
+
+	/* I/O成功に伴ってページの状態をCLEANに遷移する */
+	vfs_page_cache_mark_clean(pc);
+
+io_finished:
+	vfs_vnode_ref_dec(pc->pc_pcplink->pcp_vnode);
+
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
+
+	return 0;
+
+unref_vnode_out:
+	vfs_vnode_ref_dec(pc->pc_pcplink->pcp_vnode);
+
+	vfs_page_cache_pool_ref_dec(pc->pc_pcplink);
+
+	vfs_page_cache_ref_dec(pc);  /* ページキャッシュの参照を解放 */
 
 error_out:
 	return rc;

@@ -758,11 +758,22 @@ error_out:
  */
 static void
 release_vnode(vnode *v){
+	int   rc;
+	bool res;
 
-	/* v-nodeに関連付けられたページキャッシュプールを開放
+	/*
+	 * v-nodeに関連付けられたページキャッシュプールを開放
 	 */
-	vfs_page_cache_pool_ref_dec(v->v_pcp);
+	/* ページキャッシュを強制解放する */
+	rc = vfs_page_cache_pool_shrink(v->v_pcp, PCPOOL_INVALIDATE_ALL, NULL);
+	kassert( rc == 0 );
+
+	/* ページキャッシュプールを解放する */
+	res = vfs_page_cache_pool_ref_dec(v->v_pcp);
+	kassert( res ); /* v-node解放に伴って解放されなければならない */
+
 	v->v_pcp = NULL;  /* ページキャッシュプールへのリンクを削除 */
+
 
 	/*
 	 * ファイルシステム固有のremove/putvnode操作を呼出し
@@ -783,6 +794,8 @@ release_vnode(vnode *v){
 		del_vnode_from_mount_nolock(v);  /* v-nodeをマウントポイント情報から削除 */
 
 	v->v_mount = NULL;
+
+
 	/*
 	 *  v-nodeを解放する
 	 */

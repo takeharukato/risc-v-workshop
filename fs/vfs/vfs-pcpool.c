@@ -56,7 +56,7 @@ init_page_cache_pool(vfs_page_cache_pool *pool){
 	mutex_init(&pool->pcp_mtx);  /* ミューテクスの初期化 */
 	refcnt_init(&pool->pcp_refs); /* 参照カウンタの初期化 */
 	pool->pcp_state = PCPOOL_DORMANT; /* プールの状態初期化 */
-	pool->pcp_bdevid = VFS_VSTAT_INVALID_DEVID;  /* ブロックデバイスIDの初期化 */
+	pool->pcp_vnode = NULL;  /* v-nodeの初期化 */
 	pool->pcp_pgsiz = PAGE_SIZE; /* ページサイズの設定 */
 	RB_INIT(&pool->pcp_head);  /* ページキャッシュツリーの初期化 */
 	queue_init(&pool->pcp_clean_lru);  /* CLEAN LRUの初期化 */
@@ -101,8 +101,8 @@ free_page_cache_pool(vfs_page_cache_pool *pool){
 	kassert( RB_EMPTY(&pool->pcp_head) );  /* プールが空であることを確認 */
 
 	/* ブロックデバイスの設定を解除 */
-	pool->pcp_bdevid = VFS_VSTAT_INVALID_DEVID;
 	pool->pcp_state = PCPOOL_DELETE; /* プール削除中 */
+	pool->pcp_vnode = NULL; /* v-nodeへのリンクを取り除く */
 
 	/* LRUが空であることを確認
 	 */
@@ -147,12 +147,9 @@ invalidate_page_cache_common(vfs_page_cache *pc){
 	/* ページキャッシュの方が新しければページキャッシュを書き戻す */
 	if ( VFS_PCACHE_IS_VALID(pc) && VFS_PCACHE_IS_DIRTY(pc) ) {
 
-#if 0 /* TODO: bio実装後 */
-		rc = vfs_page_cache_rw(pc);  /* 二次記憶と同期する */
-		if ( rc != 0 )
-			kprintf("Error vfs pageio: devid: 0x%qx page cache: %p "
-			    "I/O fail rc=%d\n", pc->pc_pcplink->pcp_bdevid, pc, rc);
-#endif
+		rc = vfs_page_cache_sync(pc);  /* 二次記憶と同期する */
+		if ( rc == -EIO )
+			kprintf("Error vfs pageio: page cache: %p I/O fail\n", pc);
 	}
 
 	/* ページキャッシュプールから取り外す
@@ -296,15 +293,6 @@ mark_page_cache_busy(vfs_page_cache *pc){
 			queue_del(&pc->pc_pcplink->pcp_dirty_lru, &pc->pc_lru_link);
 	}
 
-	if ( VFS_PCACHE_IS_VALID(pc) )
-		goto success;  /* ページキャッシュ読み込み済み */
-
-	/* ブロックデバイスのキャッシュでない場合, 状態を読み込み済みに設定する
-	 */
-	if ( pc->pc_pcplink->pcp_bdevid == VFS_VSTAT_INVALID_DEVID )
-		pc->pc_state |= VFS_PCACHE_CLEAN;  /* 読み込み済みページに設定 */
-
-success:
 	/* ページキャッシュプールのロックを解放する */
 	mutex_unlock(&pc->pc_pcplink->pcp_mtx);
 
@@ -733,54 +721,15 @@ vfs_vnode_page_cache_pool_alloc(vnode *v){
 	if ( rc != 0 )
 		goto error_out;
 
-	kassert( pool->pcp_bdevid == VFS_VSTAT_INVALID_DEVID );
-
 	/* ページキャッシュプールをセットする */
 	v->v_pcp = pool;
+	pool->pcp_vnode = v;
 
 	return 0;
 
 error_out:
 	return rc;
 }
-
-#if 0 /* TODO: bdev実装後 */
-/**
-   ブロックデバイスのページキャッシュプールを割り当てる
-   @param[in] bdev  ブロックデバイスエントリ
-   @retval  0       正常終了
-   @retval -EINVAL デバイスIDが不正
-   @retval -ENODEV 指定されたデバイスが見つからなかった
-   @retval -EBUSY  ページキャッシュプールが既に割り当てられている
-   @retval -ENOMEM メモリ不足
-   @note ブロックデバイス登録処理から呼び出されるページキャッシュ機構の内部のIF関数であるため,
-   登録前のブロックデバイスエントリを引数にとる
- */
-int
-vfs_dev_page_cache_pool_alloc(bdev_entry *bdev){
-	int                    rc;
-	bool                  res;
-	vfs_page_cache_pool *pool;
-
-	/* ページキャッシュプールを割り当てる */
-	rc = alloc_page_cache_pool(&pool);
-	if ( rc != 0 )
-		goto error_out;
-
-	/* ページキャッシュプールをセットする */
-	rc = bdev_page_cache_pool_set(bdev, pool);
-	if ( rc != 0 ) {
-
-		res = vfs_page_cache_pool_ref_dec(pool); /* 参照を解放し, プールを解放する */
-		kassert( res );  /* 最終参照者であるはず */
-	}
-
-	return 0;
-
-error_out:
-	return rc;
-}
-#endif
 
 /**
    ページキャッシュプールからページキャッシュを検索し参照を得る
@@ -847,6 +796,16 @@ found:
 
 		vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
 		goto error_out;
+	}
+
+	if ( !VFS_PCACHE_IS_VALID(pc) ) {  /* 未読み込みのページの場合 */
+
+		rc = vfs_page_cache_sync(pc);  /* ブロックデバイスから読み込む */
+		if ( rc != 0 ) {
+
+			vfs_page_cache_ref_dec(pc);  /* スレッドからの参照を減算 */
+			goto error_out;
+		}
 	}
 
 	*pcp = pc;  /* ページキャッシュを返却 */
