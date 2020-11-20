@@ -438,10 +438,9 @@ vfs_page_cache_sync(vfs_page_cache *pc){
 			rc = vn->v_mount->m_fs->c_calls->fs_page_prepare_write(
 			vn->v_mount->m_fs_super,
 			vn->v_id,
-			vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
-			if ( rc != 0 )
+			vn->v_fs_vnode, pc->pc_data, pc->pc_offset, pgsiz);
+			if ( 0 > rc )
 				goto unref_vnode_out;
-
 		}
 
 		if ( vn->v_mount->m_fs->c_calls->fs_page_write == NULL )
@@ -450,8 +449,8 @@ vfs_page_cache_sync(vfs_page_cache *pc){
 		/* ページを書き戻す
 		 */
 		rc = vn->v_mount->m_fs->c_calls->fs_page_write(vn->v_mount->m_fs_super,
-		    vn->v_id, vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
-		if ( rc != 0 )
+		    vn->v_id, vn->v_fs_vnode, pc->pc_data, pc->pc_offset, pgsiz);
+		if ( 0 > rc )
 			goto unref_vnode_out;
 
 	} else if ( !VFS_PCACHE_IS_VALID(pc) ) {
@@ -462,10 +461,9 @@ vfs_page_cache_sync(vfs_page_cache *pc){
 		/* ページを読み込む
 		 */
 		rc = vn->v_mount->m_fs->c_calls->fs_page_read(vn->v_mount->m_fs_super,
-		    vn->v_id, vn->v_fs_vnode, pc->pc_offset, pc->pc_data, pgsiz);
-		if ( rc != 0 )
+		    vn->v_id, vn->v_fs_vnode, pc->pc_data, pc->pc_offset, pgsiz);
+		if ( 0 > rc )
 			goto unref_vnode_out;
-
 	}
 
 	/* I/O成功に伴ってページの状態をCLEANに遷移する */

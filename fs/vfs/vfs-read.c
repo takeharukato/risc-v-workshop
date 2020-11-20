@@ -31,7 +31,7 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 
 	if ( 0 > len ) {
 
-		rc =  -EINVAL; /* 書き込み長が負 */
+		rc = -EINVAL; /* 書き込み長が負 */
 		goto error_out;
 	}
 

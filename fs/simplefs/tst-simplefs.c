@@ -824,6 +824,7 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 	char   buf[BUF_SIZE];
 	ssize_t     rw_bytes;
 	ssize_t        nread;
+	vfs_page_cache  *pc;
 
 	/* createによるディレクトリ作成 (エラー)
 	 */
@@ -970,6 +971,16 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
+	/* ページI/O
+	 */
+	rc = vfs_page_cache_get(f->f_vn->v_pcp, 1024, &pc);
+	if ( rc == 0 )
+		ktest_pass( sp );
+	else
+		ktest_fail( sp );
+	vfs_page_cache_put(pc);  /* ページキャッシュ解放 */
+
 	/* 負の読み込み長チェック (エラー)
 	 */
 	rc = vfs_read(tst_ioctx.cur, f, &buf[0], -1, &rw_bytes);
@@ -993,7 +1004,9 @@ simplefs3(struct _ktest_stats *sp, void __unused *arg){
 		ktest_pass( sp );
 	else
 		ktest_fail( sp );
+
 	vfs_fd_put(f);  /*  ファイルディスクリプタの参照を解放  */
+
 
 	/* 生成したファイルのクローズ
 	 */

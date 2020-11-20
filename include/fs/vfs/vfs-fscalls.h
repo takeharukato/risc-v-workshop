@@ -75,15 +75,12 @@ typedef struct _fs_calls {
 	    vfs_vstat_mask _stat_mask, struct _vfs_file_stat *_statp);
 	int (*fs_setattr)(vfs_fs_super _fs_super, vfs_vnode_id _fs_vnid,
 	    vfs_fs_vnode _fs_vnode, struct _vfs_file_stat *_stat, vfs_vstat_mask _stat_mask);
-	int (*fs_page_get)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, off_t _offset, struct _vfs_page_cache **_pc);
-	int (*fs_page_read)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, off_t _offset, void *_buf, size_t _len);
-	int (*fs_page_prepare_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, off_t _offset, void *_buf, size_t _len);
-	int (*fs_page_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
-	    vfs_fs_vnode _fs_vnode, off_t _offset, void *_buf,
-	    size_t _len);
+	ssize_t (*fs_page_read)(vfs_fs_super _fs_super, vfs_vnode_id _vnid,
+	    vfs_fs_vnode _fs_vnode, void *_buf, off_t _offset, size_t _len);
+	ssize_t (*fs_page_prepare_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+	    vfs_fs_vnode _fs_vnode, const void *_buf, off_t _offset, size_t _len);
+	ssize_t (*fs_page_write)(vfs_fs_super _fs_super,  vfs_vnode_id _vnid,
+	    vfs_fs_vnode _fs_vnode, const void *_buf, off_t _offset, size_t _len);
 }fs_calls;
 
 /**

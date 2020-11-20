@@ -32,6 +32,21 @@
 #define MIN(_x,_y) ( (_x) < (_y) ? (_x) : (_y) )
 
 /**
+   所定の位置から指定サイズを加算した際にデータ長をラップアラウンドしないことを確認する
+   @param[in] _size データ長(単位:バイト)
+   @param[in] _pos  初期位置(単位:バイト)
+   @param[in] _len  操作長(単位:バイト)
+   @retval 真 ラップアラウンドしない
+   @retval 偽 ラップアラウンドする
+   @note _posが0以上であることを前提とする
+ */
+#define CHECK_WRAP_AROUND(_size, _pos, _len) \
+	( ( ( (_len) >= 0 ) && ( ( (_size) > (_pos) )		\
+		&& ( (_len) > ( (_size) - (_pos) ) ) ) ) ||	\
+	    ( ( 0 > (_len) ) && ( (_pos) > ( (-1) * (_len) ) ) ) )
+
+
+/**
    符号付き整数定数
    @param[in] _v 整数値
  */

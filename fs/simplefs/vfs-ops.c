@@ -325,7 +325,7 @@ simplefs_fsync(vfs_fs_super fs_super, vfs_fs_vnode fs_vnode) {
    @param[in]  pos         ファイル内での読み込み開始オフセット(単位: バイト)
    @param[in]  len         読み込み長(単位: バイト)
    @param[in]  file_priv   ファイル記述子のプライベート情報
-   @retval     0           正常終了
+   @return 読み込み長(単位:バイト)
  */
 ssize_t
 simplefs_read(vfs_fs_super fs_super,  vfs_vnode_id vnid, vfs_fs_vnode fs_vnode,
@@ -367,7 +367,7 @@ unlock_out:
    @param[in]  pos         ファイル内での書き込み開始オフセット(単位: バイト)
    @param[in]  len         書き込み長(単位: バイト)
    @param[in]  file_priv   ファイル記述子のプライベート情報
-   @retval     0           正常終了
+   @return 書き込み長(単位:バイト)
  */
 ssize_t
 simplefs_write(vfs_fs_super fs_super, vfs_vnode_id vnid,
@@ -389,6 +389,101 @@ simplefs_write(vfs_fs_super fs_super, vfs_vnode_id vnid,
 	/* ファイルにデータを書き込む */
 	wrlen = simplefs_inode_write(super, inum,
 	    inode, priv, buf, pos, len);
+	if ( 0 > wrlen )
+		goto unlock_out;
+
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+
+	return wrlen;  /* 書き込み長を返却 */
+
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+	return wrlen;
+}
+
+/**
+   単純なファイルシステムのページを読み込む
+   @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
+   @param[in]  vnid        v-node ID
+   @param[in]  fs_vnode    操作対象ファイルのv-node情報
+   @param[in]  buf         読み込み先ページキャッシュのカーネル仮想ドレス
+   @param[in]  offset      ファイル内でのページ位置(単位:バイト)
+   @param[in]  len         読み込み長(単位:バイト)
+   @return 読み込み長(単位:バイト)
+ */
+ssize_t
+simplefs_page_read(vfs_fs_super fs_super, vfs_vnode_id vnid,
+    vfs_fs_vnode fs_vnode, void *buf, off_t offset, size_t len){
+	simplefs_inode       *inode;
+	simplefs_super_block *super;
+	simplefs_ino           inum;
+	ssize_t               rdlen;
+
+	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
+	inode = (simplefs_inode *)fs_vnode;        /* I-node情報を参照         */
+	inum = (simplefs_ino)vnid;                 /* I-node IDを参照          */
+
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+
+	/* ファイルからデータを読み込む */
+	rdlen = simplefs_inode_read(super, inum,
+	    inode, NULL, buf, offset, len);
+	if ( 0 > rdlen )
+		goto unlock_out;
+
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+
+	return rdlen;  /* 書き込み長を返却 */
+
+unlock_out:
+	mutex_unlock(&super->mtx);  /* スーパブロック情報のロックを解放 */
+	return rdlen;
+}
+
+/**
+   単純なファイルシステムのページを読み込む
+   @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
+   @param[in]  vnid        v-node ID
+   @param[in]  fs_vnode    操作対象ファイルのv-node情報
+   @param[in]  buf         書き込み元ページキャッシュのカーネル仮想ドレス
+   @param[in]  offset      ファイル内でのページ位置(単位:バイト)
+   @param[in]  len         書き込み長(単位:バイト)
+   @return     書き込み長(単位:バイト)
+ */
+ssize_t
+simplefs_page_prepare_write(vfs_fs_super fs_super, vfs_vnode_id vnid,
+    vfs_fs_vnode fs_vnode, const void *buf, off_t offset, size_t len){
+
+	return len;  /* 単純なファイルシステムでは特に何もすることはない */
+}
+
+/**
+   単純なファイルシステムのページに書き込む
+   @param[in]  fs_super    単純なファイルシステムのスーパブロック情報
+   @param[in]  vnid        v-node ID
+   @param[in]  fs_vnode    操作対象ファイルのv-node情報
+   @param[in]  buf         書き込み元ページキャッシュのカーネル仮想ドレス
+   @param[in]  offset      ファイル内でのページ位置(単位:バイト)
+   @param[in]  len         書き込み長(単位:バイト)
+   @return 書き込み長(単位:バイト)
+ */
+ssize_t
+simplefs_page_write(vfs_fs_super fs_super, vfs_vnode_id vnid,
+    vfs_fs_vnode fs_vnode, const void *buf, off_t offset, size_t len){
+	simplefs_inode       *inode;
+	simplefs_super_block *super;
+	simplefs_ino           inum;
+	ssize_t               wrlen;
+
+	super = (simplefs_super_block *)fs_super;  /* スーパブロック情報を参照 */
+	inode = (simplefs_inode *)fs_vnode;        /* I-node情報を参照         */
+	inum = (simplefs_ino)vnid;                 /* I-node IDを参照          */
+
+	mutex_lock(&super->mtx);  /* スーパブロック情報のロックを獲得 */
+
+	/* データを書き込む */
+	wrlen = simplefs_inode_write(super, inum,
+	    inode, NULL, buf, offset, len);
 	if ( 0 > wrlen )
 		goto unlock_out;
 
@@ -1154,6 +1249,9 @@ static fs_calls simplefs_fstbl_calls={
 	.fs_getdents = simplefs_getdents,
 	.fs_getattr = simplefs_getattr,
 	.fs_setattr = simplefs_setattr,
+	.fs_page_read = simplefs_page_read,
+	.fs_page_prepare_write = simplefs_page_prepare_write,
+	.fs_page_write = simplefs_page_write,
 };
 
 /**
