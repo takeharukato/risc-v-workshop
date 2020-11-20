@@ -1093,6 +1093,7 @@ unlock_out:
 static void
 free_vnodes_in_fs_mount(fs_mount *mount){
 	vnode         *v;
+	vnode    *next_v;
 
 	/* アンマウント処理中であることを確認 */
 	kassert( mount->m_mount_flags & VFS_MNT_UNMOUNTING );
@@ -1104,7 +1105,7 @@ free_vnodes_in_fs_mount(fs_mount *mount){
 	/*
 	 * ボリューム中の全v-nodeを解放する
 	 */
-	RB_FOREACH(v, _vnode_tree, &mount->m_head){
+	RB_FOREACH_SAFE(v, _vnode_tree, &mount->m_head, next_v){
 
 		if ( v == mount->m_root )  /* root v-nodeを除いて解放する */
 			continue;
@@ -1294,11 +1295,13 @@ remove_vnode(vfs_mnt_id mntid, vfs_vnode_id vnid){
 		rc = -EINVAL;
 		goto error_out;
 	}
-	rc = get_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索する */
+	rc = get_vnode(mnt, vnid, &v);  /* 指定されたv-nodeを検索し参照を得る */
 	if ( rc != 0 )
 		goto put_mount_out;
 
 	res = mark_vnode_delete_common(v); /* ディスクI-nodeの削除予約をかける */
+
+	vfs_vnode_ptr_put(v);  /*  v-nodeの参照を解放  */
 
 	vfs_fs_mount_put(mnt);       /* マウントポイントの参照解放 */
 	if ( res )
