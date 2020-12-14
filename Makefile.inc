@@ -55,7 +55,11 @@ PIC_OPT_FLAGS=-fno-pie -nopie -fno-PIC
 endif
 # No floating instructions
 ifneq ($(shell env LANG=C $(CC) -c /dev/null -mno-implicit-float 2>&1 | grep -e 'unrecognized'),)
+ifneq ($(shell env LANG=C $(CC) -c /dev/null -mgeneral-regs-only 2>&1 | grep -e 'unrecognized'),)
+NO_FLOAT_OPT_FLAGS=
+else
 NO_FLOAT_OPT_FLAGS=-mgeneral-regs-only
+endif
 else
 NO_FLOAT_OPT_FLAGS=-mno-implicit-float
 endif
