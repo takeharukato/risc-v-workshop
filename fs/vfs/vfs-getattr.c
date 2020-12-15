@@ -21,7 +21,7 @@
    @retval  0      正常終了
    @retval -ENOENT 削除中のv-nodeを指定した
    @retval -EIO    I/Oエラー
-   @retval -ENOSYS setattrをサポートしていない
+   @retval -ENOSYS getattrをサポートしていない
    @note v-nodeへの参照を呼び出し元でも獲得してから呼び出す
 */
 int
