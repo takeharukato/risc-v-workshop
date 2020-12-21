@@ -11,6 +11,7 @@
 #include <kern/kern-common.h>
 
 #include <kern/vfs-if.h>
+#include <fs/vfs/vfs-internal.h>
 
 #if 0
 /**
@@ -140,7 +141,7 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 	 * ファイルサイズを獲得する
 	 */
 	vfs_init_attr_helper(&st);
-	rc = vfs_getattr(f->f_vn, VFS_VSTAT_MASK_SIZE, &st);
+	rc = vfs_getattr(fp->f_vn, VFS_VSTAT_MASK_SIZE, &st);
 	if ( rc != 0 )
 		goto unref_vnode_out;  /* ファイルサイズ獲得に失敗した */
 
@@ -159,11 +160,11 @@ vfs_read(vfs_ioctx *ioctx, file_descriptor *fp, void *buf, ssize_t len, ssize_t 
 	for( total = 0; remains > 0; remains -= rd_bytes ){
 
 
-		rc = vfs_page_cache_get(f->f_vn->v_pcp, fp->f_pos, &pc);
+		rc = vfs_page_cache_get(fp->f_vn->v_pcp, fp->f_pos, &pc);
 		if ( rc != 0 )
 			goto return_read_byte_out;
 
-		rc = vfs_page_cache_pool_pagesize_get(f->f_vn->v_pcp, &pgsiz);
+		rc = vfs_page_cache_pool_pagesize_get(fp->f_vn->v_pcp, &pgsiz);
 		if ( rc != 0 )
 			goto put_page_cache_out;
 
