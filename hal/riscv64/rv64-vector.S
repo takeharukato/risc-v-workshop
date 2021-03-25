@@ -20,10 +20,10 @@ ASMMAC_TEXT_SECTION
     スーパバイザモード->スーパバイザモード割込みベクタ
     void supervisor_trap_vector(void)相当のサブルーチン
  */
-ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)	
+ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)
 ASMMAC_FUNCTION(supervisor_trap_vector)
-	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */	
-	
+	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
+
 	/*
 	 * sp, t0, sepc, sstatus以外のレジスタを保存する
 	 */
@@ -34,8 +34,8 @@ ASMMAC_FUNCTION(supervisor_trap_vector)
 	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
 
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)   /* t0レジスタを退避           */
-	
-	addi s1, sp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */	
+
+	addi s1, sp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */
 	sd   s1, RV64_TRAP_CONTEXT_SP(sp)   /* 割込み元スタックを退避     */
 
 	jal  call_trap_common               /* 共通例外ハンドラ呼び出し処理へ  */
@@ -44,7 +44,7 @@ ASMMAC_FUNCTION(supervisor_trap_vector)
     ユーザモード->スーパバイザモード割込みベクタ
     void user_trap_vector(void)相当のサブルーチン
  */
-ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)	
+ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)
 ASMMAC_FUNCTION(user_trap_vector)
         csrrw t0, sscratch, t0               /* sscratch(sscratch情報ポインタ)とt0を交換 */
 	/* これ以降t0以外のレジスタを使用する
@@ -61,12 +61,12 @@ ASMMAC_FUNCTION(user_trap_vector)
 	 * sepc, sstatusレジスタを保存する
 	 */
 	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
-	
+
 	ld   s1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
 	sd   s1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
 
 	mv   s1, t0                        /* sscratch情報                      */
-	
+
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
 	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
@@ -93,25 +93,25 @@ ASMMAC_FUNCTION(rv64_return_from_trap)
 	 * コンテキスト復元
 	 */
 	ld   s1, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレス       */
-	csrw sepc, s1                      /* 割込み元アドレスを設定 */	
+	csrw sepc, s1                      /* 割込み元アドレスを設定 */
 
 	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* sstatus        */
 
 	and  s2, s1, SSTATUS_SPP /* Supervisor Previous modeを参照                       */
 	bne  s2, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
-	
+
 	/* ユーザコンテキスト復帰時の処理
 	 * - ユーザモードからの割込みを有効化
 	 * - ユーザモード->スーパバイザモード割込みベクタに割り込みベクタを設定する
 	 */
 	ld   tp, RV64_TRAP_CONTEXT_TP(sp)      /* tpレジスタを復元 */
-	
-	or   s1, s1, SSTATUS_SPIE              /* ユーザモード割り込みを有効化 */
 
 	/* ユーザモード->スーパバイザモード割込みベクタをロード */
 	la   s2, user_trap_vector
 	csrw stvec, s2    /*  ベクタアドレスを設定 */
-	
+
+	or   s1, s1, SSTATUS_SPIE              /* ユーザモード割り込みを有効化 */
+
 to_kernel:
 	csrw sstatus, s1                       /* sstatusを復元  */
 
@@ -132,7 +132,7 @@ ASMMAC_TEXT_SECTION
     割込みベクタの設定
     void setup_vector(uint64_t hartid, sscratch_info *sscratch_tbl)相当のサブルーチン
     @param[in] hartid 自hartのID (a0レジスタ)
-    @param[in] sscratch_tbl sscratch情報テーブルの先頭仮想アドレス	
+    @param[in] sscratch_tbl sscratch情報テーブルの先頭仮想アドレス
  */
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_FUNCTION(setup_vector)
@@ -152,7 +152,7 @@ ASMMAC_FUNCTION(setup_vector)
 	li  t2, HAL_KERN_VMA_BASE
 	sub t0, t0, t2            /* mscratchテーブルの物理アドレスを算出   */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
-	
+
 	/* これ以降では以下のようにレジスタを使用する
 	   a0 hartid ( boot.Sで獲得した値を破壊しない )
 	   t0 自hartのsscratch情報アドレス (物理アドレス)
@@ -177,12 +177,12 @@ ASMMAC_FUNCTION(setup_vector)
 	ld   a2, (a2)    /* スーパバイザモードベクタアドレスをロード */
 
 	csrw stvec, a2   /* スーパバイザモードベクタアドレスを設定   */
-	
+
 	ld s0, 0(sp)     /*  s0レジスタを復元する                            */
 	ld ra, 8(sp)     /*  raレジスタを復元する                            */
 	addi sp,sp,16    /*  スタック位置を復元する                          */
 	jr ra            /*  呼び出し元に戻る                                */
-	
+
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_DATA_SECTION
 #else
