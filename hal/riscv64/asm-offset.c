@@ -63,7 +63,6 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_RA, _trap_context, ra);
 	OFFSET(RV64_TRAP_CONTEXT_SP, _trap_context, sp);
 	OFFSET(RV64_TRAP_CONTEXT_GP, _trap_context, gp);
-	OFFSET(RV64_TRAP_CONTEXT_TP, _trap_context, tp);
 	OFFSET(RV64_TRAP_CONTEXT_T0, _trap_context, t0);
 	OFFSET(RV64_TRAP_CONTEXT_T1, _trap_context, t1);
 	OFFSET(RV64_TRAP_CONTEXT_T2, _trap_context, t2);

@@ -20,7 +20,6 @@
 #define RV64_ASM_SAVE_CONTEXT_COMMON(_ctx)        \
         sd ra,  RV64_TRAP_CONTEXT_RA(_ctx);        \
 	sd gp,  RV64_TRAP_CONTEXT_GP(_ctx);        \
-	sd tp,  RV64_TRAP_CONTEXT_TP(_ctx);        \
 	sd t1,  RV64_TRAP_CONTEXT_T1(_ctx);        \
 	sd t2,  RV64_TRAP_CONTEXT_T2(_ctx);        \
 	sd s0,  RV64_TRAP_CONTEXT_S0(_ctx);        \
@@ -109,7 +108,6 @@ typedef struct _trap_context{
 	reg_type       ra;  /*  x1 */
 	reg_type       sp;  /*  x2 */
 	reg_type       gp;  /*  x3 */
-	reg_type       tp;  /*  x4 */
 	reg_type       t0;  /*  x5 */
 	reg_type       t1;  /*  x6 */
 	reg_type       t2;  /*  x7 */

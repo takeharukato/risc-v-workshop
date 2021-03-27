@@ -51,7 +51,10 @@ ASMMAC_FUNCTION(user_trap_vector)
 	 */
 	sd   sp, SSCRATCH_SAVED_SP(t0)       /* 割込み元スタックを保存する     */
 	ld   sp, SSCRATCH_SSTACK_SP(t0)      /* カーネルスタックをロードする   */
+
+        addi sp, sp, -8 /* TPレジスタ保存域を確保する */
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
+	sd   tp, RV64_TRAP_CONTEXT_SIZE(sp)  /* ユーザランドTPレジスタ値(TLSポインタ)を保存 */
 
 	/*
 	 * sp, t0, sepc, sstatus以外のレジスタを保存する
@@ -101,16 +104,15 @@ ASMMAC_FUNCTION(rv64_return_from_trap)
 	bne  s2, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
 
 	/* ユーザコンテキスト復帰時の処理
-	 * - ユーザモードからの割込みを有効化
+	 * - TPレジスタの復元
 	 * - ユーザモード->スーパバイザモード割込みベクタに割り込みベクタを設定する
 	 */
-	ld   tp, RV64_TRAP_CONTEXT_TP(sp)      /* tpレジスタを復元 */
+
+	ld   tp, RV64_TRAP_CONTEXT_SIZE(sp)     /* tpレジスタを復元      */
 
 	/* ユーザモード->スーパバイザモード割込みベクタをロード */
 	la   s2, user_trap_vector
 	csrw stvec, s2    /*  ベクタアドレスを設定 */
-
-	or   s1, s1, SSTATUS_SPIE              /* ユーザモード割り込みを有効化 */
 
 to_kernel:
 	csrw sstatus, s1                       /* sstatusを復元  */
@@ -119,7 +121,7 @@ to_kernel:
 	 * sp, tp以外のレジスタを復元する
 	 */
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
-	ld     sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
+	ld   sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
         sret
 
 #if defined(CONFIG_HAL)
