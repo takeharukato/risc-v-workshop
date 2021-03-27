@@ -214,11 +214,11 @@ ASMMAC_FUNCTION(setup_machine_mode)
 	/*
 	 * 割込み/例外の回送
 	 */
-	/* 例外をスーパバイザモードに回送
+	/* 例外処理をスーパバイザに委任
 	 */
 	li a3, MEDELEG_MASK
 	csrw medeleg, a3
-	/* 割込みをスーパバイザモードに回送
+	/* 割込み処理をスーパバイザに委任
 	 */
 	li a3, MIDELEG_MASK
 	csrw mideleg, a3
