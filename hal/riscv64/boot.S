@@ -28,11 +28,11 @@ ASMMAC_TEXT_SECTION
 
 ASMMAC_EXTERN_SYMBOL(rv64_prepare)
 
-#if defined(CONFIG_HAL)	
+#if defined(CONFIG_HAL)
 ASMMAC_BOOT_FUNCTION(entry)
 #else
 ASMMAC_FUNCTION(entry)
-#endif  /* CONFIG_HAL */    
+#endif  /* CONFIG_HAL */
        /*
 	* ブートスタック情報を算出する
 	* a0 自hartのhartid (注意: 本サブルーチン内で使い続ける)
@@ -85,11 +85,11 @@ bsp_init_loop:
 	ld   t1, (t0)          /* 変数値をロード                                */
 	bne  t1, x0, wait_bsp  /* BOOT開始中でなければ, BSPの処理を待ち合わせる */
 
-	li t1, RV64_BOOT_STATE_BSP_INIT  /*  初期化中を表す値をt1に代入    */	
+	li t1, RV64_BOOT_STATE_BSP_INIT  /*  初期化中を表す値をt1に代入    */
 	/* t0の指し示すメモリの内容をt1の値に設定し, 以前の値をt2に設定      */
-	amoswap.d.aqrl t2,t1,(t0) 
+	amoswap.d.aqrl t2,t1,(t0)
 	bne  t2, x0, bsp_init_loop  /* 以前の値が0でなければ他のコアが初期化中 */
-	
+
 	/*
 	 * BSSクリア/マシンモード情報テーブル/MMU設定 (BSPのみ実施)
 	 */
@@ -118,13 +118,13 @@ clear_bss:
 	 * マシンモード情報テーブルのアドレスを設定
 	 */
 	/* mscratchテーブルのアドレスを格納した変数のアドレスをロード */
-	la a3, mscratch_tbl_addr  
-	ld a1, (a3)               /* mscratchテーブルのアドレスをロード */
+	la a3, mscratch_tbl_addr
+	ld a1, (a3)               /* mscratchテーブルの内容をロード */
 #if defined(CONFIG_UPPERHALF_KERNEL)
 	sub a1, a1, a2            /* mscratchテーブルの物理アドレスを算出   */
 	sd  a1, (a3)              /* mscratchテーブルの物理アドレスをストア */
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
-	
+
 	/*
 	 * MMU設定
 	 */
@@ -142,9 +142,9 @@ ap_boot: /* APの処理再開位置 */
 	call load_pre_pgtbl
 #if !defined(CONFIG_HAL_USE_SBI)
 	/* APの初期化のためにmscratchテーブルのアドレスを再ロード */
-	la a1, mscratch_tbl_addr  
+	la a1, mscratch_tbl_addr
 	ld a1, (a1)               /* mscratchテーブルのアドレスをロード */
-	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */ 
+	/* 第1引数にhart, 第2引数にmscratchテーブルの物理アドレスを指定 */
 	call setup_machine_mode  /* マシンモードの設定を実施 */
 #endif  /*  !CONFIG_HAL_USE_SBI  */
 	/*
@@ -152,7 +152,7 @@ ap_boot: /* APの処理再開位置 */
 	 */
 	la a1, sscratch_tbl_addr  /* sscratchテーブルの仮想アドレスをロード */
 	ld a1, (a1)
-	/* 第1引数にhart, 第2引数にsscratchテーブルの仮想アドレスを指定 */ 
+	/* 第1引数にhart, 第2引数にsscratchテーブルの仮想アドレスを指定 */
 	call setup_vector  /* 割込みベクタの設定 */
 	/*
 	 * サイクルカウンタ命令の有効化
@@ -178,12 +178,12 @@ ap_boot: /* APの処理再開位置 */
 	csrr a1, mstatus          /* mstatusを読み込む */
 	li a2, ~MSTATUS_MPP_MASK  /* Machine Previous Privilege Modeビットをクリアする */
 	and a1, a1, a2
-	/* Supervisor User Memory accessビットを設定し, 
-	 * Supervisorからユーザメモリアクセスを許可, 
+	/* Supervisor User Memory accessビットを設定し,
+	 * Supervisorからユーザメモリアクセスを許可,
 	 * Machine Previous Privilege Modeを supervisor modeに設定
 	 */
-	li a2, (MSTATUS_MPP_S|SSTATUS_SUM)  
-	or a1, a1, a2         
+	li a2, (MSTATUS_MPP_S|SSTATUS_SUM)
+	or a1, a1, a2
 	csrw mstatus, a1      /* mstatusを更新                                     */
 
 	csrw mepc, a7         /* Machine Exception Program Counterを更新           */
@@ -209,7 +209,7 @@ wait_bsp:
 ASMMAC_BOOT_DATA_SECTION
 #else
 ASMMAC_DATA_SECTION
-#endif  /* CONFIG_HAL */	
+#endif  /* CONFIG_HAL */
 /* カーネルのCエントリ関数のアドレスを格納する領域
  * RISC-V64の場合, la疑似命令で読み込むアドレスは, 符号付き32bit値でなければならない
  * RISC-V Assembly Programmer's Manual
@@ -218,7 +218,7 @@ ASMMAC_DATA_SECTION
  *
  * メモリモデルがmedanyの場合, プログラムカウンタ(pc)からの相対アドレス指定となり,
  * la a0, symbol
- * は, 
+ * は,
  * 1:    auipc a0,     %pcrel_hi(symbol) # load symbol(hi)
  *       addi  a0, a0, %pcrel_lo(1b)     # load symbol(lo)
  * として扱われ, medlowの場合, 絶対アドレス指定となり,
@@ -226,7 +226,7 @@ ASMMAC_DATA_SECTION
  *       addi a0, a0,  %lo(symbol)       # load symbol(lo)
  * として扱われる。
  * いずれの場合も, symbolのアドレスは, 符号付き32bit値でなければならない.
- * しかしながら, アッパーハーフマッピングの場合のカーネルアドレスは, 
+ * しかしながら, アッパーハーフマッピングの場合のカーネルアドレスは,
  * 符号付き32bit値の範囲内にないのでリンク時にpc相対で32bit範囲内に配置される
  * 大域変数にアドレスを格納しておき大域変数のアドレスをロードし, その内容を
  * ld 命令で読み込むことで絶対アドレスを取得するようにしている。
@@ -261,4 +261,3 @@ bss_start_addr:
 ASMMAC_BALIGN(16)
 bss_end_addr:
 	.dword __bss_end     /* bss終了アドレスを格納  */
-
