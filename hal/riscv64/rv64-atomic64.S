@@ -26,7 +26,7 @@ ASMMAC_DECLARE_NAME(hal_atomic64_cmpxchg_ptr_fetch)
 	@return 更新前の値
 	@note atomic64_val hal_atomic64_add_fetch(atomic *val, atomic64_val incr)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_add_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_add_fetch)
 	addi sp,sp,-32 /* レジスタ4つ分のアドレスを確保する                */
 	sd s2, 24(sp)  /*  s2レジスタを待避する                            */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
@@ -34,13 +34,13 @@ ASMMAC_FUNCTION(hal_atomic64_add_fetch)
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
 	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
-	mv s2, a1      /*  第2引数(加算値)をs2に代入                       */	
+	mv s2, a1      /*  第2引数(加算値)をs2に代入                       */
 	/* s1の指し示すメモリの内容にs2の値を加算しs1のアドレスに格納, 前の値をa0に設定 */
-	amoadd.d.aqrl a0,s2,(s1)  
+	amoadd.d.aqrl a0,s2,(s1)
 	ld s0,  0(sp)  /*  s0レジスタを復元する                           */
 	ld ra,  8(sp)  /*  raレジスタを復元する                           */
 	ld s1, 16(sp)  /*  s1レジスタを復元する                           */
-	ld s2, 24(sp)  /*  s2レジスタを復元する                           */	
+	ld s2, 24(sp)  /*  s2レジスタを復元する                           */
 	addi sp,sp,32  /*  スタック位置を復元する                         */
 	jr ra          /*  呼び出し元に戻る                               */
 
@@ -51,7 +51,7 @@ ASMMAC_FUNCTION(hal_atomic64_add_fetch)
 	@return 更新前の値
 	@note atomic64_val hal_atomic64_and_fetch(atomic *val, atomic64_val incr)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_and_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_and_fetch)
 	addi sp,sp,-32 /* レジスタ4つ分のアドレスを確保する                */
 	sd s2, 24(sp)  /*  s2レジスタを待避する                            */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
@@ -59,13 +59,13 @@ ASMMAC_FUNCTION(hal_atomic64_and_fetch)
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
 	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
-	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
+	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */
 	/* s1の指し示すメモリの内容とs2の値の論理積をs1のアドレスに格納, 前の値をa0に設定 */
 	amoand.d.aqrl a0,s2,(s1)
 	ld s0,  0(sp)  /*  s0レジスタを復元する                           */
 	ld ra,  8(sp)  /*  raレジスタを復元する                           */
 	ld s1, 16(sp)  /*  s1レジスタを復元する                           */
-	ld s2, 24(sp)  /*  s2レジスタを復元する                           */	
+	ld s2, 24(sp)  /*  s2レジスタを復元する                           */
 	addi sp,sp,32  /*  スタック位置を復元する                         */
 	jr ra          /*  呼び出し元に戻る                               */
 
@@ -76,24 +76,24 @@ ASMMAC_FUNCTION(hal_atomic64_and_fetch)
 	@return 更新前の値
 	@note atomic64_val hal_atomic64_or_fetch(atomic *val, atomic64_val incr)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_or_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_or_fetch)
 	addi sp,sp,-32 /* レジスタ4つ分のアドレスを確保する                */
 	sd s2, 24(sp)  /*  s2レジスタを待避する                            */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
-	sd ra,  8(sp)  /*  raレジスタを待避する                            */	
+	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0レジスタを待避する                            */
 	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
-	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
+	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */
 	/* s1の指し示すメモリの内容とs2の値の論理和をs1のアドレスに格納, 前の値をa0に設定 */
 	amoor.d.aqrl a0,s2,(s1)
 	ld s0,  0(sp)  /*  s0レジスタを復元する                           */
 	ld ra,  8(sp)  /*  raレジスタを復元する                           */
 	ld s1, 16(sp)  /*  s1レジスタを復元する                           */
-	ld s2, 24(sp)  /*  s2レジスタを復元する                           */	
+	ld s2, 24(sp)  /*  s2レジスタを復元する                           */
 	addi sp,sp,32  /*  スタック位置を復元する                         */
 	jr ra          /*  呼び出し元に戻る                               */
-	
+
 /**
 	整数間の排他的論理和を算出し, 更新前の値を返却する
 	@param[out] a0 更新する変数のアドレス
@@ -101,24 +101,24 @@ ASMMAC_FUNCTION(hal_atomic64_or_fetch)
 	@return 更新前の値
 	@note atomic64_val hal_atomic64_xor_fetch(atomic *val, atomic64_val incr)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_xor_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_xor_fetch)
 	addi sp,sp,-32 /* レジスタ4つ分のアドレスを確保する                */
 	sd s2, 24(sp)  /*  s2レジスタを待避する                            */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
-	sd ra,  8(sp)  /*  raレジスタを待避する                            */	
+	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0(fp)レジスタを待避する                        */
 	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
-	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */	
+	mv s2, a1      /*  第2引数(整数値)をs2に代入                       */
 	/* s1の指し示すメモリの内容とs2の排他論理和をs1のアドレスに格納, 前の値をa0に設定 */
 	amoxor.d.aqrl a0,s2,(s1)
 	ld s0,  0(sp)  /*  s0レジスタを復元する                           */
 	ld ra,  8(sp)  /*  raレジスタを復元する                           */
 	ld s1, 16(sp)  /*  s1レジスタを復元する                           */
-	ld s2, 24(sp)  /*  s2レジスタを復元する                           */		
+	ld s2, 24(sp)  /*  s2レジスタを復元する                           */
 	addi sp,sp,32  /*  スタック位置を復元する                         */
 	jr ra          /*  呼び出し元に戻る                               */
-	
+
 /**
 	整数をアトミックに代入し, 更新前の値を返却する
 	@param[out] a0 更新する変数のアドレス
@@ -126,24 +126,24 @@ ASMMAC_FUNCTION(hal_atomic64_xor_fetch)
 	@return 更新前の値
 	@note atomic64_val hal_atomic64_set_fetch(atomic *val, atomic64_val incr)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_set_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_set_fetch)
 	addi sp,sp,-32 /* レジスタ4つ分のアドレスを確保する                */
 	sd s2, 24(sp)  /*  s2レジスタを待避する                            */
 	sd s1, 16(sp)  /*  s1レジスタを待避する                            */
 	sd ra,  8(sp)  /*  raレジスタを待避する                            */
 	sd s0,  0(sp)  /*  s0(fp)レジスタを待避する                        */
-	add s0, sp, 32 /*  fpを更新する                                    */	
+	add s0, sp, 32 /*  fpを更新する                                    */
 	mv s1, a0      /*  第1引数(アトミック変数格納先アドレス)をs1に代入 */
-	mv s2, a1      /*  第2引数(設定する整数値)をs2に代入               */	
+	mv s2, a1      /*  第2引数(設定する整数値)をs2に代入               */
 	/* s1の指し示すメモリの内容をs2の値に設定し, 前の値をa0に設定      */
-	amoswap.d.aqrl a0,s2,(s1) 
+	amoswap.d.aqrl a0,s2,(s1)
 	ld s0,  0(sp)  /*  s0(fp)レジスタを復元する                        */
 	ld ra,  8(sp)  /*  raレジスタを復元する                            */
 	ld s1, 16(sp)  /*  s1レジスタを復元する                            */
-	ld s2, 24(sp)  /*  s2レジスタを復元する                            */	
+	ld s2, 24(sp)  /*  s2レジスタを復元する                            */
 	addi sp,sp,32  /*  スタック位置を復元する                          */
 	jr ra          /*  呼び出し元に戻る                                */
-	
+
 
 /**
 	更新前の整数値がoldに一致したら整数newをアトミックに代入し, 代入前の値を返す
@@ -151,9 +151,9 @@ ASMMAC_FUNCTION(hal_atomic64_set_fetch)
 	@param[in]  a1 更新前の値
 	@param[in]  a2 更新後の値
 	@return 更新前の値
-	@note atomic64_val hal_atomic64_cmpxchg_fetch(atomic *val, atomic64_val old, atomic64_val new)相当
+	@note atomic64_val hal_atomic64_cmpxchg_fetch(atomic *vp, atomic64_val old, atomic64_val new)相当
 */
-ASMMAC_FUNCTION(hal_atomic64_cmpxchg_fetch)	
+ASMMAC_FUNCTION(hal_atomic64_cmpxchg_fetch)
 	addi sp,sp,-40    /* レジスタ5つ分のアドレスを確保する                */
 	sd s3, 32(sp)     /*  s3レジスタを待避する                            */
 	sd s2, 24(sp)     /*  s2レジスタを待避する                            */
@@ -178,7 +178,7 @@ ASMMAC_FUNCTION(hal_atomic64_cmpxchg_fetch)
 	ld s3, 32(sp)      /*  s3レジスタを復元する                           */
 	addi sp,sp,40      /*  スタック位置を復元する                         */
 	jr ra              /*  呼び出し元に戻る                               */
-	
+
 /**
 	更新前のポインタ値がoldに一致したらnewをアトミックに代入し, 代入前の値を返す
 	@param[out] a0 代入される変数のアドレス
@@ -201,5 +201,3 @@ ASMMAC_FUNCTION(hal_atomic64_cmpxchg_ptr_fetch)
 	ld a2, 24(sp)  /*  a2レジスタを復元する                                 */
 	addi sp,sp,32  /*  スタック位置を復元する                               */
 	jr ra          /*  呼び出し元に戻る                                     */
-
-	
