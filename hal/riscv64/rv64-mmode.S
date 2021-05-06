@@ -41,22 +41,35 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	 * mepc, sp, mstaus, t0以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
+	/*
+	 * 使用するcallee-savedレジスタを保存
+	*/
+	addi sp,sp,-64   /*  レジスタ8つ分のアドレスを確保する               */
+	sd   s7, 56(sp)   /*  s7レジスタを退避する                            */
+	sd   s6, 48(sp)   /*  s6レジスタを退避する                            */
+	sd   s5, 40(sp)   /*  s5レジスタを退避する                            */
+	sd   s4, 32(sp)   /*  s4レジスタを退避する                            */
+	sd   s3, 24(sp)   /*  s3レジスタを退避する                            */
+	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
+	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
+	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
+	add  s0, sp, 64   /*  fpを更新する                                    */
 
 	csrr s1, mepc                      /* 割込み元アドレス       */
-	sd   s1, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを退避 */
+	sd   s1, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレスを退避 */
 
 	csrr s1, mstatus                       /* 割込み発生時のmstatus  */
-	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* mstatusを退避        */
+	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(s0) /* mstatusを退避        */
 
 	ld   s1, MSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
-	sd   s1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
+	sd   s1, RV64_TRAP_CONTEXT_SP(s0)  /* 割込み元スタックを退避 */
 
 	mv   s1, t0                        /* mscratch情報           */
 
 	/* これ以降s1はmscratch情報物理アドレスを保持する用途で使用
 	 */
         csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
-	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
+	sd   t0, RV64_TRAP_CONTEXT_T0(s0)  /* t0レジスタを退避           */
 
 	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
 
@@ -68,12 +81,12 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	bnez  s4, handle_mintr  /* ビットが立っていればIPI/タイマ更新処理へ */
 	li    s3, MCAUSE_ENVCALL_SMODE
 	and   s4, s2, s3        /* MCAUSE_ENVCALL_SMODE_BITが立っているか?     */
-	bnez  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
+	beqz  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
 	/* ecall命令の次の命令に復帰
 	 */
-	ld    s2, RV64_TRAP_CONTEXT_EPC(sp) /* コンテキスト内の割込み元アドレス取得     */
+	ld    s2, RV64_TRAP_CONTEXT_EPC(s0) /* コンテキスト内の割込み元アドレス取得     */
 	add   s2, s2, 4                     /* ecall命令の次の命令を指す                */
-	sd    s2, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを更新                   */
+	sd    s2, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレスを更新                   */
 	j     skip_mtimer                   /* 例外出口処理へ移行                       */
 handle_mintr:
 	ld    s2, MSCRATCH_MSIP_PADDR(s1)    /* 自hart MIPレジスタ                       */
@@ -112,17 +125,28 @@ skip_mtimer:
 	/*
 	 * コンテキスト復元
 	 */
-	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* mstatus  */
+	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(s0) /* mstatus  */
 	csrw mstatus, s1                       /* mstatusを復元        */
 
-	ld   s2, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレス       */
+	ld   s2, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレス       */
 	csrw mepc, s2                      /* 割込み元アドレスを設定 */
+
+	ld   s7, 56(sp)   /*  s7レジスタを復元する                            */
+	ld   s6, 48(sp)   /*  s6レジスタを復元する                            */
+	ld   s5, 40(sp)   /*  s5レジスタを復元する                            */
+	ld   s4, 32(sp)   /*  s4レジスタを復元する                            */
+	ld   s3, 24(sp)   /*  s3レジスタを復元する                            */
+	ld   s2, 16(sp)   /*  s2レジスタを復元する                            */
+	ld   s1,  8(sp)   /*  s1レジスタを復元する                            */
+	ld   s0,  0(sp)   /*  s0レジスタを復元する                            */
+	add  sp, sp, 64   /*  spを更新する                                    */
 
 	/*
 	 * sp以外のレジスタを復元する
 	 */
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
 	ld     sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
+
         mret
 
 /**
@@ -137,8 +161,8 @@ ASMMAC_BOOT_FUNCTION(setup_machine_mode)
 ASMMAC_FUNCTION(setup_machine_mode)
 #endif  /*  CONFIG_HAL  */
 	addi sp,sp,-16   /*  レジスタ2つ分のアドレスを確保する               */
-	sd   ra, 8(sp)   /*  raレジスタを待避する                            */
-	sd   s0, 0(sp)   /*  s0レジスタを待避する                            */
+	sd   ra, 8(sp)   /*  raレジスタを退避する                            */
+	sd   s0, 0(sp)   /*  s0レジスタを退避する                            */
 	add  s0, sp, 16  /*  fpを更新する                                    */
 
 	li   t1, MSCRATCH_MSCRATCH_INFO_SIZE /* mscratch情報のサイズをロード */
