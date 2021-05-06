@@ -43,7 +43,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
 	/*
 	 * 使用するcallee-savedレジスタを保存
-	*/
+	 */
 	addi sp,sp,-64   /*  レジスタ8つ分のアドレスを確保する               */
 	sd   s7, 56(sp)   /*  s7レジスタを退避する                            */
 	sd   s6, 48(sp)   /*  s6レジスタを退避する                            */
@@ -56,20 +56,20 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	add  s0, sp, 64   /*  fpを更新する                                    */
 
 	csrr s1, mepc                      /* 割込み元アドレス       */
-	sd   s1, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレスを退避 */
+	sd   s1, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレスを退避 */
 
 	csrr s1, mstatus                       /* 割込み発生時のmstatus  */
-	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(s0) /* mstatusを退避        */
+	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(fp) /* mstatusを退避        */
 
 	ld   s1, MSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
-	sd   s1, RV64_TRAP_CONTEXT_SP(s0)  /* 割込み元スタックを退避 */
+	sd   s1, RV64_TRAP_CONTEXT_SP(fp)  /* 割込み元スタックを退避 */
 
 	mv   s1, t0                        /* mscratch情報           */
 
 	/* これ以降s1はmscratch情報物理アドレスを保持する用途で使用
 	 */
         csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
-	sd   t0, RV64_TRAP_CONTEXT_T0(s0)  /* t0レジスタを退避           */
+	sd   t0, RV64_TRAP_CONTEXT_T0(fp)  /* t0レジスタを退避           */
 
 	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
 
@@ -84,9 +84,9 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	beqz  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
 	/* ecall命令の次の命令に復帰
 	 */
-	ld    s2, RV64_TRAP_CONTEXT_EPC(s0) /* コンテキスト内の割込み元アドレス取得     */
+	ld    s2, RV64_TRAP_CONTEXT_EPC(fp) /* コンテキスト内の割込み元アドレス取得     */
 	add   s2, s2, 4                     /* ecall命令の次の命令を指す                */
-	sd    s2, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレスを更新                   */
+	sd    s2, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレスを更新                   */
 	j     skip_mtimer                   /* 例外出口処理へ移行                       */
 handle_mintr:
 	ld    s2, MSCRATCH_MSIP_PADDR(s1)    /* 自hart MIPレジスタ                       */
@@ -125,10 +125,10 @@ skip_mtimer:
 	/*
 	 * コンテキスト復元
 	 */
-	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(s0) /* mstatus  */
+	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(fp) /* mstatus  */
 	csrw mstatus, s1                       /* mstatusを復元        */
 
-	ld   s2, RV64_TRAP_CONTEXT_EPC(s0) /* 割込み元アドレス       */
+	ld   s2, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレス       */
 	csrw mepc, s2                      /* 割込み元アドレスを設定 */
 
 	ld   s7, 56(sp)   /*  s7レジスタを復元する                            */
