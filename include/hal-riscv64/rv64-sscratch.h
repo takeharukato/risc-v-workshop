@@ -15,7 +15,7 @@
 #include <kern/kern-cpuinfo.h>
 
 /**
-   スーパバイザモードエントリ処理情報情報 (sscratchレジスタから参照)
+   スーパバイザモードエントリ処理情報 (sscratchレジスタから参照)
  */
 typedef struct _sscratch_info{
 	uintptr_t         sstack_sp;  /* スーパーバイザエントリ時に設定するスタックポインタ */

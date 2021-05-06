@@ -15,7 +15,7 @@
 #include <kern/kern-cpuinfo.h>
 
 /**
-   マシンモードエントリ処理情報情報 (mscratchレジスタから参照)
+   マシンモードエントリ処理情報 (mscratchレジスタから参照)
  */
 typedef struct _mscratch_info{
 	uintptr_t         mstack_sp;  /* マシンモードエントリ時に設定するスタックポインタ値 */

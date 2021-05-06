@@ -38,13 +38,16 @@
 /**
    スーパバイザモード割込みコンテスト退避処理
    @param[in] _ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
-   @note sepc, sstatusレジスタを保存する (rv64-vector.S参照). 事前にs1の退避が必要.
+   @note sepc, sstatusレジスタを保存する (rv64-vector.S参照).
+   RV64_ASM_SAVE_CONTEXT_COMMONにより, t1が保存されていることが前提,
+   t0は, マシンモードエントリ処理情報やスーパバイザモードエントリ処理情報の
+   交換に使用するため, t1を使用
  */
 #define RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(_ctx)	\
-	csrr s1, sepc;					\
-	sd   s1, RV64_TRAP_CONTEXT_EPC(_ctx);		\
-        csrr s1, sstatus;				\
-        sd   s1, RV64_TRAP_CONTEXT_ESTATUS(_ctx);
+	csrr t1, sepc;					\
+	sd   t1, RV64_TRAP_CONTEXT_EPC(_ctx);		\
+        csrr t1, sstatus;				\
+        sd   t1, RV64_TRAP_CONTEXT_ESTATUS(_ctx);
 
 /**
    割込みコンテスト復元共通処理

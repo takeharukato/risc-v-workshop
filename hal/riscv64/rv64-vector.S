@@ -22,29 +22,25 @@ ASMMAC_TEXT_SECTION
  */
 ASMMAC_BALIGN(RV64_VECTORBASE_ALIGN)
 ASMMAC_FUNCTION(supervisor_trap_vector)
+
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
 
 	/*
 	 * sp, t0, sepc, sstatus以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
-	/*
-	 * 使用するcallee-savedレジスタを保存
-	 */
-	addi sp,sp,-24   /*  レジスタ3つ分のアドレスを確保する               */
-	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
-	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
-	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
-	add  s0, sp, 24   /*  fpを更新する                                    */
+
 	/*
 	 * sepc, sstatusレジスタを保存する
+	 * 例外/割込みエントリ時に保存したt1を使用する
+	 * include/hal-riscv64/hal-traps.h 参照
 	 */
-	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(fp)
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
 
-	sd   t0, RV64_TRAP_CONTEXT_T0(fp)   /* t0レジスタを退避           */
+	sd   t0, RV64_TRAP_CONTEXT_T0(sp)   /* t0レジスタを退避           */
 
-	addi s1, fp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */
-	sd   s1, RV64_TRAP_CONTEXT_SP(fp)   /* 割込み元スタックを退避     */
+	addi t1, sp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */
+	sd   t1, RV64_TRAP_CONTEXT_SP(sp)   /* 割込み元スタックを退避     */
 
 	jal  call_trap_common               /* 共通例外ハンドラ呼び出し処理へ  */
 
@@ -70,50 +66,33 @@ ASMMAC_FUNCTION(user_trap_vector)
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
 
 	/*
-	 * 使用するcallee-savedレジスタを保存
-	 */
-	addi sp,sp,-24   /*  レジスタ3つ分のアドレスを確保する               */
-	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
-	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
-	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
-	add  s0, sp, 24   /*  fpを更新する                                    */
-
-	/*
 	 * sepc, sstatusレジスタを保存する(s1レジスタを内部で使用)
 	 */
-	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(fp)
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
 
-	ld   s1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
-	sd   s1, RV64_TRAP_CONTEXT_SP(fp)  /* 割込み元スタックを退避 */
+	ld   t1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
+	sd   t1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
 
-	mv   s1, t0                        /* sscratch情報                      */
+	mv   t1, t0                        /* sscratch情報                      */
 
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
-	sd   t0, RV64_TRAP_CONTEXT_T0(fp)  /* t0レジスタを退避                  */
+	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
 
-	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
-	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
+	la   t2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
+	csrw stvec, t2                  /* スーパバイザモードベクタアドレスを設定   */
 
-	ld   tp, SSCRATCH_HARTID(s1)       /* 物理CPUIDをtpにロード             */
+	ld   tp, SSCRATCH_HARTID(t1)       /* 物理CPUIDをtpにロード             */
 
 call_trap_common:
 
 	/*
 	 * 例外ハンドラ呼び出し
 	 */
-	mv   a0, fp                        /* 例外コンテキスト              */
+	mv   a0, sp                        /* 例外コンテキスト              */
 	csrr a1, scause                    /* 例外発生要因                  */
 	csrr a2, stval                     /* Supervisor Trap Value         */
 
 	call trap_common                   /* 共通例外ハンドラ呼び出し      */
-
-	/*
-	 * 使用したcallee-savedレジスタを復元
-	 */
-	ld   s0,  0(sp)   /*  s0レジスタを復元する                            */
-	ld   s1,  8(sp)   /*  s1レジスタを復元する                            */
-	ld   s2, 16(sp)   /*  s2レジスタを復元する                            */
-	add  sp, sp, 24   /*  spを更新する                                    */
 
 	/* 割込み/例外出口へのfall through */
 /**
