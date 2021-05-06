@@ -132,7 +132,7 @@ to_kernel:
 	 */
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
 	ld   sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
-        sret
+        sret  /* 例外発生時のアドレスに復帰  */
 
 #if defined(CONFIG_HAL)
 ASMMAC_BOOT_TEXT_SECTION
