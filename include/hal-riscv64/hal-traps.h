@@ -38,10 +38,6 @@
 	sd s5,  RV64_TRAP_CONTEXT_S5(_ctx);        \
 	sd s6,  RV64_TRAP_CONTEXT_S6(_ctx);        \
 	sd s7,  RV64_TRAP_CONTEXT_S7(_ctx);        \
-	sd s8,  RV64_TRAP_CONTEXT_S8(_ctx);        \
-	sd s9,  RV64_TRAP_CONTEXT_S9(_ctx);        \
-	sd s10, RV64_TRAP_CONTEXT_S10(_ctx);       \
-	sd s11, RV64_TRAP_CONTEXT_S11(_ctx);       \
 	sd t3,  RV64_TRAP_CONTEXT_T3(_ctx);        \
 	sd t4,  RV64_TRAP_CONTEXT_T4(_ctx);        \
 	sd t5,  RV64_TRAP_CONTEXT_T5(_ctx);        \
@@ -68,10 +64,6 @@
 	ld t5, RV64_TRAP_CONTEXT_T5(_ctx);     \
 	ld t4, RV64_TRAP_CONTEXT_T4(_ctx);     \
 	ld t3, RV64_TRAP_CONTEXT_T3(_ctx);     \
-	ld s11, RV64_TRAP_CONTEXT_S11(_ctx);   \
-	ld s10, RV64_TRAP_CONTEXT_S10(_ctx);   \
-	ld s9, RV64_TRAP_CONTEXT_S9(_ctx);     \
-	ld s8, RV64_TRAP_CONTEXT_S8(_ctx);     \
 	ld s7, RV64_TRAP_CONTEXT_S7(_ctx);     \
 	ld s6, RV64_TRAP_CONTEXT_S6(_ctx);     \
 	ld s5, RV64_TRAP_CONTEXT_S5(_ctx);     \
