@@ -30,124 +30,187 @@ ASMMAC_BOOT_FUNCTION(machine_mode_vector)
 #else
 ASMMAC_FUNCTION(machine_mode_vector)
 #endif  /*  CONFIG_HAL  */
-        csrrw t0, mscratch, t0  /* t0とmscratchを交換 */
-	/* これ以降t0以外のレジスタを使用する
-	 */
+	csrrw t0, mscratch, t0  /* t0とmscratchを交換 */
+
+	/* t0以外のレジスタを使用してコンテキストを保存	*/
 	sd   sp, MSCRATCH_SAVED_SP(t0)  /* スタックを保存する                   */
 	ld   sp, MSCRATCH_MSTACK_SP(t0) /* マシンモードスタックをロードする     */
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
 
 	/*
-	 * mepc, sp, mstaus, t0以外のレジスタを保存する
-	 */
+	* mepc, sp, mstaus, t0以外のレジスタを保存する
+	*/
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
+
+	/* mepc, sp, mstaus, t0レジスタを保存する
+	* t0 t0以外のコンテキストを退避するためにmscratch情報物理アドレスを指している
+	* t1 スクラッチに使用
+	* t5 mscratch情報物理アドレスの
+	*/
+
+	csrr t1, mepc                      /* 割込み元アドレス       */
+	sd   t1, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを退避 */
+
+	csrr t1, mstatus                       /* 割込み発生時のmstatus  */
+	sd   t1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* mstatusを退避        */
+
+	ld   t1, MSCRATCH_SAVED_SP(t0)     /* 割込み元スタック       */
+	sd   t1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
+
+	mv   t5, t0                        /* mscratch情報           */
+
+	/* これ以降t5はmscratch情報物理アドレスを保持する用途で使用      */
+	csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
+	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避           */
+
+	li   t6, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
+
+	/* 以降のレジスタ使用用途
+	t0  スクラッチに使用
+	t1  スクラッチに使用
+	t2  例外種別判定の時は未使用,
+	    タイマ処理の時は, 自hart MTIME_CMPレジスタ
+	t3  例外種別判定の時は未使用,
+	    タイマ処理の時は, MTIMEレジスタ
+	t4  例外種別判定の時は, macuse（例外要因種別),
+	    IPI割込み処理の時は, 自hart MSIPレジスタ
+	    タイマ処理の時は, タイマインターバル
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
+
+	/* 例外種別判定処理
+	t0  スクラッチに使用
+	t1  スクラッチに使用
+	t2  未使用
+	t3  未使用
+	t4  macuse（例外要因種別)
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
+	csrr  t4, mcause        /* 例外要因種別読み込み */
+	li    t0, MCAUSE_INTR
+	and   t1, t4, t0        /* マシンモードへの割込みか?     */
+	bnez  t1, handle_mintr  /* マシンモードへの割込みの場合, IPI/タイマ更新処理へ */
+
+	/* ecall命令/不正例外の処理
+	t0  スクラッチに使用
+	t1  未使用
+	t2  未使用
+	t3  未使用
+	t4  例外発生要因
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
+
+	/* マシンモードへのecallまたは不正例外処理
+	 * マシンモード例外処理を呼び出すための引数を設定
+	 */
+	mv   a0, sp                        /* 例外コンテキスト              */
+	csrr a1, mcause                    /* 例外発生要因                  */
+	csrr a2, mtval                     /* Machine Trap Value            */
+
+        addi sp, sp, -8                    /* mcause/mtval保存域を用意する */
+	sd   a1, 0(sp)                     /* 例外要因保存                 */
+
 	/*
-	 * 使用するcallee-savedレジスタを保存
+	 * TODO: マシンモード例外処理(ecall処理含む)を実装
 	 */
-	addi sp,sp,-64   /*  レジスタ8つ分のアドレスを確保する               */
-	sd   s7, 56(sp)   /*  s7レジスタを退避する                            */
-	sd   s6, 48(sp)   /*  s6レジスタを退避する                            */
-	sd   s5, 40(sp)   /*  s5レジスタを退避する                            */
-	sd   s4, 32(sp)   /*  s4レジスタを退避する                            */
-	sd   s3, 24(sp)   /*  s3レジスタを退避する                            */
-	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
-	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
-	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
-	add  s0, sp, 64   /*  fpを更新する                                    */
 
-	csrr s1, mepc                      /* 割込み元アドレス       */
-	sd   s1, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレスを退避 */
+	ld   t4, 0(sp)                     /* 例外要因復元                */
+	addi sp, sp, 8                     /*  スタック位置を復元         */
 
-	csrr s1, mstatus                       /* 割込み発生時のmstatus  */
-	sd   s1, RV64_TRAP_CONTEXT_ESTATUS(fp) /* mstatusを退避        */
+        li    t0, MCAUSE_ENVCALL_SMODE  /* マシンモードへのecall */
+	and   t1, t4, t0        /* マシンモードへのecallか?     */
+	beqz  t1, illegal_machine_mode_exception /* IPI/タイマ/ecallのいずれでもない */
 
-	ld   s1, MSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
-	sd   s1, RV64_TRAP_CONTEXT_SP(fp)  /* 割込み元スタックを退避 */
+	/* ecallの場合は, ecall命令の次の命令を指して抜ける */
+	ld    t0, RV64_TRAP_CONTEXT_EPC(sp) /* コンテキスト内の割込み元アドレス取得     */
+	add   t0, t0, 4                     /* ecall命令の次の命令を指す                */
+	sd    t0, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを更新                   */
+	j     rv64_return_from_machine_mode /* 例外出口処理へ移行                       */
 
-	mv   s1, t0                        /* mscratch情報           */
-
-	/* これ以降s1はmscratch情報物理アドレスを保持する用途で使用
-	 */
-        csrrw t0, mscratch, t0             /* t0レジスタとmscratchを交換 */
-	sd   t0, RV64_TRAP_CONTEXT_T0(fp)  /* t0レジスタを退避           */
-
-	li   s7, SIP_SSIP  /* スーパーバイザモードソフトウエア割込み発生 */
-
-	/* これ以降s7はスーパーバイザモードソフトウエア割込み発生ビットを保持する用途で使用
-	 */
-	csrr  s2, mcause
-	li    s3, MCAUSE_INTR
-	and   s4, s2, s3        /* MCAUSE_INTR_BITが立っているか?     */
-	bnez  s4, handle_mintr  /* ビットが立っていればIPI/タイマ更新処理へ */
-	li    s3, MCAUSE_ENVCALL_SMODE
-	and   s4, s2, s3        /* MCAUSE_ENVCALL_SMODE_BITが立っているか?     */
-	beqz  s4, handle_mtimer /* ビットが立っていなければタイマ更新処理へ */
-	/* ecall命令の次の命令に復帰
-	 */
-	ld    s2, RV64_TRAP_CONTEXT_EPC(fp) /* コンテキスト内の割込み元アドレス取得     */
-	add   s2, s2, 4                     /* ecall命令の次の命令を指す                */
-	sd    s2, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレスを更新                   */
-	j     skip_mtimer                   /* 例外出口処理へ移行                       */
+	/* IPI割込み処理
+	t0  スクラッチに使用
+	t1  スクラッチに使用
+	t2  未使用
+	t3  未使用
+	t4  自hart MSIPレジスタ
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
 handle_mintr:
-	ld    s2, MSCRATCH_MSIP_PADDR(s1)    /* 自hart MIPレジスタ                       */
-	lw    s3, (s2)                       /* MIPレジスタを読み込み                    */
-	and   s3, s3, 0x1                    /* プロセッサ間割込みが上がっているか?      */
-	beqz  s3, handle_mtimer              /* ビットが立っていなければタイマ更新処理へ */
-	sw    x0, (s2)                       /* 割込み受け付け通知 */
+	ld    t4, MSCRATCH_MSIP_PADDR(t5)    /* 自hart MSIPレジスタ                      */
+	lw    t1, (t4)                       /* MIPレジスタを読み込み                    */
+	and   t1, t1, 0x1                    /* プロセッサ間割込みが上がっているか?      */
+	beqz  t1, handle_mtimer              /* ビットが立っていなければタイマ処理へ     */
+	sw    x0, (t4)                       /* プロセッサ間割込み受け付け通知           */
+
+	mv   a0, sp                        /* 例外コンテキスト              */
+	csrr a1, mcause                    /* 例外発生要因                  */
+	csrr a2, mtval                     /* Machine Trap Value            */
+	/* TODO: IPI割込み処理  */
+
+	j     rv64_return_from_machine_mode  /* 例外出口処理へ移行          */
+
+	/* タイマ処理
+	t0  スクラッチに使用
+	t1  スクラッチに使用
+	t2  自hart MTIME_CMPレジスタ
+	t3  自hart MTIMEレジスタ
+	t4  自hartタイマインターバル
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
 handle_mtimer:
-	csrr  s2, mip      /* MIPレジスタを読み込む    */
-	li    s3, MIP_MTIP /* マシンモードタイマ割込み */
-	and   s2, s2, s3   /* mip & MIP_MTIPを計算     */
-	beqz  s2, skip_mtimer /* ビットが立っていなければタイマ更新処理をスキップする */
+	csrr  t0, mip      /* MIPレジスタを読み込む    */
+	li    t1, MIP_MTIP /* マシンモードタイマ割込み */
+	and   t0, t0, t1   /* マシンモードタイマ割込みの発生を確認     */
+	beqz  t0, rv64_return_from_machine_mode /* マシンモードタイマ割込みでなければ抜ける */
 
-	/* これ以降以下のようにレジスタを使用する
-	   s1  mscratch情報物理アドレス
-	   s2  自hart MTIME_CMPレジスタ
-	   s3  MTIMEレジスタ
-	   s4  タイマインターバル
-	   s7  スーパーバイザモードソフトウエア割込み発生ビットを保持
-	 */
-	ld   s2, MSCRATCH_MTIMECMP_PADDR(s1)
-	ld   s3, MSCRATCH_MTIME_PADDR(s1)
-	ld   s4, MSCRATCH_TIMER_INTERVAL(s1)
+	ld   t2, MSCRATCH_MTIMECMP_PADDR(t5)  /* 自hart MTIME_CMPレジスタ  */
+	ld   t3, MSCRATCH_MTIME_PADDR(t5)     /* 自hart MTIMEレジスタ      */
+	ld   t4, MSCRATCH_TIMER_INTERVAL(t5)  /* 自hart タイマインターバル */
 
-	ld   s5, (s3)                        /* 現在のMTIMEを読み込み     */
-	sd   s5, MSCRATCH_LAST_TIME_VAL(s1)  /* タイマ設定時のMTIMEを記録 */
-	add  s6, s5, s4                      /* 次のタイマ設定値を算出    */
-	sd   s6, (s2)                        /* 次のタイマ設定値を設定    */
+	ld   t0, (t3)                        /* 現在のMTIMEを読み込み     */
+	sd   t0, MSCRATCH_LAST_TIME_VAL(t5)  /* タイマ設定時のMTIMEを記録 */
+	add  t1, t0, t4                      /* 次のタイマ設定値を算出    */
+	sd   t1, (t2)                        /* 次のタイマ設定値を設定    */
 
-	li   s5, SIP_STIP /* スーパーバイザモードタイマ割込み発生 */
-	or   s7, s7, s5   /* タイマ割込み通知 */
+	li   t0, SIP_STIP /* スーパーバイザモードタイマ割込み発生 */
+	or   t6, t6, t0   /* タイマ割込み通知 */
 
-skip_mtimer:
-        csrw sip, s7      /* スーパバイザ割込み要因設定 */
-
-	/*
-	 * コンテキスト復元
-	 */
-	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(fp) /* mstatus  */
-	csrw mstatus, s1                       /* mstatusを復元        */
-
-	ld   s2, RV64_TRAP_CONTEXT_EPC(fp) /* 割込み元アドレス       */
-	csrw mepc, s2                      /* 割込み元アドレスを設定 */
-
-	ld   s0,  0(sp)   /*  s0レジスタを復元する                            */
-	ld   s1,  8(sp)   /*  s1レジスタを復元する                            */
-	ld   s2, 16(sp)   /*  s2レジスタを復元する                            */
-	ld   s3, 24(sp)   /*  s3レジスタを復元する                            */
-	ld   s4, 32(sp)   /*  s4レジスタを復元する                            */
-	ld   s5, 40(sp)   /*  s5レジスタを復元する                            */
-	ld   s6, 48(sp)   /*  s6レジスタを復元する                            */
-	ld   s7, 56(sp)   /*  s7レジスタを復元する                            */
-	add  sp, sp, 64   /*  spを更新する                                    */
+	/* 割込み出口処理
+	t0  スクラッチに使用
+	t1  スクラッチに使用
+	t2  未使用
+	t3  未使用
+	t4  未使用
+	t5  mscratch情報物理アドレス
+	t6  スーパーバイザモードソフトウエア割込み発生ビットを保持
+	*/
+rv64_return_from_machine_mode:
+	csrw sip, t6      /* スーパバイザ割込み要因設定 */
 
 	/*
-	 * sp以外のレジスタを復元する
-	 */
+	* コンテキスト復元
+	*/
+	ld   t0, RV64_TRAP_CONTEXT_ESTATUS(sp) /* mstatus  */
+	csrw mstatus, t0                       /* mstatusを復元        */
+
+	ld   t0, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレス       */
+	csrw mepc, t0                      /* 割込み元アドレスを設定 */
+
+	/*
+	* sp以外のレジスタを復元する
+	*/
 	RV64_ASM_RESTORE_CONTEXT_COMMON(sp)
 	ld     sp, RV64_TRAP_CONTEXT_SP(sp)  /* スタックを復元する */
 
-        mret
+	mret  /* 例外から復帰 */
+
+illegal_machine_mode_exception:
+	j	illegal_machine_mode_exception /* ここには来ないはず */
 
 /**
     マシンモード関連の設定
