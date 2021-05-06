@@ -66,8 +66,6 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_T0, _trap_context, t0);
 	OFFSET(RV64_TRAP_CONTEXT_T1, _trap_context, t1);
 	OFFSET(RV64_TRAP_CONTEXT_T2, _trap_context, t2);
-	OFFSET(RV64_TRAP_CONTEXT_S0, _trap_context, s0);
-	OFFSET(RV64_TRAP_CONTEXT_S1, _trap_context, s1);
 	OFFSET(RV64_TRAP_CONTEXT_A0, _trap_context, a0);
 	OFFSET(RV64_TRAP_CONTEXT_A1, _trap_context, a1);
 	OFFSET(RV64_TRAP_CONTEXT_A2, _trap_context, a2);
@@ -76,16 +74,6 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_A5, _trap_context, a5);
 	OFFSET(RV64_TRAP_CONTEXT_A6, _trap_context, a6);
 	OFFSET(RV64_TRAP_CONTEXT_A7, _trap_context, a7);
-	OFFSET(RV64_TRAP_CONTEXT_S2, _trap_context, s2);
-	OFFSET(RV64_TRAP_CONTEXT_S3, _trap_context, s3);
-	OFFSET(RV64_TRAP_CONTEXT_S4, _trap_context, s4);
-	OFFSET(RV64_TRAP_CONTEXT_S5, _trap_context, s5);
-	OFFSET(RV64_TRAP_CONTEXT_S6, _trap_context, s6);
-	OFFSET(RV64_TRAP_CONTEXT_S7, _trap_context, s7);
-	OFFSET(RV64_TRAP_CONTEXT_S8, _trap_context, s8);
-	OFFSET(RV64_TRAP_CONTEXT_S9, _trap_context, s9);
-	OFFSET(RV64_TRAP_CONTEXT_S10, _trap_context, s10);
-	OFFSET(RV64_TRAP_CONTEXT_S11, _trap_context, s11);
 	OFFSET(RV64_TRAP_CONTEXT_T3, _trap_context, t3);
 	OFFSET(RV64_TRAP_CONTEXT_T4, _trap_context, t4);
 	OFFSET(RV64_TRAP_CONTEXT_T5, _trap_context, t5);
