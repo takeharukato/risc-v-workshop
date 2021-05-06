@@ -127,14 +127,21 @@ rv64_show_trap_context(trap_context *ctx, scause_type cause, stval_type stval){
 
 	kprintf(" ra: 0x%016qx  sp: 0x%016qx gp: 0x%016qx\n",
 	    ctx->ra, ctx->sp, ctx->gp);
-	kprintf(" t0: 0x%016qx  t1: 0x%016qx t2: 0x%016qx\n",
-	    ctx->t0, ctx->t1, ctx->t2);
-	kprintf(" a0: 0x%016qx  a1: 0x%016qx a2: 0x%016qx a3: 0x%016qx\n",
-	    ctx->a0, ctx->a1, ctx->a2, ctx->a3);
+	kprintf(" t0: 0x%016qx  t1: 0x%016qx t2: 0x%016qx fp: 0x%016qx\n",
+	    ctx->t0, ctx->t1, ctx->t2, ctx->s0);
+	kprintf(" s1: 0x%016qx  a0: 0x%016qx a1: 0x%016qx a2: 0x%016qx\n",
+	    ctx->s1, ctx->a0, ctx->a1, ctx->a2);
+	kprintf(" a3: 0x%016qx  a4: 0x%016qx a5: 0x%016qx a6: 0x%016qx\n",
+	    ctx->a3, ctx->a4, ctx->a5, ctx->a6);
 	kprintf(" a4: 0x%016qx  a5: 0x%016qx a6: 0x%016qx a7: 0x%016qx\n",
 	    ctx->a4, ctx->a5, ctx->a6, ctx->a7);
-	kprintf(" t3: 0x%016qx t4: 0x%016qx t5: 0x%016qx t6: 0x%016qx\n",
-	    ctx->t3, ctx->t4, ctx->t5, ctx->t6);
+	kprintf(" s2: 0x%016qx  s3: 0x%016qx s4: 0x%016qx s5: 0x%016qx\n",
+	    ctx->s2, ctx->s3, ctx->s4, ctx->s5);
+	kprintf(" s6: 0x%016qx  s7: 0x%016qx s8: 0x%016qx s9: 0x%016qx\n",
+	    ctx->s6, ctx->s7, ctx->s8, ctx->s9);
+	kprintf("s10: 0x%016qx s11: 0x%016qx t3: 0x%016qx t4: 0x%016qx\n",
+	    ctx->s10, ctx->s11, ctx->t3, ctx->t4);
+	kprintf(" t5: 0x%016qx  t6: 0x%016qx\n", ctx->t5, ctx->t6);
 
 	show_trap_backtrace();
 }
