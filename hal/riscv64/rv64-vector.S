@@ -29,14 +29,22 @@ ASMMAC_FUNCTION(supervisor_trap_vector)
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
 	/*
+	 * 使用するcallee-savedレジスタを保存
+	 */
+	addi sp,sp,-24   /*  レジスタ3つ分のアドレスを確保する               */
+	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
+	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
+	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
+	add  s0, sp, 24   /*  fpを更新する                                    */
+	/*
 	 * sepc, sstatusレジスタを保存する
 	 */
-	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(fp)
 
-	sd   t0, RV64_TRAP_CONTEXT_T0(sp)   /* t0レジスタを退避           */
+	sd   t0, RV64_TRAP_CONTEXT_T0(fp)   /* t0レジスタを退避           */
 
-	addi s1, sp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */
-	sd   s1, RV64_TRAP_CONTEXT_SP(sp)   /* 割込み元スタックを退避     */
+	addi s1, fp, RV64_TRAP_CONTEXT_SIZE /* 割込み元スタックの値を算出 */
+	sd   s1, RV64_TRAP_CONTEXT_SP(fp)   /* 割込み元スタックを退避     */
 
 	jal  call_trap_common               /* 共通例外ハンドラ呼び出し処理へ  */
 
@@ -60,18 +68,28 @@ ASMMAC_FUNCTION(user_trap_vector)
 	 * sp, t0, sepc, sstatus以外のレジスタを保存する
 	 */
 	RV64_ASM_SAVE_CONTEXT_COMMON(sp)
+
 	/*
-	 * sepc, sstatusレジスタを保存する
+	 * 使用するcallee-savedレジスタを保存
 	 */
-	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(sp)
+	addi sp,sp,-24   /*  レジスタ3つ分のアドレスを確保する               */
+	sd   s2, 16(sp)   /*  s2レジスタを退避する                            */
+	sd   s1,  8(sp)   /*  s1レジスタを退避する                            */
+	sd   s0,  0(sp)   /*  s0レジスタを退避する                            */
+	add  s0, sp, 24   /*  fpを更新する                                    */
+
+	/*
+	 * sepc, sstatusレジスタを保存する(s1レジスタを内部で使用)
+	 */
+	RV64_ASM_SAVE_SUPERVISOR_CONTEXT_COMMON(fp)
 
 	ld   s1, SSCRATCH_SAVED_SP(t0)	   /* 割込み元スタック       */
-	sd   s1, RV64_TRAP_CONTEXT_SP(sp)  /* 割込み元スタックを退避 */
+	sd   s1, RV64_TRAP_CONTEXT_SP(fp)  /* 割込み元スタックを退避 */
 
 	mv   s1, t0                        /* sscratch情報                      */
 
         csrrw t0, sscratch, t0             /* t0レジスタ/sscratchレジスタを復元 */
-	sd   t0, RV64_TRAP_CONTEXT_T0(sp)  /* t0レジスタを退避                  */
+	sd   t0, RV64_TRAP_CONTEXT_T0(fp)  /* t0レジスタを退避                  */
 
 	la   s2, supervisor_trap_vector /* スーパバイザモードベクタアドレスをロード */
 	csrw stvec, s2                  /* スーパバイザモードベクタアドレスを設定   */
@@ -83,25 +101,38 @@ call_trap_common:
 	/*
 	 * 例外ハンドラ呼び出し
 	 */
-	mv   a0, sp                        /* 例外コンテキスト              */
+	mv   a0, fp                        /* 例外コンテキスト              */
 	csrr a1, scause                    /* 例外発生要因                  */
 	csrr a2, stval                     /* Supervisor Trap Value         */
 
 	call trap_common                   /* 共通例外ハンドラ呼び出し      */
+
+	/*
+	 * 使用したcallee-savedレジスタを復元
+	 */
+	ld   s0,  0(sp)   /*  s0レジスタを復元する                            */
+	ld   s1,  8(sp)   /*  s1レジスタを復元する                            */
+	ld   s2, 16(sp)   /*  s2レジスタを復元する                            */
+	add  sp, sp, 24   /*  spを更新する                                    */
+
+	/* 割込み/例外出口へのfall through */
 /**
     void rv64_return_from_trap(void)相当のサブルーチン
  */
 ASMMAC_FUNCTION(rv64_return_from_trap)
 	/*
 	 * コンテキスト復元
+	 * スレッド起動時のコンテキストの初期化処理と整合性をとるため
+	 * この時点でspは割込みコンテキストを指していなければならない
+	 * また, 割込み時に保存したcaller-savedレジスタのみを使用する
 	 */
-	ld   s1, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレス       */
-	csrw sepc, s1                      /* 割込み元アドレスを設定 */
+	ld   t0, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレス       */
+	csrw sepc, t0                      /* 割込み元アドレスを設定 */
 
-	ld   s1, RV64_TRAP_CONTEXT_ESTATUS(sp) /* sstatus        */
+	ld   t0, RV64_TRAP_CONTEXT_ESTATUS(sp) /* sstatus        */
 
-	and  s2, s1, SSTATUS_SPP /* Supervisor Previous modeを参照                       */
-	bne  s2, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
+	and  t1, t0, SSTATUS_SPP /* Supervisor Previous modeを参照                       */
+	bne  t1, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
 
 	/* ユーザコンテキスト復帰時の処理
 	 * - TPレジスタの復元
@@ -111,11 +142,11 @@ ASMMAC_FUNCTION(rv64_return_from_trap)
 	ld   tp, RV64_TRAP_CONTEXT_SIZE(sp)     /* tpレジスタを復元      */
 
 	/* ユーザモード->スーパバイザモード割込みベクタをロード */
-	la   s2, user_trap_vector
-	csrw stvec, s2    /*  ベクタアドレスを設定 */
+	la   t1, user_trap_vector
+	csrw stvec, t1    /*  ベクタアドレスを設定 */
 
 to_kernel:
-	csrw sstatus, s1                       /* sstatusを復元  */
+	csrw sstatus, t0                       /* sstatusを復元  */
 
 	/*
 	 * sp, tp以外のレジスタを復元する
