@@ -48,11 +48,14 @@ fsimg_load(void) {
 	 * ファイルシステムイメージ(FSIMG)のページキャッシュを登録
 	 */
 	fssize=(uintptr_t)&_fsimg_end - (uintptr_t)&_fsimg_start;
+	kprintf("Load fs image: %u byte\n", fssize);
 	for(off = 0; fssize > off; off += PAGE_SIZE) {
 
 		rc = pagecache_get(FS_FSIMG_DEVID, off,  &pc);
 		kassert( rc == 0 );
 		kassert( PCACHE_IS_VALID(pc) );
 		pagecache_put(pc);
+		kprintf(".");
 	}
+	kprintf("\n");
 }
