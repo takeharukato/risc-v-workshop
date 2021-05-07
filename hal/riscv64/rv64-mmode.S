@@ -144,12 +144,14 @@ handle_mintr:
 	lw    t1, (t4)                       /* MIPレジスタを読み込み                    */
 	and   t1, t1, 0x1                    /* プロセッサ間割込みが上がっているか?      */
 	beqz  t1, handle_mtimer              /* ビットが立っていなければタイマ処理へ     */
-	sw    x0, (t4)                       /* プロセッサ間割込み受け付け通知           */
 
 	mv   a0, sp                        /* 例外コンテキスト              */
 	csrr a1, mcause                    /* 例外発生要因                  */
 	csrr a2, mtval                     /* Machine Trap Value            */
+
 	/* TODO: IPI割込み処理  */
+
+	sw    x0, (t4)                     /* プロセッサ間割込み受け付け通知 */
 
 	j     rv64_return_from_machine_mode  /* 例外出口処理へ移行          */
 
