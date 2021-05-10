@@ -128,7 +128,7 @@ ASMMAC_FUNCTION(machine_mode_vector)
 	ld    t0, RV64_TRAP_CONTEXT_EPC(sp) /* コンテキスト内の割込み元アドレス取得     */
 	add   t0, t0, 4                     /* ecall命令の次の命令を指す                */
 	sd    t0, RV64_TRAP_CONTEXT_EPC(sp) /* 割込み元アドレスを更新                   */
-	j     rv64_return_from_machine_mode /* 例外出口処理へ移行                       */
+	j     rv64_return_from_ecall        /* 例外出口処理(割込み通知なし)へ移行       */
 
 	/* IPI割込み処理
 	t0  スクラッチに使用
@@ -194,6 +194,7 @@ handle_mtimer:
 rv64_return_from_machine_mode:
 	csrw sip, t6      /* スーパバイザ割込み要因設定 */
 
+rv64_return_from_ecall:
 	/*
 	* コンテキスト復元
 	*/
