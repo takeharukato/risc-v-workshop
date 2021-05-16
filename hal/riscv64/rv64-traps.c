@@ -125,8 +125,7 @@ rv64_show_trap_context(trap_context *ctx, scause_type cause, stval_type stval){
 	    fsxs_string[(ctx->estatus & SSTATUS_FS)],
 	    (ctx->estatus & SSTATUS_UXL));
 
-	kprintf(" ra: 0x%016qx  sp: 0x%016qx gp: 0x%016qx\n",
-	    ctx->ra, ctx->sp, ctx->gp);
+	kprintf(" ra: 0x%016qx  sp: 0x%016qx\n", ctx->ra, ctx->sp);
 	kprintf(" t0: 0x%016qx  t1: 0x%016qx t2: 0x%016qx fp: 0x%016qx\n",
 	    ctx->t0, ctx->t1, ctx->t2, ctx->s0);
 	kprintf(" s1: 0x%016qx  a0: 0x%016qx a1: 0x%016qx a2: 0x%016qx\n",

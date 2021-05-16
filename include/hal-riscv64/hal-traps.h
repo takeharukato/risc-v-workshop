@@ -9,9 +9,16 @@
 #if !defined(_HAL_HAL_TRAPS_H)
 #define  _HAL_HAL_TRAPS_H
 #if defined(ASM_FILE)
+#include <klib/asm-offset.h>
 
 #define RV64_VECTORBASE_ALIGN       (4)  /**< ベクタベースアラインメント(単位:バイト) */
-
+/** User->Supervisorエントリ時に保存するレジスタ群の
+    例外/割込みコンテキストからのオフセット位置
+*/
+/** GPレジスタ保存域の例外/割込みコンテキストからのオフセット位置 */
+#define RV64_USER_GP_OFFSET         (RV64_TRAP_CONTEXT_SIZE+RV64_USER_TRAP_CONTEXT_GP)
+/** TPレジスタ保存域の例外/割込みコンテキストからのオフセット位置 */
+#define RV64_USER_TP_OFFSET         (RV64_TRAP_CONTEXT_SIZE+RV64_USER_TRAP_CONTEXT_TP)
 /**
    割込みコンテスト退避共通処理
    @param[in] _ctx  トラップコンテキスト先頭アドレスを保存しているレジスタ
@@ -19,7 +26,6 @@
  */
 #define RV64_ASM_SAVE_CONTEXT_COMMON(_ctx)        \
         sd ra,  RV64_TRAP_CONTEXT_RA(_ctx);        \
-	sd gp,  RV64_TRAP_CONTEXT_GP(_ctx);        \
 	sd t1,  RV64_TRAP_CONTEXT_T1(_ctx);        \
 	sd t2,  RV64_TRAP_CONTEXT_T2(_ctx);        \
 	sd s0,  RV64_TRAP_CONTEXT_S0(_ctx);        \
@@ -86,7 +92,6 @@
 	ld t2, RV64_TRAP_CONTEXT_T2(_ctx);     \
 	ld t1, RV64_TRAP_CONTEXT_T1(_ctx);     \
 	ld t0, RV64_TRAP_CONTEXT_T0(_ctx);     \
-	ld gp, RV64_TRAP_CONTEXT_GP(_ctx);     \
 	ld ra, RV64_TRAP_CONTEXT_RA(_ctx);
 
 #else
@@ -102,7 +107,6 @@
 typedef struct _trap_context{
 	reg_type       ra;  /*  x1 */
 	reg_type       sp;  /*  x2 */
-	reg_type       gp;  /*  x3 */
 	reg_type       t0;  /*  x5 */
 	reg_type       t1;  /*  x6 */
 	reg_type       t2;  /*  x7 */
@@ -130,9 +134,22 @@ typedef struct _trap_context{
 	reg_type       t4;  /* x29 */
 	reg_type       t5;  /* x30 */
 	reg_type       t6;  /* x31 */
-	reg_type  estatus;  /* mstatus/status             */
+	reg_type  estatus;  /* mstatus/sstatus            */
 	reg_type      epc;  /* saved user program counter */
 }trap_context;
+
+/**
+   ユーザトラップコンテキスト
+   @note xレジスタの順に格納
+   RISC-V ELF psABI specification
+   https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md
+   ユーザからカーネルにエントリした際に保存するレジスタ群
+ */
+typedef struct _rv64_user_trap_context{
+	reg_type       gp;  /* x3 Global pointer */
+	reg_type       tp;  /* x4 Thread Pointer */
+}rv64_user_trap_context;
+
 void rv64_return_from_trap(void);
 #endif  /*  ASM_FILE  */
 #endif  /* _HAL_HAL_TRAPS_H  */

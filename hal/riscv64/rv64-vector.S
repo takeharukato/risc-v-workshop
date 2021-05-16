@@ -56,9 +56,11 @@ ASMMAC_FUNCTION(user_trap_vector)
 	sd   sp, SSCRATCH_SAVED_SP(t0)       /* 割込み元スタックを保存する     */
 	ld   sp, SSCRATCH_SSTACK_SP(t0)      /* カーネルスタックをロードする   */
 
-        addi sp, sp, -8 /* TPレジスタ保存域を確保する */
+	/* ユーザ->Supervisor割込み時に保存するレジスタの保存域を確保する */
+        addi sp, sp, -RV64_USER_TRAP_CONTEXT_SIZE
 	addi sp, sp, -RV64_TRAP_CONTEXT_SIZE /* コンテキスト保存領域を確保する */
-	sd   tp, RV64_TRAP_CONTEXT_SIZE(sp)  /* ユーザランドTPレジスタ値(TLSポインタ)を保存 */
+	sd   gp, RV64_USER_GP_OFFSET(sp)  /* Global Pointerを保存 */
+	sd   tp, RV64_USER_TP_OFFSET(sp)  /* Thread Pointerを保存 */
 
 	/*
 	 * sp, t0, sepc, sstatus以外のレジスタを保存する
@@ -114,11 +116,12 @@ ASMMAC_FUNCTION(rv64_return_from_trap)
 	bne  t1, x0, to_kernel   /* ユーザモード復帰(SSTATUS_SPPが0)でなければスキップ   */
 
 	/* ユーザコンテキスト復帰時の処理
-	 * - TPレジスタの復元
+	 * - GP/TPレジスタの復元
 	 * - ユーザモード->スーパバイザモード割込みベクタに割り込みベクタを設定する
 	 */
 
-	ld   tp, RV64_TRAP_CONTEXT_SIZE(sp)     /* tpレジスタを復元      */
+	ld   tp, RV64_USER_TP_OFFSET(sp)     /* tpレジスタを復元     */
+	ld   gp, RV64_USER_GP_OFFSET(sp)     /* Global Pointerを復元 */
 
 	/* ユーザモード->スーパバイザモード割込みベクタをロード */
 	la   t1, user_trap_vector

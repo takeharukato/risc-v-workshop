@@ -62,7 +62,6 @@ main(int __unused argc, char __unused *argv[]) {
 	DEFINE_VAL(RV64_TRAP_CONTEXT_SIZE, sizeof(struct _trap_context));
 	OFFSET(RV64_TRAP_CONTEXT_RA, _trap_context, ra);
 	OFFSET(RV64_TRAP_CONTEXT_SP, _trap_context, sp);
-	OFFSET(RV64_TRAP_CONTEXT_GP, _trap_context, gp);
 	OFFSET(RV64_TRAP_CONTEXT_T0, _trap_context, t0);
 	OFFSET(RV64_TRAP_CONTEXT_T1, _trap_context, t1);
 	OFFSET(RV64_TRAP_CONTEXT_T2, _trap_context, t2);
@@ -92,6 +91,13 @@ main(int __unused argc, char __unused *argv[]) {
 	OFFSET(RV64_TRAP_CONTEXT_T6, _trap_context, t6);
 	OFFSET(RV64_TRAP_CONTEXT_ESTATUS, _trap_context, estatus);
 	OFFSET(RV64_TRAP_CONTEXT_EPC, _trap_context, epc);
+
+	/*
+	 * ユーザトラップコンテキスト
+	 */
+	DEFINE_VAL(RV64_USER_TRAP_CONTEXT_SIZE, sizeof(struct _rv64_user_trap_context));
+	OFFSET(RV64_USER_TRAP_CONTEXT_GP, _rv64_user_trap_context, gp);
+	OFFSET(RV64_USER_TRAP_CONTEXT_TP, _rv64_user_trap_context, tp);
 
 	/*
 	 * スレッドコンテキスト情報
