@@ -166,6 +166,13 @@ ap_boot: /* APの処理再開位置 */
 	li a1, HAL_KERN_VMA_BASE  /* カーネル仮想アドレスオフセット   */
 	add sp, sp, a1
 #endif  /*  CONFIG_UPPERHALF_KERNEL  */
+	/*
+	 * スーパーバイザへの外部割込みを許可する
+	 */
+	csrr t0, sie  /* Supervisor Interrupt Enableレジスタを読み込む */
+	li   t1, SIE_SEIE  /* スーパバイザモード外部割込みビット */
+	or   t0, t0, t1    /* スーパバイザモード外部割込みをビットをセット */
+	csrw sie, t0       /* スーパバイザモード外部割込みを有効にする  */
 
 	la   t0, c_entry_addr /* Cのエントリ関数アドレス格納変数のアドレスをロード */
 	ld   a7, (t0)         /* Cのエントリ関数のアドレスをロード                 */

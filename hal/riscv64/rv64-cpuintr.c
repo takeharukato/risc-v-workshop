@@ -27,8 +27,6 @@ rv64_cpu_disable_interrupt(void){
 static void
 rv64_cpu_enable_interrupt(void){
 
-	/* スーパーバイザへの外部割込みを許可する */
-	rv64_write_sie( rv64_read_sie() | SIE_SEIE );
 	/* SSTATUS_SIE ビットをセットし, スーパーバイザへの割込みを許可する         */
 	rv64_write_sstatus( rv64_read_sstatus() | SSTATUS_SIE );
 }
