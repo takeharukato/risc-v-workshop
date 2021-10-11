@@ -65,9 +65,10 @@ vfs_write(vfs_ioctx *ioctx, file_descriptor *fp, const void *buf, ssize_t len,
 	/* ファイルへの書き込みを実施 */
 	/* @note システムコール処理部でv-nodeをロック, アンロックする
 	 * システムコール処理部でメモリマッピングを解析しながらページ単位で
-	 * 読み書きしながらシステムコールで指定されたread/write長を満たすかエラーになるまで
-	 * v-nodeロックを保持し続けなければならないため, vfs層のread/write処理部では,
-	 * 読み書き完了までの全期間でロックを保持できないためである。
+	 * 読み書きしながらシステムコールで指定されたread/write長を満たすか
+	 * エラーになるまでv-nodeロックを保持し続けなければならないため,
+	 * vfs層のread/write処理部では, 読み書き完了までの全期間でロックを
+	 * 保持できないためである。
 	 */
 	wr_bytes = fp->f_vn->v_mount->m_fs->c_calls->fs_write(
 		fp->f_vn->v_mount->m_fs_super, fp->f_vn->v_id, fp->f_vn->v_fs_vnode,
@@ -82,7 +83,7 @@ vfs_write(vfs_ioctx *ioctx, file_descriptor *fp, const void *buf, ssize_t len,
 	/* 書込み成功時は書き込んだバイト数に応じて,
 	 * ファイルポジションを更新する
 	 */
-	*wrlenp = wr_bytes;    /* 読み取り長を返却 */
+	*wrlenp = wr_bytes;    /* 書込み長を返却 */
 
 	fp->f_pos += wr_bytes; /* ファイルポジションを更新 */
 
