@@ -69,8 +69,8 @@ plic_config_irq(irq_ctrlr __unused *ctrlr, irq_no irq, irq_attr attr,
 		cinf = krn_cpuinfo_get(cpu);
 
 		/* 割込みマスクレジスタを取得 */
-		reg = (uint32_t *)PLIC_SENABLE_REG(cinf->phys_id);
-		*reg |= (1 << irq);  /* 指定された割込みを開ける */
+		reg = (uint32_t *)PLIC_SENABLE_REG(cinf->phys_id, irq);
+		*reg |= (1 << PLIC_BITOFFSET_IN_ENABLE_REG(irq));  /* 指定された割込みを開ける */
 	}
 
 	return 0;
@@ -116,8 +116,9 @@ plic_enable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
-	*reg = (1 << irq);  /* 指定された割込みを開ける */
+	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart, irq); /* 割込みマスクレジスタを取得 */
+	*reg |= 1 << PLIC_BITOFFSET_IN_ENABLE_REG(irq);  /* 指定された割込みを開ける */
+
 }
 
 /**
@@ -135,8 +136,8 @@ plic_disable_irq(irq_ctrlr __unused *ctrlr, irq_no irq){
 
 	hart = hal_get_physical_cpunum(); /* 物理プロセッサIDを取得 */
 
-	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart); /* 割込みマスクレジスタを取得 */
-	*reg &= ~(1 << irq);  /* 指定された割込みを閉じる */
+	reg = (plic_reg_ref)PLIC_SENABLE_REG(hart, irq); /* 割込みマスクレジスタを取得 */
+	*reg &= ~( 1 << PLIC_BITOFFSET_IN_ENABLE_REG(irq) );  /* 指定された割込みを閉じる */
 }
 
 /**

@@ -70,18 +70,32 @@ typedef volatile uint32_t * plic_reg_ref;  /* PLICのレジスタ参照 */
 /**
    マシンモード割込み許可レジスタ取得
    @param[in] _hart 物理プロセッサID (hart番号)
+   @param[in] _irq 割込み番号
    @return マシンモード割込み許可レジスタアドレス
  */
-#define PLIC_MENABLE_REG(_hart) \
-	((plic_reg_ref)(RV64_PLIC + PLIC_MENABLE_OFFSET + ( (_hart) * PLIC_ENABLE_PER_HART) ) )
+#define PLIC_MENABLE_REG(_hart, _irq)				\
+	((plic_reg_ref)(RV64_PLIC + PLIC_MENABLE_OFFSET		\
+	    + ( (_hart) * PLIC_ENABLE_PER_HART)			\
+	    + ( (_irq) / ( PLIC_REGSIZE * BITS_PER_BYTE ) ) ) )
 
 /**
    スーパーバイザモード割込み許可レジスタ取得
    @param[in] _hart 物理プロセッサID (hart番号)
+   @param[in] _irq 割込み番号
    @return スーパーバイザモード割込み許可レジスタアドレス
  */
-#define PLIC_SENABLE_REG(_hart) \
-	((plic_reg_ref)(RV64_PLIC + PLIC_SENABLE_OFFSET + ( (_hart) * PLIC_ENABLE_PER_HART) ) )
+#define PLIC_SENABLE_REG(_hart, _irq)					\
+	((plic_reg_ref)(RV64_PLIC + PLIC_SENABLE_OFFSET			\
+	    + ( (_hart) * PLIC_ENABLE_PER_HART)				\
+		+ ( (_irq) / ( PLIC_REGSIZE * BITS_PER_BYTE ) ) ) )
+
+/**
+   割込み許可レジスタ内でのビットオフセット取得
+   @param[in] _irq 割込み番号
+   @return 割込み許可レジスタ内でのビットオフセット
+ */
+#define PLIC_BITOFFSET_IN_ENABLE_REG(_irq)					\
+	( (_irq) % ( PLIC_REGSIZE * BITS_PER_BYTE ) )
 
 /**
    マシンモード割込み優先度レジスタ取得
