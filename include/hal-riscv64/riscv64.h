@@ -15,13 +15,10 @@
  * SiFive FU540-C000 Manual
  * RISC-V Privileged Architectures V1.10 Figure 3.7
  */
-#define MSTATUS_SIE_BIT      (1)
-#define MSTATUS_MIE_BIT      (3)
-#define MSTATUS_SPIE_BIT     (5)
-#define MSTATUS_MPIE_BIT     (7)
-#define MSTATUS_SPP_BIT      (8)
-#define MSTATUS_MPP_MIN_BIT  (11)
-#define MSTATUS_MPP_MAX_BIT  (12)
+#define MSTATUS_MIE_BIT      (3)  /* Machine Interrupt Enable */
+#define MSTATUS_MPIE_BIT     (7)  /* Machine Previous Interrupt Enable */
+#define MSTATUS_MPP_MIN_BIT  (11) /* Machine Privious Priviledge */
+#define MSTATUS_MPP_MAX_BIT  (12) /* Machine Privious Priviledge */
 #define MSTATUS_MPP_MASK (regops_calc_mask_range(MSTATUS_MPP_MIN_BIT, MSTATUS_MPP_MAX_BIT))
 /** マシンモード mstatus.MPP = 11b */
 #define MSTATUS_MPP_M    (regops_calc_mask_range(MSTATUS_MPP_MIN_BIT, MSTATUS_MPP_MAX_BIT))
