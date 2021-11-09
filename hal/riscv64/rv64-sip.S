@@ -12,10 +12,10 @@
 
 ASMMAC_TEXT_SECTION
 
-ASMMAC_DECLARE_NAME(rv64_read_sip)	
+ASMMAC_DECLARE_NAME(rv64_read_sip)
 ASMMAC_DECLARE_NAME(rv64_write_sip)
-	
-/** 
+
+/**
     Supervisor interrupt pendingレジスタの内容を返却
     @return Supervisor interrupt pendingレジスタの内容
     @note  uint64_t rv64_read_sip(void) 相当
@@ -33,7 +33,7 @@ rv64_read_sip:
 	addi sp,sp,16  /*  スタック位置を復元する                          */
 	jr ra          /*  呼び出し元に戻る                                */
 
-/** 
+/**
     Supervisor interrupt pendingレジスタの内容を設定
     @param[in] new 設定するレジスタ値
     @return 更新前のSupervisor interrupt pendingレジスタの内容
@@ -52,6 +52,6 @@ rv64_write_sip:
 
 	ld s0,  0(sp)    /*  s0レジスタを復元する                            */
 	ld ra,  8(sp)    /*  raレジスタを復元する                            */
-	ld s1, 16(sp)    /*  s1レジスタを復元する                            */	
+	ld s1, 16(sp)    /*  s1レジスタを復元する                            */
 	addi sp,sp,24    /*  スタック位置を復元する                          */
 	jr ra            /*  呼び出し元に戻る                                */
