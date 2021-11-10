@@ -28,7 +28,6 @@ static const char *scause_string[]={
 	"Breakpoint",
 	"Load address misaligned",
 	"Load access fault",
-	"AMO address misaligned",
 	"Store/AMO address misaligned",
 	"Store/AMO access fault",
 	"Environment call from U-mode",
